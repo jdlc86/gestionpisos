@@ -59,7 +59,33 @@ Legacy bootstrap tables `properties`, `rooms`, `tenancies`, `property_staff_assi
 - 20260913193138 beta0_audit_and_capability_transfer
 - 20260913193156 beta0_occupancies_v2_write_policies
 - 20260913193201 beta0_admin_audit_indexes
+- 20260913200133 beta0_create_allaiso_organization
+- 20260913202214 portfolio_channel_probe
+- 20260913202901 beta0_incidents
+- 20260913202908 beta0_incidents_rls
+- 20260913203106 beta0_cleaning_core
+- 20260913203112 beta0_cleaning_admin_rls
+- 20260913205141 close_owners_and_occupancy_blockers
+
+The SQL for `20260913205141 close_owners_and_occupancy_blockers` is versioned at
+`supabase/migrations/20260913205141_close_owners_and_occupancy_blockers.sql`.
+The preceding remote entries are recorded here, but their SQL source files are
+not present in this repository; this reproducibility debt remains open in
+`docs/OPEN_BLOCKERS.md`.
 
 ## Security status
 
-At the end of this sequence Supabase Security Advisor reports zero security lints. Beta 0 is not stable until role-isolation tests with test users pass.
+After `20260913205141`, Supabase Security Advisor reports no critical findings.
+Two pre-existing notices remain:
+
+- `Leaked Password Protection Disabled` (`WARN`), accepted for the current plan;
+- `cleaning_swap_requests_v2` has RLS enabled with no policy (`INFO`), safely
+  deny-by-default but incomplete for the future tenant swap flow.
+
+The Performance Advisor reports no critical findings. Its existing backlog is
+22 unindexed foreign keys, 27 RLS init-plan warnings, 50 unused indexes (the
+new exclusion index is unused because the active tables contain no rows), and
+4 multiple-permissive-policy warnings.
+
+Beta 0 is not stable until the full role-isolation matrix is executed with
+users created through Supabase Auth.

@@ -10,6 +10,7 @@ permissions:
 
 jobs:
   contract-checks:
+    name: Governance Guard
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

@@ -14,4 +14,6 @@ grep -q 'serviceWorker' docs/app.js
 grep -q 'GestionPisos' docs/manifest.webmanifest
 grep -q 'gestionpisos-shell-v1' docs/sw.js
 
+bash tests/portfolio-smoke.sh
+
 echo 'PWA smoke checks passed'

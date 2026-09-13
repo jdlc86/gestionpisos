@@ -58,3 +58,28 @@ After tests:
 - review Performance Advisor;
 - document failures/fixes;
 - update STABLE_RELEASE.md only when all critical checks are green.
+
+## Automated targeted regression
+
+`tests/database-regression.sql` covers the targeted B-01/B-02 and ROOT guard
+cases without creating Auth users. It is executed against the faithful,
+ephemeral PostgreSQL fixture in `tests/local-schema-fixture.sql` and rolls back
+all test rows.
+
+Covered positive cases:
+
+- ROOT creates and archives an owner;
+- ADMIN creates and updates an owner in its organization;
+- a non-overlapping active occupancy is accepted.
+
+Covered negative cases:
+
+- owner, employee and tenant cannot create or update owners;
+- ADMIN cannot write an owner in another organization;
+- authenticated clients, including ROOT, cannot physically delete owners;
+- a second open occupancy for one room is rejected;
+- overlapping dated occupancies and inverted dates are rejected;
+- the ROOT role cannot be changed through an ordinary update.
+
+This targeted regression does not replace the full matrix above with real
+Supabase Auth identities.

@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="stylesheet" href="./app.css">
+  <link rel="stylesheet" href="./portfolio.css">
+  <title>Allaiso · Cartera</title>
+</head>
+<body>
+  <main class="shell portfolio-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">ALLAISO</p>
+        <h1>Cartera</h1>
+      </div>
+      <a class="ghost back-link" href="./">Inicio</a>
+    </header>
+
+    <section class="portfolio-hero">
+      <span class="badge">Beta 0 · demostración local</span>
+      <h2>Propietarios, pisos y habitaciones</h2>
+      <p>La estructura central de la cartera de Allaiso. Las bajas conservan histórico y las relaciones nunca se pierden.</p>
+    </section>
+
+    <nav class="segmented" aria-label="Secciones de cartera">
+      <button class="segment is-active" data-view="owners">Propietarios</button>
+      <button class="segment" data-view="properties">Pisos</button>
+      <button class="segment" data-view="rooms">Habitaciones</button>
+    </nav>
+
+    <section class="toolbar">
+      <div>
+        <p class="eyebrow">CARTERA</p>
+        <h3 id="sectionTitle">Propietarios</h3>
+      </div>
+      <div class="toolbar-actions">
+        <label class="filter-label" for="statusFilter">
+          Estado
+          <select id="statusFilter">
+            <option value="current">En cartera</option>
+            <option value="archived">Archivados</option>
+            <option value="all">Todos</option>
+          </select>
+        </label>
+        <button id="newItemBtn" class="primary" type="button">Añadir propietario</button>
+      </div>
+    </section>
+
+    <section id="relationshipSummary" class="relationship-summary" aria-live="polite"></section>
+
+    <section id="records" class="record-list" aria-live="polite"></section>
+
+    <section id="emptyState" class="empty-state" hidden>
+      <div class="empty-icon" aria-hidden="true">⌂</div>
+      <h4 id="emptyTitle">Todavía no hay propietarios</h4>
+      <p id="emptyText">Cuando se den de alta aparecerán aquí con sus pisos asociados.</p>
+    </section>
+
+    <dialog id="editorDialog">
+      <form id="editorForm" class="editor">
+        <div class="editor-head">
+          <div>
+            <p class="eyebrow">ALLAISO</p>
+            <h3 id="editorTitle">Nuevo propietario</h3>
+          </div>
+          <button id="closeEditorBtn" type="button" class="icon-btn" aria-label="Cerrar">×</button>
+        </div>
+        <div id="editorFields" class="editor-fields"></div>
+        <div class="editor-actions">
+          <button id="cancelEditorBtn" type="button" class="ghost">Cancelar</button>
+          <button id="saveDraftBtn" type="submit" class="primary">Guardar demostración</button>
+        </div>
+        <p class="muted small">Los cambios viven solo en esta pestaña y se pierden al recargar. Esta pantalla no envía datos a Supabase.</p>
+      </form>
+    </dialog>
+
+    <dialog id="historyDialog">
+      <section class="editor history-panel">
+        <div class="editor-head">
+          <div>
+            <p class="eyebrow">HISTÓRICO</p>
+            <h3 id="historyTitle">Cambios</h3>
+          </div>
+          <button id="closeHistoryBtn" type="button" class="icon-btn" aria-label="Cerrar">×</button>
+        </div>
+        <ol id="historyList" class="history-list"></ol>
+      </section>
+    </dialog>
+
+    <section class="status">
+      <span class="dot"></span>
+      <span><strong>Sin escritura remota.</strong> Interacción local para validar alta, edición, estados, archivo e histórico antes de conectar Auth.</span>
+    </section>
+  </main>
+  <script src="./portfolio.js" defer></script>
+</body>
+</html>

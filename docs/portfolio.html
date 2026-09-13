@@ -1,1 +1,72 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Cartera</title></head><body><h1>Cartera Allaiso</h1><p>Propietarios, pisos y habitaciones.</p></body></html>
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="stylesheet" href="./app.css">
+  <link rel="stylesheet" href="./portfolio.css">
+  <title>Allaiso · Cartera</title>
+</head>
+<body>
+  <main class="shell portfolio-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">ALLAISO</p>
+        <h1>Cartera</h1>
+      </div>
+      <a class="ghost back-link" href="./">Inicio</a>
+    </header>
+
+    <section class="portfolio-hero">
+      <span class="badge">Beta 0</span>
+      <h2>Propietarios, pisos y habitaciones</h2>
+      <p>La estructura central de la cartera de Allaiso. Las bajas conservan histórico.</p>
+    </section>
+
+    <nav class="segmented" aria-label="Secciones de cartera">
+      <button class="segment is-active" data-view="owners">Propietarios</button>
+      <button class="segment" data-view="properties">Pisos</button>
+      <button class="segment" data-view="rooms">Habitaciones</button>
+    </nav>
+
+    <section class="toolbar">
+      <div>
+        <p class="eyebrow">CARTERA</p>
+        <h3 id="sectionTitle">Propietarios</h3>
+      </div>
+      <button id="newItemBtn" class="primary" type="button">Añadir propietario</button>
+    </section>
+
+    <section id="emptyState" class="empty-state">
+      <div class="empty-icon" aria-hidden="true">⌂</div>
+      <h4 id="emptyTitle">Todavía no hay propietarios</h4>
+      <p id="emptyText">Cuando se den de alta aparecerán aquí con sus pisos asociados.</p>
+    </section>
+
+    <dialog id="editorDialog">
+      <form method="dialog" class="editor">
+        <div class="editor-head">
+          <div>
+            <p class="eyebrow">ALLAISO</p>
+            <h3 id="editorTitle">Nuevo propietario</h3>
+          </div>
+          <button value="cancel" class="icon-btn" aria-label="Cerrar">×</button>
+        </div>
+        <div id="editorFields" class="editor-fields"></div>
+        <div class="editor-actions">
+          <button value="cancel" class="ghost">Cancelar</button>
+          <button id="saveDraftBtn" value="default" class="primary">Guardar borrador</button>
+        </div>
+        <p class="muted small">El formulario valida la experiencia visual. La escritura en Supabase se activará al cerrar las dos reglas pendientes de cartera.</p>
+      </form>
+    </dialog>
+
+    <section class="status">
+      <span class="dot"></span>
+      <span>Lectura preparada. Escritura todavía bloqueada por seguridad hasta cerrar Supabase.</span>
+    </section>
+  </main>
+  <script src="./portfolio.js" defer></script>
+</body>
+</html>

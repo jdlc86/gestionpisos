@@ -49,6 +49,7 @@ escritura real hasta completar B-03 (Auth y matriz con identidades reales).
 ### Cierre y evidencia
 
 - Migración remota: `20260913205141 close_owners_and_occupancy_blockers`.
+- Commit de implementación: `34b3dfe`; PR: `#4`.
 - SQL versionado: `supabase/migrations/20260913205141_close_owners_and_occupancy_blockers.sql`.
 - Políticas remotas verificadas: `owners_insert_root_admin` y
   `owners_update_root_admin`, ambas limitadas a `authenticated`; ADMIN exige
@@ -110,6 +111,7 @@ multiusuario siguen dependiendo de B-03.
 ### Cierre y evidencia
 
 - Migración remota: `20260913205141 close_owners_and_occupancy_blockers`.
+- Commit de implementación: `34b3dfe`; PR: `#4`.
 - Constraint remota validada `occupancies_v2_dates_check`: una fecha final no
   puede preceder a la inicial.
 - Constraint de exclusión GiST remota y validada
@@ -190,6 +192,9 @@ GitHub debe exigir:
 La API de GitHub devolvió la configuración aplicada con `strict: true` y
 `enforce_admins: true`.
 
+El PR `#4` confirmó que los contextos configurados corresponden a checks
+reales y los tres finalizaron en `PASS` sobre el commit `34b3dfe`.
+
 ---
 
 ## B-05 — Cartera Allaiso
@@ -233,8 +238,11 @@ Los formularios son únicamente de experiencia visual y no escriben datos en Sup
   secretos ni acceso a producción.
 - La escritura real permanece bloqueada por B-03 y no se ha añadido cliente
   Supabase al frontend.
-- El cierre de entrega requiere PR abierto y los tres checks verdes; se
-  completará en este documento con la referencia exacta antes de terminar.
+- Commit de implementación: `34b3dfe`; PR: `#4`.
+- Resultado inicial del PR sobre ese commit: `Governance Guard`, `PWA Smoke` y
+  `Schema Guard` en `PASS`.
+- El PR se mantiene abierto para revisión; no se fusiona silenciosamente un
+  cambio R3/R4 mientras B-03 y la matriz completa sigan pendientes.
 
 ---
 
@@ -360,7 +368,7 @@ porque el entorno Beta aún no los ha usado.
 
 ---
 
-## Causa técnica observada
+## Causa técnica observada — histórico y sesión actual
 
 Los plugins de GitHub y Supabase están configurados en **Allow all actions**.
 
@@ -370,7 +378,15 @@ El proyecto Supabase está en estado **ACTIVE_HEALTHY**.
 
 Por tanto, los bloqueos descritos no provienen de falta de permisos del usuario ni de un proyecto Supabase caído.
 
-Las operaciones fallidas devuelven explícitamente mensajes indicando que la llamada fue bloqueada por los controles de seguridad de OpenAI antes de llegar al servicio externo.
+En la sesión anterior, las operaciones fallidas devolvieron mensajes indicando
+que la llamada fue bloqueada por los controles de seguridad de OpenAI antes de
+llegar al servicio externo.
+
+En esta sesión, la migración de esquema sí se aplicó y GitHub Branch Protection
+sí se configuró. La vía de consulta no permitió `SET ROLE authenticated`, y la
+vía de migraciones rechazó correctamente usar producción para DML de prueba.
+Por ello, la regresión de roles se ejecutó en PostgreSQL 17 efímero y la base
+remota se verificó de forma no mutante mediante sus catálogos.
 
 ---
 

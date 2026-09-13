@@ -1,0 +1,54 @@
+name: Governance Guard
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  contract-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Required governance files
+        shell: bash
+        run: |
+          set -euo pipefail
+          required=(
+            "AGENTS.md"
+            "docs/PRODUCT_CONTRACT.md"
+            "docs/SECURITY_CONTRACT.md"
+            "docs/PERMISSIONS_CONTRACT.md"
+            "docs/DATA_CONTRACT.md"
+            "docs/AUTH_CONTRACT.md"
+            "docs/PHOTO_VERIFICATION_CONTRACT.md"
+            "docs/NOTIFICATION_CONTRACT.md"
+            "docs/TESTING_STRATEGY.md"
+            "docs/RELEASE_CONTRACT.md"
+            "STABLE_RELEASE.md"
+          )
+          for f in "${required[@]}"; do
+            test -s "$f" || { echo "::error::Missing or empty required file: $f"; exit 1; }
+          done
+
+      - name: Reject obvious backend secrets in tracked files
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git grep -nEi '(SUPABASE_SERVICE_ROLE_KEY|service[_-]?role[[:space:]]*[:=][[:space:]]*["'\'' ]*eyJ|BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY)' -- ':!docs/**' ':!AGENTS.md' ':!.github/workflows/governance-guard.yml'; then
+            echo "::error::Potential privileged secret or private key found in repository."
+            exit 1
+          fi
+
+      - name: Guard against RLS bypass patterns
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git grep -nEi 'alter[[:space:]]+table.*disable[[:space:]]+row[[:space:]]+level[[:space:]]+security' -- '*.sql'; then
+            echo "::error::Disabling RLS is forbidden by project contract."
+            exit 1
+          fi

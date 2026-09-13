@@ -1,0 +1,17 @@
+name: Schema Guard
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  active-schema:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject legacy Supabase table usage
+        run: bash tests/no-legacy-schema.sh

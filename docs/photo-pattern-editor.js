@@ -791,7 +791,18 @@ async function save() {
     }
   });
 
-  if (result.error) throw result.error;
+  if (result.error) {
+    let detail = "edge_function_failed";
+    try {
+      if (result.error.context?.json) {
+        const body = await result.error.context.json();
+        detail = body?.error || detail;
+      } else if (result.error.message) {
+        detail = result.error.message;
+      }
+    } catch {}
+    throw new Error(detail);
+  }
   if (!result.data?.ok) throw new Error(result.data?.error || "save_failed");
 
   pattern.version = result.data.version;
@@ -914,10 +925,17 @@ clearBtn.addEventListener("click", () => {
 saveBtn.addEventListener("click", () => {
   save().catch(error => {
     console.error("pattern contour save failed", error);
-    if (String(error?.message || "").includes("pattern_version_conflict")) {
+    const code = String(error?.message || "save_failed");
+    if (code.includes("pattern_version_conflict")) {
       message.textContent = "El patrón cambió en otra sesión. Vuelve a abrir el editor antes de guardar.";
+    } else if (code.includes("invalid_session")) {
+      message.textContent = "La sesión no es válida. Vuelve a entrar antes de guardar.";
+    } else if (code.includes("insufficient_write_permission")) {
+      message.textContent = "No tienes permiso de escritura para guardar esta silueta.";
+    } else if (code.includes("invalid_contour_data")) {
+      message.textContent = "La silueta contiene datos no válidos y no se ha guardado.";
     } else {
-      message.textContent = "No se pudo guardar la silueta.";
+      message.textContent = "No se pudo guardar la silueta: " + code;
     }
     updateButtons();
   });

@@ -21,18 +21,15 @@
     <section class="pattern-hero">
       <span class="badge">Fotoverificación</span>
       <h2>Registrar referencia</h2>
-      <p>Selecciona un piso y una habitación. La fotografía que hagas será la referencia privada de esa zona.</p>
+      <p>Selecciona el piso e indica la zona que identifica este patrón: baño, cocina, salón, terraza, patio u otra etiqueta.</p>
     </section>
 
     <form id="patternForm" class="pattern-form">
       <label>Piso
         <select id="propertySelect" required></select>
       </label>
-      <label>Habitación
-        <select id="roomSelect" required></select>
-      </label>
-      <label>Nombre del patrón
-        <input id="patternName" type="text" maxlength="120" required placeholder="Ej. Habitación A · vista principal">
+      <label>Zona / etiqueta
+        <input id="zoneLabel" type="text" maxlength="120" required placeholder="Ej. Baño, Cocina, Salón, Terraza">
       </label>
       <button id="captureReference" class="primary" type="submit">Capturar referencia</button>
     </form>

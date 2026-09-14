@@ -38,11 +38,11 @@ La cámara fullscreen está implementada y probada en móvil: cerrar, disparar, 
 
 El alineador local rojo/amarillo/verde está probado. Se detectó un falso positivo al apuntar a un suelo texturizado; se corrigió el algoritmo para exigir estructura compatible y la prueba posterior confirmó que el suelo ya no llega a verde mientras el banco correctamente encuadrado sí. Los umbrales quedan congelados provisionalmente y no deben ajustarse sin nueva evidencia de campo.
 
-### Persistencia — en curso
+### Persistencia — validada
 
 El flujo objetivo es: sesión autenticada → run → item → JPEG en bucket privado → metadatos de alineación → finalización del run. La ruta prevista es `organization_id/run_id/item_id.jpg`.
 
-Las migraciones remotas `20260914135829 beta0_photo_alignment_meta_check_add`, `20260914140530 beta0_photo_item_storage_path_restrictive_min` y `20260914141923 beta0_remove_public_photo_submit_rpc`, junto con el source desplegado de `submit-photo-verification`, están reconciliadas con Git. La restricción de ruta está aplicada; el trabajo NO está cerrado hasta verificar la finalización segura. No debilitar RLS ni crear patrones ficticios para desbloquear la UI.
+Las migraciones remotas `20260914135829 beta0_photo_alignment_meta_check_add`, `20260914140530 beta0_photo_item_storage_path_restrictive_min` y `20260914141923 beta0_remove_public_photo_submit_rpc`, junto con el source desplegado de `submit-photo-verification`, están reconciliadas con Git. La restricción de ruta está aplicada y el ciclo real Cocina → captura → JPEG privado → item → run `submitted` fue verificado positivamente el 2026-09-15. No debilitar RLS ni crear patrones ficticios para desbloquear la UI.
 
 ### Autoría de siluetas
 
@@ -51,16 +51,23 @@ La generación automática de contornos queda retirada del producto. La guía de
 La evaluación futura del estado puede incorporar revisión humana o IA, pero esa decisión es independiente de la creación de la silueta y no debe reintroducir generación automática de contornos.
 
 
-### Persistencia frontend — preparada, prueba positiva pendiente
+### Persistencia frontend — validada
 
 La cámara autenticada ya está conectada al flujo privado:
 `pattern_id real → run → item → JPEG privado → alignment_meta → Edge Function → submitted`.
 
 El frontend no acepta organización/piso arbitrarios: deriva ambos desde el patrón visible por RLS. Sin `pattern_id` válido, la captura permanece local y no escribe en Supabase.
 
-La base remota contiene actualmente 0 pisos y 0 patrones de fotoverificación. Por tanto, no se crearán fixtures ficticios solo para forzar una prueba positiva. El cierre funcional del ciclo queda pendiente del primer piso/patrón real de pruebas.
+La prueba positiva real ya existe: patrón Cocina con silueta manual, score persistido y JPEG privado coherente con `storage_path`.
 
 
 ### Limpieza de legado — 2026-09-15
 
 El flujo activo ya no usa Gemini, Sobel, OpenCV, MobileSAM ni ONNX para crear o reconstruir la guía. La cámara renderiza directamente `photo_patterns_v2.contour_data`. Un patrón de verificación sin silueta manual guardada no puede iniciar la cámara de verificación.
+
+
+### Historial y revisión humana — implementación 2026-09-15
+
+La pantalla `photo-verifications.html` permite a ROOT/ADMIN consultar runs visibles por RLS, revisar la captura privada mediante URL firmada y filtrar por estado.
+
+Las decisiones de aprobar/rechazar no abren UPDATE directo al frontend. Se envían a `review-photo-verification`, que exige sesión válida, rol ROOT/ADMIN y AAL2. La aplicación atómica de la decisión se ejecuta mediante `apply_photo_verification_review_v2`, accesible únicamente a `service_role`, y actualiza run + items + auditoría dentro de la misma transacción.

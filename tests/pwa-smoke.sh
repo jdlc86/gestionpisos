@@ -40,6 +40,9 @@ grep -q 'pattern_id' docs/photo-patterns.js
 grep -q 'reference_storage_path' docs/photo-reference-guide.js
 grep -q 'photo-verification' docs/photo-reference-guide.js
 grep -q '__allaisoReferenceMaskCanvas' docs/photo-reference-guide.js
+grep -q 'openCamera.disabled = true' docs/photo-reference-guide.js
+grep -q 'openCamera.disabled = false' docs/photo-reference-guide.js
+grep -q 'La verificación no puede continuar' docs/photo-reference-guide.js
 grep -q '__allaisoReferenceMaskCanvas' docs/photo-alignment.js
 grep -q 'photo-reference-guide.js' docs/photo-camera.html
 grep -q 'cameraMode !== "pattern"' docs/photo-camera.js

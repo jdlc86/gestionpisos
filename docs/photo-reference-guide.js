@@ -5,6 +5,8 @@ const patternId = params.get("pattern_id");
 const mode = params.get("mode");
 const hint = document.getElementById("alignmentHint");
 const guide = document.getElementById("cameraGuide");
+const openCamera = document.getElementById("openCamera");
+const cameraMessage = document.getElementById("cameraMessage");
 
 function uuidLike(value) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value || "");
@@ -62,7 +64,9 @@ async function loadReference() {
   if (mode !== "verify" || !uuidLike(patternId)) return;
 
   document.documentElement.dataset.referenceGuide = "loading";
+  if (openCamera) openCamera.disabled = true;
   if (hint) hint.textContent = "Cargando patrón de referencia…";
+  if (cameraMessage) cameraMessage.textContent = "Cargando patrón de referencia…";
 
   const { data: pattern, error: patternError } = await supabase
     .from("photo_patterns_v2")
@@ -109,11 +113,15 @@ async function loadReference() {
   }
 
   document.documentElement.dataset.referenceGuide = "ready";
+  if (openCamera) openCamera.disabled = false;
   if (hint) hint.textContent = "Busca el mismo encuadre que " + pattern.target_key;
+  if (cameraMessage) cameraMessage.textContent = "";
 }
 
 loadReference().catch(error => {
   console.error("reference guide failed", error);
   document.documentElement.dataset.referenceGuide = "error";
+  if (openCamera) openCamera.disabled = true;
   if (hint) hint.textContent = "No se pudo cargar el patrón de referencia";
+  if (cameraMessage) cameraMessage.textContent = "No se pudo cargar el patrón de referencia. La verificación no puede continuar.";
 });

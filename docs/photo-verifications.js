@@ -12,10 +12,24 @@ const reasonWrap = document.getElementById("reasonWrap");
 const approveBtn = document.getElementById("approveBtn");
 const rejectBtn = document.getElementById("rejectBtn");
 const closeDialogBtn = document.getElementById("closeDialogBtn");
+const toast = document.getElementById("reviewToast");
 
 let currentRun = null;
 let currentItem = null;
 let busy = false;
+let toastTimer = null;
+
+function showToast(text, { error = false } = {}) {
+  if (!toast) return;
+  if (toastTimer) window.clearTimeout(toastTimer);
+  toast.textContent = text;
+  toast.classList.toggle("is-error", error);
+  toast.classList.add("is-visible");
+  toastTimer = window.setTimeout(() => {
+    toast.classList.remove("is-visible");
+    toastTimer = null;
+  }, 2500);
+}
 
 function esc(value) {
   return String(value ?? "").replace(/[&<>"']/g, c => ({
@@ -223,11 +237,14 @@ async function decide(decision) {
     const successMessage = decision === "approved"
       ? "Fotoverificación aprobada correctamente."
       : "Fotoverificación rechazada correctamente.";
+    showToast("✓ " + successMessage);
     message.textContent = successMessage;
-    await load({ preserveMessage: successMessage });
+    await load();
   } catch (error) {
     console.error(error);
-    message.textContent = "No se pudo guardar la revisión.";
+    const errorMessage = "No se pudo guardar la revisión.";
+    showToast(errorMessage, { error: true });
+    message.textContent = errorMessage;
     approveBtn.disabled = false;
     rejectBtn.disabled = false;
   } finally {

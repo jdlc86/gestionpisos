@@ -37,7 +37,7 @@ function sobelPrimaryRoi(item){
   for(let p=0,i=0;p<gray.length;p++,i+=4) gray[p]=rgba[i]*.299+rgba[i+1]*.587+rgba[i+2]*.114;
 
   const [y0n,x0n,y1n,x1n]=item.box_2d.map(Number);
-  const pad=.035;
+  const pad=.006;
   const x0=Math.max(1,Math.floor((x0n/1000-pad)*w));
   const x1=Math.min(w-2,Math.ceil((x1n/1000+pad)*w));
   const y0=Math.max(1,Math.floor((y0n/1000-pad)*h));

@@ -43,8 +43,8 @@ test -s docs/photo-pattern-editor.css
 test -s docs/photo-pattern-editor.js
 node --check docs/photo-pattern-editor.js
 grep -q 'photo-pattern-editor.html' docs/photo-patterns.js
-grep -q 'url.searchParams.set("v", "2026091405")' docs/photo-patterns.js
-grep -q 'photo-pattern-editor.html?v=2026091405' docs/photo-pattern-persistence.js
+grep -q 'url.searchParams.set("v", "2026091406")' docs/photo-patterns.js
+grep -q 'photo-pattern-editor.html?v=2026091406' docs/photo-pattern-persistence.js
 grep -q 'Editar silueta' docs/photo-patterns.js
 grep -q 'Dibujar silueta' docs/photo-patterns.js
 grep -q 'contour_data' docs/photo-pattern-editor.js
@@ -59,6 +59,10 @@ grep -q 'id="moveTool"' docs/photo-pattern-editor.html
 grep -q 'id="drawTool"' docs/photo-pattern-editor.html
 grep -q 'id="eraseTool"' docs/photo-pattern-editor.html
 grep -q 'shapeHandles' docs/photo-pattern-editor.js
+grep -q 'dirty = true' docs/photo-pattern-editor.js
+grep -q 'labelInput.addEventListener("input"' docs/photo-pattern-editor.js
+grep -q 'Etiqueta seleccionada' docs/photo-pattern-editor.js
+grep -q 'syncLabelEditor' docs/photo-pattern-editor.js
 grep -q 'resizePrimitive' docs/photo-pattern-editor.js
 grep -q 'beginSelection' docs/photo-pattern-editor.js
 grep -q 'kind === "ellipse"' docs/photo-pattern-editor.js

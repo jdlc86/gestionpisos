@@ -15,6 +15,24 @@ function uuidLike(value) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value || "");
 }
 
+async function waitForOpenCv(timeoutMs = 20000) {
+  const started = performance.now();
+  while (performance.now() - started < timeoutMs) {
+    let cv = window.cv;
+    if (cv && typeof cv.then === "function") {
+      try {
+        cv = await cv;
+        window.cv = cv;
+      } catch {
+        cv = null;
+      }
+    }
+    if (cv?.Mat && cv?.Canny && cv?.findContours) return cv;
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  throw new Error("opencv_runtime_unavailable");
+}
+
 function drawDiagnosticBoxes(items) {
   overlay.replaceChildren();
   items.forEach((item, index) => {
@@ -36,95 +54,6 @@ function drawDiagnosticBoxes(items) {
   });
 }
 
-function buildContourBand(items, size) {
-  const canvas = document.createElement("canvas");
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext("2d");
-  ctx.strokeStyle = "#fff";
-  ctx.lineWidth = 32;
-  ctx.lineJoin = "round";
-  ctx.lineCap = "round";
-
-  items.forEach(item => {
-    item.contours.forEach(contour => {
-      if (!contour.length) return;
-      ctx.beginPath();
-      contour.forEach((point, i) => {
-        const x = Number(point[0]) / 1000 * size;
-        const y = Number(point[1]) / 1000 * size;
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      });
-      ctx.closePath();
-      ctx.stroke();
-    });
-  });
-
-  return ctx.getImageData(0, 0, size, size).data;
-}
-
-function buildEdgeMap(size) {
-  const source = document.createElement("canvas");
-  source.width = size;
-  source.height = size;
-  const ctx = source.getContext("2d", { willReadFrequently: true });
-  ctx.drawImage(image, 0, 0, size, size);
-  const rgba = ctx.getImageData(0, 0, size, size).data;
-  const gray = new Float32Array(size * size);
-
-  for (let p = 0, i = 0; p < gray.length; p++, i += 4) {
-    gray[p] = rgba[i] * 0.299 + rgba[i + 1] * 0.587 + rgba[i + 2] * 0.114;
-  }
-
-  const mag = new Float32Array(size * size);
-  const values = [];
-
-  for (let y = 1; y < size - 1; y++) {
-    for (let x = 1; x < size - 1; x++) {
-      const p = y * size + x;
-      const gx =
-        -gray[p - size - 1] + gray[p - size + 1]
-        - 2 * gray[p - 1] + 2 * gray[p + 1]
-        - gray[p + size - 1] + gray[p + size + 1];
-      const gy =
-        -gray[p - size - 1] - 2 * gray[p - size] - gray[p - size + 1]
-        + gray[p + size - 1] + 2 * gray[p + size] + gray[p + size + 1];
-      const m = Math.hypot(gx, gy);
-      mag[p] = m;
-      values.push(m);
-    }
-  }
-
-  values.sort((a, b) => a - b);
-  const threshold = values[Math.floor(values.length * 0.88)] || 80;
-  return { mag, threshold };
-}
-
-function renderHybrid(items) {
-  const size = 720;
-  hybrid.width = size;
-  hybrid.height = size;
-  const out = hybrid.getContext("2d");
-  out.clearRect(0, 0, size, size);
-
-  const band = buildContourBand(items, size);
-  const { mag, threshold } = buildEdgeMap(size);
-  const pixels = out.createImageData(size, size);
-
-  for (let p = 0; p < mag.length; p++) {
-    const bandAlpha = band[p * 4 + 3];
-    if (!bandAlpha || mag[p] < threshold) continue;
-    const i = p * 4;
-    pixels.data[i] = 255;
-    pixels.data[i + 1] = 255;
-    pixels.data[i + 2] = 255;
-    pixels.data[i + 3] = 235;
-  }
-
-  out.putImageData(pixels, 0, 0);
-}
-
 function renderLegend(items) {
   itemsList.replaceChildren();
   items.forEach(item => {
@@ -132,6 +61,168 @@ function renderLegend(items) {
     li.textContent = item.label;
     itemsList.append(li);
   });
+}
+
+function processingSize() {
+  const maxSide = 900;
+  const naturalWidth = Math.max(1, image.naturalWidth);
+  const naturalHeight = Math.max(1, image.naturalHeight);
+  const scale = Math.min(1, maxSide / Math.max(naturalWidth, naturalHeight));
+  return {
+    width: Math.max(320, Math.round(naturalWidth * scale)),
+    height: Math.max(320, Math.round(naturalHeight * scale))
+  };
+}
+
+function buildSourceCanvas(width, height) {
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(image, 0, 0, width, height);
+  return canvas;
+}
+
+function buildSemanticBand(items, width, height) {
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+
+  ctx.strokeStyle = "#fff";
+  ctx.lineWidth = Math.max(14, Math.round(Math.min(width, height) * 0.032));
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+
+  items.forEach(item => {
+    item.contours.forEach(contour => {
+      if (!Array.isArray(contour) || contour.length < 3) return;
+      ctx.beginPath();
+      contour.forEach((point, index) => {
+        const x = Number(point[0]) / 1000 * width;
+        const y = Number(point[1]) / 1000 * height;
+        if (index === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.closePath();
+      ctx.stroke();
+    });
+  });
+
+  return canvas;
+}
+
+function renderOpenCvGuide(cv, items) {
+  const { width, height } = processingSize();
+  const sourceCanvas = buildSourceCanvas(width, height);
+  const bandCanvas = buildSemanticBand(items, width, height);
+
+  hybrid.width = width;
+  hybrid.height = height;
+
+  let src;
+  let gray;
+  let blurred;
+  let edges;
+  let bandRgba;
+  let bandGray;
+  let bandMask;
+  let masked;
+  let cleaned;
+  let kernel;
+  let contours;
+  let hierarchy;
+  let drawing;
+
+  try {
+    src = cv.matFromImageData(
+      sourceCanvas.getContext("2d").getImageData(0, 0, width, height)
+    );
+    gray = new cv.Mat();
+    blurred = new cv.Mat();
+    edges = new cv.Mat();
+
+    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+    cv.GaussianBlur(gray, blurred, new cv.Size(5, 5), 0, 0, cv.BORDER_DEFAULT);
+    cv.Canny(blurred, edges, 55, 145, 3, true);
+
+    bandRgba = cv.matFromImageData(
+      bandCanvas.getContext("2d").getImageData(0, 0, width, height)
+    );
+    bandGray = new cv.Mat();
+    bandMask = new cv.Mat();
+    cv.cvtColor(bandRgba, bandGray, cv.COLOR_RGBA2GRAY);
+    cv.threshold(bandGray, bandMask, 1, 255, cv.THRESH_BINARY);
+
+    masked = new cv.Mat();
+    cv.bitwise_and(edges, bandMask, masked);
+
+    kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, new cv.Size(3, 3));
+    cleaned = new cv.Mat();
+    cv.morphologyEx(
+      masked,
+      cleaned,
+      cv.MORPH_CLOSE,
+      kernel,
+      new cv.Point(-1, -1),
+      1
+    );
+
+    contours = new cv.MatVector();
+    hierarchy = new cv.Mat();
+    cv.findContours(
+      cleaned,
+      contours,
+      hierarchy,
+      cv.RETR_LIST,
+      cv.CHAIN_APPROX_NONE
+    );
+
+    drawing = cv.Mat.zeros(height, width, cv.CV_8UC4);
+    const minLength = Math.max(18, Math.min(width, height) * 0.025);
+    let kept = 0;
+
+    for (let i = 0; i < contours.size(); i++) {
+      const contour = contours.get(i);
+      const length = cv.arcLength(contour, false);
+
+      if (length >= minLength) {
+        const approx = new cv.Mat();
+        const epsilon = Math.max(0.55, length * 0.0015);
+        cv.approxPolyDP(contour, approx, epsilon, false);
+
+        if (approx.rows >= 3) {
+          const vector = new cv.MatVector();
+          vector.push_back(approx);
+          cv.drawContours(
+            drawing,
+            vector,
+            0,
+            new cv.Scalar(255, 255, 255, 235),
+            2,
+            cv.LINE_AA
+          );
+          vector.delete();
+          kept++;
+        }
+
+        approx.delete();
+      }
+
+      contour.delete();
+    }
+
+    cv.imshow(hybrid, drawing);
+    return kept;
+  } finally {
+    [
+      src, gray, blurred, edges, bandRgba, bandGray, bandMask,
+      masked, cleaned, kernel, hierarchy, drawing
+    ].forEach(mat => mat?.delete?.());
+    contours?.delete?.();
+  }
 }
 
 async function load() {
@@ -145,7 +236,9 @@ async function load() {
 
   if (patternResult.error) throw patternResult.error;
   const pattern = patternResult.data;
-  if (!pattern?.active || !pattern.reference_storage_path) throw new Error("pattern_not_available");
+  if (!pattern?.active || !pattern.reference_storage_path) {
+    throw new Error("pattern_not_available");
+  }
 
   title.textContent = "Patrón: " + (pattern.target_key || pattern.name || "sin etiqueta");
 
@@ -153,7 +246,9 @@ async function load() {
     .from("photo-verification")
     .download(pattern.reference_storage_path);
 
-  if (download.error || !download.data) throw download.error || new Error("reference_download_failed");
+  if (download.error || !download.data) {
+    throw download.error || new Error("reference_download_failed");
+  }
 
   const objectUrl = URL.createObjectURL(download.data);
   image.src = objectUrl;
@@ -162,9 +257,12 @@ async function load() {
   stage.hidden = false;
   status.textContent = "Gemini está seleccionando estructuras…";
 
-  const result = await supabase.functions.invoke("generate-photo-pattern-guide", {
-    body: { pattern_id: pattern.id }
-  });
+  const [result, cv] = await Promise.all([
+    supabase.functions.invoke("generate-photo-pattern-guide", {
+      body: { pattern_id: pattern.id }
+    }),
+    waitForOpenCv()
+  ]);
 
   if (result.error) throw result.error;
   if (!result.data?.ok || !Array.isArray(result.data.landmarks)) {
@@ -173,13 +271,23 @@ async function load() {
 
   const items = result.data.landmarks;
   drawDiagnosticBoxes(items);
-  renderHybrid(items);
+  status.textContent = "OpenCV está extrayendo los bordes reales…";
+
+  const contourCount = renderOpenCvGuide(cv, items);
   renderLegend(items);
   legend.hidden = false;
-  status.textContent = "Guía híbrida lista · " + items.length + " estructuras.";
+
+  if (!contourCount) {
+    throw new Error("opencv_no_useful_contours");
+  }
+
+  status.textContent =
+    "Guía OpenCV lista · " + items.length +
+    " estructuras · " + contourCount + " trazos.";
 }
 
 load().catch(error => {
-  console.error("Hybrid guide failed", error);
-  status.textContent = "No se pudo generar la guía híbrida: " + (error?.message || "error desconocido");
+  console.error("OpenCV hybrid guide failed", error);
+  status.textContent =
+    "No se pudo generar la guía OpenCV: " + (error?.message || "error desconocido");
 });

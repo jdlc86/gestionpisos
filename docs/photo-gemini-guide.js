@@ -27,7 +27,7 @@ async function waitForOpenCv(timeoutMs = 20000) {
         cv = null;
       }
     }
-    if (cv?.Mat && cv?.Canny && cv?.findContours) return cv;
+    if (cv?.Mat && cv?.Canny) return cv;
     await new Promise(resolve => setTimeout(resolve, 100));
   }
   throw new Error("opencv_runtime_unavailable");
@@ -85,39 +85,112 @@ function buildSourceCanvas(width, height) {
   return canvas;
 }
 
-function buildSemanticBand(items, width, height) {
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext("2d");
+function densifyClosedContour(contour, width, height) {
+  const base = contour.map(point => ({
+    x: Number(point[0]) / 1000 * width,
+    y: Number(point[1]) / 1000 * height
+  }));
+  if (base.length < 3) return [];
 
-  ctx.strokeStyle = "#fff";
-  ctx.lineWidth = Math.max(14, Math.round(Math.min(width, height) * 0.032));
-  ctx.lineJoin = "round";
-  ctx.lineCap = "round";
+  const dense = [];
+  const step = Math.max(3, Math.min(width, height) * 0.006);
 
-  items.forEach(item => {
-    item.contours.forEach(contour => {
-      if (!Array.isArray(contour) || contour.length < 3) return;
-      ctx.beginPath();
-      contour.forEach((point, index) => {
-        const x = Number(point[0]) / 1000 * width;
-        const y = Number(point[1]) / 1000 * height;
-        if (index === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
+  for (let i = 0; i < base.length; i++) {
+    const a = base[i];
+    const b = base[(i + 1) % base.length];
+    const distance = Math.hypot(b.x - a.x, b.y - a.y);
+    const segments = Math.max(1, Math.ceil(distance / step));
+
+    for (let s = 0; s < segments; s++) {
+      const t = s / segments;
+      dense.push({
+        x: a.x + (b.x - a.x) * t,
+        y: a.y + (b.y - a.y) * t
       });
-      ctx.closePath();
-      ctx.stroke();
-    });
-  });
+    }
+  }
 
-  return canvas;
+  return dense;
 }
 
-function renderOpenCvGuide(cv, items) {
+function nearestEdgePoint(edges, width, height, point, radius) {
+  const cx = Math.round(point.x);
+  const cy = Math.round(point.y);
+  let best = null;
+  let bestDistance = Infinity;
+
+  for (let dy = -radius; dy <= radius; dy++) {
+    const y = cy + dy;
+    if (y < 1 || y >= height - 1) continue;
+
+    for (let dx = -radius; dx <= radius; dx++) {
+      const x = cx + dx;
+      if (x < 1 || x >= width - 1) continue;
+
+      const distance2 = dx * dx + dy * dy;
+      if (distance2 >= bestDistance) continue;
+      if (edges[y * width + x] === 0) continue;
+
+      bestDistance = distance2;
+      best = { x, y };
+    }
+  }
+
+  return best || point;
+}
+
+function smoothClosed(points, radius = 3) {
+  if (points.length < radius * 2 + 1) return points;
+
+  return points.map((_, index) => {
+    let x = 0;
+    let y = 0;
+    let weight = 0;
+
+    for (let offset = -radius; offset <= radius; offset++) {
+      const p = points[(index + offset + points.length) % points.length];
+      const w = radius + 1 - Math.abs(offset);
+      x += p.x * w;
+      y += p.y * w;
+      weight += w;
+    }
+
+    return { x: x / weight, y: y / weight };
+  });
+}
+
+function contourDisplacement(original, snapped) {
+  if (!original.length || original.length !== snapped.length) return Infinity;
+  let total = 0;
+  for (let i = 0; i < original.length; i++) {
+    total += Math.hypot(snapped[i].x - original[i].x, snapped[i].y - original[i].y);
+  }
+  return total / original.length;
+}
+
+function drawSmoothClosedPath(ctx, points) {
+  if (points.length < 3) return;
+
+  const last = points[points.length - 1];
+  const first = points[0];
+  ctx.beginPath();
+  ctx.moveTo((last.x + first.x) / 2, (last.y + first.y) / 2);
+
+  for (let i = 0; i < points.length; i++) {
+    const current = points[i];
+    const next = points[(i + 1) % points.length];
+    const midX = (current.x + next.x) / 2;
+    const midY = (current.y + next.y) / 2;
+    ctx.quadraticCurveTo(current.x, current.y, midX, midY);
+  }
+
+  ctx.closePath();
+  ctx.stroke();
+}
+
+function renderSnappedGuide(cv, items) {
   const { width, height } = processingSize();
   const sourceCanvas = buildSourceCanvas(width, height);
-  const bandCanvas = buildSemanticBand(items, width, height);
 
   hybrid.width = width;
   hybrid.height = height;
@@ -126,15 +199,6 @@ function renderOpenCvGuide(cv, items) {
   let gray;
   let blurred;
   let edges;
-  let bandRgba;
-  let bandGray;
-  let bandMask;
-  let masked;
-  let cleaned;
-  let kernel;
-  let contours;
-  let hierarchy;
-  let drawing;
 
   try {
     src = cv.matFromImageData(
@@ -146,82 +210,43 @@ function renderOpenCvGuide(cv, items) {
 
     cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
     cv.GaussianBlur(gray, blurred, new cv.Size(5, 5), 0, 0, cv.BORDER_DEFAULT);
-    cv.Canny(blurred, edges, 55, 145, 3, true);
+    cv.Canny(blurred, edges, 45, 130, 3, true);
 
-    bandRgba = cv.matFromImageData(
-      bandCanvas.getContext("2d").getImageData(0, 0, width, height)
-    );
-    bandGray = new cv.Mat();
-    bandMask = new cv.Mat();
-    cv.cvtColor(bandRgba, bandGray, cv.COLOR_RGBA2GRAY);
-    cv.threshold(bandGray, bandMask, 1, 255, cv.THRESH_BINARY);
+    const edgeData = edges.data;
+    const ctx = hybrid.getContext("2d");
+    ctx.clearRect(0, 0, width, height);
+    ctx.strokeStyle = "rgba(255,255,255,.94)";
+    ctx.lineWidth = Math.max(2, Math.min(width, height) * 0.0035);
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    ctx.shadowColor = "rgba(0,0,0,.55)";
+    ctx.shadowBlur = 1.5;
 
-    masked = new cv.Mat();
-    cv.bitwise_and(edges, bandMask, masked);
+    const searchRadius = Math.max(8, Math.round(Math.min(width, height) * 0.018));
+    let drawn = 0;
 
-    kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, new cv.Size(3, 3));
-    cleaned = new cv.Mat();
-    cv.morphologyEx(
-      masked,
-      cleaned,
-      cv.MORPH_CLOSE,
-      kernel,
-      new cv.Point(-1, -1),
-      1
-    );
+    items.forEach(item => {
+      item.contours.forEach(contour => {
+        const dense = densifyClosedContour(contour, width, height);
+        if (dense.length < 8) return;
 
-    contours = new cv.MatVector();
-    hierarchy = new cv.Mat();
-    cv.findContours(
-      cleaned,
-      contours,
-      hierarchy,
-      cv.RETR_LIST,
-      cv.CHAIN_APPROX_NONE
-    );
+        const snapped = dense.map(point =>
+          nearestEdgePoint(edgeData, width, height, point, searchRadius)
+        );
 
-    drawing = cv.Mat.zeros(height, width, cv.CV_8UC4);
-    const minLength = Math.max(18, Math.min(width, height) * 0.025);
-    let kept = 0;
+        const avgShift = contourDisplacement(dense, snapped);
+        if (!Number.isFinite(avgShift) || avgShift > searchRadius * 0.9) return;
 
-    for (let i = 0; i < contours.size(); i++) {
-      const contour = contours.get(i);
-      const length = cv.arcLength(contour, false);
+        const once = smoothClosed(snapped, 2);
+        const twice = smoothClosed(once, 2);
+        drawSmoothClosedPath(ctx, twice);
+        drawn++;
+      });
+    });
 
-      if (length >= minLength) {
-        const approx = new cv.Mat();
-        const epsilon = Math.max(0.55, length * 0.0015);
-        cv.approxPolyDP(contour, approx, epsilon, false);
-
-        if (approx.rows >= 3) {
-          const vector = new cv.MatVector();
-          vector.push_back(approx);
-          cv.drawContours(
-            drawing,
-            vector,
-            0,
-            new cv.Scalar(255, 255, 255, 235),
-            2,
-            cv.LINE_AA
-          );
-          vector.delete();
-          kept++;
-        }
-
-        approx.delete();
-      }
-
-      contour.delete();
-    }
-
-    cv.imshow(hybrid, drawing);
-    return kept;
+    return drawn;
   } finally {
-    [
-      src, gray, blurred, edges, bandRgba, bandGray, bandMask,
-      masked, cleaned, kernel, hierarchy, drawing
-    ].forEach(mat => mat?.delete?.());
-    contours?.delete?.();
+    [src, gray, blurred, edges].forEach(mat => mat?.delete?.());
   }
 }
 
@@ -271,23 +296,23 @@ async function load() {
 
   const items = result.data.landmarks;
   drawDiagnosticBoxes(items);
-  status.textContent = "OpenCV está extrayendo los bordes reales…";
+  status.textContent = "OpenCV está ajustando los contornos al borde real…";
 
-  const contourCount = renderOpenCvGuide(cv, items);
+  const contourCount = renderSnappedGuide(cv, items);
   renderLegend(items);
   legend.hidden = false;
 
   if (!contourCount) {
-    throw new Error("opencv_no_useful_contours");
+    throw new Error("opencv_no_snapped_contours");
   }
 
   status.textContent =
-    "Guía OpenCV lista · " + items.length +
-    " estructuras · " + contourCount + " trazos.";
+    "Guía ajustada a borde real · " + items.length +
+    " estructuras · " + contourCount + " contornos.";
 }
 
 load().catch(error => {
-  console.error("OpenCV hybrid guide failed", error);
+  console.error("OpenCV snap guide failed", error);
   status.textContent =
-    "No se pudo generar la guía OpenCV: " + (error?.message || "error desconocido");
+    "No se pudo generar la guía ajustada: " + (error?.message || "error desconocido");
 });

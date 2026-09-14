@@ -23,14 +23,19 @@
   let timer = 0;
   let greenFrames = 0;
 
-  function renderState(score, zoneScores, texturePenalty = 1) {
-    const usefulZones = zoneScores.filter(v => v >= MIN_YELLOW_ZONE).length;
-    const greenZones = zoneScores.filter(v => v >= MIN_GREEN_ZONE).length;
-    const weakest = Math.min(...zoneScores);
+  function renderState(score, zoneScores, activeZones, texturePenalty = 1) {
+    const activeScores = zoneScores.filter((_, index) => activeZones[index]);
+    const activeCount = activeScores.length;
+    const usefulZones = activeScores.filter(v => v >= MIN_YELLOW_ZONE).length;
+    const greenZones = activeScores.filter(v => v >= MIN_GREEN_ZONE).length;
+    const weakest = activeCount ? Math.min(...activeScores) : 0;
+    const greenRequired = Math.max(1, Math.ceil(activeCount * 0.75));
+    const yellowRequired = Math.max(1, Math.ceil(activeCount * 0.50));
 
     const stableGreen =
+      activeCount > 0 &&
       score >= GREEN_SCORE &&
-      greenZones >= 5 &&
+      greenZones >= greenRequired &&
       weakest >= 0.10 &&
       texturePenalty >= 0.72;
 
@@ -46,17 +51,17 @@
       guide.classList.add('photo-camera__guide--ok');
       window.__allaisoSetGuideState?.('ok');
       hint.textContent =
-        'Encuadre correcto · ' + Math.round(score * 100) + '% · ' + greenZones + '/6 zonas';
-    } else if (score >= YELLOW_SCORE && usefulZones >= 4) {
+        'Encuadre correcto · ' + Math.round(score * 100) + '% · ' + greenZones + '/' + activeCount + ' zonas';
+    } else if (activeCount > 0 && score >= YELLOW_SCORE && usefulZones >= yellowRequired) {
       guide.classList.add('photo-camera__guide--warn');
       window.__allaisoSetGuideState?.('warn');
       hint.textContent =
-        'Casi alineado · ' + Math.round(score * 100) + '% · ' + usefulZones + '/6 zonas';
+        'Casi alineado · ' + Math.round(score * 100) + '% · ' + usefulZones + '/' + activeCount + ' zonas';
     } else {
       guide.classList.add('photo-camera__guide--pending');
       window.__allaisoSetGuideState?.('pending');
       hint.textContent =
-        'Ajusta el encuadre · ' + Math.round(score * 100) + '% · ' + usefulZones + '/6 zonas';
+        'Ajusta el encuadre · ' + Math.round(score * 100) + '% · ' + usefulZones + '/' + activeCount + ' zonas';
     }
 
     window.__allaisoAlignmentScore = +score.toFixed(3);
@@ -172,8 +177,8 @@
 
     const outsideEdgeMean = outsideSamples ? outsideEdgeTotal / outsideSamples : 0;
 
-    for (let y = 4; y < h - 4; y += 2) {
-      for (let x = 4; x < w - 4; x += 2) {
+    for (let y = 4; y < h - 4; y += 1) {
+      for (let x = 4; x < w - 4; x += 1) {
         const p = y * w + x;
         if (alpha[p] < 48) continue;
 
@@ -181,7 +186,7 @@
         const mgy = alpha[p + w] - alpha[p - w];
         const mNorm = Math.hypot(mgx, mgy);
 
-        if (mNorm < 18) continue;
+        if (mNorm < 10) continue;
 
         const enx = mgx / mNorm;
         const eny = mgy / mNorm;
@@ -215,26 +220,33 @@
     }
 
     const zoneScores = [];
-    let populated = 0;
+    const activeZones = [];
 
     for (let i = 0; i < zoneSamples.length; i++) {
-      if (zoneSamples[i] < 4) {
+      const active = zoneSamples[i] >= 3;
+      activeZones.push(active);
+
+      if (!active) {
         zoneScores.push(0);
         continue;
       }
 
-      populated++;
       const meanStrength = zoneStrength[i] / zoneSamples[i];
       const hitCoverage = zoneHits[i] / zoneSamples[i];
       zoneScores.push(meanStrength * 0.60 + hitCoverage * 0.40);
     }
 
-    if (populated < 4) return;
+    const activeScores = zoneScores.filter((_, index) => activeZones[index]);
+    if (!activeScores.length) {
+      renderState(0, zoneScores, activeZones, 1);
+      return;
+    }
 
-    const ordered = [...zoneScores].sort((a, b) => a - b);
-    const trimmed = ordered.slice(1);
-    const spatialScore = trimmed.reduce((a, b) => a + b, 0) / trimmed.length;
-    const balancePenalty = 0.68 + 0.32 * Math.min(1, ordered[1] / 0.30);
+    const ordered = [...activeScores].sort((a, b) => a - b);
+    const spatialScore = ordered.reduce((a, b) => a + b, 0) / ordered.length;
+    const balancePenalty = ordered.length === 1
+      ? 1
+      : 0.72 + 0.28 * Math.min(1, ordered[0] / 0.30);
 
     const texturePenalty = Math.max(
       0.58,
@@ -247,14 +259,14 @@
       ? filteredScore * 0.70 + rawScore * 0.30
       : rawScore;
 
-    renderState(filteredScore, zoneScores, texturePenalty);
+    renderState(filteredScore, zoneScores, activeZones, texturePenalty);
   }
 
   function watchCamera() {
     if (!overlay.hidden && !timer) {
       filteredScore = 0;
       greenFrames = 0;
-      renderState(0, [0, 0, 0, 0, 0, 0], 1);
+      renderState(0, [0, 0, 0, 0, 0, 0], [false, false, false, false, false, false], 1);
       analyze();
       timer = setInterval(analyze, 250);
     } else if (overlay.hidden && timer) {

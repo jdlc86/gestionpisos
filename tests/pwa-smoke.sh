@@ -34,6 +34,14 @@ grep -q 'photo_patterns_v2' docs/photo-patterns.js
 grep -q 'mode", "pattern"' docs/photo-patterns.js
 grep -q 'zone_label' docs/photo-patterns.js
 grep -q 'target_key: zoneLabel' docs/photo-pattern-persistence.js
+test -s docs/photo-reference-guide.js
+grep -q 'Probar verificación' docs/photo-patterns.js
+grep -q 'pattern_id' docs/photo-patterns.js
+grep -q 'reference_storage_path' docs/photo-reference-guide.js
+grep -q 'photo-verification' docs/photo-reference-guide.js
+grep -q '__allaisoReferenceMaskCanvas' docs/photo-reference-guide.js
+grep -q '__allaisoReferenceMaskCanvas' docs/photo-alignment.js
+grep -q 'photo-reference-guide.js' docs/photo-camera.html
 grep -q 'cameraMode !== "pattern"' docs/photo-camera.js
 if grep -q 'roomSelect' docs/photo-patterns.js; then
   echo 'Photo patterns must not depend on rooms.'

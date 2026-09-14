@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="es" data-auth-pending="1">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="stylesheet" href="./app.css">
+  <link rel="stylesheet" href="./photo-verifications.css?v=2026091501">
+  <title>Allaiso · Fotoverificaciones</title>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div><p class="eyebrow">ALLAISO</p><h1>Fotoverificaciones</h1></div>
+      <a class="ghost" href="./operations.html">Volver</a>
+    </header>
+
+    <section class="review-hero">
+      <span class="badge">Revisión humana</span>
+      <h2>Historial y decisiones</h2>
+      <p>Consulta capturas enviadas, su alineación y el estado de revisión.</p>
+    </section>
+
+    <section class="review-toolbar">
+      <label>Estado
+        <select id="statusFilter">
+          <option value="">Todos</option>
+          <option value="submitted" selected>Pendientes</option>
+          <option value="approved">Aprobadas</option>
+          <option value="rejected">Rechazadas</option>
+        </select>
+      </label>
+      <button id="refreshBtn" class="ghost" type="button">Actualizar</button>
+    </section>
+
+    <section id="reviewMessage" class="review-message" aria-live="polite"></section>
+    <section id="reviewList" class="review-list" aria-live="polite"></section>
+  </main>
+
+  <dialog id="reviewDialog">
+    <form id="reviewForm" class="review-dialog">
+      <div class="review-dialog__head">
+        <div><p class="eyebrow">DECISIÓN</p><h3 id="dialogTitle">Revisar fotoverificación</h3></div>
+        <button id="closeDialogBtn" type="button" class="ghost">Cerrar</button>
+      </div>
+      <img id="reviewImage" class="review-image" alt="Captura de fotoverificación">
+      <div id="reviewDetails" class="review-details"></div>
+      <label id="reasonWrap">Motivo del rechazo
+        <textarea id="rejectionReason" rows="3" maxlength="500" placeholder="Explica brevemente el motivo"></textarea>
+      </label>
+      <div class="review-actions">
+        <button id="approveBtn" type="button" class="review-approve">Aprobar</button>
+        <button id="rejectBtn" type="button" class="review-reject">Rechazar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script type="module" src="./photo-verifications.js?v=2026091501"></script>
+  <script type="module" src="./auth-guard.js"></script>
+</body>
+</html>

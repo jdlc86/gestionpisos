@@ -30,7 +30,9 @@ test -s docs/photo-patterns.css
 test -s docs/photo-patterns.js
 node --check docs/photo-patterns.js
 test -s docs/photo-pattern-persistence.js
-grep -q 'photo-patterns.html' docs/portfolio.html
+grep -q 'photo-patterns.html?v=2026091403' docs/portfolio.html
+grep -q 'photo-patterns.js?v=2026091403' docs/photo-patterns.html
+grep -q 'photo-patterns.css?v=2026091403' docs/photo-patterns.html
 grep -q 'photo_patterns_v2' docs/photo-patterns.js
 grep -q 'mode", "pattern"' docs/photo-patterns.js
 grep -q 'zone_label' docs/photo-patterns.js

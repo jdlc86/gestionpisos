@@ -3,6 +3,7 @@ import { supabase, getCurrentUser } from "./supabase-client.js";
 const list = document.getElementById("reviewList");
 const message = document.getElementById("reviewMessage");
 const filter = document.getElementById("statusFilter");
+const propertyFilter = document.getElementById("propertyFilter");
 const refreshBtn = document.getElementById("refreshBtn");
 const dialog = document.getElementById("reviewDialog");
 const image = document.getElementById("reviewImage");
@@ -70,14 +71,27 @@ async function load(options = {}) {
       return;
     }
 
+    const { data:visibleProperties, error:visiblePropertiesError } = await supabase
+      .from("properties_v2")
+      .select("id,name,address_line")
+      .order("name", { ascending:true });
+    if (visiblePropertiesError) throw visiblePropertiesError;
+
+    const selectedProperty = propertyFilter.value;
+    propertyFilter.innerHTML = '<option value="">Todos los pisos</option>' + (visibleProperties || []).map(property =>
+      `<option value="${esc(property.id)}">${esc(property.name || property.address_line || "Piso")}</option>`
+    ).join("");
+    propertyFilter.value = selectedProperty;
+
     let query = supabase
       .from("photo_verification_runs_v2")
-      .select("id,property_id,status,started_at,submitted_at,reviewed_at,rejection_reason")
+      .select("id,property_id,status,started_at,submitted_at,reviewed_at,reviewed_by,rejection_reason")
       .order("started_at", { ascending:false })
-      .limit(50);
+      .limit(100);
 
     const wanted = filter.value;
     if (wanted) query = query.eq("status", wanted);
+    if (selectedProperty) query = query.eq("property_id", selectedProperty);
 
     const { data:runs, error:runError } = await query;
     if (runError) throw runError;
@@ -88,22 +102,24 @@ async function load(options = {}) {
     }
 
     const runIds = runs.map(r => r.id);
-    const propertyIds = [...new Set(runs.map(r => r.property_id))];
+    const reviewerIds = [...new Set(runs.map(r => r.reviewed_by).filter(Boolean))];
 
-    const [{ data:items, error:itemError }, { data:properties, error:propertyError }] = await Promise.all([
-      supabase
-        .from("photo_verification_items_v2")
-        .select("id,run_id,pattern_id,storage_path,captured_at,alignment_score,alignment_meta,manual_result")
-        .in("run_id", runIds)
-        .order("captured_at", { ascending:true }),
-      supabase
-        .from("properties_v2")
-        .select("id,name,address_line")
-        .in("id", propertyIds)
-    ]);
+    const { data:items, error:itemError } = await supabase
+      .from("photo_verification_items_v2")
+      .select("id,run_id,pattern_id,storage_path,captured_at,alignment_score,alignment_meta,manual_result")
+      .in("run_id", runIds)
+      .order("captured_at", { ascending:true });
 
     if (itemError) throw itemError;
-    if (propertyError) throw propertyError;
+
+    let reviewers = [];
+    if (reviewerIds.length) {
+      const { data:profileRows, error:profileError } = await supabase
+        .from("profiles")
+        .select("user_id,display_name,email")
+        .in("user_id", reviewerIds);
+      if (!profileError) reviewers = profileRows || [];
+    }
 
     const patternIds = [...new Set((items || []).map(i => i.pattern_id))];
     const { data:patterns, error:patternError } = patternIds.length
@@ -116,8 +132,9 @@ async function load(options = {}) {
       if (!byRun.has(item.run_id)) byRun.set(item.run_id, []);
       byRun.get(item.run_id).push(item);
     }
-    const propertyMap = new Map((properties || []).map(p => [p.id,p]));
+    const propertyMap = new Map((visibleProperties || []).map(p => [p.id,p]));
     const patternMap = new Map((patterns || []).map(p => [p.id,p]));
+    const reviewerMap = new Map((reviewers || []).map(p => [p.user_id,p]));
 
     if (preservedMessage) {
       message.textContent = preservedMessage;
@@ -133,6 +150,10 @@ async function load(options = {}) {
       const first = runItems[0];
       const pattern = first ? patternMap.get(first.pattern_id) : null;
       const score = first?.alignment_score == null ? "—" : Math.round(Number(first.alignment_score) * 100) + "%";
+      const reviewer = run.reviewed_by ? reviewerMap.get(run.reviewed_by) : null;
+      const reviewerName = reviewer?.display_name || reviewer?.email || (run.reviewed_by ? "Usuario revisor" : "—");
+      const reviewDate = run.reviewed_at ? fmtDate(run.reviewed_at) : "—";
+      const rejection = run.rejection_reason || "—";
       return `<article class="review-card">
         <div class="review-card__top">
           <div><h3>${esc(property?.name || "Piso")}</h3><p>${esc(pattern?.name || pattern?.target_key || "Fotoverificación")} · ${esc(fmtDate(run.submitted_at || run.started_at))}</p></div>
@@ -141,7 +162,10 @@ async function load(options = {}) {
         <div class="review-card__meta">
           <div class="review-chip">Alineación <strong>${esc(score)}</strong></div>
           <div class="review-chip">Capturas <strong>${runItems.length}</strong></div>
+          <div class="review-chip">Revisor <strong>${esc(reviewerName)}</strong></div>
+          <div class="review-chip">Revisada <strong>${esc(reviewDate)}</strong></div>
         </div>
+        ${run.status === "rejected" ? `<div class="review-reason">Motivo: ${esc(rejection)}</div>` : ""}
         <button class="review-open" data-run="${esc(run.id)}" type="button">Ver revisión</button>
       </article>`;
     }).join("");
@@ -151,7 +175,8 @@ async function load(options = {}) {
         runs.find(r => r.id === button.dataset.run),
         byRun.get(button.dataset.run) || [],
         propertyMap,
-        patternMap
+        patternMap,
+        reviewerMap
       ));
     });
   } catch (error) {
@@ -163,7 +188,7 @@ async function load(options = {}) {
   }
 }
 
-async function openRun(run, items, propertyMap, patternMap) {
+async function openRun(run, items, propertyMap, patternMap, reviewerMap) {
   currentRun = run;
   currentItem = items[0] || null;
   reason.value = "";
@@ -182,12 +207,18 @@ async function openRun(run, items, propertyMap, patternMap) {
     : Math.round(Number(currentItem.alignment_score) * 100) + "%";
   const zones = currentItem.alignment_meta?.zones;
   const activeZones = Array.isArray(zones) ? zones.filter(v => Number(v) > 0).length : 0;
+  const reviewer = run.reviewed_by ? reviewerMap.get(run.reviewed_by) : null;
+  const reviewerName = reviewer?.display_name || reviewer?.email || (run.reviewed_by ? "Usuario revisor" : "—");
 
   details.innerHTML = `
     <div class="review-chip">Piso <strong>${esc(property?.name || "—")}</strong></div>
     <div class="review-chip">Patrón <strong>${esc(pattern?.name || "—")}</strong></div>
     <div class="review-chip">Alineación <strong>${esc(score)}</strong></div>
     <div class="review-chip">Zonas activas <strong>${activeZones}</strong></div>
+    <div class="review-chip">Estado <strong>${esc(statusLabel(run.status))}</strong></div>
+    <div class="review-chip">Revisor <strong>${esc(reviewerName)}</strong></div>
+    <div class="review-chip">Revisada <strong>${esc(fmtDate(run.reviewed_at))}</strong></div>
+    <div class="review-chip review-chip--wide">Motivo <strong>${esc(run.rejection_reason || "—")}</strong></div>
   `;
 
   const finalStatus = ["approved","rejected"].includes(run.status);
@@ -253,6 +284,7 @@ async function decide(decision) {
 }
 
 filter.addEventListener("change", load);
+propertyFilter.addEventListener("change", load);
 refreshBtn.addEventListener("click", load);
 closeDialogBtn.addEventListener("click", () => dialog.close());
 approveBtn.addEventListener("click", () => decide("approved"));

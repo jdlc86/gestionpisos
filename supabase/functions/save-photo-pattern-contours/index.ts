@@ -58,23 +58,21 @@ Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json(405, { error: "method_not_allowed" });
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
   const serviceKey = Deno.env.get(["SUPABASE", "SERVICE", "ROLE", "KEY"].join("_"));
   const authorization = req.headers.get("Authorization");
 
-  if (!supabaseUrl || !anonKey || !serviceKey || !authorization) {
+  if (!supabaseUrl || !serviceKey || !authorization) {
     return json(401, { error: "authentication_required" });
   }
 
-  const userClient = createClient(supabaseUrl, anonKey, {
-    global: { headers: { Authorization: authorization } },
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+  const token = authorization.replace(/^Bearer\s+/i, "").trim();
+  if (!token) return json(401, { error: "authentication_required" });
+
   const admin = createClient(supabaseUrl, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const { data: userData, error: userError } = await userClient.auth.getUser();
+  const { data: userData, error: userError } = await admin.auth.getUser(token);
   const user = userData?.user;
   if (userError || !user) return json(401, { error: "invalid_session" });
 
@@ -94,7 +92,7 @@ Deno.serve(async (req: Request) => {
     return json(400, { error: "invalid_contour_data" });
   }
 
-  const { data: pattern, error: patternError } = await userClient
+  const { data: pattern, error: patternError } = await admin
     .from("photo_patterns_v2")
     .select("id,organization_id,property_id,active,version")
     .eq("id", patternId)

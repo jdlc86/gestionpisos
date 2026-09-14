@@ -43,8 +43,8 @@ test -s docs/photo-pattern-editor.css
 test -s docs/photo-pattern-editor.js
 node --check docs/photo-pattern-editor.js
 grep -q 'photo-pattern-editor.html' docs/photo-patterns.js
-grep -q 'url.searchParams.set("v", "2026091404")' docs/photo-patterns.js
-grep -q 'photo-pattern-editor.html?v=2026091404' docs/photo-pattern-persistence.js
+grep -q 'url.searchParams.set("v", "2026091405")' docs/photo-patterns.js
+grep -q 'photo-pattern-editor.html?v=2026091405' docs/photo-pattern-persistence.js
 grep -q 'Editar silueta' docs/photo-patterns.js
 grep -q 'Dibujar silueta' docs/photo-patterns.js
 grep -q 'contour_data' docs/photo-pattern-editor.js
@@ -79,6 +79,9 @@ test -s supabase/functions/save-photo-pattern-contours/index.ts
 grep -q 'insufficient_write_permission' supabase/functions/save-photo-pattern-contours/index.ts
 grep -q 'pattern_version_conflict' supabase/functions/save-photo-pattern-contours/index.ts
 grep -q 'contour_data' supabase/functions/save-photo-pattern-contours/index.ts
+grep -q 'invalid_contour_data' docs/photo-pattern-editor.js
+grep -q 'edge_function_failed' docs/photo-pattern-editor.js
+grep -q 'admin.auth.getUser(token)' supabase/functions/save-photo-pattern-contours/index.ts
 if grep -q 'photo-gemini-guide.html' docs/photo-patterns.js; then
   echo 'Active photo pattern flow must not depend on Gemini.'
   exit 1

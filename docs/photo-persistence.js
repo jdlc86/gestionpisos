@@ -1,5 +1,7 @@
 import { supabase, getCurrentUser } from "./supabase-client.js";
 
+const pageMode = new URLSearchParams(window.location.search).get("mode");
+
 const message = document.getElementById("cameraMessage");
 const params = new URLSearchParams(window.location.search);
 
@@ -121,6 +123,7 @@ async function persistCapture(detail) {
 }
 
 window.addEventListener("allaiso:photo-captured", event => {
+  if (pageMode === "pattern") return;
   const detail = event.detail;
   if (!detail?.blob) return;
 

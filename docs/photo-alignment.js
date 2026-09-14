@@ -44,14 +44,17 @@
 
     if (greenFrames >= GREEN_FRAMES_REQUIRED) {
       guide.classList.add('photo-camera__guide--ok');
+      window.__allaisoSetGuideState?.('ok');
       hint.textContent =
         'Encuadre correcto · ' + Math.round(score * 100) + '% · ' + greenZones + '/6 zonas';
     } else if (score >= YELLOW_SCORE && usefulZones >= 4) {
       guide.classList.add('photo-camera__guide--warn');
+      window.__allaisoSetGuideState?.('warn');
       hint.textContent =
         'Casi alineado · ' + Math.round(score * 100) + '% · ' + usefulZones + '/6 zonas';
     } else {
       guide.classList.add('photo-camera__guide--pending');
+      window.__allaisoSetGuideState?.('pending');
       hint.textContent =
         'Ajusta el encuadre · ' + Math.round(score * 100) + '% · ' + usefulZones + '/6 zonas';
     }

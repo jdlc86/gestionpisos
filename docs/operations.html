@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="stylesheet" href="./app.css">
+  <link rel="stylesheet" href="./operations.css">
+  <title>Allaiso · Centro Operativo</title>
+</head>
+<body>
+  <main class="shell operations-shell">
+    <header class="topbar">
+      <div><p class="eyebrow">ALLAISO</p><h1>Centro Operativo</h1></div>
+      <a class="ghost back-link" href="./">Inicio</a>
+    </header>
+
+    <section class="ops-hero">
+      <span class="badge">Beta 0</span>
+      <h2>Comunicaciones, pagos y métricas</h2>
+      <p>Panel administrativo preparado para conectar al backend cuando Auth y la matriz RLS queden cerrados.</p>
+    </section>
+
+    <nav class="segmented" aria-label="Módulos">
+      <button class="segment is-active" data-view="notifications">Notificaciones</button>
+      <button class="segment" data-view="payments">Pagos</button>
+      <button class="segment" data-view="analytics">Estadísticas</button>
+    </nav>
+
+    <section id="notificationsView" class="ops-view">
+      <div class="toolbar">
+        <div><p class="eyebrow">COMUNICACIÓN</p><h3>Broadcast</h3></div>
+        <button id="newBroadcastBtn" class="primary">Nuevo broadcast</button>
+      </div>
+      <div class="cards-3">
+        <article class="metric"><span>Programados</span><strong>0</strong></article>
+        <article class="metric"><span>Enviados</span><strong>0</strong></article>
+        <article class="metric"><span>Fallidos</span><strong>0</strong></article>
+      </div>
+      <div class="empty-state"><h4>Sin comunicaciones todavía</h4><p>Los broadcasts podrán dirigirse a todos, propietarios, empleados, inquilinos o un piso concreto.</p></div>
+    </section>
+
+    <section id="paymentsView" class="ops-view" hidden>
+      <div class="toolbar">
+        <div><p class="eyebrow">COBROS</p><h3>Pagos y reclamaciones</h3></div>
+        <button id="newPaymentBtn" class="primary">Nueva obligación</button>
+      </div>
+      <div class="cards-3">
+        <article class="metric"><span>Pendientes</span><strong>0</strong></article>
+        <article class="metric"><span>Vencidos</span><strong>0</strong></article>
+        <article class="metric"><span>Reclamaciones</span><strong>0</strong></article>
+      </div>
+      <div class="empty-state"><h4>Sin obligaciones registradas</h4><p>Los recordatorios se generan automáticamente según reglas configuradas.</p></div>
+    </section>
+
+    <section id="analyticsView" class="ops-view" hidden>
+      <div class="toolbar">
+        <div><p class="eyebrow">ANALÍTICA</p><h3>Resumen de cartera</h3></div>
+      </div>
+      <div class="cards-3">
+        <article class="metric"><span>Pisos</span><strong>0</strong></article>
+        <article class="metric"><span>Incidencias abiertas</span><strong>0</strong></article>
+        <article class="metric"><span>Limpiezas pendientes</span><strong>0</strong></article>
+      </div>
+      <div class="empty-state"><h4>Sin datos operativos</h4><p>Las métricas se calculan desde vistas <code>security_invoker</code> y respetarán RLS.</p></div>
+    </section>
+
+    <section class="status"><span class="dot"></span><span>Backend parcial activo. Escritura de UI todavía deshabilitada hasta cerrar Auth.</span></section>
+  </main>
+
+  <dialog id="broadcastDialog">
+    <form method="dialog" class="editor">
+      <div class="editor-head"><div><p class="eyebrow">COMUNICACIÓN</p><h3>Nuevo broadcast</h3></div><button value="cancel" class="icon-btn">×</button></div>
+      <label>Título<input type="text" autocomplete="off"></label>
+      <label>Audiencia<select><option>Todos</option><option>Propietarios</option><option>Empleados</option><option>Inquilinos</option><option>Piso concreto</option></select></label>
+      <label>Mensaje<textarea rows="5"></textarea></label>
+      <div class="editor-actions"><button value="cancel" class="ghost">Cancelar</button><button value="default" class="primary">Guardar borrador</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="paymentDialog">
+    <form method="dialog" class="editor">
+      <div class="editor-head"><div><p class="eyebrow">COBROS</p><h3>Nueva obligación</h3></div><button value="cancel" class="icon-btn">×</button></div>
+      <label>Concepto<input type="text" autocomplete="off"></label>
+      <label>Importe<input type="number" min="0" step="0.01"></label>
+      <label>Fecha de vencimiento<input type="date"></label>
+      <div class="editor-actions"><button value="cancel" class="ghost">Cancelar</button><button value="default" class="primary">Guardar borrador</button></div>
+    </form>
+  </dialog>
+
+  <script src="./operations.js" defer></script>
+</body>
+</html>

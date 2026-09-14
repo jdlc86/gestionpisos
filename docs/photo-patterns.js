@@ -56,7 +56,7 @@ function renderPatterns(patterns) {
       edit.className = "secondary";
       edit.textContent = count ? "Editar silueta" : "Dibujar silueta";
       edit.addEventListener("click", () => {
-        const url = new URL("./photo-pattern-editor.html", window.location.href);
+        const url = new URL("./photo-pattern-editor.html", window.location.href);\n        url.searchParams.set("v", "2026091402");
         url.searchParams.set("pattern_id", pattern.id);
         window.location.assign(url.href);
       });

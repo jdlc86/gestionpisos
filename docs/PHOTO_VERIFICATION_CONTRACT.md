@@ -1,7 +1,7 @@
 # Contrato de fotoverificación
 
 ## Patrón real
-Los patrones se capturan durante visitas reales al piso. ADMIN/empleado autorizado toma la fotografía de referencia y el sistema genera/almacena contornos o guía visual.
+Los patrones se capturan durante visitas reales al piso. ADMIN/empleado autorizado toma la fotografía de referencia y dibuja manualmente una o varias siluetas/guías sobre ella. La geometría se guarda en `contour_data` y se reutiliza después en la cámara de verificación.
 
 Los patrones:
 - pertenecen a piso + zona/equipo/tipo;
@@ -44,9 +44,11 @@ El flujo objetivo es: sesión autenticada → run → item → JPEG en bucket pr
 
 Las migraciones remotas `20260914135829 beta0_photo_alignment_meta_check_add`, `20260914140530 beta0_photo_item_storage_path_restrictive_min` y `20260914141923 beta0_remove_public_photo_submit_rpc`, junto con el source desplegado de `submit-photo-verification`, están reconciliadas con Git. La restricción de ruta está aplicada; el trabajo NO está cerrado hasta verificar la finalización segura. No debilitar RLS ni crear patrones ficticios para desbloquear la UI.
 
-### IA — aplazada
+### Autoría de siluetas
 
-La comparación mediante IA se pospone hasta configurar las APIs/proveedores correspondientes. El desarrollo actual no debe depender de IA.
+La generación automática de contornos queda retirada del producto. La guía de encuadre se construye únicamente a partir de las siluetas manuales guardadas por usuarios con permiso de escritura.
+
+La evaluación futura del estado puede incorporar revisión humana o IA, pero esa decisión es independiente de la creación de la silueta y no debe reintroducir generación automática de contornos.
 
 
 ### Persistencia frontend — preparada, prueba positiva pendiente
@@ -57,3 +59,8 @@ La cámara autenticada ya está conectada al flujo privado:
 El frontend no acepta organización/piso arbitrarios: deriva ambos desde el patrón visible por RLS. Sin `pattern_id` válido, la captura permanece local y no escribe en Supabase.
 
 La base remota contiene actualmente 0 pisos y 0 patrones de fotoverificación. Por tanto, no se crearán fixtures ficticios solo para forzar una prueba positiva. El cierre funcional del ciclo queda pendiente del primer piso/patrón real de pruebas.
+
+
+### Limpieza de legado — 2026-09-15
+
+El flujo activo ya no usa Gemini, Sobel, OpenCV, MobileSAM ni ONNX para crear o reconstruir la guía. La cámara renderiza directamente `photo_patterns_v2.contour_data`. Un patrón de verificación sin silueta manual guardada no puede iniciar la cámara de verificación.

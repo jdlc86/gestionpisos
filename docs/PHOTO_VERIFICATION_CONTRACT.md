@@ -47,3 +47,13 @@ Las migraciones remotas `20260914135829 beta0_photo_alignment_meta_check_add`, `
 ### IA — aplazada
 
 La comparación mediante IA se pospone hasta configurar las APIs/proveedores correspondientes. El desarrollo actual no debe depender de IA.
+
+
+### Persistencia frontend — preparada, prueba positiva pendiente
+
+La cámara autenticada ya está conectada al flujo privado:
+`pattern_id real → run → item → JPEG privado → alignment_meta → Edge Function → submitted`.
+
+El frontend no acepta organización/piso arbitrarios: deriva ambos desde el patrón visible por RLS. Sin `pattern_id` válido, la captura permanece local y no escribe en Supabase.
+
+La base remota contiene actualmente 0 pisos y 0 patrones de fotoverificación. Por tanto, no se crearán fixtures ficticios solo para forzar una prueba positiva. El cierre funcional del ciclo queda pendiente del primer piso/patrón real de pruebas.

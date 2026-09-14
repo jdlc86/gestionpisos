@@ -71,8 +71,8 @@ function buildContourBand(item,w,h){
   ctx.lineCap="round";
   ctx.lineWidth=Math.max(8,Math.round(Math.min(w,h)*0.018));
 
-  item.outer_contours.forEach(contour=>{
-    if(!Array.isArray(contour)||contour.length<6) return;
+  const contour=item.outer_contour;
+  if(Array.isArray(contour)&&contour.length>=8){
     ctx.beginPath();
     contour.forEach((point,index)=>{
       const x=Number(point[0])/1000*w;
@@ -81,7 +81,7 @@ function buildContourBand(item,w,h){
     });
     ctx.closePath();
     ctx.stroke();
-  });
+  }
 
   return ctx.getImageData(0,0,w,h).data;
 }
@@ -163,9 +163,21 @@ async function load(){
     body:{pattern_id:pattern.id}
   });
 
-  if(result.error) throw result.error;
+  if(result.error){
+    let detail="edge_function_failed";
+    try{
+      if(result.error.context?.json){
+        const body=await result.error.context.json();
+        detail=body?.error||detail;
+        if(body?.status) detail+=":"+body.status;
+      }else if(result.error.message){
+        detail=result.error.message;
+      }
+    }catch{}
+    throw new Error(detail);
+  }
   const item=result.data?.landmarks?.[0];
-  if(!result.data?.ok||!item||!Array.isArray(item.outer_contours)){
+  if(!result.data?.ok||!item||!Array.isArray(item.outer_contour)){
     throw new Error(result.data?.error||"gemini_contour_failed");
   }
 

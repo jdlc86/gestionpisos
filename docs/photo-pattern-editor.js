@@ -6,12 +6,21 @@ const patternId = params.get("pattern_id");
 const title = document.getElementById("editorTitle");
 const message = document.getElementById("editorMessage");
 const stage = document.getElementById("editorStage");
+const viewport = document.getElementById("editorViewport");
 const wrap = document.getElementById("imageWrap");
 const image = document.getElementById("referenceImage");
 const canvas = document.getElementById("drawingCanvas");
+const labelWrap = document.getElementById("labelWrap");
 const labelInput = document.getElementById("strokeLabel");
+const toolHint = document.getElementById("toolHint");
+
+const moveTool = document.getElementById("moveTool");
+const drawTool = document.getElementById("drawTool");
+const eraseTool = document.getElementById("eraseTool");
 const undoBtn = document.getElementById("undoBtn");
 const redoBtn = document.getElementById("redoBtn");
+const zoomOutBtn = document.getElementById("zoomOutBtn");
+const zoomInBtn = document.getElementById("zoomInBtn");
 const clearBtn = document.getElementById("clearBtn");
 const saveBtn = document.getElementById("saveBtn");
 const strokeList = document.getElementById("strokeList");
@@ -27,8 +36,11 @@ let pointerId = null;
 let dirty = false;
 let canWrite = false;
 let resizeObserver = null;
+let tool = "move";
+let zoom = 1;
 
-const smoothLevels = new Set(["none","soft","medium"]);
+const smoothLevels = new Set(["none", "soft", "medium"]);
+const zoomLevels = [1, 1.25, 1.5, 2, 2.5, 3];
 
 function uuidLike(value) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value || "");
@@ -55,6 +67,50 @@ function updateButtons() {
   undoBtn.disabled = !undoStack.length || !canWrite;
   redoBtn.disabled = !redoStack.length || !canWrite;
   saveBtn.disabled = !canWrite || !dirty;
+  drawTool.disabled = !canWrite;
+  eraseTool.disabled = !canWrite;
+  clearBtn.disabled = !canWrite || !strokes.length;
+
+  const idx = zoomLevels.indexOf(zoom);
+  zoomOutBtn.disabled = idx <= 0;
+  zoomInBtn.disabled = idx >= zoomLevels.length - 1;
+}
+
+function setTool(next) {
+  if (!["move", "draw", "erase"].includes(next)) return;
+  if (!canWrite && next !== "move") next = "move";
+
+  tool = next;
+  wrap.dataset.tool = tool;
+
+  [
+    [moveTool, "move"],
+    [drawTool, "draw"],
+    [eraseTool, "erase"]
+  ].forEach(([button, name]) => {
+    const active = tool === name;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
+
+  labelWrap.hidden = tool !== "draw";
+
+  if (tool === "move") {
+    toolHint.textContent = "Modo Mover · desplaza la foto sin dibujar.";
+  } else if (tool === "draw") {
+    toolHint.textContent = "Modo Dibujar · arrastra el dedo para crear un trazo.";
+  } else {
+    toolHint.textContent = "Modo Borrar · toca un trazo para eliminarlo.";
+  }
+}
+
+function applyZoom(nextZoom) {
+  zoom = nextZoom;
+  wrap.style.width = Math.round(zoom * 100) + "%";
+  requestAnimationFrame(() => {
+    resizeCanvas();
+    updateButtons();
+  });
 }
 
 function normalizePoint(event) {
@@ -67,6 +123,17 @@ function normalizePoint(event) {
 
 function pointDistance(a, b) {
   return Math.hypot(a[0] - b[0], a[1] - b[1]);
+}
+
+function pointToSegmentDistance(point, a, b) {
+  const vx = b[0] - a[0];
+  const vy = b[1] - a[1];
+  const wx = point[0] - a[0];
+  const wy = point[1] - a[1];
+  const len2 = vx * vx + vy * vy;
+  if (!len2) return pointDistance(point, a);
+  const t = Math.max(0, Math.min(1, (wx * vx + wy * vy) / len2));
+  return Math.hypot(point[0] - (a[0] + t * vx), point[1] - (a[1] + t * vy));
 }
 
 function chaikin(points, iterations) {
@@ -82,14 +149,8 @@ function chaikin(points, iterations) {
     for (let i = 0; i < limit; i++) {
       const a = out[i];
       const b = out[(i + 1) % out.length];
-      next.push([
-        0.75 * a[0] + 0.25 * b[0],
-        0.75 * a[1] + 0.25 * b[1]
-      ]);
-      next.push([
-        0.25 * a[0] + 0.75 * b[0],
-        0.25 * a[1] + 0.75 * b[1]
-      ]);
+      next.push([0.75 * a[0] + 0.25 * b[0], 0.75 * a[1] + 0.25 * b[1]]);
+      next.push([0.25 * a[0] + 0.75 * b[0], 0.25 * a[1] + 0.75 * b[1]]);
     }
 
     if (!closed) next.push(out[out.length - 1]);
@@ -181,8 +242,8 @@ function renderStrokeList() {
     smooth.disabled = !canWrite;
     [
       ["none", "Original"],
-      ["soft", "Suavizado suave"],
-      ["medium", "Suavizado medio"]
+      ["soft", "Suave"],
+      ["medium", "Medio"]
     ].forEach(([value, text]) => {
       const opt = document.createElement("option");
       opt.value = value;
@@ -202,7 +263,7 @@ function renderStrokeList() {
     closeToggle.type = "button";
     closeToggle.className = "ghost";
     closeToggle.disabled = !canWrite;
-    closeToggle.textContent = stroke.closed ? "Abrir trazo" : "Cerrar trazo";
+    closeToggle.textContent = stroke.closed ? "Abrir" : "Cerrar";
     closeToggle.addEventListener("click", () => {
       pushHistory();
       stroke.closed = !stroke.closed;
@@ -250,7 +311,7 @@ function renderAll() {
 }
 
 function beginStroke(event) {
-  if (!canWrite || event.button > 0) return;
+  if (!canWrite || tool !== "draw" || event.button > 0) return;
   event.preventDefault();
   pointerId = event.pointerId;
   canvas.setPointerCapture(pointerId);
@@ -272,7 +333,7 @@ function beginStroke(event) {
 }
 
 function extendStroke(event) {
-  if (!drawing || event.pointerId !== pointerId || !activeStroke) return;
+  if (!drawing || tool !== "draw" || event.pointerId !== pointerId || !activeStroke) return;
   event.preventDefault();
   const point = normalizePoint(event);
   const last = activeStroke.raw_points[activeStroke.raw_points.length - 1];
@@ -297,6 +358,37 @@ function endStroke(event) {
   pointerId = null;
   activeStroke = null;
   renderAll();
+}
+
+function eraseAt(event) {
+  if (!canWrite || tool !== "erase" || event.button > 0) return;
+  event.preventDefault();
+
+  const point = normalizePoint(event);
+  let bestIndex = -1;
+  let bestDistance = Infinity;
+
+  strokes.forEach((stroke, index) => {
+    if (stroke.hidden) return;
+    const pts = renderedPoints(stroke);
+    for (let i = 0; i < pts.length - 1; i++) {
+      const distance = pointToSegmentDistance(point, pts[i], pts[i + 1]);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestIndex = index;
+      }
+    }
+  });
+
+  const hitRadius = 0.025 / Math.max(1, zoom * 0.8);
+  if (bestIndex >= 0 && bestDistance <= hitRadius) {
+    pushHistory();
+    strokes.splice(bestIndex, 1);
+    dirty = true;
+    renderAll();
+  } else {
+    message.textContent = "No hay ningún trazo cerca del punto tocado.";
+  }
 }
 
 async function checkWritePermission(user, propertyId) {
@@ -423,25 +515,30 @@ async function load() {
   stage.hidden = false;
   resizeObserver = new ResizeObserver(resizeCanvas);
   resizeObserver.observe(wrap);
-  resizeCanvas();
+  applyZoom(1);
+  setTool("move");
   renderAll();
 
   if (!canWrite) {
-    labelInput.disabled = true;
-    clearBtn.disabled = true;
-    canvas.style.pointerEvents = "none";
     message.textContent = "Puedes consultar esta silueta, pero no tienes permiso de escritura para modificarla.";
   } else {
     message.textContent = strokes.length
-      ? "Silueta cargada. Puedes seguir editándola."
-      : "Dibuja el primer trazo sobre la fotografía.";
+      ? "Silueta cargada. Usa Mover para navegar y Dibujar para añadir trazos."
+      : "Usa Mover para encuadrar la foto y Dibujar para crear el primer trazo.";
   }
 }
 
-canvas.addEventListener("pointerdown", beginStroke);
+canvas.addEventListener("pointerdown", event => {
+  if (tool === "draw") beginStroke(event);
+  else if (tool === "erase") eraseAt(event);
+});
 canvas.addEventListener("pointermove", extendStroke);
 canvas.addEventListener("pointerup", endStroke);
 canvas.addEventListener("pointercancel", endStroke);
+
+moveTool.addEventListener("click", () => setTool("move"));
+drawTool.addEventListener("click", () => setTool("draw"));
+eraseTool.addEventListener("click", () => setTool("erase"));
 
 undoBtn.addEventListener("click", () => {
   if (!undoStack.length || !canWrite) return;
@@ -453,6 +550,16 @@ redoBtn.addEventListener("click", () => {
   if (!redoStack.length || !canWrite) return;
   undoStack.push(cloneState());
   restoreState(redoStack.pop());
+});
+
+zoomOutBtn.addEventListener("click", () => {
+  const idx = zoomLevels.indexOf(zoom);
+  if (idx > 0) applyZoom(zoomLevels[idx - 1]);
+});
+
+zoomInBtn.addEventListener("click", () => {
+  const idx = zoomLevels.indexOf(zoom);
+  if (idx < zoomLevels.length - 1) applyZoom(zoomLevels[idx + 1]);
 });
 
 clearBtn.addEventListener("click", () => {

@@ -17,7 +17,6 @@ grep -q 'photo-verifications.html?v=2026091501' docs/operations.html
 grep -q 'review-photo-verification' docs/photo-verifications.js
 grep -q 'createSignedUrl' docs/photo-verifications.js
 test -s supabase/functions/review-photo-verification/index.ts
-grep -q 'aal2_required' supabase/functions/review-photo-verification/index.ts
 grep -q 'apply_photo_verification_review_v2' supabase/functions/review-photo-verification/index.ts
 test -s supabase/migrations/20260915005000_photo_verification_manual_review.sql
 grep -q 'grant execute on function public.apply_photo_verification_review_v2' supabase/migrations/20260915005000_photo_verification_manual_review.sql

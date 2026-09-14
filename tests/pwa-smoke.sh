@@ -40,9 +40,12 @@ test -s docs/photo-gemini-guide.html
 test -s docs/photo-gemini-guide.css
 test -s docs/photo-gemini-guide.js
 grep -q 'generate-photo-pattern-guide' docs/photo-gemini-guide.js
-grep -q 'sobelPrimaryRoi' docs/photo-gemini-guide.js
-grep -q 'Gemini está eligiendo la mejor referencia' docs/photo-gemini-guide.js
+grep -q 'renderSobelBand' docs/photo-gemini-guide.js
+grep -q 'Gemini está localizando la silueta exterior principal' docs/photo-gemini-guide.js
 grep -q 'alignment_score' supabase/functions/generate-photo-pattern-guide/index.ts
+grep -q 'outer_contours' supabase/functions/generate-photo-pattern-guide/index.ts
+grep -q 'NEVER trace grille lines' supabase/functions/generate-photo-pattern-guide/index.ts
+grep -q 'buildContourBand' docs/photo-gemini-guide.js
 grep -q 'Choose the SINGLE best visual reference object' supabase/functions/generate-photo-pattern-guide/index.ts
 grep -q 'Return exactly one landmark' supabase/functions/generate-photo-pattern-guide/index.ts
 grep -q 'landmarks' supabase/functions/generate-photo-pattern-guide/index.ts

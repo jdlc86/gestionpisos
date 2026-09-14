@@ -41,9 +41,10 @@ test -s docs/photo-reference-guide.js
 test -s docs/photo-pattern-editor.html
 test -s docs/photo-pattern-editor.css
 test -s docs/photo-pattern-editor.js
+node --check docs/photo-pattern-editor.js
 grep -q 'photo-pattern-editor.html' docs/photo-patterns.js
-grep -q 'url.searchParams.set("v", "2026091402")' docs/photo-patterns.js
-grep -q 'photo-pattern-editor.html?v=2026091402' docs/photo-pattern-persistence.js
+grep -q 'url.searchParams.set("v", "2026091404")' docs/photo-patterns.js
+grep -q 'photo-pattern-editor.html?v=2026091404' docs/photo-pattern-persistence.js
 grep -q 'Editar silueta' docs/photo-patterns.js
 grep -q 'Dibujar silueta' docs/photo-patterns.js
 grep -q 'contour_data' docs/photo-pattern-editor.js
@@ -57,10 +58,21 @@ grep -q 'save-photo-pattern-contours' docs/photo-pattern-editor.js
 grep -q 'id="moveTool"' docs/photo-pattern-editor.html
 grep -q 'id="drawTool"' docs/photo-pattern-editor.html
 grep -q 'id="eraseTool"' docs/photo-pattern-editor.html
+grep -q 'shapeHandles' docs/photo-pattern-editor.js
+grep -q 'resizePrimitive' docs/photo-pattern-editor.js
+grep -q 'beginSelection' docs/photo-pattern-editor.js
+grep -q 'kind === "ellipse"' docs/photo-pattern-editor.js
+grep -q 'kind === "rect"' docs/photo-pattern-editor.js
+grep -q 'id="ellipseTool"' docs/photo-pattern-editor.html
+grep -q 'id="rectTool"' docs/photo-pattern-editor.html
+grep -q 'id="lineTool"' docs/photo-pattern-editor.html
+grep -q 'id="selectTool"' docs/photo-pattern-editor.html
 grep -q 'editorViewport' docs/photo-pattern-editor.html
 grep -q 'setTool("move")' docs/photo-pattern-editor.js
-grep -q 'tool !== "draw"' docs/photo-pattern-editor.js
-grep -q 'tool !== "erase"' docs/photo-pattern-editor.js
+grep -q 'beginCreate(event, "line")' docs/photo-pattern-editor.js
+grep -q 'beginCreate(event, "rect")' docs/photo-pattern-editor.js
+grep -q 'beginCreate(event, "ellipse")' docs/photo-pattern-editor.js
+grep -q 'else if (tool === "select") beginSelection(event)' docs/photo-pattern-editor.js
 grep -q 'pointToSegmentDistance' docs/photo-pattern-editor.js
 grep -q 'zoomLevels' docs/photo-pattern-editor.js
 test -s supabase/functions/save-photo-pattern-contours/index.ts

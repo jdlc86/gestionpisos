@@ -6,7 +6,6 @@ const patternId = params.get("pattern_id");
 const title = document.getElementById("editorTitle");
 const message = document.getElementById("editorMessage");
 const stage = document.getElementById("editorStage");
-const viewport = document.getElementById("editorViewport");
 const wrap = document.getElementById("imageWrap");
 const image = document.getElementById("referenceImage");
 const canvas = document.getElementById("drawingCanvas");
@@ -15,7 +14,11 @@ const labelInput = document.getElementById("strokeLabel");
 const toolHint = document.getElementById("toolHint");
 
 const moveTool = document.getElementById("moveTool");
+const selectTool = document.getElementById("selectTool");
 const drawTool = document.getElementById("drawTool");
+const lineTool = document.getElementById("lineTool");
+const rectTool = document.getElementById("rectTool");
+const ellipseTool = document.getElementById("ellipseTool");
 const eraseTool = document.getElementById("eraseTool");
 const undoBtn = document.getElementById("undoBtn");
 const redoBtn = document.getElementById("redoBtn");
@@ -38,8 +41,11 @@ let canWrite = false;
 let resizeObserver = null;
 let tool = "move";
 let zoom = 1;
+let selectedId = null;
+let selectionAction = null;
 
 const smoothLevels = new Set(["none", "soft", "medium"]);
+const shapeKinds = new Set(["freehand", "line", "rect", "ellipse"]);
 const zoomLevels = [1, 1.25, 1.5, 2, 2.5, 3];
 
 function uuidLike(value) {
@@ -59,16 +65,22 @@ function pushHistory() {
 
 function restoreState(next) {
   strokes = cloneState(next);
+  selectedId = null;
   dirty = true;
   renderAll();
+}
+
+function selectedStroke() {
+  return strokes.find(item => item.id === selectedId) || null;
 }
 
 function updateButtons() {
   undoBtn.disabled = !undoStack.length || !canWrite;
   redoBtn.disabled = !redoStack.length || !canWrite;
   saveBtn.disabled = !canWrite || !dirty;
-  drawTool.disabled = !canWrite;
-  eraseTool.disabled = !canWrite;
+  [selectTool, drawTool, lineTool, rectTool, ellipseTool, eraseTool].forEach(btn => {
+    btn.disabled = !canWrite;
+  });
   clearBtn.disabled = !canWrite || !strokes.length;
 
   const idx = zoomLevels.indexOf(zoom);
@@ -77,7 +89,8 @@ function updateButtons() {
 }
 
 function setTool(next) {
-  if (!["move", "draw", "erase"].includes(next)) return;
+  const allowed = ["move", "select", "draw", "line", "rect", "ellipse", "erase"];
+  if (!allowed.includes(next)) return;
   if (!canWrite && next !== "move") next = "move";
 
   tool = next;
@@ -85,7 +98,11 @@ function setTool(next) {
 
   [
     [moveTool, "move"],
+    [selectTool, "select"],
     [drawTool, "draw"],
+    [lineTool, "line"],
+    [rectTool, "rect"],
+    [ellipseTool, "ellipse"],
     [eraseTool, "erase"]
   ].forEach(([button, name]) => {
     const active = tool === name;
@@ -93,15 +110,19 @@ function setTool(next) {
     button.setAttribute("aria-pressed", String(active));
   });
 
-  labelWrap.hidden = tool !== "draw";
+  labelWrap.hidden = !["draw", "line", "rect", "ellipse"].includes(tool);
 
-  if (tool === "move") {
-    toolHint.textContent = "Modo Mover · desplaza la foto sin dibujar.";
-  } else if (tool === "draw") {
-    toolHint.textContent = "Modo Dibujar · arrastra el dedo para crear un trazo.";
-  } else {
-    toolHint.textContent = "Modo Borrar · toca un trazo para eliminarlo.";
-  }
+  const hints = {
+    move: "Modo Mover · desplaza la foto sin dibujar.",
+    select: "Modo Seleccionar · toca una figura para moverla o cambiar su tamaño.",
+    draw: "Modo Lápiz · dibuja un trazo libre.",
+    line: "Modo Recta · arrastra entre dos puntos.",
+    rect: "Modo Rectángulo · arrastra de una esquina a la opuesta.",
+    ellipse: "Modo Elipse · arrastra para definir su caja.",
+    erase: "Modo Borrar · toca una figura o trazo para eliminarlo."
+  };
+  toolHint.textContent = hints[tool];
+  renderCanvas();
 }
 
 function applyZoom(nextZoom) {
@@ -143,7 +164,6 @@ function chaikin(points, iterations) {
     const next = [];
     const closed = out.length > 2 && pointDistance(out[0], out[out.length - 1]) < 0.03;
     const limit = closed ? out.length : out.length - 1;
-
     if (!closed) next.push(out[0]);
 
     for (let i = 0; i < limit; i++) {
@@ -160,9 +180,58 @@ function chaikin(points, iterations) {
 }
 
 function renderedPoints(stroke) {
+  if (stroke.kind !== "freehand") return stroke.raw_points;
   if (stroke.smoothing === "soft") return chaikin(stroke.raw_points, 1);
   if (stroke.smoothing === "medium") return chaikin(stroke.raw_points, 2);
   return stroke.raw_points;
+}
+
+function boundsOf(stroke) {
+  const pts = stroke.raw_points;
+  if (!pts.length) return null;
+  if (stroke.kind === "line") {
+    return {
+      minX: Math.min(pts[0][0], pts[1][0]),
+      minY: Math.min(pts[0][1], pts[1][1]),
+      maxX: Math.max(pts[0][0], pts[1][0]),
+      maxY: Math.max(pts[0][1], pts[1][1])
+    };
+  }
+  if (stroke.kind === "rect" || stroke.kind === "ellipse") {
+    return {
+      minX: Math.min(pts[0][0], pts[1][0]),
+      minY: Math.min(pts[0][1], pts[1][1]),
+      maxX: Math.max(pts[0][0], pts[1][0]),
+      maxY: Math.max(pts[0][1], pts[1][1])
+    };
+  }
+
+  const rendered = renderedPoints(stroke);
+  return rendered.reduce((acc, p) => ({
+    minX: Math.min(acc.minX, p[0]),
+    minY: Math.min(acc.minY, p[1]),
+    maxX: Math.max(acc.maxX, p[0]),
+    maxY: Math.max(acc.maxY, p[1])
+  }), { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity });
+}
+
+function shapeHandles(stroke) {
+  if (stroke.kind === "line") {
+    return [
+      { key: "p0", point: stroke.raw_points[0] },
+      { key: "p1", point: stroke.raw_points[1] }
+    ];
+  }
+  if (stroke.kind === "rect" || stroke.kind === "ellipse") {
+    const b = boundsOf(stroke);
+    return [
+      { key: "nw", point: [b.minX, b.minY] },
+      { key: "ne", point: [b.maxX, b.minY] },
+      { key: "se", point: [b.maxX, b.maxY] },
+      { key: "sw", point: [b.minX, b.maxY] }
+    ];
+  }
+  return [];
 }
 
 function resizeCanvas() {
@@ -175,6 +244,84 @@ function resizeCanvas() {
     canvas.height = height;
     renderCanvas();
   }
+}
+
+function drawStroke(ctx, stroke, w, h) {
+  const pts = renderedPoints(stroke);
+  if (pts.length < 2) return;
+
+  if (stroke.kind === "line") {
+    ctx.beginPath();
+    ctx.moveTo(pts[0][0] * w, pts[0][1] * h);
+    ctx.lineTo(pts[1][0] * w, pts[1][1] * h);
+    ctx.stroke();
+    return;
+  }
+
+  if (stroke.kind === "rect") {
+    const b = boundsOf(stroke);
+    ctx.strokeRect(
+      b.minX * w,
+      b.minY * h,
+      (b.maxX - b.minX) * w,
+      (b.maxY - b.minY) * h
+    );
+    return;
+  }
+
+  if (stroke.kind === "ellipse") {
+    const b = boundsOf(stroke);
+    ctx.beginPath();
+    ctx.ellipse(
+      ((b.minX + b.maxX) / 2) * w,
+      ((b.minY + b.maxY) / 2) * h,
+      ((b.maxX - b.minX) / 2) * w,
+      ((b.maxY - b.minY) / 2) * h,
+      0,
+      0,
+      Math.PI * 2
+    );
+    ctx.stroke();
+    return;
+  }
+
+  ctx.beginPath();
+  ctx.moveTo(pts[0][0] * w, pts[0][1] * h);
+  for (let i = 1; i < pts.length; i++) {
+    ctx.lineTo(pts[i][0] * w, pts[i][1] * h);
+  }
+  if (stroke.closed) ctx.closePath();
+  ctx.stroke();
+}
+
+function renderSelection(ctx, stroke, w, h) {
+  if (!stroke || tool !== "select") return;
+  const b = boundsOf(stroke);
+  if (!b) return;
+
+  ctx.save();
+  ctx.setLineDash([8, 6]);
+  ctx.strokeStyle = "rgba(255,215,0,.95)";
+  ctx.lineWidth = Math.max(2, Math.min(w, h) * 0.003);
+  ctx.strokeRect(
+    b.minX * w,
+    b.minY * h,
+    Math.max(1, (b.maxX - b.minX) * w),
+    Math.max(1, (b.maxY - b.minY) * h)
+  );
+  ctx.setLineDash([]);
+
+  const radius = Math.max(7, Math.min(w, h) * 0.012);
+  shapeHandles(stroke).forEach(handle => {
+    ctx.beginPath();
+    ctx.fillStyle = "#fff";
+    ctx.strokeStyle = "#000";
+    ctx.lineWidth = 2;
+    ctx.arc(handle.point[0] * w, handle.point[1] * h, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  });
+  ctx.restore();
 }
 
 function renderCanvas() {
@@ -190,18 +337,19 @@ function renderCanvas() {
   ctx.shadowBlur = Math.max(1, Math.min(w, h) * 0.002);
 
   strokes.forEach(stroke => {
-    if (stroke.hidden) return;
-    const pts = renderedPoints(stroke);
-    if (pts.length < 2) return;
-
-    ctx.beginPath();
-    ctx.moveTo(pts[0][0] * w, pts[0][1] * h);
-    for (let i = 1; i < pts.length; i++) {
-      ctx.lineTo(pts[i][0] * w, pts[i][1] * h);
-    }
-    if (stroke.closed) ctx.closePath();
-    ctx.stroke();
+    if (!stroke.hidden) drawStroke(ctx, stroke, w, h);
   });
+
+  renderSelection(ctx, selectedStroke(), w, h);
+}
+
+function kindLabel(kind) {
+  return {
+    freehand: "Lápiz",
+    line: "Recta",
+    rect: "Rectángulo",
+    ellipse: "Elipse"
+  }[kind] || "Trazo";
 }
 
 function renderStrokeList() {
@@ -225,7 +373,7 @@ function renderStrokeList() {
     label.maxLength = 80;
     label.value = stroke.label;
     label.disabled = !canWrite;
-    label.setAttribute("aria-label", "Etiqueta del trazo");
+    label.setAttribute("aria-label", "Etiqueta del elemento");
     label.addEventListener("change", () => {
       const value = label.value.trim();
       if (!value || value === stroke.label) {
@@ -239,7 +387,7 @@ function renderStrokeList() {
     });
 
     const smooth = document.createElement("select");
-    smooth.disabled = !canWrite;
+    smooth.disabled = !canWrite || stroke.kind !== "freehand";
     [
       ["none", "Original"],
       ["soft", "Suave"],
@@ -252,6 +400,7 @@ function renderStrokeList() {
       smooth.append(opt);
     });
     smooth.addEventListener("change", () => {
+      if (stroke.kind !== "freehand") return;
       if (!smoothLevels.has(smooth.value) || smooth.value === stroke.smoothing) return;
       pushHistory();
       stroke.smoothing = smooth.value;
@@ -262,9 +411,10 @@ function renderStrokeList() {
     const closeToggle = document.createElement("button");
     closeToggle.type = "button";
     closeToggle.className = "ghost";
-    closeToggle.disabled = !canWrite;
+    closeToggle.disabled = !canWrite || stroke.kind !== "freehand";
     closeToggle.textContent = stroke.closed ? "Abrir" : "Cerrar";
     closeToggle.addEventListener("click", () => {
+      if (stroke.kind !== "freehand") return;
       pushHistory();
       stroke.closed = !stroke.closed;
       dirty = true;
@@ -291,13 +441,14 @@ function renderStrokeList() {
     remove.addEventListener("click", () => {
       pushHistory();
       strokes.splice(index, 1);
+      if (selectedId === stroke.id) selectedId = null;
       dirty = true;
       renderAll();
     });
 
     const meta = document.createElement("div");
     meta.className = "stroke-row__meta";
-    meta.textContent = stroke.raw_points.length + " puntos";
+    meta.textContent = kindLabel(stroke.kind) + " · " + stroke.raw_points.length + " puntos";
 
     row.append(label, smooth, closeToggle, visible, remove, meta);
     strokeList.append(row);
@@ -310,48 +461,74 @@ function renderAll() {
   updateButtons();
 }
 
-function beginStroke(event) {
-  if (!canWrite || tool !== "draw" || event.button > 0) return;
+function defaultLabel(kind) {
+  const typed = labelInput.value.trim();
+  if (typed) return typed;
+  const prefix = {
+    freehand: "Trazo",
+    line: "Recta",
+    rect: "Rectángulo",
+    ellipse: "Elipse"
+  }[kind] || "Trazo";
+  return prefix + " " + (strokes.length + 1);
+}
+
+function beginCreate(event, kind) {
+  if (!canWrite || event.button > 0) return;
   event.preventDefault();
   pointerId = event.pointerId;
   canvas.setPointerCapture(pointerId);
   drawing = true;
   pushHistory();
 
-  const label = labelInput.value.trim() || "Trazo " + (strokes.length + 1);
+  const start = normalizePoint(event);
   activeStroke = {
     id: crypto.randomUUID(),
-    label,
-    raw_points: [normalizePoint(event)],
+    label: defaultLabel(kind),
+    kind,
+    raw_points: kind === "freehand" ? [start] : [start, start],
     smoothing: "none",
-    closed: false,
+    closed: kind === "rect" || kind === "ellipse",
     hidden: false
   };
+
   strokes.push(activeStroke);
+  selectedId = activeStroke.id;
   dirty = true;
   renderAll();
 }
 
-function extendStroke(event) {
-  if (!drawing || tool !== "draw" || event.pointerId !== pointerId || !activeStroke) return;
+function extendCreate(event) {
+  if (!drawing || event.pointerId !== pointerId || !activeStroke) return;
   event.preventDefault();
   const point = normalizePoint(event);
-  const last = activeStroke.raw_points[activeStroke.raw_points.length - 1];
-  if (pointDistance(last, point) < 0.0025) return;
-  activeStroke.raw_points.push(point);
+
+  if (activeStroke.kind === "freehand") {
+    const last = activeStroke.raw_points[activeStroke.raw_points.length - 1];
+    if (pointDistance(last, point) < 0.0025) return;
+    activeStroke.raw_points.push(point);
+  } else {
+    activeStroke.raw_points[1] = point;
+  }
   renderCanvas();
 }
 
-function endStroke(event) {
+function endCreate(event) {
   if (!drawing || event.pointerId !== pointerId) return;
   event.preventDefault();
 
-  if (activeStroke?.raw_points?.length < 2) {
+  if (activeStroke?.kind === "freehand") {
+    if (activeStroke.raw_points.length < 2) {
+      strokes = strokes.filter(item => item !== activeStroke);
+      selectedId = null;
+    } else {
+      const first = activeStroke.raw_points[0];
+      const last = activeStroke.raw_points[activeStroke.raw_points.length - 1];
+      activeStroke.closed = pointDistance(first, last) < 0.035;
+    }
+  } else if (activeStroke && pointDistance(activeStroke.raw_points[0], activeStroke.raw_points[1]) < 0.005) {
     strokes = strokes.filter(item => item !== activeStroke);
-  } else {
-    const first = activeStroke.raw_points[0];
-    const last = activeStroke.raw_points[activeStroke.raw_points.length - 1];
-    activeStroke.closed = pointDistance(first, last) < 0.035;
+    selectedId = null;
   }
 
   drawing = false;
@@ -360,35 +537,173 @@ function endStroke(event) {
   renderAll();
 }
 
-function eraseAt(event) {
-  if (!canWrite || tool !== "erase" || event.button > 0) return;
+function hitDistance(stroke, point) {
+  if (stroke.hidden) return Infinity;
+
+  if (stroke.kind === "line") {
+    return pointToSegmentDistance(point, stroke.raw_points[0], stroke.raw_points[1]);
+  }
+
+  if (stroke.kind === "rect") {
+    const b = boundsOf(stroke);
+    const edges = [
+      [[b.minX,b.minY],[b.maxX,b.minY]],
+      [[b.maxX,b.minY],[b.maxX,b.maxY]],
+      [[b.maxX,b.maxY],[b.minX,b.maxY]],
+      [[b.minX,b.maxY],[b.minX,b.minY]]
+    ];
+    return Math.min(...edges.map(([a,bp]) => pointToSegmentDistance(point,a,bp)));
+  }
+
+  if (stroke.kind === "ellipse") {
+    const b = boundsOf(stroke);
+    const rx = Math.max(0.0001, (b.maxX - b.minX) / 2);
+    const ry = Math.max(0.0001, (b.maxY - b.minY) / 2);
+    const cx = (b.minX + b.maxX) / 2;
+    const cy = (b.minY + b.maxY) / 2;
+    const norm = Math.hypot((point[0]-cx)/rx, (point[1]-cy)/ry);
+    return Math.abs(norm - 1) * Math.min(rx, ry);
+  }
+
+  const pts = renderedPoints(stroke);
+  let best = Infinity;
+  for (let i = 0; i < pts.length - 1; i++) {
+    best = Math.min(best, pointToSegmentDistance(point, pts[i], pts[i+1]));
+  }
+  return best;
+}
+
+function nearestStroke(point) {
+  let best = null;
+  let distance = Infinity;
+  strokes.forEach(stroke => {
+    const d = hitDistance(stroke, point);
+    if (d < distance) {
+      distance = d;
+      best = stroke;
+    }
+  });
+  const hitRadius = 0.025 / Math.max(1, zoom * 0.8);
+  return distance <= hitRadius ? best : null;
+}
+
+function handleAt(stroke, point) {
+  const hitRadius = 0.03 / Math.max(1, zoom * 0.8);
+  return shapeHandles(stroke).find(handle => pointDistance(handle.point, point) <= hitRadius) || null;
+}
+
+function beginSelection(event) {
+  if (!canWrite || tool !== "select" || event.button > 0) return;
+  event.preventDefault();
+  pointerId = event.pointerId;
+  canvas.setPointerCapture(pointerId);
+  const point = normalizePoint(event);
+  const selected = selectedStroke();
+
+  if (selected) {
+    const handle = handleAt(selected, point);
+    if (handle) {
+      pushHistory();
+      selectionAction = {
+        type: "resize",
+        strokeId: selected.id,
+        handle: handle.key,
+        startPoint: point,
+        startStroke: cloneState([selected])[0]
+      };
+      return;
+    }
+  }
+
+  const hit = nearestStroke(point);
+  selectedId = hit?.id || null;
+  if (hit) {
+    pushHistory();
+    selectionAction = {
+      type: "move",
+      strokeId: hit.id,
+      startPoint: point,
+      startStroke: cloneState([hit])[0]
+    };
+  } else {
+    selectionAction = null;
+  }
+  renderCanvas();
+}
+
+function clamp01(value) {
+  return Math.min(1, Math.max(0, value));
+}
+
+function moveStrokeFromSnapshot(stroke, snapshot, dx, dy) {
+  stroke.raw_points = snapshot.raw_points.map(p => [
+    clamp01(p[0] + dx),
+    clamp01(p[1] + dy)
+  ]);
+}
+
+function resizePrimitive(stroke, snapshot, handle, point) {
+  if (stroke.kind === "line") {
+    stroke.raw_points = cloneState([snapshot.raw_points])[0];
+    stroke.raw_points[handle === "p0" ? 0 : 1] = [clamp01(point[0]), clamp01(point[1])];
+    return;
+  }
+
+  if (stroke.kind !== "rect" && stroke.kind !== "ellipse") return;
+  const b = boundsOf(snapshot);
+  let minX = b.minX, minY = b.minY, maxX = b.maxX, maxY = b.maxY;
+
+  if (handle.includes("w")) minX = clamp01(point[0]);
+  if (handle.includes("e")) maxX = clamp01(point[0]);
+  if (handle.includes("n")) minY = clamp01(point[1]);
+  if (handle.includes("s")) maxY = clamp01(point[1]);
+
+  stroke.raw_points = [[minX, minY], [maxX, maxY]];
+}
+
+function updateSelection(event) {
+  if (!selectionAction || event.pointerId !== pointerId) return;
   event.preventDefault();
 
   const point = normalizePoint(event);
-  let bestIndex = -1;
-  let bestDistance = Infinity;
+  const stroke = strokes.find(item => item.id === selectionAction.strokeId);
+  if (!stroke) return;
 
-  strokes.forEach((stroke, index) => {
-    if (stroke.hidden) return;
-    const pts = renderedPoints(stroke);
-    for (let i = 0; i < pts.length - 1; i++) {
-      const distance = pointToSegmentDistance(point, pts[i], pts[i + 1]);
-      if (distance < bestDistance) {
-        bestDistance = distance;
-        bestIndex = index;
-      }
-    }
-  });
+  if (selectionAction.type === "move") {
+    const dx = point[0] - selectionAction.startPoint[0];
+    const dy = point[1] - selectionAction.startPoint[1];
+    moveStrokeFromSnapshot(stroke, selectionAction.startStroke, dx, dy);
+  } else if (selectionAction.type === "resize") {
+    resizePrimitive(stroke, selectionAction.startStroke, selectionAction.handle, point);
+  }
 
-  const hitRadius = 0.025 / Math.max(1, zoom * 0.8);
-  if (bestIndex >= 0 && bestDistance <= hitRadius) {
-    pushHistory();
-    strokes.splice(bestIndex, 1);
+  dirty = true;
+  renderCanvas();
+}
+
+function endSelection(event) {
+  if (event.pointerId !== pointerId) return;
+  if (selectionAction) {
     dirty = true;
     renderAll();
-  } else {
-    message.textContent = "No hay ningún trazo cerca del punto tocado.";
   }
+  selectionAction = null;
+  pointerId = null;
+}
+
+function eraseAt(event) {
+  if (!canWrite || tool !== "erase" || event.button > 0) return;
+  event.preventDefault();
+  const hit = nearestStroke(normalizePoint(event));
+  if (!hit) {
+    message.textContent = "No hay ningún elemento cerca del punto tocado.";
+    return;
+  }
+  pushHistory();
+  strokes = strokes.filter(item => item.id !== hit.id);
+  if (selectedId === hit.id) selectedId = null;
+  dirty = true;
+  renderAll();
 }
 
 async function checkWritePermission(user, propertyId) {
@@ -426,19 +741,23 @@ function sanitizeLoadedContour(data) {
       typeof stroke.label === "string" &&
       Array.isArray(stroke.raw_points)
     )
-    .map(stroke => ({
-      id: stroke.id,
-      label: stroke.label.slice(0, 80) || "Trazo",
-      raw_points: stroke.raw_points
-        .filter(p => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite))
-        .map(p => [
-          Math.min(1, Math.max(0, Number(p[0]))),
-          Math.min(1, Math.max(0, Number(p[1])))
-        ]),
-      smoothing: smoothLevels.has(stroke.smoothing) ? stroke.smoothing : "none",
-      closed: !!stroke.closed,
-      hidden: !!stroke.hidden
-    }))
+    .map(stroke => {
+      const kind = shapeKinds.has(stroke.kind) ? stroke.kind : "freehand";
+      return {
+        id: stroke.id,
+        label: stroke.label.slice(0, 80) || "Trazo",
+        kind,
+        raw_points: stroke.raw_points
+          .filter(p => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite))
+          .map(p => [
+            Math.min(1, Math.max(0, Number(p[0]))),
+            Math.min(1, Math.max(0, Number(p[1])))
+          ]),
+        smoothing: smoothLevels.has(stroke.smoothing) ? stroke.smoothing : "none",
+        closed: kind === "rect" || kind === "ellipse" ? true : !!stroke.closed,
+        hidden: !!stroke.hidden
+      };
+    })
     .filter(stroke => stroke.raw_points.length >= 2);
 }
 
@@ -456,6 +775,7 @@ async function save() {
     strokes: strokes.map(stroke => ({
       id: stroke.id,
       label: stroke.label,
+      kind: stroke.kind || "freehand",
       raw_points: stroke.raw_points,
       smoothing: stroke.smoothing,
       closed: !!stroke.closed,
@@ -486,7 +806,6 @@ async function load() {
   if (!uuidLike(patternId)) throw new Error("invalid_pattern_id");
 
   const user = await getCurrentUser();
-
   const result = await supabase
     .from("photo_patterns_v2")
     .select("id,organization_id,property_id,name,target_key,reference_storage_path,contour_data,active,version")
@@ -511,8 +830,8 @@ async function load() {
 
   strokes = sanitizeLoadedContour(pattern.contour_data);
   dirty = false;
-
   stage.hidden = false;
+
   resizeObserver = new ResizeObserver(resizeCanvas);
   resizeObserver.observe(wrap);
   applyZoom(1);
@@ -523,21 +842,41 @@ async function load() {
     message.textContent = "Puedes consultar esta silueta, pero no tienes permiso de escritura para modificarla.";
   } else {
     message.textContent = strokes.length
-      ? "Silueta cargada. Usa Mover para navegar y Dibujar para añadir trazos."
-      : "Usa Mover para encuadrar la foto y Dibujar para crear el primer trazo.";
+      ? "Silueta cargada. Puedes mover, seleccionar o añadir nuevas figuras."
+      : "Usa Lápiz, Recta, Rectángulo o Elipse para crear la primera referencia.";
   }
 }
 
 canvas.addEventListener("pointerdown", event => {
-  if (tool === "draw") beginStroke(event);
+  if (tool === "draw") beginCreate(event, "freehand");
+  else if (tool === "line") beginCreate(event, "line");
+  else if (tool === "rect") beginCreate(event, "rect");
+  else if (tool === "ellipse") beginCreate(event, "ellipse");
+  else if (tool === "select") beginSelection(event);
   else if (tool === "erase") eraseAt(event);
 });
-canvas.addEventListener("pointermove", extendStroke);
-canvas.addEventListener("pointerup", endStroke);
-canvas.addEventListener("pointercancel", endStroke);
+
+canvas.addEventListener("pointermove", event => {
+  if (drawing) extendCreate(event);
+  else if (selectionAction) updateSelection(event);
+});
+
+canvas.addEventListener("pointerup", event => {
+  if (drawing) endCreate(event);
+  else if (selectionAction || pointerId === event.pointerId) endSelection(event);
+});
+
+canvas.addEventListener("pointercancel", event => {
+  if (drawing) endCreate(event);
+  else endSelection(event);
+});
 
 moveTool.addEventListener("click", () => setTool("move"));
+selectTool.addEventListener("click", () => setTool("select"));
 drawTool.addEventListener("click", () => setTool("draw"));
+lineTool.addEventListener("click", () => setTool("line"));
+rectTool.addEventListener("click", () => setTool("rect"));
+ellipseTool.addEventListener("click", () => setTool("ellipse"));
 eraseTool.addEventListener("click", () => setTool("erase"));
 
 undoBtn.addEventListener("click", () => {
@@ -567,6 +906,7 @@ clearBtn.addEventListener("click", () => {
   if (!confirm("¿Borrar todos los trazos de esta silueta?")) return;
   pushHistory();
   strokes = [];
+  selectedId = null;
   dirty = true;
   renderAll();
 });

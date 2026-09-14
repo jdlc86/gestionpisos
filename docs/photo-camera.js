@@ -145,4 +145,8 @@
 
   window.addEventListener('pagehide', stopCamera);
 })();
-import('./photo-alignment.js').catch(()=>{});
+
+const cameraMode = new URLSearchParams(window.location.search).get("mode");
+if (cameraMode !== "pattern") {
+  import("./photo-alignment.js").catch(()=>{});
+}

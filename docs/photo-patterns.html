@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="es" data-auth-pending="1">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="stylesheet" href="./app.css">
+  <link rel="stylesheet" href="./photo-patterns.css">
+  <title>Allaiso · Patrones de foto</title>
+</head>
+<body>
+  <main class="shell pattern-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">ALLAISO</p>
+        <h1>Patrones de foto</h1>
+      </div>
+      <a class="ghost" href="./portfolio.html">Cartera</a>
+    </header>
+
+    <section class="pattern-hero">
+      <span class="badge">Fotoverificación</span>
+      <h2>Registrar referencia</h2>
+      <p>Selecciona un piso y una habitación. La fotografía que hagas será la referencia privada de esa zona.</p>
+    </section>
+
+    <form id="patternForm" class="pattern-form">
+      <label>Piso
+        <select id="propertySelect" required></select>
+      </label>
+      <label>Habitación
+        <select id="roomSelect" required></select>
+      </label>
+      <label>Nombre del patrón
+        <input id="patternName" type="text" maxlength="120" required placeholder="Ej. Habitación A · vista principal">
+      </label>
+      <button id="captureReference" class="primary" type="submit">Capturar referencia</button>
+    </form>
+
+    <section class="pattern-current">
+      <h3>Patrones activos</h3>
+      <div id="patternList" class="pattern-list"></div>
+    </section>
+
+    <p id="patternMessage" class="camera-message" role="status" aria-live="polite"></p>
+  </main>
+
+  <script type="module" src="./photo-patterns.js"></script>
+  <script type="module" src="./auth-guard.js"></script>
+</body>
+</html>

@@ -25,6 +25,18 @@ grep -q 'operations.js' docs/operations.html
 
 bash tests/portfolio-smoke.sh
 
+test -s docs/photo-patterns.html
+test -s docs/photo-patterns.css
+test -s docs/photo-patterns.js
+test -s docs/photo-pattern-persistence.js
+grep -q 'photo-patterns.html' docs/portfolio.html
+grep -q 'photo_patterns_v2' docs/photo-patterns.js
+grep -q 'mode", "pattern"' docs/photo-patterns.js
+grep -q 'photo-pattern-persistence.js' docs/photo-camera.html
+grep -q 'reference_storage_path' docs/photo-pattern-persistence.js
+grep -q 'active: false' docs/photo-pattern-persistence.js
+grep -q 'active: true' docs/photo-pattern-persistence.js
+
 test -s docs/photo-camera.html
 test -s docs/photo-camera.css
 test -s docs/photo-camera.js
@@ -52,5 +64,12 @@ grep -q 'auth-guard.js' docs/index.html
 grep -q 'auth-guard.js' docs/photo-camera.html
 grep -q 'login.html' docs/auth-guard.js
 grep -q 'login.html' docs/sw.js
+
+test -s docs/photo-persistence.js
+grep -q 'photo-persistence.js' docs/photo-camera.html
+grep -q 'photo_verification_runs_v2' docs/photo-persistence.js
+grep -q 'photo_verification_items_v2' docs/photo-persistence.js
+grep -q 'submit-photo-verification' docs/photo-persistence.js
+grep -q 'alignment_meta' docs/photo-persistence.js
 
 echo 'PWA smoke checks passed'

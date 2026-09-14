@@ -104,3 +104,59 @@ new exclusion index is unused because the active tables contain no rows), and
 
 Beta 0 is not stable until the full role-isolation matrix is executed with
 users created through Supabase Auth.
+
+
+## Photo alignment migrations — 2026-09-14
+
+Applied remotely:
+- 20260914135759 beta0_photo_alignment_meta
+- 20260914135829 beta0_photo_alignment_meta_check_add
+
+Reconciliation status:
+- 20260914135759 is versioned in Git.
+- 20260914135829 is versioned in Git with the exact remote SQL.
+- The restrictive storage-path policy is applied remotely by 20260914140530 and versioned in Git.
+- Run finalization is handled by the deployed `submit-photo-verification` Edge Function, whose source is versioned in Git.
+
+
+## Photo capture persistence — retry 2026-09-14
+
+Applied remotely:
+- 20260914140530 beta0_photo_item_storage_path_restrictive_min
+- 20260914140615 beta0_submit_photo_verification_run_fn
+
+The restrictive INSERT policy now forces the deterministic item path:
+`organization_id/run_id/item_id.jpg`.
+
+The run-finalization function exists remotely and verifies:
+- authenticated identity via `auth.uid()`;
+- actor ownership of the run;
+- matching item;
+- run status `capturing`;
+- existence of the object in the private `photo-verification` bucket;
+- object ownership by the same actor.
+
+IMPORTANT: the attempted permission hardening for this SECURITY DEFINER function
+was intercepted before reaching Supabase. Security Advisor currently reports:
+- anon_security_definer_function_executable;
+- authenticated_security_definer_function_executable.
+
+Therefore the function must NOT be considered security-closed yet. Do not wire
+the production frontend to this RPC until its EXECUTE privileges are narrowed
+or the design is replaced by an equivalent non-warning implementation.
+
+Migration `20260914140530` is versioned in Git with its exact remote SQL.
+
+
+## Photo submission Edge Function — 2026-09-14
+
+Remote state:
+- Edge Function `submit-photo-verification` is ACTIVE, version 1.
+- `verify_jwt=true`.
+- deployed hash: `bb12c66a2bf1cce3bc09b76515f784dcc68abb970e95d44489cf4114af5e7ed1`.
+- migration `20260914141923 beta0_remove_public_photo_submit_rpc` removed the exposed `public.submit_photo_verification_run(uuid, uuid)` RPC.
+- Security Advisor returned to the expected baseline: only `Leaked Password Protection Disabled` remains.
+
+The Edge Function validates the caller JWT, run ownership, item/run relationship, deterministic storage path and existence of the JPEG in the private bucket before changing the run from `capturing` to `submitted`.
+
+Git now contains the exact remote SQL for migrations `20260914135829`, `20260914140530` and `20260914141923`, plus the deployed `submit-photo-verification` source in `supabase/functions/submit-photo-verification/index.ts`.

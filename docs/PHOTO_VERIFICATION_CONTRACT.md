@@ -30,3 +30,30 @@ Modos previstos:
 
 ## Solicitudes aleatorias
 ADMIN configura zonas/equipos elegibles, frecuencia, franjas, plazo y destinatarios. El sistema mantiene trazabilidad desde generación hasta resolución.
+
+
+## Estado de implementación — 2026-09-14
+
+La cámara fullscreen está implementada y probada en móvil: cerrar, disparar, flash y cambio de cámara funcionan. La guía SVG aprobada puede encuadrarse con el banco real.
+
+El alineador local rojo/amarillo/verde está probado. Se detectó un falso positivo al apuntar a un suelo texturizado; se corrigió el algoritmo para exigir estructura compatible y la prueba posterior confirmó que el suelo ya no llega a verde mientras el banco correctamente encuadrado sí. Los umbrales quedan congelados provisionalmente y no deben ajustarse sin nueva evidencia de campo.
+
+### Persistencia — en curso
+
+El flujo objetivo es: sesión autenticada → run → item → JPEG en bucket privado → metadatos de alineación → finalización del run. La ruta prevista es `organization_id/run_id/item_id.jpg`.
+
+Las migraciones remotas `20260914135829 beta0_photo_alignment_meta_check_add`, `20260914140530 beta0_photo_item_storage_path_restrictive_min` y `20260914141923 beta0_remove_public_photo_submit_rpc`, junto con el source desplegado de `submit-photo-verification`, están reconciliadas con Git. La restricción de ruta está aplicada; el trabajo NO está cerrado hasta verificar la finalización segura. No debilitar RLS ni crear patrones ficticios para desbloquear la UI.
+
+### IA — aplazada
+
+La comparación mediante IA se pospone hasta configurar las APIs/proveedores correspondientes. El desarrollo actual no debe depender de IA.
+
+
+### Persistencia frontend — preparada, prueba positiva pendiente
+
+La cámara autenticada ya está conectada al flujo privado:
+`pattern_id real → run → item → JPEG privado → alignment_meta → Edge Function → submitted`.
+
+El frontend no acepta organización/piso arbitrarios: deriva ambos desde el patrón visible por RLS. Sin `pattern_id` válido, la captura permanece local y no escribe en Supabase.
+
+La base remota contiene actualmente 0 pisos y 0 patrones de fotoverificación. Por tanto, no se crearán fixtures ficticios solo para forzar una prueba positiva. El cierre funcional del ciclo queda pendiente del primer piso/patrón real de pruebas.

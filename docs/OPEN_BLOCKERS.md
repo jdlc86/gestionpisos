@@ -142,8 +142,8 @@ Los futuros usuarios de prueba y usuarios reales deben crearse mediante Supabase
 
 ### Pendiente
 
-- validar el login PWA con el ROOT real desde dispositivo;
-- confirmar que el JWT renovado expone `role=root`;
+- login PWA con ROOT real validado desde móvil el 2026-09-14;
+- confirmar en la matriz real que el JWT expone `role=root`;
 - ejecutar matriz RLS con usuarios de prueba;
 - habilitar MFA obligatorio para ROOT/ADMIN antes de datos/usuarios reales;
 - conectar después las escrituras UI y Storage privado usando la sesión autenticada.
@@ -444,8 +444,19 @@ Issue de seguimiento: #5.
 
 ### Pendiente funcional
 
-B-10 no está completo: faltan cámara full-screen, patrón/guía visual, contornos,
-comparación IA y pruebas funcionales con identidades reales de B-03.
+B-10 sigue abierto funcionalmente. Cámara fullscreen, controles, guía SVG y
+alineación local ya están implementados y probados en móvil. El falso verde
+detectado sobre suelo texturizado fue corregido y revalidado.
+
+La IA queda aplazada intencionadamente hasta configurar sus APIs.
+
+La persistencia privada está en curso. Las migraciones remotas
+`20260914135829 beta0_photo_alignment_meta_check_add`,
+`20260914140530 beta0_photo_item_storage_path_restrictive_min` y
+`20260914141923 beta0_remove_public_photo_submit_rpc`, junto con el source
+desplegado de `submit-photo-verification`, ya están reconciliadas con Git. Falta
+verificar el ciclo autenticado run → item → JPEG → submitted. No considerar este
+bloque cerrado ni fusionar la rama de persistencia mientras falte esa garantía.
 
 ---
 
@@ -554,7 +565,7 @@ Pendiente:
 
 ### Estado
 
-IMPLEMENTACIÓN VISUAL / SIN AUTH
+IMPLEMENTACIÓN VISUAL / AUTH MÍNIMO ACTIVO
 
 En la rama de trabajo existen:
 

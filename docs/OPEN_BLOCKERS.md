@@ -128,9 +128,11 @@ multiusuario siguen dependiendo de B-03.
 
 ### Estado
 
-PENDIENTE PARCIAL
+PARCIAL — LOGIN PWA IMPLEMENTADO, MATRIZ REAL/MFA PENDIENTES
 
 El primer usuario ROOT fue creado mediante Supabase Auth y promovido manualmente desde SQL Editor debido a bloqueos de la integración sobre operaciones directas en `auth.users` y asignación de privilegios.
+
+La PWA ya dispone en la rama de implementación de cliente Supabase, login email/contraseña, persistencia/renovación de sesión, recuperación de contraseña, logout y guard de rutas protegidas. La clave usada en navegador es publishable, nunca service_role.
 
 ### Regla
 
@@ -140,10 +142,11 @@ Los futuros usuarios de prueba y usuarios reales deben crearse mediante Supabase
 
 ### Pendiente
 
-- conectar login de la PWA;
-- obtener JWT nuevo tras cambios en `app_metadata`;
+- validar el login PWA con el ROOT real desde dispositivo;
+- confirmar que el JWT renovado expone `role=root`;
 - ejecutar matriz RLS con usuarios de prueba;
-- habilitar MFA obligatorio para ROOT/ADMIN antes de datos/usuarios reales.
+- habilitar MFA obligatorio para ROOT/ADMIN antes de datos/usuarios reales;
+- conectar después las escrituras UI y Storage privado usando la sesión autenticada.
 
 ### Verificación de esta sesión
 

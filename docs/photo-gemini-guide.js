@@ -14,15 +14,73 @@ function uuidLike(value) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value || "");
 }
 
+function pointsBounds(points) {
+  const xs = points.map(point => point[0]);
+  const ys = points.map(point => point[1]);
+  return {
+    xmin: Math.min(...xs),
+    ymin: Math.min(...ys),
+    xmax: Math.max(...xs),
+    ymax: Math.max(...ys)
+  };
+}
+
+function boxFitError(points, box) {
+  const [ymin, xmin, ymax, xmax] = box;
+  const bounds = pointsBounds(points);
+  const scale = Math.max(1, (xmax - xmin) + (ymax - ymin));
+  const edgeError =
+    Math.abs(bounds.xmin - xmin) +
+    Math.abs(bounds.xmax - xmax) +
+    Math.abs(bounds.ymin - ymin) +
+    Math.abs(bounds.ymax - ymax);
+  const outside =
+    Math.max(0, xmin - bounds.xmin) +
+    Math.max(0, bounds.xmax - xmax) +
+    Math.max(0, ymin - bounds.ymin) +
+    Math.max(0, bounds.ymax - ymax);
+  return (edgeError + outside * 4) / scale;
+}
+
 function polygonPoints(item) {
-  const [ymin, xmin, ymax, xmax] = item.box_2d.map(Number);
-  const width = xmax - xmin;
-  const height = ymax - ymin;
-  return item.mask.map(point => {
-    const x = xmin + (Number(point[0]) / 1000) * width;
-    const y = ymin + (Number(point[1]) / 1000) * height;
-    return [x, y];
+  const box = item.box_2d.map(Number);
+  const [ymin, xmin, ymax, xmax] = box;
+  const width = Math.max(1, xmax - xmin);
+  const height = Math.max(1, ymax - ymin);
+  const raw = item.mask.map(point => [Number(point[0]), Number(point[1])]);
+
+  const candidates = [
+    {
+      mode: "relative_xy",
+      points: raw.map(([x, y]) => [
+        xmin + (x / 1000) * width,
+        ymin + (y / 1000) * height
+      ])
+    },
+    {
+      mode: "relative_yx",
+      points: raw.map(([y, x]) => [
+        xmin + (x / 1000) * width,
+        ymin + (y / 1000) * height
+      ])
+    },
+    {
+      mode: "absolute_xy",
+      points: raw.map(([x, y]) => [x, y])
+    },
+    {
+      mode: "absolute_yx",
+      points: raw.map(([y, x]) => [x, y])
+    }
+  ];
+
+  candidates.forEach(candidate => {
+    candidate.error = boxFitError(candidate.points, box);
   });
+  candidates.sort((a, b) => a.error - b.error);
+
+  item.__renderMode = candidates[0].mode;
+  return candidates[0].points;
 }
 
 function polygonCentroid(points) {
@@ -42,6 +100,15 @@ function renderOverlay(items) {
 
   items.forEach((item, index) => {
     const points = polygonPoints(item);
+    const [ymin, xmin, ymax, xmax] = item.box_2d.map(Number);
+    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    rect.setAttribute("x", String(xmin));
+    rect.setAttribute("y", String(ymin));
+    rect.setAttribute("width", String(Math.max(0, xmax - xmin)));
+    rect.setAttribute("height", String(Math.max(0, ymax - ymin)));
+    rect.setAttribute("class", "gemini-box");
+    overlay.append(rect);
+
     const polygon = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
     polygon.setAttribute("points", points.map(point => point.join(",")).join(" "));
     overlay.append(polygon);
@@ -55,7 +122,7 @@ function renderOverlay(items) {
     overlay.append(label);
 
     const li = document.createElement("li");
-    li.textContent = item.label;
+    li.textContent = item.label + " · " + (item.__renderMode || "mask");
     itemsList.append(li);
   });
 }

@@ -40,6 +40,9 @@ test -s docs/photo-gemini-guide.html
 test -s docs/photo-gemini-guide.css
 test -s docs/photo-gemini-guide.js
 grep -q 'generate-photo-pattern-guide' docs/photo-gemini-guide.js
+grep -q 'relative_xy' docs/photo-gemini-guide.js
+grep -q 'absolute_xy' docs/photo-gemini-guide.js
+grep -q 'gemini-box' docs/photo-gemini-guide.css
 grep -q 'photo-gemini-guide.html' docs/photo-patterns.js
 test -s supabase/functions/generate-photo-pattern-guide/index.ts
 grep -q 'CONTORNO_GEMINI_API_KEY' supabase/functions/generate-photo-pattern-guide/index.ts

@@ -69,8 +69,10 @@ grep -q 'id="lineTool"' docs/photo-pattern-editor.html
 grep -q 'id="selectTool"' docs/photo-pattern-editor.html
 grep -q 'editorViewport' docs/photo-pattern-editor.html
 grep -q 'setTool("move")' docs/photo-pattern-editor.js
-grep -q 'tool !== "draw"' docs/photo-pattern-editor.js
-grep -q 'tool !== "erase"' docs/photo-pattern-editor.js
+grep -q 'beginCreate(event, "line")' docs/photo-pattern-editor.js
+grep -q 'beginCreate(event, "rect")' docs/photo-pattern-editor.js
+grep -q 'beginCreate(event, "ellipse")' docs/photo-pattern-editor.js
+grep -q 'else if (tool === "select") beginSelection(event)' docs/photo-pattern-editor.js
 grep -q 'pointToSegmentDistance' docs/photo-pattern-editor.js
 grep -q 'zoomLevels' docs/photo-pattern-editor.js
 test -s supabase/functions/save-photo-pattern-contours/index.ts

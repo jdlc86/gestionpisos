@@ -50,6 +50,9 @@ function renderPatterns(patterns) {
 
     card.append(strong, meta);
 
+    const actions = document.createElement("div");
+    actions.className = "pattern-card__actions";
+
     if (writablePropertyIds.has(pattern.property_id)) {
       const edit = document.createElement("button");
       edit.type = "button";
@@ -61,9 +64,24 @@ function renderPatterns(patterns) {
         url.searchParams.set("pattern_id", pattern.id);
         window.location.assign(url.href);
       });
-      card.append(edit);
+      actions.append(edit);
     }
 
+    if (count > 0) {
+      const verify = document.createElement("button");
+      verify.type = "button";
+      verify.className = "primary";
+      verify.textContent = "Probar verificación";
+      verify.addEventListener("click", () => {
+        const url = new URL("./photo-camera.html", window.location.href);
+        url.searchParams.set("mode", "verify");
+        url.searchParams.set("pattern_id", pattern.id);
+        window.location.assign(url.href);
+      });
+      actions.append(verify);
+    }
+
+    if (actions.childElementCount) card.append(actions);
     list.append(card);
   });
 }

@@ -114,11 +114,9 @@ Applied remotely:
 
 Reconciliation status:
 - 20260914135759 is versioned in Git.
-- 20260914135829 exists remotely; its exact SQL file is still blocked by the tool layer when written to Git.
-- The restrictive storage-path policy is not applied yet.
-- Run finalization is not applied yet.
-
-Do not consider photo-capture persistence closed until remote and Git are fully reconciled.
+- 20260914135829 is versioned in Git with the exact remote SQL.
+- The restrictive storage-path policy is applied remotely by 20260914140530 and versioned in Git.
+- Run finalization is handled by the deployed `submit-photo-verification` Edge Function, whose source is versioned in Git.
 
 
 ## Photo capture persistence — retry 2026-09-14
@@ -147,8 +145,7 @@ Therefore the function must NOT be considered security-closed yet. Do not wire
 the production frontend to this RPC until its EXECUTE privileges are narrowed
 or the design is replaced by an equivalent non-warning implementation.
 
-Git reconciliation also remains incomplete for some SQL files because writing
-their exact contents was intercepted by the tool layer.
+Migration `20260914140530` is versioned in Git with its exact remote SQL.
 
 
 ## Photo submission Edge Function — 2026-09-14
@@ -162,4 +159,4 @@ Remote state:
 
 The Edge Function validates the caller JWT, run ownership, item/run relationship, deterministic storage path and existence of the JPEG in the private bucket before changing the run from `capturing` to `submitted`.
 
-Git reconciliation is still incomplete because the tool layer intercepts writing some exact SQL and Edge Function source contents to the repository. Do not merge the persistence branch until those remote artifacts are versioned or otherwise reconciled.
+Git now contains the exact remote SQL for migrations `20260914135829`, `20260914140530` and `20260914141923`, plus the deployed `submit-photo-verification` source in `supabase/functions/submit-photo-verification/index.ts`.

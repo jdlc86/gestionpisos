@@ -42,7 +42,7 @@ El alineador local rojo/amarillo/verde está probado. Se detectó un falso posit
 
 El flujo objetivo es: sesión autenticada → run → item → JPEG en bucket privado → metadatos de alineación → finalización del run. La ruta prevista es `organization_id/run_id/item_id.jpg`.
 
-Se aplicaron remotamente las migraciones `20260914135759 beta0_photo_alignment_meta` y `20260914135829 beta0_photo_alignment_meta_check_add`. El trabajo NO está cerrado: falta reconciliar completamente esos cambios con Git, aplicar la restricción de ruta y verificar la finalización segura. No debilitar RLS ni crear patrones ficticios para desbloquear la UI.
+Las migraciones remotas `20260914135829 beta0_photo_alignment_meta_check_add`, `20260914140530 beta0_photo_item_storage_path_restrictive_min` y `20260914141923 beta0_remove_public_photo_submit_rpc`, junto con el source desplegado de `submit-photo-verification`, están reconciliadas con Git. La restricción de ruta está aplicada; el trabajo NO está cerrado hasta verificar la finalización segura. No debilitar RLS ni crear patrones ficticios para desbloquear la UI.
 
 ### IA — aplazada
 

@@ -450,12 +450,13 @@ detectado sobre suelo texturizado fue corregido y revalidado.
 
 La IA queda aplazada intencionadamente hasta configurar sus APIs.
 
-La persistencia privada está en curso. Ya existen remotamente
-`20260914135759 beta0_photo_alignment_meta` y
-`20260914135829 beta0_photo_alignment_meta_check_add`. Falta reconciliar
-completamente Git/remoto, aplicar la restricción de ruta de Storage y verificar
-el ciclo autenticado run → item → JPEG → submitted. No considerar este bloque
-cerrado ni fusionar la rama de persistencia mientras falten esas garantías.
+La persistencia privada está en curso. Las migraciones remotas
+`20260914135829 beta0_photo_alignment_meta_check_add`,
+`20260914140530 beta0_photo_item_storage_path_restrictive_min` y
+`20260914141923 beta0_remove_public_photo_submit_rpc`, junto con el source
+desplegado de `submit-photo-verification`, ya están reconciliadas con Git. Falta
+verificar el ciclo autenticado run → item → JPEG → submitted. No considerar este
+bloque cerrado ni fusionar la rama de persistencia mientras falte esa garantía.
 
 ---
 

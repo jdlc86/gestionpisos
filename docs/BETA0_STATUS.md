@@ -9,7 +9,7 @@ La aplicación sigue en Beta 0 y producción se utiliza como entorno de pruebas.
 
 El Auth mínimo de la PWA está desplegado: login email/contraseña, sesión persistida, recuperación, logout y protección de páginas. El login con el ROOT real fue probado correctamente desde móvil. La matriz multiusuario y MFA para ROOT/ADMIN siguen pendientes antes de incorporar usuarios reales.
 
-Fotoverificación dispone ya de cámara fullscreen y alineación local probadas en móvil. La IA queda aplazada. La persistencia privada de capturas está en curso y no debe considerarse cerrada hasta reconciliar migraciones remotas con Git, completar la restricción de ruta de Storage y verificar el ciclo completo de captura.
+Fotoverificación dispone ya de cámara fullscreen y alineación local probadas en móvil. La IA queda aplazada. Las migraciones remotas de alineación, restricción de ruta y retirada del RPC público, junto con el source desplegado de `submit-photo-verification`, están reconciliadas con Git. La persistencia privada de capturas sigue en curso y no debe considerarse cerrada hasta verificar el ciclo completo de captura.
 
 No hay usuarios operativos de prueba creados todavía.
 

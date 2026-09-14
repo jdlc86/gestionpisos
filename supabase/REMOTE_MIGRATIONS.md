@@ -149,3 +149,17 @@ or the design is replaced by an equivalent non-warning implementation.
 
 Git reconciliation also remains incomplete for some SQL files because writing
 their exact contents was intercepted by the tool layer.
+
+
+## Photo submission Edge Function — 2026-09-14
+
+Remote state:
+- Edge Function `submit-photo-verification` is ACTIVE, version 1.
+- `verify_jwt=true`.
+- deployed hash: `bb12c66a2bf1cce3bc09b76515f784dcc68abb970e95d44489cf4114af5e7ed1`.
+- migration `20260914141923 beta0_remove_public_photo_submit_rpc` removed the exposed `public.submit_photo_verification_run(uuid, uuid)` RPC.
+- Security Advisor returned to the expected baseline: only `Leaked Password Protection Disabled` remains.
+
+The Edge Function validates the caller JWT, run ownership, item/run relationship, deterministic storage path and existence of the JPEG in the private bucket before changing the run from `capturing` to `submitted`.
+
+Git reconciliation is still incomplete because the tool layer intercepts writing some exact SQL and Edge Function source contents to the repository. Do not merge the persistence branch until those remote artifacts are versioned or otherwise reconciled.

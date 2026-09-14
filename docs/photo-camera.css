@@ -6,3 +6,13 @@ html[data-reference-guide="loading"] .photo-camera__guide::before,
 html[data-reference-guide="ready"] .photo-camera__guide::before,
 html[data-reference-guide="error"] .photo-camera__guide::before{display:none!important;content:none!important}
 .photo-camera__reference-mask{width:100%;height:100%;object-fit:contain;opacity:.82;filter:drop-shadow(0 2px 4px rgba(0,0,0,.8))}
+
+.photo-camera__guide--pending .photo-camera__reference-mask{
+  filter:brightness(0) saturate(100%) invert(38%) sepia(86%) saturate(2600%) hue-rotate(337deg) brightness(101%) contrast(87%) drop-shadow(0 2px 4px rgba(0,0,0,.8))
+}
+.photo-camera__guide--warn .photo-camera__reference-mask{
+  filter:brightness(0) saturate(100%) invert(80%) sepia(91%) saturate(935%) hue-rotate(352deg) brightness(101%) contrast(96%) drop-shadow(0 2px 4px rgba(0,0,0,.8))
+}
+.photo-camera__guide--ok .photo-camera__reference-mask{
+  filter:brightness(0) saturate(100%) invert(75%) sepia(33%) saturate(1089%) hue-rotate(88deg) brightness(93%) contrast(88%) drop-shadow(0 2px 4px rgba(0,0,0,.8))
+}

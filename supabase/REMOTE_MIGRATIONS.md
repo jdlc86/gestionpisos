@@ -104,3 +104,18 @@ new exclusion index is unused because the active tables contain no rows), and
 
 Beta 0 is not stable until the full role-isolation matrix is executed with
 users created through Supabase Auth.
+
+
+## Photo alignment migrations — 2026-09-14
+
+Applied remotely:
+- 20260914135759 beta0_photo_alignment_meta
+- 20260914135829 beta0_photo_alignment_meta_check_add
+
+Reconciliation status:
+- 20260914135759 is versioned in Git.
+- 20260914135829 exists remotely; its exact SQL file is still blocked by the tool layer when written to Git.
+- The restrictive storage-path policy is not applied yet.
+- Run finalization is not applied yet.
+
+Do not consider photo-capture persistence closed until remote and Git are fully reconciled.

@@ -40,7 +40,9 @@ docker run --rm \
     fi
 
     psql -v ON_ERROR_STOP=1 -U postgres \
-      -f /work/tests/local-schema-fixture.sql
+      -f /work/tests/local-auth-bootstrap.sql
+    psql -v ON_ERROR_STOP=1 -U postgres \
+      -f /work/supabase/migrations/20260913000000_remote_baseline.sql
     psql -v ON_ERROR_STOP=1 -U postgres \
       -f /work/supabase/migrations/20260913205141_close_owners_and_occupancy_blockers.sql
     psql -v ON_ERROR_STOP=1 -U postgres \

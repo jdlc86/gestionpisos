@@ -8,6 +8,7 @@ photo_migration="supabase/migrations/20260914074246_beta0_photo_verification_wri
 storage_migration="supabase/migrations/20260914074301_beta0_photo_storage_read_org_hardening.sql"
 photo_test_sql="tests/photo-verification-regression.sql"
 review_hardening="supabase/migrations/20260914123135_beta0_review_security_hardening.sql"
+contour_authoring="supabase/migrations/20260914234500_allow_versioned_photo_contour_edits.sql"
 
 test -s "$baseline"
 test -s "$migration"
@@ -18,6 +19,7 @@ test -s "$photo_migration"
 test -s "$storage_migration"
 test -s "$photo_test_sql"
 test -s "$review_hardening"
+test -s "$contour_authoring"
 
 for historical_migration in \
   supabase/migrations/20260914064224_beta0_cleaning_swap_participant_read.sql \
@@ -68,3 +70,11 @@ grep -q "'aal2'" "$review_hardening"
 grep -q 'revoke delete on table public.claims_v2' "$review_hardening"
 grep -q 'security definer' "$review_hardening"
 grep -q 'audit_photo_verification_config' "$review_hardening"
+
+# Manual contour authoring may change only contour_data and version,
+# preserving published pattern identity/reference immutability.
+grep -q "new.contour_data is distinct from old.contour_data" "$contour_authoring"
+grep -q "new.version is distinct from old.version + 1" "$contour_authoring"
+grep -q "new.reference_storage_path is distinct from old.reference_storage_path" "$contour_authoring"
+grep -q "new.property_id is distinct from old.property_id" "$contour_authoring"
+grep -q "photo pattern version may change only with contour_data" "$contour_authoring"

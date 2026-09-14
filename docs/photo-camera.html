@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+  <meta name="theme-color" content="#000000">
+  <link rel="stylesheet" href="./app.css">
+  <link rel="stylesheet" href="./photo-camera.css">
+  <title>Allaiso · Fotoverificación</title>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">ALLAISO</p>
+        <h1>Fotoverificación</h1>
+      </div>
+      <a class="ghost" href="./cleaning.html">Volver</a>
+    </header>
+
+    <section class="hero">
+      <span class="badge">Cámara Beta</span>
+      <h2>Encuadra la zona según el patrón.</h2>
+      <p>La guía visual se superpone sobre la cámara. La comparación automática se conectará después de validar la captura en dispositivos reales.</p>
+    </section>
+
+    <button id="openCamera" class="camera-launch" type="button">Abrir cámara</button>
+    <img id="preview" class="capture-preview" alt="Vista previa de la captura" hidden>
+    <p id="cameraMessage" class="camera-message" role="status" aria-live="polite"></p>
+  </main>
+
+  <section id="cameraOverlay" class="photo-camera" hidden aria-label="Cámara de fotoverificación">
+    <video id="cameraVideo" class="photo-camera__video" autoplay playsinline muted></video>
+
+    <div id="cameraGuide" class="photo-camera__guide photo-camera__guide--pending" aria-hidden="true">
+      <svg viewBox="0 0 320 220" preserveAspectRatio="none">
+        <path d="M48 176V78c0-14 11-25 25-25h174c14 0 25 11 25 25v98"/>
+        <path d="M83 176v-58h154v58"/>
+        <path d="M112 118V91h96v27"/>
+      </svg>
+    </div>
+
+    <div id="alignmentHint" class="photo-camera__hint">Busca el mismo encuadre que el patrón</div>
+
+    <div class="photo-camera__controls">
+      <button id="closeCamera" class="photo-camera__control photo-camera__control--close" type="button" aria-label="Cerrar cámara">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M6 6l12 12M18 6L6 18"/>
+        </svg>
+      </button>
+
+      <button id="flashCamera" class="photo-camera__control photo-camera__control--flash" type="button" aria-label="Activar flash">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M13.5 2.5L6.8 13h5.1l-1.3 8.5L17.4 11h-5.1z"/>
+        </svg>
+      </button>
+
+      <button id="captureCamera" class="photo-camera__control photo-camera__control--capture" type="button" aria-label="Tomar fotografía">
+        <svg viewBox="0 0 64 64" aria-hidden="true">
+          <circle cx="32" cy="32" r="27"/>
+          <circle cx="32" cy="32" r="20"/>
+        </svg>
+      </button>
+    </div>
+
+    <div id="cameraLoading" class="photo-camera__loading">Preparando cámara…</div>
+  </section>
+
+  <canvas id="captureCanvas" hidden></canvas>
+  <script src="./photo-camera.js" defer></script>
+</body>
+</html>

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#ffffff">
   <link rel="stylesheet" href="./app.css">
-  <link rel="stylesheet" href="./photo-verifications.css?v=2026091502">
+  <link rel="stylesheet" href="./photo-verifications.css?v=2026091503">
   <title>Allaiso · Fotoverificaciones</title>
 </head>
 <body>
@@ -22,10 +22,15 @@
     </section>
 
     <section class="review-toolbar">
+      <label>Piso
+        <select id="propertyFilter">
+          <option value="">Todos los pisos</option>
+        </select>
+      </label>
       <label>Estado
         <select id="statusFilter">
           <option value="">Todos</option>
-          <option value="submitted" selected>Pendientes</option>
+          <option value="submitted">Pendientes</option>
           <option value="approved">Aprobadas</option>
           <option value="rejected">Rechazadas</option>
         </select>
@@ -56,7 +61,7 @@
   </dialog>
 
   <div id="reviewToast" class="review-toast" role="status" aria-live="polite" aria-atomic="true"></div>
-  <script type="module" src="./photo-verifications.js?v=2026091503"></script>
+  <script type="module" src="./photo-verifications.js?v=2026091504"></script>
   <script type="module" src="./auth-guard.js"></script>
 </body>
 </html>

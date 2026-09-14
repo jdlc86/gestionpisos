@@ -32,19 +32,24 @@ function interactionText(payload: any) {
   return chunks.join("\n").trim();
 }
 
-function validMask(item: any) {
+function validLandmark(item: any) {
   return !!item &&
     typeof item.label === "string" &&
     Array.isArray(item.box_2d) &&
     item.box_2d.length === 4 &&
     item.box_2d.every((v: unknown) => Number.isFinite(Number(v))) &&
-    Array.isArray(item.mask) &&
-    item.mask.length >= 3 &&
-    item.mask.every((p: unknown) =>
-      Array.isArray(p) &&
-      p.length === 2 &&
-      Number.isFinite(Number(p[0])) &&
-      Number.isFinite(Number(p[1]))
+    Array.isArray(item.contours) &&
+    item.contours.length >= 1 &&
+    item.contours.length <= 4 &&
+    item.contours.every((contour: unknown) =>
+      Array.isArray(contour) &&
+      contour.length >= 3 &&
+      contour.every((p: unknown) =>
+        Array.isArray(p) &&
+        p.length === 2 &&
+        Number.isFinite(Number(p[0])) &&
+        Number.isFinite(Number(p[1]))
+      )
     );
 }
 
@@ -115,12 +120,17 @@ Deno.serve(async (req: Request) => {
 
   const prompt = [
     "Create a clean visual alignment guide for retaking this room photograph from the same viewpoint.",
-    "Segment only stable, visually distinctive structures and large recognizable objects that define the scene geometry.",
+    "Identify only stable, visually distinctive structures and large recognizable objects that define the scene geometry.",
     "Prefer doors, windows, cabinets, countertops, large appliances, tables, fixed shelving, bed or sofa outlines, ceiling fans or large fans, and other dominant objects.",
     "Ignore shadows, reflections, highlights, light gradients, wall or floor texture, grout lines, decorative patterns, small clutter, cables, people, clothing, plants and tiny objects.",
     "Return 3 to 8 landmarks maximum.",
-    "Each chosen landmark must remain recognizable from its silhouette and be useful for camera alignment.",
-    "Preserve distinctive object silhouettes such as fan blades rather than reducing them to a coarse blob.",
+    "For each landmark return one to four OUTER CONTOURS that make the object recognizable as a silhouette.",
+    "Contour coordinates are ABSOLUTE in the FULL IMAGE, normalized from 0 to 1000.",
+    "Each contour point MUST be [x,y], where x is horizontal from left to right and y is vertical from top to bottom.",
+    "Do NOT make contour coordinates relative to box_2d.",
+    "Use enough contour points to preserve the recognizable geometry, but avoid tiny texture detail.",
+    "For a fan, preserve the circular head and the support/base as separate contours when useful; do not collapse the fan to a central blob.",
+    "Each chosen landmark must be useful for camera alignment.",
     "Use short Spanish labels."
   ].join(" ");
 
@@ -142,7 +152,7 @@ Deno.serve(async (req: Request) => {
         schema: {
           type: "object",
           properties: {
-            boxes: {
+            landmarks: {
               type: "array",
               minItems: 1,
               maxItems: 8,
@@ -155,24 +165,29 @@ Deno.serve(async (req: Request) => {
                     maxItems: 4,
                     items: { type: "integer", minimum: 0, maximum: 1000 }
                   },
-                  mask: {
+                  contours: {
                     type: "array",
-                    minItems: 3,
+                    minItems: 1,
+                    maxItems: 4,
                     items: {
                       type: "array",
-                      minItems: 2,
-                      maxItems: 2,
-                      items: { type: "integer", minimum: 0, maximum: 1000 }
+                      minItems: 3,
+                      items: {
+                        type: "array",
+                        minItems: 2,
+                        maxItems: 2,
+                        items: { type: "integer", minimum: 0, maximum: 1000 }
+                      }
                     }
                   },
                   label: { type: "string" }
                 },
-                required: ["box_2d", "mask", "label"],
+                required: ["box_2d", "contours", "label"],
                 additionalProperties: false
               }
             }
           },
-          required: ["boxes"],
+          required: ["landmarks"],
           additionalProperties: false
         }
       },
@@ -198,11 +213,11 @@ Deno.serve(async (req: Request) => {
     return json(502, { error: "gemini_invalid_json" });
   }
 
-  const boxes = Array.isArray(parsed?.boxes)
-    ? parsed.boxes.filter(validMask).slice(0, 8)
+  const landmarks = Array.isArray(parsed?.landmarks)
+    ? parsed.landmarks.filter(validLandmark).slice(0, 8)
     : [];
 
-  if (!boxes.length) return json(422, { error: "gemini_no_structural_landmarks" });
+  if (!landmarks.length) return json(422, { error: "gemini_no_structural_landmarks" });
 
   return json(200, {
     ok: true,
@@ -213,6 +228,6 @@ Deno.serve(async (req: Request) => {
       zone: pattern.target_key,
       reference_storage_path: pattern.reference_storage_path,
     },
-    boxes,
+    landmarks,
   });
 });

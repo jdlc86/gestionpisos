@@ -43,9 +43,9 @@ grep -q 'Editar silueta' docs/photo-patterns.js
 grep -q 'Dibujar silueta' docs/photo-patterns.js
 grep -q 'contour_data' docs/photo-pattern-editor.js
 grep -q 'raw_points' docs/photo-pattern-editor.js
-grep -q 'Suavizado suave' docs/photo-pattern-editor.js
-grep -q 'Suavizado medio' docs/photo-pattern-editor.js
-grep -q 'Cerrar trazo' docs/photo-pattern-editor.js
+grep -q '\["soft", "Suave"\]' docs/photo-pattern-editor.js
+grep -q '\["medium", "Medio"\]' docs/photo-pattern-editor.js
+grep -q 'stroke.closed ? "Abrir" : "Cerrar"' docs/photo-pattern-editor.js
 grep -q 'property_staff_access_v3' docs/photo-pattern-editor.js
 grep -q 'can_write' docs/photo-pattern-editor.js
 grep -q 'save-photo-pattern-contours' docs/photo-pattern-editor.js

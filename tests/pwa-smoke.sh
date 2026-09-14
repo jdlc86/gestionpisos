@@ -46,7 +46,9 @@ grep -q 'nearestEdgePoint' docs/photo-gemini-guide.js
 grep -q 'smoothClosed' docs/photo-gemini-guide.js
 grep -q 'drawSmoothClosedPath' docs/photo-gemini-guide.js
 grep -q 'Guía ajustada a borde real' docs/photo-gemini-guide.js
-grep -q 'docs.opencv.org/4.10.0/opencv.js' docs/photo-gemini-guide.html
+grep -q '@techstark/opencv-js@4.10.0-release.1/dist/opencv.js' docs/photo-gemini-guide.html
+grep -q '__opencvReady' docs/photo-gemini-guide.html
+grep -q 'onRuntimeInitialized' docs/photo-gemini-guide.html
 grep -q 'landmarks' supabase/functions/generate-photo-pattern-guide/index.ts
 grep -q 'Contour coordinates are ABSOLUTE' supabase/functions/generate-photo-pattern-guide/index.ts
 grep -q 'same physical furniture unit' supabase/functions/generate-photo-pattern-guide/index.ts

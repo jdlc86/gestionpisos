@@ -11,6 +11,7 @@
   const maskCtx = maskCanvas.getContext('2d', { willReadFrequently: true });
   const guideImage = new Image();
   guideImage.src = './bench-guide-approved.svg';
+  const patternId = new URLSearchParams(window.location.search).get("pattern_id");
 
   const ZONE_COLS = 3;
   const ZONE_ROWS = 2;
@@ -84,8 +85,6 @@
   }
 
   function drawGuideMask(w, h) {
-    if (!guideImage.complete || !guideImage.naturalWidth) return false;
-
     maskCtx.clearRect(0, 0, w, h);
 
     const overlayRect = overlay.getBoundingClientRect();
@@ -99,7 +98,15 @@
     const gw = guideRect.width * kx;
     const gh = guideRect.height * ky;
 
-    const imageRatio = guideImage.naturalWidth / guideImage.naturalHeight;
+    const source = patternId ? window.__allaisoReferenceMaskCanvas : guideImage;
+    if (!source) return false;
+    if (!patternId && (!guideImage.complete || !guideImage.naturalWidth)) return false;
+
+    const sourceWidth = source.width || source.naturalWidth;
+    const sourceHeight = source.height || source.naturalHeight;
+    if (!sourceWidth || !sourceHeight) return false;
+
+    const imageRatio = sourceWidth / sourceHeight;
     const boxRatio = gw / gh;
     let dw = gw;
     let dh = gh;
@@ -108,7 +115,7 @@
     else dw = gh * imageRatio;
 
     maskCtx.drawImage(
-      guideImage,
+      source,
       gx + (gw - dw) / 2,
       gy + (gh - dh) / 2,
       dw,

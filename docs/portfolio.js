@@ -202,6 +202,13 @@ function renderCard(item) {
     button.dataset.id = item.id;
     buttons.append(button);
   }
+  if (current === "properties") {
+    const photos = createElement("button", "secondary", "Fotoverificaciones");
+    photos.type = "button";
+    photos.dataset.action = "photo-history";
+    photos.dataset.id = item.id;
+    buttons.append(photos);
+  }
   if (item.status !== "archived") {
     const archive = createElement("button", "danger-soft", "Archivar");
     archive.type = "button";
@@ -541,6 +548,12 @@ records.addEventListener("click", event => {
   if (button.dataset.action === "edit") openEditor(button.dataset.id);
   if (button.dataset.action === "archive") archiveItem(button.dataset.id);
   if (button.dataset.action === "history") showHistory(button.dataset.id);
+  if (button.dataset.action === "photo-history") {
+    const url = new URL("./photo-verifications.html", window.location.href);
+    url.searchParams.set("property_id", button.dataset.id);
+    url.searchParams.set("v", "2026091505");
+    window.location.href = url.toString();
+  }
 });
 
 action.addEventListener("click", () => openEditor());

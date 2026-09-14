@@ -24,6 +24,9 @@ grep -q 'reviewed_by' docs/photo-verifications.js
 grep -q 'rejection_reason' docs/photo-verifications.js
 grep -q 'from("profiles")' docs/photo-verifications.js
 grep -q 'propertyFilter.addEventListener' docs/photo-verifications.js
+grep -q 'photo-history' docs/portfolio.js
+grep -q 'property_id' docs/portfolio.js
+grep -q 'URLSearchParams(window.location.search)' docs/photo-verifications.js
 grep -q 'showToast("✓ " + successMessage)' docs/photo-verifications.js
 grep -q 'review-toast.is-visible' docs/photo-verifications.css
 grep -q 'createSignedUrl' docs/photo-verifications.js

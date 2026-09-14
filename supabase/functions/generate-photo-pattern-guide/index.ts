@@ -113,7 +113,7 @@ Deno.serve(async (req: Request) => {
     "Good examples: a large fan, fixed cabinet, doorway, window, radiator, countertop, sofa or bed.",
     "Avoid shadows, reflections, floor lines, texture, small clutter, people, plants, cables and movable tiny objects.",
     "Return exactly one landmark.",
-    "box_2d uses [ymin,xmin,ymax,xmax], normalized 0 to 1000 over the FULL image.",
+    "box_2d uses [ymin,xmin,ymax,xmax], normalized 0 to 1000 over the FULL image.",\n    "CRITICAL: make box_2d a TIGHT bounding box around the visible pixels of that ONE object, from its topmost to bottommost and leftmost to rightmost visible extent.",\n    "Do NOT include contextual background, nearby furniture, wall decoration, cables, floor area or safety margin around the object.",\n    "For a standing fan, the box must include the fan head, pole and feet/base, but almost no surrounding wall or floor.",
     "alignment_score is 0 to 100 and estimates usefulness for camera alignment.",
     "Use a short Spanish label."
   ].join(" ");

@@ -41,15 +41,6 @@ Deno.serve(async (req: Request) => {
   const organizationId = String(user.app_metadata?.organization_id || "");
   if (!["root","admin"].includes(role)) return json(403, { error: "review_not_allowed" });
 
-  const token = authorization.replace(/^Bearer\\s+/i, "");
-  let aal = "";
-  try {
-    const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
-    aal = String(payload?.aal || "");
-  } catch {
-    return json(401, { error: "invalid_session" });
-  }
-  if (aal !== "aal2") return json(403, { error: "aal2_required" });
 
   let body: { run_id?: string; decision?: string; rejection_reason?: string | null };
   try {

@@ -39,10 +39,9 @@ function renderPatterns(patterns) {
     const verify = document.createElement("button");
     verify.type = "button";
     verify.className = "secondary";
-    verify.textContent = "Probar verificación";
+    verify.textContent = "Probar guía Gemini";
     verify.addEventListener("click", () => {
-      const url = new URL("./photo-camera.html", window.location.href);
-      url.searchParams.set("mode", "verify");
+      const url = new URL("./photo-gemini-guide.html", window.location.href);
       url.searchParams.set("pattern_id", pattern.id);
       window.location.assign(url.href);
     });

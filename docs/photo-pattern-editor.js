@@ -372,12 +372,17 @@ async function save() {
   };
 
   const result = await supabase.functions.invoke("save-photo-pattern-contours", {
-    body: { pattern_id: pattern.id, contour_data: payload }
+    body: {
+      pattern_id: pattern.id,
+      contour_data: payload,
+      base_version: pattern.version
+    }
   });
 
   if (result.error) throw result.error;
   if (!result.data?.ok) throw new Error(result.data?.error || "save_failed");
 
+  pattern.version = result.data.version;
   dirty = false;
   undoStack = [];
   redoStack = [];
@@ -392,7 +397,7 @@ async function load() {
 
   const result = await supabase
     .from("photo_patterns_v2")
-    .select("id,organization_id,property_id,name,target_key,reference_storage_path,contour_data,active")
+    .select("id,organization_id,property_id,name,target_key,reference_storage_path,contour_data,active,version")
     .eq("id", patternId)
     .maybeSingle();
 
@@ -462,7 +467,11 @@ clearBtn.addEventListener("click", () => {
 saveBtn.addEventListener("click", () => {
   save().catch(error => {
     console.error("pattern contour save failed", error);
-    message.textContent = "No se pudo guardar la silueta.";
+    if (String(error?.message || "").includes("pattern_version_conflict")) {
+      message.textContent = "El patrón cambió en otra sesión. Vuelve a abrir el editor antes de guardar.";
+    } else {
+      message.textContent = "No se pudo guardar la silueta.";
+    }
     updateButtons();
   });
 });

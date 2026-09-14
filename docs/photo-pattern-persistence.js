@@ -10,7 +10,10 @@ if (params.get("mode") === "pattern") {
   const heroTitle = document.querySelector(".hero h2");
   const heroText = document.querySelector(".hero p");
 
-  if (guide) guide.hidden = true;
+  if (guide) {
+    guide.hidden = true;
+    guide.style.display = "none";
+  }
   if (hint) hint.textContent = "Captura la vista que se usará como referencia";
   if (title) title.textContent = "Registrar patrón";
   if (heroTitle) heroTitle.textContent = "Captura la referencia de esta zona.";
@@ -24,10 +27,9 @@ if (params.get("mode") === "pattern") {
 
     queueMicrotask(async () => {
       const propertyId = params.get("property_id");
-      const roomId = params.get("room_id");
-      const name = (params.get("pattern_name") || "").trim();
+      const zoneLabel = (params.get("zone_label") || "").trim();
 
-      if (!uuidLike(propertyId) || !uuidLike(roomId) || !name || name.length > 120) {
+      if (!uuidLike(propertyId) || !zoneLabel || zoneLabel.length > 120) {
         message.textContent = "Contexto de patrón inválido.";
         return;
       }
@@ -47,16 +49,6 @@ if (params.get("mode") === "pattern") {
         if (propertyError) throw propertyError;
         if (!property || property.status === "archived") throw new Error("property_not_available");
 
-        const { data: room, error: roomError } = await supabase
-          .from("rooms_v2")
-          .select("id,property_id,status")
-          .eq("id", roomId)
-          .eq("property_id", propertyId)
-          .maybeSingle();
-
-        if (roomError) throw roomError;
-        if (!room || room.status === "archived") throw new Error("room_not_available");
-
         const patternId = crypto.randomUUID();
         const storagePath = `${property.organization_id}/patterns/${patternId}/reference.jpg`;
 
@@ -66,9 +58,9 @@ if (params.get("mode") === "pattern") {
             id: patternId,
             organization_id: property.organization_id,
             property_id: property.id,
-            name,
+            name: zoneLabel,
             target_type: "zone",
-            target_key: room.id,
+            target_key: zoneLabel,
             reference_storage_path: storagePath,
             active: false,
             created_by: user.id

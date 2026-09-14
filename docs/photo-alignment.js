@@ -9,8 +9,6 @@
   const maskCanvas = document.createElement('canvas');
   const frameCtx = frameCanvas.getContext('2d', { willReadFrequently: true });
   const maskCtx = maskCanvas.getContext('2d', { willReadFrequently: true });
-  const guideImage = new Image();
-  guideImage.src = './bench-guide-approved.svg';
   const patternId = new URLSearchParams(window.location.search).get("pattern_id");
 
   const ZONE_COLS = 3;
@@ -98,9 +96,9 @@
     const gw = guideRect.width * kx;
     const gh = guideRect.height * ky;
 
-    const source = patternId ? window.__allaisoReferenceMaskCanvas : guideImage;
+    if (!patternId) return false;
+    const source = window.__allaisoReferenceMaskCanvas;
     if (!source) return false;
-    if (!patternId && (!guideImage.complete || !guideImage.naturalWidth)) return false;
 
     const sourceWidth = source.width || source.naturalWidth;
     const sourceHeight = source.height || source.naturalHeight;

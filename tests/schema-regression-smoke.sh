@@ -1,19 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+baseline="supabase/migrations/20260913000000_remote_baseline.sql"
 migration="supabase/migrations/20260913205141_close_owners_and_occupancy_blockers.sql"
 test_sql="tests/database-regression.sql"
 photo_migration="supabase/migrations/20260914074246_beta0_photo_verification_write_policies.sql"
 storage_migration="supabase/migrations/20260914074301_beta0_photo_storage_read_org_hardening.sql"
 photo_test_sql="tests/photo-verification-regression.sql"
+review_hardening="supabase/migrations/20260914123135_beta0_review_security_hardening.sql"
 
+test -s "$baseline"
 test -s "$migration"
 test -s "$test_sql"
 test -s tests/database-regression.sh
-test -s tests/local-schema-fixture.sql
+test -s tests/local-auth-bootstrap.sql
 test -s "$photo_migration"
 test -s "$storage_migration"
 test -s "$photo_test_sql"
+test -s "$review_hardening"
 
 for historical_migration in \
   supabase/migrations/20260914064224_beta0_cleaning_swap_participant_read.sql \
@@ -53,3 +57,14 @@ grep -q 'assigned user random request insert unexpectedly succeeded' "$photo_tes
 grep -q 'actor insert into another run unexpectedly succeeded' "$photo_test_sql"
 
 echo 'Schema regression smoke checks passed'
+
+grep -q 'create table if not exists public.owners' "$baseline"
+grep -q 'create table if not exists public.incidents_v2' "$baseline"
+grep -q 'create table if not exists public.cleaning_tasks_v2' "$baseline"
+grep -q "status = 'capturing'" "$review_hardening"
+grep -q "p.organization_id = organization_id" "$review_hardening"
+grep -q "published photo pattern content is immutable" "$review_hardening"
+grep -q "'aal2'" "$review_hardening"
+grep -q 'revoke delete on table public.claims_v2' "$review_hardening"
+grep -q 'security definer' "$review_hardening"
+grep -q 'audit_photo_verification_config' "$review_hardening"

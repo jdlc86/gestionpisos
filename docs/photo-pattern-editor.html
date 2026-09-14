@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#ffffff">
   <link rel="stylesheet" href="./app.css">
-  <link rel="stylesheet" href="./photo-pattern-editor.css?v=2026091401">
+  <link rel="stylesheet" href="./photo-pattern-editor.css?v=2026091402">
   <title>Allaiso · Editor de silueta</title>
 </head>
 <body>
@@ -21,35 +21,58 @@
     <section class="editor-hero">
       <span class="badge">Patrón manual</span>
       <h2 id="editorTitle">Cargando patrón…</h2>
-      <p>Dibuja con el dedo referencias aproximadas sobre la foto. Puedes crear varios trazos, etiquetarlos y suavizarlos después sin perder el original.</p>
+      <p>Muévete por la foto con la mano. Activa Dibujar solo cuando quieras crear un trazo.</p>
     </section>
 
-    <section class="editor-tools" aria-label="Herramientas de dibujo">
-      <label class="editor-label">Etiqueta del nuevo trazo
-        <input id="strokeLabel" type="text" maxlength="80" placeholder="Ej. Ventilador, Microondas, Encimera">
+    <nav class="draw-toolbar" aria-label="Herramientas de dibujo">
+      <button id="moveTool" type="button" class="tool-btn is-active" aria-pressed="true">
+        <span aria-hidden="true">✋</span><small>Mover</small>
+      </button>
+      <button id="drawTool" type="button" class="tool-btn" aria-pressed="false">
+        <span aria-hidden="true">✏️</span><small>Dibujar</small>
+      </button>
+      <button id="eraseTool" type="button" class="tool-btn" aria-pressed="false">
+        <span aria-hidden="true">⌫</span><small>Borrar</small>
+      </button>
+      <button id="undoBtn" type="button" class="tool-btn" disabled>
+        <span aria-hidden="true">↶</span><small>Deshacer</small>
+      </button>
+      <button id="redoBtn" type="button" class="tool-btn" disabled>
+        <span aria-hidden="true">↷</span><small>Rehacer</small>
+      </button>
+      <button id="zoomOutBtn" type="button" class="tool-btn">
+        <span aria-hidden="true">−</span><small>Zoom</small>
+      </button>
+      <button id="zoomInBtn" type="button" class="tool-btn">
+        <span aria-hidden="true">＋</span><small>Zoom</small>
+      </button>
+    </nav>
+
+    <section class="draw-context">
+      <p id="toolHint" class="draw-context__hint">Modo Mover · desplaza la foto sin dibujar.</p>
+      <label id="labelWrap" class="draw-context__label" hidden>
+        Etiqueta
+        <input id="strokeLabel" type="text" maxlength="80" placeholder="Ej. Ventilador">
       </label>
-      <div class="editor-actions">
-        <button id="undoBtn" type="button" class="secondary" disabled>Deshacer</button>
-        <button id="redoBtn" type="button" class="secondary" disabled>Rehacer</button>
-        <button id="clearBtn" type="button" class="ghost">Borrar todo</button>
-      </div>
-      <p class="editor-help">Mantén pulsado y dibuja libremente. El trazo puede ser rústico; el suavizado es opcional y reversible.</p>
     </section>
 
     <section id="editorStage" class="editor-stage" hidden>
-      <div id="imageWrap" class="editor-image-wrap">
-        <img id="referenceImage" alt="Fotografía patrón">
-        <canvas id="drawingCanvas" aria-label="Área de dibujo manual"></canvas>
+      <div id="editorViewport" class="editor-viewport">
+        <div id="imageWrap" class="editor-image-wrap">
+          <img id="referenceImage" alt="Fotografía patrón">
+          <canvas id="drawingCanvas" aria-label="Área de dibujo manual"></canvas>
+        </div>
       </div>
     </section>
 
-    <section class="editor-strokes">
-      <div class="editor-strokes__head">
-        <h3>Trazos</h3>
+    <details class="editor-strokes">
+      <summary>
+        <span>Trazos</span>
         <span id="strokeCount" class="badge">0</span>
-      </div>
+      </summary>
       <div id="strokeList" class="editor-stroke-list"></div>
-    </section>
+      <button id="clearBtn" type="button" class="ghost danger-action">Borrar todos los trazos</button>
+    </details>
 
     <div class="editor-savebar">
       <button id="saveBtn" type="button" class="primary" disabled>Guardar silueta</button>
@@ -58,7 +81,7 @@
     <p id="editorMessage" class="camera-message" role="status" aria-live="polite"></p>
   </main>
 
-  <script type="module" src="./photo-pattern-editor.js?v=2026091401"></script>
+  <script type="module" src="./photo-pattern-editor.js?v=2026091402"></script>
   <script type="module" src="./auth-guard.js"></script>
 </body>
 </html>

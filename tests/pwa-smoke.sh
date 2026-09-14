@@ -25,4 +25,15 @@ grep -q 'operations.js' docs/operations.html
 
 bash tests/portfolio-smoke.sh
 
+test -s docs/photo-camera.html
+test -s docs/photo-camera.css
+test -s docs/photo-camera.js
+grep -q 'photo-camera.html' docs/cleaning.html
+grep -q 'photo-camera.css' docs/photo-camera.html
+grep -q 'photo-camera.js' docs/photo-camera.html
+grep -q 'id="closeCamera"' docs/photo-camera.html
+grep -q 'id="flashCamera"' docs/photo-camera.html
+grep -q 'id="captureCamera"' docs/photo-camera.html
+grep -q '<svg' docs/photo-camera.html
+
 echo 'PWA smoke checks passed'

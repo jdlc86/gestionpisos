@@ -38,6 +38,8 @@ grep -q 'mode", "pattern"' docs/photo-patterns.js
 grep -q 'zone_label' docs/photo-patterns.js
 grep -q 'target_key: zoneLabel' docs/photo-pattern-persistence.js
 test -s docs/photo-reference-guide.js
+node --check docs/photo-reference-guide.js
+node --check docs/photo-alignment.js
 test -s docs/photo-pattern-editor.html
 test -s docs/photo-pattern-editor.css
 test -s docs/photo-pattern-editor.js
@@ -91,7 +93,6 @@ if grep -q 'photo-gemini-guide.html' docs/photo-patterns.js; then
   exit 1
 fi
 grep -q 'pattern_id' docs/photo-patterns.js
-grep -q 'reference_storage_path' docs/photo-reference-guide.js
 grep -q 'contour_data' docs/photo-reference-guide.js
 grep -q 'makeManualMask' docs/photo-reference-guide.js
 grep -q 'manual_silhouette_missing' docs/photo-reference-guide.js
@@ -111,7 +112,9 @@ grep -q 'active: true' docs/photo-pattern-persistence.js
 test -s docs/photo-camera.html
 test -s docs/photo-camera.css
 test -s docs/photo-camera.js
-grep -q 'photo-camera.css' docs/photo-camera.html
+grep -q 'photo-camera.css?v=2026091501' docs/photo-camera.html
+grep -q 'photo-reference-guide.js?v=2026091501' docs/photo-camera.html
+grep -q 'photo-alignment.js?v=2026091501' docs/photo-camera.js
 grep -q 'photo-camera.js' docs/photo-camera.html
 grep -q 'id="closeCamera"' docs/photo-camera.html
 grep -q 'id="flashCamera"' docs/photo-camera.html

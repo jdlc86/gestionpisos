@@ -88,6 +88,23 @@ function updateButtons() {
   zoomInBtn.disabled = idx >= zoomLevels.length - 1;
 }
 
+function syncLabelEditor() {
+  const selected = selectedStroke();
+  const creationMode = ["draw", "line", "rect", "ellipse"].includes(tool);
+  const selectionMode = tool === "select" && !!selected;
+
+  labelWrap.hidden = !(creationMode || selectionMode);
+
+  if (selectionMode) {
+    labelWrap.firstChild.textContent = "Etiqueta seleccionada ";
+    labelInput.value = selected.label || "";
+    labelInput.placeholder = "Ej. Ventilador";
+  } else if (creationMode) {
+    labelWrap.firstChild.textContent = "Etiqueta del siguiente elemento ";
+    labelInput.placeholder = "Ej. Ventilador";
+  }
+}
+
 function setTool(next) {
   const allowed = ["move", "select", "draw", "line", "rect", "ellipse", "erase"];
   if (!allowed.includes(next)) return;
@@ -110,7 +127,7 @@ function setTool(next) {
     button.setAttribute("aria-pressed", String(active));
   });
 
-  labelWrap.hidden = !["draw", "line", "rect", "ellipse"].includes(tool);
+  syncLabelEditor();
 
   const hints = {
     move: "Modo Mover · desplaza la foto sin dibujar.",
@@ -458,6 +475,7 @@ function renderStrokeList() {
 function renderAll() {
   renderCanvas();
   renderStrokeList();
+  syncLabelEditor();
   updateButtons();
 }
 
@@ -617,6 +635,7 @@ function beginSelection(event) {
 
   const hit = nearestStroke(point);
   selectedId = hit?.id || null;
+  syncLabelEditor();
   if (hit) {
     pushHistory();
     selectionAction = {
@@ -881,6 +900,42 @@ canvas.addEventListener("pointercancel", event => {
   if (drawing) endCreate(event);
   else endSelection(event);
 });
+
+
+labelInput.addEventListener("input", () => {
+  if (!canWrite || tool !== "select") return;
+  const selected = selectedStroke();
+  if (!selected) return;
+
+  const value = labelInput.value.slice(0, 80);
+  if (!value.trim() || value === selected.label) return;
+
+  pushHistory();
+  selected.label = value;
+  dirty = true;
+  updateButtons();
+  renderStrokeList();
+});
+
+labelInput.addEventListener("change", () => {
+  if (tool !== "select") return;
+  const selected = selectedStroke();
+  if (!selected) return;
+
+  const value = labelInput.value.trim();
+  if (!value) {
+    labelInput.value = selected.label;
+    return;
+  }
+
+  if (value !== selected.label) {
+    pushHistory();
+    selected.label = value;
+    dirty = true;
+    renderAll();
+  }
+});
+
 
 moveTool.addEventListener("click", () => setTool("move"));
 selectTool.addEventListener("click", () => setTool("select"));

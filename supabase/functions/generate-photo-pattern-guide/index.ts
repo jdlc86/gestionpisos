@@ -38,7 +38,20 @@ function validLandmark(item: any) {
     Array.isArray(item.box_2d) &&
     item.box_2d.length === 4 &&
     item.box_2d.every((v: unknown) => Number.isFinite(Number(v))) &&
-    Number.isFinite(Number(item.alignment_score));
+    Number.isFinite(Number(item.alignment_score)) &&
+    Array.isArray(item.outer_contours) &&
+    item.outer_contours.length >= 1 &&
+    item.outer_contours.length <= 3 &&
+    item.outer_contours.every((contour: unknown) =>
+      Array.isArray(contour) &&
+      contour.length >= 6 &&
+      contour.every((p: unknown) =>
+        Array.isArray(p) &&
+        p.length === 2 &&
+        Number.isFinite(Number(p[0])) &&
+        Number.isFinite(Number(p[1]))
+      )
+    );
 }
 
 Deno.serve(async (req: Request) => {
@@ -108,12 +121,15 @@ Deno.serve(async (req: Request) => {
 
   const prompt = [
     "Choose the SINGLE best visual reference object for retaking this photograph from the same viewpoint.",
-    "Do not draw contours and do not describe the whole room.",
     "Prefer one large, distinctive, stable object with a clear silhouette and strong contrast.",
-    "Good examples: a large fan, fixed cabinet, doorway, window, radiator, countertop, sofa or bed.",
-    "Avoid shadows, reflections, floor lines, texture, small clutter, people, plants, cables and movable tiny objects.",
+    "Good examples: a large standing fan, fixed cabinet, doorway, window, radiator, countertop, sofa or bed.",
+    "Avoid shadows, reflections, floor lines, wall texture, small clutter, people, plants and cables.",
     "Return exactly one landmark.",
     "box_2d uses [ymin,xmin,ymax,xmax], normalized 0 to 1000 over the FULL image.",
+    "outer_contours must contain only the OUTER SILHOUETTE of the chosen object, not internal details.",
+    "Coordinates in outer_contours are ABSOLUTE over the full image, normalized 0 to 1000, each point [x,y].",
+    "For a standing fan, include only the outside boundary of the fan head and, if useful, separate outside boundaries for pole/base. NEVER trace grille lines, blades, controls or internal structure.",
+    "Use enough points to follow curves smoothly, but do not include texture or interior edges.",
     "alignment_score is 0 to 100 and estimates usefulness for camera alignment.",
     "Use a short Spanish label."
   ].join(" ");
@@ -150,9 +166,24 @@ Deno.serve(async (req: Request) => {
                     items: { type: "integer", minimum: 0, maximum: 1000 }
                   },
                   label: { type: "string" },
-                  alignment_score: { type: "integer", minimum: 0, maximum: 100 }
+                  alignment_score: { type: "integer", minimum: 0, maximum: 100 },
+                  outer_contours: {
+                    type: "array",
+                    minItems: 1,
+                    maxItems: 3,
+                    items: {
+                      type: "array",
+                      minItems: 6,
+                      items: {
+                        type: "array",
+                        minItems: 2,
+                        maxItems: 2,
+                        items: { type: "integer", minimum: 0, maximum: 1000 }
+                      }
+                    }
+                  }
                 },
-                required: ["box_2d", "label", "alignment_score"],
+                required: ["box_2d", "label", "alignment_score", "outer_contours"],
                 additionalProperties: false
               }
             }

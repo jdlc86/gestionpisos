@@ -30,9 +30,9 @@ test -s docs/photo-patterns.css
 test -s docs/photo-patterns.js
 node --check docs/photo-patterns.js
 test -s docs/photo-pattern-persistence.js
-grep -q 'photo-patterns.html?v=2026091403' docs/portfolio.html
-grep -q 'photo-patterns.js?v=2026091403' docs/photo-patterns.html
-grep -q 'photo-patterns.css?v=2026091403' docs/photo-patterns.html
+grep -q 'photo-patterns.html?v=2026091502' docs/portfolio.html
+grep -q 'photo-patterns.js?v=2026091502' docs/photo-patterns.html
+grep -q 'photo-patterns.css?v=2026091502' docs/photo-patterns.html
 grep -q 'photo_patterns_v2' docs/photo-patterns.js
 grep -q 'mode", "pattern"' docs/photo-patterns.js
 grep -q 'zone_label' docs/photo-patterns.js
@@ -93,6 +93,10 @@ if grep -q 'photo-gemini-guide.html' docs/photo-patterns.js; then
   exit 1
 fi
 grep -q 'pattern_id' docs/photo-patterns.js
+grep -q 'if (count > 0)' docs/photo-patterns.js
+grep -q 'url.searchParams.set("pattern_id", pattern.id)' docs/photo-patterns.js
+grep -q 'url.searchParams.set("mode", "verify")' docs/photo-patterns.js
+grep -q 'Probar verificación' docs/photo-patterns.js
 grep -q 'contour_data' docs/photo-reference-guide.js
 grep -q 'makeManualMask' docs/photo-reference-guide.js
 grep -q 'manual_silhouette_missing' docs/photo-reference-guide.js

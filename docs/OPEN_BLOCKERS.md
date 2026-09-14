@@ -537,3 +537,48 @@ En la rama de trabajo existen:
 Incluye áreas de Notificaciones/Broadcast, Pagos/Reclamaciones y Estadísticas.
 
 Los formularios son locales y no escriben remotamente hasta cerrar B-03.
+
+
+---
+
+## B-08 — Intercambio y deuda de Limpieza
+
+### Estado
+
+CERRADO ESTRUCTURALMENTE EN SUPABASE / VERSIONADO GIT PENDIENTE
+
+Aplicado remotamente el 2026-09-14:
+
+- lectura de solicitudes limitada a participantes;
+- inserción solo por el solicitante actual;
+- actualización solo mientras la solicitud está pendiente;
+- una sola solicitud pendiente por tarea;
+- una sola deuda por solicitud aceptada;
+- columna `decided_by`;
+- vínculo `swap_request_id` en deuda;
+- validación backend: solicitante debe ser responsable actual de la tarea;
+- solicitante y destinatario deben ser ocupantes activos del mismo piso;
+- el destinatario no puede ser el propio solicitante;
+- aceptación/rechazo solo por destinatario;
+- cancelación solo por solicitante;
+- identidad de la solicitud inmutable;
+- aceptación atómica: reasigna tarea + crea deuda no monetaria;
+- deuda visible para deudor, acreedor y administración autorizada.
+
+Migraciones remotas aplicadas:
+
+- `20260914064224 beta0_cleaning_swap_participant_read`
+- `20260914064231 beta0_cleaning_swap_write_policies`
+- `20260914064239 beta0_cleaning_swap_integrity`
+- `20260914064248 beta0_cleaning_swap_validation_trigger`
+- `20260914064258 beta0_cleaning_swap_decision_trigger`
+
+Security Advisor posterior:
+- desaparece `rls_enabled_no_policy` de `cleaning_swap_requests_v2`;
+- solo permanece la advertencia conocida de Leaked Password Protection.
+
+Pendiente para cierre total:
+- pruebas multiusuario reales de B-03;
+- versionar en Git los cinco SQL exactos anteriores. La escritura de esos archivos fue bloqueada por la capa de herramientas, no por GitHub/Supabase.
+
+No reabrir el diseño de B-08 salvo que las pruebas reales detecten una regresión.

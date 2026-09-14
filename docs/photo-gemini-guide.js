@@ -15,8 +15,29 @@ function uuidLike(value) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value || "");
 }
 
-async function waitForOpenCv(timeoutMs = 20000) {
+async function waitForOpenCv(timeoutMs = 30000) {
   const started = performance.now();
+
+  try {
+    if (window.__opencvReady) {
+      const ready = await Promise.race([
+        window.__opencvReady,
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("opencv_runtime_timeout")), timeoutMs)
+        )
+      ]);
+
+      let cv = window.cv || ready;
+      if (cv && typeof cv.then === "function") cv = await cv;
+      if (cv?.Mat && cv?.Canny) {
+        window.cv = cv;
+        return cv;
+      }
+    }
+  } catch (error) {
+    console.warn("OpenCV bootstrap promise failed", error);
+  }
+
   while (performance.now() - started < timeoutMs) {
     let cv = window.cv;
     if (cv && typeof cv.then === "function") {
@@ -30,6 +51,7 @@ async function waitForOpenCv(timeoutMs = 20000) {
     if (cv?.Mat && cv?.Canny) return cv;
     await new Promise(resolve => setTimeout(resolve, 100));
   }
+
   throw new Error("opencv_runtime_unavailable");
 }
 

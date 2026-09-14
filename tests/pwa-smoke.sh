@@ -40,14 +40,11 @@ test -s docs/photo-gemini-guide.html
 test -s docs/photo-gemini-guide.css
 test -s docs/photo-gemini-guide.js
 grep -q 'generate-photo-pattern-guide' docs/photo-gemini-guide.js
-grep -q 'waitForOpenCv' docs/photo-gemini-guide.js
+grep -q 'sobelPrimaryRoi' docs/photo-gemini-guide.js
+grep -q 'Gemini está eligiendo la mejor referencia' docs/photo-gemini-guide.js
+grep -q 'alignment_score' supabase/functions/generate-photo-pattern-guide/index.ts
 grep -q 'docs.opencv.org/4.10.0/opencv.js' docs/photo-gemini-guide.js
-grep -q 'loadOpenCvOfficial' docs/photo-gemini-guide.js
 grep -q 'cv.Canny' docs/photo-gemini-guide.js
-grep -q 'nearestEdgePoint' docs/photo-gemini-guide.js
-grep -q 'smoothClosed' docs/photo-gemini-guide.js
-grep -q 'drawSmoothClosedPath' docs/photo-gemini-guide.js
-grep -q 'Guía ajustada a borde real' docs/photo-gemini-guide.js
 grep -q 'landmarks' supabase/functions/generate-photo-pattern-guide/index.ts
 grep -q 'Contour coordinates are ABSOLUTE' supabase/functions/generate-photo-pattern-guide/index.ts
 grep -q 'same physical furniture unit' supabase/functions/generate-photo-pattern-guide/index.ts

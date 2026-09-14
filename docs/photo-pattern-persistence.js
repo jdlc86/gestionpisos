@@ -90,7 +90,7 @@ if (params.get("mode") === "pattern") {
         const link = document.createElement("a");
         link.className = "ghost";
         link.textContent = "Dibujar silueta";
-        link.href = `./photo-pattern-editor.html?pattern_id=${patternId}`;
+        link.href = `./photo-pattern-editor.html?v=2026091402&pattern_id=${patternId}`;
         message.after(link);
       } catch (error) {
         console.error("pattern persistence failed", error);

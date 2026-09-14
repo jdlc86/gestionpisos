@@ -145,3 +145,4 @@
 
   window.addEventListener('pagehide', stopCamera);
 })();
+import('./photo-alignment.js').catch(()=>{});

@@ -119,3 +119,33 @@ Reconciliation status:
 - Run finalization is not applied yet.
 
 Do not consider photo-capture persistence closed until remote and Git are fully reconciled.
+
+
+## Photo capture persistence — retry 2026-09-14
+
+Applied remotely:
+- 20260914140530 beta0_photo_item_storage_path_restrictive_min
+- 20260914140615 beta0_submit_photo_verification_run_fn
+
+The restrictive INSERT policy now forces the deterministic item path:
+`organization_id/run_id/item_id.jpg`.
+
+The run-finalization function exists remotely and verifies:
+- authenticated identity via `auth.uid()`;
+- actor ownership of the run;
+- matching item;
+- run status `capturing`;
+- existence of the object in the private `photo-verification` bucket;
+- object ownership by the same actor.
+
+IMPORTANT: the attempted permission hardening for this SECURITY DEFINER function
+was intercepted before reaching Supabase. Security Advisor currently reports:
+- anon_security_definer_function_executable;
+- authenticated_security_definer_function_executable.
+
+Therefore the function must NOT be considered security-closed yet. Do not wire
+the production frontend to this RPC until its EXECUTE privileges are narrowed
+or the design is replaced by an equivalent non-warning implementation.
+
+Git reconciliation also remains incomplete for some SQL files because writing
+their exact contents was intercepted by the tool layer.

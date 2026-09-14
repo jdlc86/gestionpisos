@@ -345,6 +345,20 @@ function archivedAtFor(status, existing) {
   return null;
 }
 
+function friendlyWriteError(error, fallback) {
+  const text = String(error?.message || error || "");
+  if (text.includes("owner_has_active_properties")) {
+    return "Archiva primero los pisos activos de este propietario.";
+  }
+  if (text.includes("property_has_active_rooms")) {
+    return "Archiva primero las habitaciones activas de este piso.";
+  }
+  if (text.includes("row-level security")) {
+    return "Tu rol actual no tiene permiso para realizar este cambio.";
+  }
+  return fallback;
+}
+
 async function saveItem(event) {
   event.preventDefault();
   if (!editorForm.reportValidity()) return;
@@ -406,7 +420,7 @@ async function saveItem(event) {
     await loadPortfolio();
   } catch (error) {
     console.error("portfolio save failed", error);
-    setStatus("No se pudo guardar el cambio. No se modificó la vista local.", "Error.");
+    setStatus(friendlyWriteError(error, "No se pudo guardar el cambio."), "Error.");
   } finally {
     saveButton.disabled = false;
   }
@@ -415,6 +429,16 @@ async function saveItem(event) {
 async function archiveItem(id) {
   const item = findItem(current, id);
   if (!item || item.status === "archived") return;
+
+  if (current === "owners" && state.properties.some(x => x.ownerId === id && x.status !== "archived")) {
+    setStatus("Archiva primero los pisos activos de este propietario.", "No se puede archivar.");
+    return;
+  }
+  if (current === "properties" && state.rooms.some(x => x.propertyId === id && x.status !== "archived")) {
+    setStatus("Archiva primero las habitaciones activas de este piso.", "No se puede archivar.");
+    return;
+  }
+
   const now = new Date().toISOString();
 
   try {
@@ -430,7 +454,7 @@ async function archiveItem(id) {
     await loadPortfolio();
   } catch (error) {
     console.error("portfolio archive failed", error);
-    setStatus("No se pudo archivar el registro.", "Error.");
+    setStatus(friendlyWriteError(error, "No se pudo archivar el registro."), "Error.");
   }
 }
 

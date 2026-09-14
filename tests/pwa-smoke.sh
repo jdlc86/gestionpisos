@@ -28,6 +28,7 @@ bash tests/portfolio-smoke.sh
 test -s docs/photo-patterns.html
 test -s docs/photo-patterns.css
 test -s docs/photo-patterns.js
+node --check docs/photo-patterns.js
 test -s docs/photo-pattern-persistence.js
 grep -q 'photo-patterns.html' docs/portfolio.html
 grep -q 'photo_patterns_v2' docs/photo-patterns.js

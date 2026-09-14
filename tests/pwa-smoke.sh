@@ -53,4 +53,11 @@ grep -q 'auth-guard.js' docs/photo-camera.html
 grep -q 'login.html' docs/auth-guard.js
 grep -q 'login.html' docs/sw.js
 
+test -s docs/photo-persistence.js
+grep -q 'photo-persistence.js' docs/photo-camera.html
+grep -q 'photo_verification_runs_v2' docs/photo-persistence.js
+grep -q 'photo_verification_items_v2' docs/photo-persistence.js
+grep -q 'submit-photo-verification' docs/photo-persistence.js
+grep -q 'alignment_meta' docs/photo-persistence.js
+
 echo 'PWA smoke checks passed'

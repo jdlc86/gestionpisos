@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="es" data-auth-pending="1">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="stylesheet" href="./app.css">
+  <link rel="stylesheet" href="./photo-gemini-guide.css?v=2026091401">
+  <title>Allaiso · Guía Gemini</title>
+</head>
+<body>
+  <main class="shell gemini-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">ALLAISO</p>
+        <h1>Guía estructural Gemini</h1>
+      </div>
+      <a class="ghost" href="./photo-patterns.html">Volver</a>
+    </header>
+
+    <section class="gemini-hero">
+      <span class="badge">Prueba Gemini</span>
+      <h2 id="guideTitle">Analizando patrón…</h2>
+      <p>Esta prueba evalúa si Gemini identifica objetos y estructuras estables sin confundir sombras o texturas.</p>
+    </section>
+
+    <p id="guideStatus" class="camera-message" role="status" aria-live="polite">Cargando referencia…</p>
+
+    <section id="guideStage" class="gemini-stage" hidden>
+      <div class="gemini-image-wrap">
+        <img id="referenceImage" alt="Fotografía patrón">
+        <svg id="guideOverlay" class="gemini-overlay" viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-label="Contornos detectados por Gemini"></svg>
+      </div>
+    </section>
+
+    <section id="guideLegend" class="gemini-legend" hidden>
+      <h3>Elementos seleccionados</h3>
+      <ol id="guideItems"></ol>
+    </section>
+  </main>
+
+  <script type="module" src="./photo-gemini-guide.js?v=2026091401"></script>
+  <script type="module" src="./auth-guard.js"></script>
+</body>
+</html>

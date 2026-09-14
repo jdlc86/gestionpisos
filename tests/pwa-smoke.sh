@@ -35,26 +35,28 @@ grep -q 'mode", "pattern"' docs/photo-patterns.js
 grep -q 'zone_label' docs/photo-patterns.js
 grep -q 'target_key: zoneLabel' docs/photo-pattern-persistence.js
 test -s docs/photo-reference-guide.js
-grep -q 'Probar guía Gemini' docs/photo-patterns.js
-test -s docs/photo-gemini-guide.html
-test -s docs/photo-gemini-guide.css
-test -s docs/photo-gemini-guide.js
-grep -q 'generate-photo-pattern-guide' docs/photo-gemini-guide.js
-grep -q 'renderSobelBand' docs/photo-gemini-guide.js
-grep -q 'Gemini está localizando la silueta exterior principal' docs/photo-gemini-guide.js
-grep -q 'alignment_score' supabase/functions/generate-photo-pattern-guide/index.ts
-grep -q 'outer_contour' supabase/functions/generate-photo-pattern-guide/index.ts
-grep -q 'NEVER trace grille lines' supabase/functions/generate-photo-pattern-guide/index.ts
-grep -q 'edge_function_failed' docs/photo-gemini-guide.js
-grep -q 'buildContourBand' docs/photo-gemini-guide.js
-grep -q 'Choose the SINGLE best visual reference object' supabase/functions/generate-photo-pattern-guide/index.ts
-grep -q 'Return exactly one landmark' supabase/functions/generate-photo-pattern-guide/index.ts
-grep -q 'landmarks' supabase/functions/generate-photo-pattern-guide/index.ts
-grep -q 'gemini-box' docs/photo-gemini-guide.css
-grep -q 'photo-gemini-guide.html' docs/photo-patterns.js
-test -s supabase/functions/generate-photo-pattern-guide/index.ts
-grep -q 'CONTORNO_GEMINI_API_KEY' supabase/functions/generate-photo-pattern-guide/index.ts
-grep -q 'gemini-3.6-flash' supabase/functions/generate-photo-pattern-guide/index.ts
+test -s docs/photo-pattern-editor.html
+test -s docs/photo-pattern-editor.css
+test -s docs/photo-pattern-editor.js
+grep -q 'photo-pattern-editor.html' docs/photo-patterns.js
+grep -q 'Editar silueta' docs/photo-patterns.js
+grep -q 'Dibujar silueta' docs/photo-patterns.js
+grep -q 'contour_data' docs/photo-pattern-editor.js
+grep -q 'raw_points' docs/photo-pattern-editor.js
+grep -q 'Suavizado suave' docs/photo-pattern-editor.js
+grep -q 'Suavizado medio' docs/photo-pattern-editor.js
+grep -q 'Cerrar trazo' docs/photo-pattern-editor.js
+grep -q 'property_staff_access_v3' docs/photo-pattern-editor.js
+grep -q 'can_write' docs/photo-pattern-editor.js
+grep -q 'save-photo-pattern-contours' docs/photo-pattern-editor.js
+test -s supabase/functions/save-photo-pattern-contours/index.ts
+grep -q 'insufficient_write_permission' supabase/functions/save-photo-pattern-contours/index.ts
+grep -q 'pattern_version_conflict' supabase/functions/save-photo-pattern-contours/index.ts
+grep -q 'contour_data' supabase/functions/save-photo-pattern-contours/index.ts
+if grep -q 'photo-gemini-guide.html' docs/photo-patterns.js; then
+  echo 'Active photo pattern flow must not depend on Gemini.'
+  exit 1
+fi
 grep -q 'pattern_id' docs/photo-patterns.js
 grep -q 'reference_storage_path' docs/photo-reference-guide.js
 grep -q 'photo-verification' docs/photo-reference-guide.js

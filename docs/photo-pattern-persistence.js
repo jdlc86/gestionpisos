@@ -17,7 +17,7 @@ if (params.get("mode") === "pattern") {
   if (hint) hint.textContent = "Captura la vista que se usará como referencia";
   if (title) title.textContent = "Registrar patrón";
   if (heroTitle) heroTitle.textContent = "Captura la referencia de esta zona.";
-  if (heroText) heroText.textContent = "Esta primera fotografía define el encuadre de referencia. La IA no se utiliza en esta fase.";
+  if (heroText) heroText.textContent = "Esta fotografía define el encuadre de referencia. Después podrás dibujar manualmente una o varias siluetas sobre ella.";
 
   const uuidLike = value => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value || "");
 
@@ -89,8 +89,8 @@ if (params.get("mode") === "pattern") {
 
         const link = document.createElement("a");
         link.className = "ghost";
-        link.href = "./photo-patterns.html";
-        link.textContent = "Volver a patrones";
+        link.textContent = "Dibujar silueta";
+        link.href = `./photo-pattern-editor.html?pattern_id=${patternId}`;
         message.after(link);
       } catch (error) {
         console.error("pattern persistence failed", error);

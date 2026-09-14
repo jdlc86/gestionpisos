@@ -10,8 +10,15 @@ permissions:
 
 jobs:
   active-schema:
+    name: Schema Guard
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Reject legacy Supabase table usage
         run: bash tests/no-legacy-schema.sh
+
+      - name: Verify security regression artifacts
+        run: bash tests/schema-regression-smoke.sh
+
+      - name: Run isolated PostgreSQL security regression
+        run: bash tests/database-regression-v2.sh

@@ -7,6 +7,7 @@ const status = document.getElementById("guideStatus");
 const stage = document.getElementById("guideStage");
 const image = document.getElementById("referenceImage");
 const overlay = document.getElementById("guideOverlay");
+const hybrid = document.getElementById("hybridOverlay");
 const legend = document.getElementById("guideLegend");
 const itemsList = document.getElementById("guideItems");
 
@@ -14,29 +15,10 @@ function uuidLike(value) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value || "");
 }
 
-function contourCentroid(contours) {
-  let x = 0;
-  let y = 0;
-  let count = 0;
-
-  contours.forEach(contour => {
-    contour.forEach(point => {
-      x += Number(point[0]);
-      y += Number(point[1]);
-      count++;
-    });
-  });
-
-  return count ? [x / count, y / count] : [500, 500];
-}
-
-function renderOverlay(items) {
+function drawDiagnosticBoxes(items) {
   overlay.replaceChildren();
-  itemsList.replaceChildren();
-
   items.forEach((item, index) => {
     const [ymin, xmin, ymax, xmax] = item.box_2d.map(Number);
-
     const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
     rect.setAttribute("x", String(xmin));
     rect.setAttribute("y", String(ymin));
@@ -45,27 +27,109 @@ function renderOverlay(items) {
     rect.setAttribute("class", "gemini-box");
     overlay.append(rect);
 
-    item.contours.forEach(contour => {
-      const polygon = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-      polygon.setAttribute(
-        "points",
-        contour.map(point => Number(point[0]) + "," + Number(point[1])).join(" ")
-      );
-      polygon.setAttribute("class", "gemini-contour");
-      overlay.append(polygon);
-    });
-
-    const [cx, cy] = contourCentroid(item.contours);
     const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    label.setAttribute("x", String(cx));
-    label.setAttribute("y", String(cy));
+    label.setAttribute("x", String((xmin + xmax) / 2));
+    label.setAttribute("y", String((ymin + ymax) / 2));
     label.setAttribute("text-anchor", "middle");
     label.textContent = String(index + 1);
     overlay.append(label);
+  });
+}
 
+function buildContourBand(items, size) {
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  ctx.strokeStyle = "#fff";
+  ctx.lineWidth = 32;
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+
+  items.forEach(item => {
+    item.contours.forEach(contour => {
+      if (!contour.length) return;
+      ctx.beginPath();
+      contour.forEach((point, i) => {
+        const x = Number(point[0]) / 1000 * size;
+        const y = Number(point[1]) / 1000 * size;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.closePath();
+      ctx.stroke();
+    });
+  });
+
+  return ctx.getImageData(0, 0, size, size).data;
+}
+
+function buildEdgeMap(size) {
+  const source = document.createElement("canvas");
+  source.width = size;
+  source.height = size;
+  const ctx = source.getContext("2d", { willReadFrequently: true });
+  ctx.drawImage(image, 0, 0, size, size);
+  const rgba = ctx.getImageData(0, 0, size, size).data;
+  const gray = new Float32Array(size * size);
+
+  for (let p = 0, i = 0; p < gray.length; p++, i += 4) {
+    gray[p] = rgba[i] * 0.299 + rgba[i + 1] * 0.587 + rgba[i + 2] * 0.114;
+  }
+
+  const mag = new Float32Array(size * size);
+  const values = [];
+
+  for (let y = 1; y < size - 1; y++) {
+    for (let x = 1; x < size - 1; x++) {
+      const p = y * size + x;
+      const gx =
+        -gray[p - size - 1] + gray[p - size + 1]
+        - 2 * gray[p - 1] + 2 * gray[p + 1]
+        - gray[p + size - 1] + gray[p + size + 1];
+      const gy =
+        -gray[p - size - 1] - 2 * gray[p - size] - gray[p - size + 1]
+        + gray[p + size - 1] + 2 * gray[p + size] + gray[p + size + 1];
+      const m = Math.hypot(gx, gy);
+      mag[p] = m;
+      values.push(m);
+    }
+  }
+
+  values.sort((a, b) => a - b);
+  const threshold = values[Math.floor(values.length * 0.88)] || 80;
+  return { mag, threshold };
+}
+
+function renderHybrid(items) {
+  const size = 720;
+  hybrid.width = size;
+  hybrid.height = size;
+  const out = hybrid.getContext("2d");
+  out.clearRect(0, 0, size, size);
+
+  const band = buildContourBand(items, size);
+  const { mag, threshold } = buildEdgeMap(size);
+  const pixels = out.createImageData(size, size);
+
+  for (let p = 0; p < mag.length; p++) {
+    const bandAlpha = band[p * 4 + 3];
+    if (!bandAlpha || mag[p] < threshold) continue;
+    const i = p * 4;
+    pixels.data[i] = 255;
+    pixels.data[i + 1] = 255;
+    pixels.data[i + 2] = 255;
+    pixels.data[i + 3] = 235;
+  }
+
+  out.putImageData(pixels, 0, 0);
+}
+
+function renderLegend(items) {
+  itemsList.replaceChildren();
+  items.forEach(item => {
     const li = document.createElement("li");
-    li.textContent = item.label + " · " + item.contours.length + " contorno" +
-      (item.contours.length === 1 ? "" : "s");
+    li.textContent = item.label;
     itemsList.append(li);
   });
 }
@@ -81,9 +145,7 @@ async function load() {
 
   if (patternResult.error) throw patternResult.error;
   const pattern = patternResult.data;
-  if (!pattern?.active || !pattern.reference_storage_path) {
-    throw new Error("pattern_not_available");
-  }
+  if (!pattern?.active || !pattern.reference_storage_path) throw new Error("pattern_not_available");
 
   title.textContent = "Patrón: " + (pattern.target_key || pattern.name || "sin etiqueta");
 
@@ -91,16 +153,14 @@ async function load() {
     .from("photo-verification")
     .download(pattern.reference_storage_path);
 
-  if (download.error || !download.data) {
-    throw download.error || new Error("reference_download_failed");
-  }
+  if (download.error || !download.data) throw download.error || new Error("reference_download_failed");
 
   const objectUrl = URL.createObjectURL(download.data);
   image.src = objectUrl;
   await image.decode();
 
   stage.hidden = false;
-  status.textContent = "Gemini está generando siluetas estructurales…";
+  status.textContent = "Gemini está seleccionando estructuras…";
 
   const result = await supabase.functions.invoke("generate-photo-pattern-guide", {
     body: { pattern_id: pattern.id }
@@ -111,14 +171,15 @@ async function load() {
     throw new Error(result.data?.error || "gemini_guide_failed");
   }
 
-  renderOverlay(result.data.landmarks);
+  const items = result.data.landmarks;
+  drawDiagnosticBoxes(items);
+  renderHybrid(items);
+  renderLegend(items);
   legend.hidden = false;
-  status.textContent =
-    "Gemini seleccionó " + result.data.landmarks.length + " estructuras/objetos.";
+  status.textContent = "Guía híbrida lista · " + items.length + " estructuras.";
 }
 
 load().catch(error => {
-  console.error("Gemini guide test failed", error);
-  status.textContent =
-    "No se pudo generar la guía Gemini: " + (error?.message || "error desconocido");
+  console.error("Hybrid guide failed", error);
+  status.textContent = "No se pudo generar la guía híbrida: " + (error?.message || "error desconocido");
 });

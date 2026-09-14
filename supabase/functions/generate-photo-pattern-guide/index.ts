@@ -124,6 +124,7 @@ Deno.serve(async (req: Request) => {
     "Prefer doors, windows, cabinets, countertops, large appliances, tables, fixed shelving, bed or sofa outlines, ceiling fans or large fans, and other dominant objects.",
     "Ignore shadows, reflections, highlights, light gradients, wall or floor texture, grout lines, decorative patterns, small clutter, cables, people, clothing, plants and tiny objects.",
     "Return 3 to 8 landmarks maximum.",
+    "Merge adjacent parts that belong to the same physical furniture unit or architectural element into ONE landmark. Do not split one cabinet or furniture unit into multiple landmarks.",
     "For each landmark return one to four OUTER CONTOURS that make the object recognizable as a silhouette.",
     "Contour coordinates are ABSOLUTE in the FULL IMAGE, normalized from 0 to 1000.",
     "Each contour point MUST be [x,y], where x is horizontal from left to right and y is vertical from top to bottom.",

@@ -40,9 +40,12 @@ test -s docs/photo-gemini-guide.html
 test -s docs/photo-gemini-guide.css
 test -s docs/photo-gemini-guide.js
 grep -q 'generate-photo-pattern-guide' docs/photo-gemini-guide.js
-grep -q 'item.contours' docs/photo-gemini-guide.js
+grep -q 'buildContourBand' docs/photo-gemini-guide.js
+grep -q 'buildEdgeMap' docs/photo-gemini-guide.js
+grep -q 'Guía híbrida lista' docs/photo-gemini-guide.js
 grep -q 'landmarks' supabase/functions/generate-photo-pattern-guide/index.ts
 grep -q 'Contour coordinates are ABSOLUTE' supabase/functions/generate-photo-pattern-guide/index.ts
+grep -q 'same physical furniture unit' supabase/functions/generate-photo-pattern-guide/index.ts
 grep -q 'gemini-box' docs/photo-gemini-guide.css
 grep -q 'photo-gemini-guide.html' docs/photo-patterns.js
 test -s supabase/functions/generate-photo-pattern-guide/index.ts

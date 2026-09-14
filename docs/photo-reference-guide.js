@@ -93,10 +93,11 @@ async function loadReference() {
     image.src = url;
   });
 
-  const mask = makeEdgeMask(image);
+  const masks = makeEdgeMasks(image);
   URL.revokeObjectURL(url);
 
-  window.__allaisoReferenceMaskCanvas = mask;
+  window.__allaisoReferenceMaskCanvas = masks.analysis;
+  window.__allaisoReferenceDisplayMaskCanvas = masks.preview;
   window.__allaisoReferencePattern = {
     id: pattern.id,
     name: pattern.name,
@@ -104,11 +105,11 @@ async function loadReference() {
   };
 
   if (guide) {
-    const preview = mask.cloneNode(true);
-    preview.width = mask.width;
-    preview.height = mask.height;
+    const preview = masks.preview.cloneNode(true);
+    preview.width = masks.preview.width;
+    preview.height = masks.preview.height;
     preview.className = "photo-camera__reference-mask";
-    preview.getContext("2d").drawImage(mask, 0, 0);
+    preview.getContext("2d").drawImage(masks.preview, 0, 0);
     guide.append(preview);
   }
 

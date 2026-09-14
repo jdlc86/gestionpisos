@@ -21,4 +21,4 @@ jobs:
         run: bash tests/schema-regression-smoke.sh
 
       - name: Run isolated PostgreSQL security regression
-        run: bash tests/database-regression.sh
+        run: bash tests/database-regression-v2.sh

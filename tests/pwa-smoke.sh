@@ -35,7 +35,15 @@ grep -q 'mode", "pattern"' docs/photo-patterns.js
 grep -q 'zone_label' docs/photo-patterns.js
 grep -q 'target_key: zoneLabel' docs/photo-pattern-persistence.js
 test -s docs/photo-reference-guide.js
-grep -q 'Probar verificación' docs/photo-patterns.js
+grep -q 'Probar guía Gemini' docs/photo-patterns.js
+test -s docs/photo-gemini-guide.html
+test -s docs/photo-gemini-guide.css
+test -s docs/photo-gemini-guide.js
+grep -q 'generate-photo-pattern-guide' docs/photo-gemini-guide.js
+grep -q 'photo-gemini-guide.html' docs/photo-patterns.js
+test -s supabase/functions/generate-photo-pattern-guide/index.ts
+grep -q 'CONTORNO_GEMINI_API_KEY' supabase/functions/generate-photo-pattern-guide/index.ts
+grep -q 'gemini-3.6-flash' supabase/functions/generate-photo-pattern-guide/index.ts
 grep -q 'pattern_id' docs/photo-patterns.js
 grep -q 'reference_storage_path' docs/photo-reference-guide.js
 grep -q 'photo-verification' docs/photo-reference-guide.js

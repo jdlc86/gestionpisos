@@ -8,155 +8,163 @@ const guide = document.getElementById("cameraGuide");
 const openCamera = document.getElementById("openCamera");
 const cameraMessage = document.getElementById("cameraMessage");
 
+const ENCODER_URL = "https://huggingface.co/spaces/Akbartus/projects/resolve/main/mobilesam.encoder.onnx";
+const DECODER_URL = "https://cdn.jsdelivr.net/gh/akbartus/MobileSAM-in-the-Browser@main/models/mobilesam.decoder.quant.onnx";
+const MODEL_W = 1024;
+const MODEL_H = 684;
+
 function uuidLike(value) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value || "");
 }
 
+function makeInputTensor(image, ort) {
+  const canvas = document.createElement("canvas");
+  canvas.width = MODEL_W;
+  canvas.height = MODEL_H;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  ctx.drawImage(image, 0, 0, MODEL_W, MODEL_H);
+  const rgba = ctx.getImageData(0, 0, MODEL_W, MODEL_H).data;
+  const rgb = new Float32Array(MODEL_W * MODEL_H * 3);
 
-const PIDINET_MODEL_URL = "https://huggingface.co/bdck/PiDiNet_ONNX/resolve/main/table5_pidinet_tiny.onnx";
-const PIDINET_DATA_URL = "https://huggingface.co/bdck/PiDiNet_ONNX/resolve/main/table5_pidinet_tiny.onnx.data";
-const ORT_MODULE_URL = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.29.0/+esm";
-
-function roundedModelSize(width, height) {
-  const maxSide = 512;
-  const scale = Math.min(1, maxSide / Math.max(width, height));
-  const round32 = value => Math.max(128, Math.round(value * scale / 32) * 32);
-  return { width: round32(width), height: round32(height) };
+  for (let p = 0, i = 0, o = 0; p < MODEL_W * MODEL_H; p++, i += 4, o += 3) {
+    rgb[o] = rgba[i];
+    rgb[o + 1] = rgba[i + 1];
+    rgb[o + 2] = rgba[i + 2];
+  }
+  return new ort.Tensor("float32", rgb, [MODEL_H, MODEL_W, 3]);
 }
 
-function edgeThreshold(values) {
-  const histogram = new Uint32Array(256);
-  for (let i = 0; i < values.length; i++) {
-    const v = Math.max(0, Math.min(1, values[i]));
-    histogram[Math.min(255, Math.round(v * 255))]++;
-  }
+function maskFromTensor(tensor) {
+  const values = tensor.data;
+  const size = MODEL_W * MODEL_H;
+  const offset = Math.max(0, values.length - size);
+  const mask = new Uint8Array(size);
+  let area = 0;
 
-  const target = Math.max(1, Math.round(values.length * 0.10));
-  let seen = 0;
-  for (let i = 255; i >= 0; i--) {
-    seen += histogram[i];
-    if (seen >= target) return Math.max(0.16, Math.min(0.52, i / 255));
+  for (let i = 0; i < size; i++) {
+    if (Number(values[offset + i]) > 0) {
+      mask[i] = 1;
+      area++;
+    }
   }
-  return 0.28;
+  return { mask, area };
 }
 
-async function makeNeuralEdgeMask(image) {
-  const ort = await import(ORT_MODULE_URL);
-  ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.29.0/dist/";
-
-  const size = roundedModelSize(image.naturalWidth, image.naturalHeight);
-  const source = document.createElement("canvas");
-  source.width = size.width;
-  source.height = size.height;
-  const ctx = source.getContext("2d", { willReadFrequently: true });
-  ctx.drawImage(image, 0, 0, size.width, size.height);
-
-  const pixels = ctx.getImageData(0, 0, size.width, size.height).data;
-  const plane = size.width * size.height;
-  const input = new Float32Array(plane * 3);
-  const mean = [0.485, 0.456, 0.406];
-  const std = [0.229, 0.224, 0.225];
-
-  for (let p = 0, i = 0; p < plane; p++, i += 4) {
-    input[p] = (pixels[i] / 255 - mean[0]) / std[0];
-    input[plane + p] = (pixels[i + 1] / 255 - mean[1]) / std[1];
-    input[plane * 2 + p] = (pixels[i + 2] / 255 - mean[2]) / std[2];
+function iou(a, b) {
+  let intersection = 0;
+  let union = 0;
+  for (let i = 0; i < a.length; i++) {
+    const av = a[i] !== 0;
+    const bv = b[i] !== 0;
+    if (av && bv) intersection++;
+    if (av || bv) union++;
   }
-
-  const session = await ort.InferenceSession.create(PIDINET_MODEL_URL, {
-    executionProviders: ["wasm"],
-    externalData: [{
-      path: "table5_pidinet_tiny.onnx.data",
-      data: PIDINET_DATA_URL
-    }]
-  });
-
-  const results = await session.run({
-    image: new ort.Tensor("float32", input, [1, 3, size.height, size.width])
-  });
-
-  const fused = results.fused || results[session.outputNames[session.outputNames.length - 1]];
-  if (!fused?.data?.length) throw new Error("pidinet_missing_output");
-
-  const values = fused.data;
-  const threshold = edgeThreshold(values);
-  const out = document.createElement("canvas");
-  out.width = size.width;
-  out.height = size.height;
-  const octx = out.getContext("2d");
-  const result = octx.createImageData(size.width, size.height);
-
-  for (let p = 0; p < plane; p++) {
-    const value = Math.max(0, Math.min(1, Number(values[p]) || 0));
-    const alpha = value >= threshold
-      ? Math.min(255, Math.round(185 + ((value - threshold) / Math.max(0.001, 1 - threshold)) * 70))
-      : 0;
-    const i = p * 4;
-    result.data[i] = 255;
-    result.data[i + 1] = 255;
-    result.data[i + 2] = 255;
-    result.data[i + 3] = alpha;
-  }
-
-  octx.putImageData(result, 0, 0);
-  return out;
+  return union ? intersection / union : 0;
 }
 
-function makeEdgeMask(image) {
-  const maxSide = 360;
-  const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
-  const w = Math.max(96, Math.round(image.naturalWidth * scale));
-  const h = Math.max(96, Math.round(image.naturalHeight * scale));
+function structuralMask(regions) {
+  const canvas = document.createElement("canvas");
+  canvas.width = MODEL_W;
+  canvas.height = MODEL_H;
+  const ctx = canvas.getContext("2d");
+  const imageData = ctx.createImageData(MODEL_W, MODEL_H);
+  const out = imageData.data;
 
-  const source = document.createElement("canvas");
-  source.width = w;
-  source.height = h;
-  const sctx = source.getContext("2d", { willReadFrequently: true });
-  sctx.drawImage(image, 0, 0, w, h);
+  for (const region of regions) {
+    const mask = region.mask;
+    for (let y = 1; y < MODEL_H - 1; y++) {
+      for (let x = 1; x < MODEL_W - 1; x++) {
+        const p = y * MODEL_W + x;
+        if (!mask[p]) continue;
+        const boundary =
+          !mask[p - 1] || !mask[p + 1] ||
+          !mask[p - MODEL_W] || !mask[p + MODEL_W];
+        if (!boundary) continue;
 
-  const pixels = sctx.getImageData(0, 0, w, h);
-  const gray = new Uint8Array(w * h);
-  for (let i = 0, p = 0; i < pixels.data.length; i += 4, p++) {
-    gray[p] = (pixels.data[i] * 77 + pixels.data[i + 1] * 150 + pixels.data[i + 2] * 29) >> 8;
-  }
-
-  const out = document.createElement("canvas");
-  out.width = w;
-  out.height = h;
-  const octx = out.getContext("2d");
-  const result = octx.createImageData(w, h);
-
-  for (let y = 1; y < h - 1; y++) {
-    for (let x = 1; x < w - 1; x++) {
-      const p = y * w + x;
-      const gx =
-        -gray[p - w - 1] + gray[p - w + 1]
-        - 2 * gray[p - 1] + 2 * gray[p + 1]
-        - gray[p + w - 1] + gray[p + w + 1];
-      const gy =
-        -gray[p - w - 1] - 2 * gray[p - w] - gray[p - w + 1]
-        + gray[p + w - 1] + 2 * gray[p + w] + gray[p + w + 1];
-      const mag = Math.hypot(gx, gy);
-      const alpha = mag > 70 ? Math.min(255, Math.round((mag - 70) * 2.1)) : 0;
-      const i = p * 4;
-      result.data[i] = 255;
-      result.data[i + 1] = 255;
-      result.data[i + 2] = 255;
-      result.data[i + 3] = alpha;
+        const i = p * 4;
+        out[i] = 255;
+        out[i + 1] = 255;
+        out[i + 2] = 255;
+        out[i + 3] = 235;
+      }
     }
   }
 
-  octx.putImageData(result, 0, 0);
-  return out;
+  ctx.putImageData(imageData, 0, 0);
+  return canvas;
+}
+
+async function makeStructuralMask(image) {
+  const ort = window.ort;
+  if (!ort?.InferenceSession) throw new Error("mobilesam_runtime_missing");
+
+  ort.env.wasm.numThreads = 1;
+  ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/";
+
+  if (hint) hint.textContent = "Analizando estructura de la escena…";
+
+  const encoder = await ort.InferenceSession.create(ENCODER_URL);
+  const encoderResult = await encoder.run({
+    input_image: makeInputTensor(image, ort)
+  });
+  const embeddings = encoderResult.image_embeddings;
+  if (!embeddings) throw new Error("mobilesam_embedding_missing");
+
+  const decoder = await ort.InferenceSession.create(DECODER_URL);
+  const maskInput = new ort.Tensor("float32", new Float32Array(256 * 256), [1, 1, 256, 256]);
+  const hasMask = new ort.Tensor("float32", new Float32Array([0]), [1]);
+  const originalSize = new ort.Tensor("float32", new Float32Array([MODEL_H, MODEL_W]), [2]);
+
+  const points = [];
+  for (const fy of [0.20, 0.40, 0.60, 0.80]) {
+    for (const fx of [0.20, 0.40, 0.60, 0.80]) {
+      points.push([Math.round(MODEL_W * fx), Math.round(MODEL_H * fy)]);
+    }
+  }
+
+  const candidates = [];
+  const total = MODEL_W * MODEL_H;
+
+  for (const [x, y] of points) {
+    const pointCoords = new ort.Tensor("float32", new Float32Array([x, y, 0, 0]), [1, 2, 2]);
+    const pointLabels = new ort.Tensor("float32", new Float32Array([1, -1]), [1, 2]);
+
+    const result = await decoder.run({
+      image_embeddings: embeddings,
+      point_coords: pointCoords,
+      point_labels: pointLabels,
+      mask_input: maskInput,
+      has_mask_input: hasMask,
+      orig_im_size: originalSize
+    });
+
+    const tensor = result.masks || result[decoder.outputNames.find(name => name.includes("mask"))];
+    if (!tensor) continue;
+
+    const region = maskFromTensor(tensor);
+    const ratio = region.area / total;
+    if (ratio < 0.025 || ratio > 0.72) continue;
+
+    if (candidates.some(existing => iou(existing.mask, region.mask) > 0.82)) continue;
+    candidates.push(region);
+  }
+
+  candidates.sort((a, b) => b.area - a.area);
+  const selected = candidates.slice(0, 10);
+  if (selected.length < 2) throw new Error("mobilesam_not_enough_regions");
+
+  window.__allaisoStructuralRegions = selected.length;
+  return structuralMask(selected);
 }
 
 async function loadReference() {
   if (mode !== "verify" || !uuidLike(patternId)) return;
 
   document.documentElement.dataset.referenceGuide = "loading";
+  document.documentElement.dataset.referenceEngine = "mobilesam";
   if (openCamera) openCamera.disabled = true;
   if (hint) hint.textContent = "Cargando patrón de referencia…";
-  if (cameraMessage) cameraMessage.textContent = "Cargando patrón de referencia…";
+  if (cameraMessage) cameraMessage.textContent = "Cargando modelo de estructura de escena…";
 
   const { data: pattern, error: patternError } = await supabase
     .from("photo_patterns_v2")
@@ -183,18 +191,8 @@ async function loadReference() {
     image.src = url;
   });
 
-  let mask;
-  let engine = "pidinet";
-  try {
-    if (hint) hint.textContent = "Generando patrón neuronal…";
-    mask = await makeNeuralEdgeMask(image);
-  } catch (neuralError) {
-    console.warn("PiDiNet unavailable, using Sobel fallback", neuralError);
-    engine = "sobel";
-    mask = makeEdgeMask(image);
-  }
+  const mask = await makeStructuralMask(image);
   URL.revokeObjectURL(url);
-  document.documentElement.dataset.referenceEngine = engine;
 
   window.__allaisoReferenceMaskCanvas = mask;
   window.__allaisoReferencePattern = {
@@ -204,6 +202,7 @@ async function loadReference() {
   };
 
   if (guide) {
+    guide.querySelectorAll(".photo-camera__reference-mask").forEach(node => node.remove());
     const preview = mask.cloneNode(true);
     preview.width = mask.width;
     preview.height = mask.height;
@@ -214,14 +213,19 @@ async function loadReference() {
 
   document.documentElement.dataset.referenceGuide = "ready";
   if (openCamera) openCamera.disabled = false;
-  if (hint) hint.textContent = "Busca el mismo encuadre que " + pattern.target_key;
-  if (cameraMessage) cameraMessage.textContent = engine === "pidinet" ? "Patrón neuronal listo." : "Patrón Sobel de respaldo listo.";
+  if (hint) hint.textContent = "Alinea las estructuras principales de " + pattern.target_key;
+  if (cameraMessage) {
+    cameraMessage.textContent = "Guía estructural lista · " +
+      (window.__allaisoStructuralRegions || 0) + " regiones.";
+  }
 }
 
 loadReference().catch(error => {
-  console.error("reference guide failed", error);
+  console.error("structural reference guide failed", error);
   document.documentElement.dataset.referenceGuide = "error";
   if (openCamera) openCamera.disabled = true;
-  if (hint) hint.textContent = "No se pudo cargar el patrón de referencia";
-  if (cameraMessage) cameraMessage.textContent = "No se pudo cargar el patrón de referencia. La verificación no puede continuar.";
+  if (hint) hint.textContent = "No se pudo generar la guía estructural";
+  if (cameraMessage) {
+    cameraMessage.textContent = "No se pudo analizar la estructura de la escena. La verificación no puede continuar.";
+  }
 });

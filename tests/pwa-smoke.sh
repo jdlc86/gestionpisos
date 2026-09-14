@@ -40,11 +40,11 @@ grep -q 'pattern_id' docs/photo-patterns.js
 grep -q 'reference_storage_path' docs/photo-reference-guide.js
 grep -q 'photo-verification' docs/photo-reference-guide.js
 grep -q '__allaisoReferenceMaskCanvas' docs/photo-reference-guide.js
-grep -q 'PIDINET_MODEL_URL' docs/photo-reference-guide.js
-grep -q 'onnxruntime-web@1.29.0' docs/photo-reference-guide.js
-grep -q 'referenceEngine' docs/photo-reference-guide.js
-grep -q 'Patrón neuronal listo' docs/photo-reference-guide.js
-grep -q 'Sobel de respaldo' docs/photo-reference-guide.js
+grep -q 'mobilesam.encoder.onnx' docs/photo-reference-guide.js
+grep -q 'mobilesam.decoder.quant.onnx' docs/photo-reference-guide.js
+grep -q '__allaisoStructuralRegions' docs/photo-reference-guide.js
+grep -q 'Guía estructural lista' docs/photo-reference-guide.js
+grep -q 'onnxruntime-web@1.14.0' docs/photo-camera.html
 grep -q 'openCamera.disabled = true' docs/photo-reference-guide.js
 grep -q 'openCamera.disabled = false' docs/photo-reference-guide.js
 grep -q 'La verificación no puede continuar' docs/photo-reference-guide.js

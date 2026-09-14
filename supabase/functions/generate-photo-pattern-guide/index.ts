@@ -38,19 +38,7 @@ function validLandmark(item: any) {
     Array.isArray(item.box_2d) &&
     item.box_2d.length === 4 &&
     item.box_2d.every((v: unknown) => Number.isFinite(Number(v))) &&
-    Array.isArray(item.contours) &&
-    item.contours.length >= 1 &&
-    item.contours.length <= 4 &&
-    item.contours.every((contour: unknown) =>
-      Array.isArray(contour) &&
-      contour.length >= 3 &&
-      contour.every((p: unknown) =>
-        Array.isArray(p) &&
-        p.length === 2 &&
-        Number.isFinite(Number(p[0])) &&
-        Number.isFinite(Number(p[1]))
-      )
-    );
+    Number.isFinite(Number(item.alignment_score));
 }
 
 Deno.serve(async (req: Request) => {
@@ -119,20 +107,15 @@ Deno.serve(async (req: Request) => {
   const mimeType = blob.type || "image/jpeg";
 
   const prompt = [
-    "Create a clean visual alignment guide for retaking this room photograph from the same viewpoint.",
-    "Identify only stable, visually distinctive structures and large recognizable objects that define the scene geometry.",
-    "Prefer doors, windows, cabinets, countertops, large appliances, tables, fixed shelving, bed or sofa outlines, ceiling fans or large fans, and other dominant objects.",
-    "Ignore shadows, reflections, highlights, light gradients, wall or floor texture, grout lines, decorative patterns, small clutter, cables, people, clothing, plants and tiny objects.",
-    "Return 3 to 8 landmarks maximum.",
-    "Merge adjacent parts that belong to the same physical furniture unit or architectural element into ONE landmark. Do not split one cabinet or furniture unit into multiple landmarks.",
-    "For each landmark return one to four OUTER CONTOURS that make the object recognizable as a silhouette.",
-    "Contour coordinates are ABSOLUTE in the FULL IMAGE, normalized from 0 to 1000.",
-    "Each contour point MUST be [x,y], where x is horizontal from left to right and y is vertical from top to bottom.",
-    "Do NOT make contour coordinates relative to box_2d.",
-    "Use enough contour points to preserve the recognizable geometry, but avoid tiny texture detail.",
-    "For a fan, preserve the circular head and the support/base as separate contours when useful; do not collapse the fan to a central blob.",
-    "Each chosen landmark must be useful for camera alignment.",
-    "Use short Spanish labels."
+    "Choose the SINGLE best visual reference object for retaking this photograph from the same viewpoint.",
+    "Do not draw contours and do not describe the whole room.",
+    "Prefer one large, distinctive, stable object with a clear silhouette and strong contrast.",
+    "Good examples: a large fan, fixed cabinet, doorway, window, radiator, countertop, sofa or bed.",
+    "Avoid shadows, reflections, floor lines, texture, small clutter, people, plants, cables and movable tiny objects.",
+    "Return exactly one landmark.",
+    "box_2d uses [ymin,xmin,ymax,xmax], normalized 0 to 1000 over the FULL image.",
+    "alignment_score is 0 to 100 and estimates usefulness for camera alignment.",
+    "Use a short Spanish label."
   ].join(" ");
 
   const response = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
@@ -156,7 +139,7 @@ Deno.serve(async (req: Request) => {
             landmarks: {
               type: "array",
               minItems: 1,
-              maxItems: 8,
+              maxItems: 1,
               items: {
                 type: "object",
                 properties: {
@@ -166,24 +149,10 @@ Deno.serve(async (req: Request) => {
                     maxItems: 4,
                     items: { type: "integer", minimum: 0, maximum: 1000 }
                   },
-                  contours: {
-                    type: "array",
-                    minItems: 1,
-                    maxItems: 4,
-                    items: {
-                      type: "array",
-                      minItems: 3,
-                      items: {
-                        type: "array",
-                        minItems: 2,
-                        maxItems: 2,
-                        items: { type: "integer", minimum: 0, maximum: 1000 }
-                      }
-                    }
-                  },
-                  label: { type: "string" }
+                  label: { type: "string" },
+                  alignment_score: { type: "integer", minimum: 0, maximum: 100 }
                 },
-                required: ["box_2d", "contours", "label"],
+                required: ["box_2d", "label", "alignment_score"],
                 additionalProperties: false
               }
             }
@@ -215,7 +184,7 @@ Deno.serve(async (req: Request) => {
   }
 
   const landmarks = Array.isArray(parsed?.landmarks)
-    ? parsed.landmarks.filter(validLandmark).slice(0, 8)
+    ? parsed.landmarks.filter(validLandmark).slice(0, 1)
     : [];
 
   if (!landmarks.length) return json(422, { error: "gemini_no_structural_landmarks" });

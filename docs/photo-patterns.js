@@ -7,12 +7,19 @@ const message = document.getElementById("patternMessage");
 const list = document.getElementById("patternList");
 
 let properties = [];
+let writablePropertyIds = new Set();
+let canCreatePatterns = false;
 
 function option(value, text) {
   const node = document.createElement("option");
   node.value = value;
   node.textContent = text;
   return node;
+}
+
+function patternStrokeCount(pattern) {
+  const strokes = pattern?.contour_data?.strokes;
+  return Array.isArray(strokes) ? strokes.length : 0;
 }
 
 function renderPatterns(patterns) {
@@ -34,32 +41,68 @@ function renderPatterns(patterns) {
     strong.textContent = pattern.name;
 
     const meta = document.createElement("span");
-    meta.textContent = [property?.name, pattern.target_key].filter(Boolean).join(" · ");
+    const count = patternStrokeCount(pattern);
+    meta.textContent = [
+      property?.name,
+      pattern.target_key,
+      count ? count + (count === 1 ? " trazo" : " trazos") : "sin silueta"
+    ].filter(Boolean).join(" · ");
 
-    const verify = document.createElement("button");
-    verify.type = "button";
-    verify.className = "secondary";
-    verify.textContent = "Probar guía Gemini";
-    verify.addEventListener("click", () => {
-      const url = new URL("./photo-gemini-guide.html", window.location.href);
-      url.searchParams.set("pattern_id", pattern.id);
-      window.location.assign(url.href);
-    });
+    card.append(strong, meta);
 
-    card.append(strong, meta, verify);
+    if (writablePropertyIds.has(pattern.property_id)) {
+      const edit = document.createElement("button");
+      edit.type = "button";
+      edit.className = "secondary";
+      edit.textContent = count ? "Editar silueta" : "Dibujar silueta";
+      edit.addEventListener("click", () => {
+        const url = new URL("./photo-pattern-editor.html", window.location.href);
+        url.searchParams.set("pattern_id", pattern.id);
+        window.location.assign(url.href);
+      });
+      card.append(edit);
+    }
+
     list.append(card);
   });
+}
+
+async function loadWriteScope(user, visibleProperties) {
+  const role = user?.app_metadata?.role;
+
+  if (role === "root" || role === "admin") {
+    writablePropertyIds = new Set(visibleProperties.map(item => item.id));
+    return;
+  }
+
+  const result = await supabase
+    .from("property_staff_access_v3")
+    .select("property_id,can_write,valid_from,valid_until,revoked_at")
+    .eq("employee_user_id", user.id)
+    .eq("can_write", true)
+    .is("revoked_at", null);
+
+  if (result.error) {
+    writablePropertyIds = new Set();
+    return;
+  }
+
+  const now = Date.now();
+  writablePropertyIds = new Set(
+    (result.data || [])
+      .filter(row => {
+        const fromOk = !row.valid_from || new Date(row.valid_from).getTime() <= now;
+        const untilOk = !row.valid_until || new Date(row.valid_until).getTime() > now;
+        return fromOk && untilOk;
+      })
+      .map(row => row.property_id)
+  );
 }
 
 async function load() {
   const user = await getCurrentUser();
   const role = user?.app_metadata?.role;
-
-  if (!["root", "admin"].includes(role)) {
-    form.hidden = true;
-    message.textContent = "Solo ROOT/ADMIN pueden registrar patrones.";
-    return;
-  }
+  canCreatePatterns = ["root", "admin"].includes(role);
 
   const propertyResult = await supabase
     .from("properties_v2")
@@ -70,26 +113,37 @@ async function load() {
   if (propertyResult.error) throw propertyResult.error;
   properties = propertyResult.data || [];
 
-  if (!properties.length) {
-    form.hidden = true;
-    message.textContent = "Primero debes crear un piso en Cartera.";
-    return;
-  }
+  await loadWriteScope(user, properties);
 
-  propertySelect.replaceChildren(...properties.map(item => option(item.id, item.name)));
+  if (canCreatePatterns) {
+    if (!properties.length) {
+      form.hidden = true;
+      message.textContent = "Primero debes crear un piso en Cartera.";
+    } else {
+      form.hidden = false;
+      propertySelect.replaceChildren(...properties.map(item => option(item.id, item.name)));
+    }
+  } else {
+    form.hidden = true;
+  }
 
   const patternResult = await supabase
     .from("photo_patterns_v2")
-    .select("id,property_id,name,target_key,active")
+    .select("id,property_id,name,target_key,active,contour_data")
     .eq("active", true)
     .order("created_at");
 
   if (patternResult.error) throw patternResult.error;
   renderPatterns(patternResult.data || []);
+
+  if (!canCreatePatterns && !writablePropertyIds.size) {
+    message.textContent = "No tienes patrones con permiso de escritura.";
+  }
 }
 
 form.addEventListener("submit", event => {
   event.preventDefault();
+  if (!canCreatePatterns) return;
 
   const propertyId = propertySelect.value;
   const label = zoneLabel.value.trim();
@@ -109,5 +163,5 @@ form.addEventListener("submit", event => {
 load().catch(error => {
   console.error("pattern bootstrap failed", error);
   form.hidden = true;
-  message.textContent = "No se pudieron cargar los datos para registrar el patrón.";
+  message.textContent = "No se pudieron cargar los patrones de foto.";
 });

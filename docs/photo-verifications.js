@@ -77,11 +77,12 @@ async function load(options = {}) {
       .order("name", { ascending:true });
     if (visiblePropertiesError) throw visiblePropertiesError;
 
-    const selectedProperty = propertyFilter.value;
+    const requestedProperty = new URLSearchParams(window.location.search).get("property_id") || "";
+    const selectedProperty = propertyFilter.value || requestedProperty;
     propertyFilter.innerHTML = '<option value="">Todos los pisos</option>' + (visibleProperties || []).map(property =>
       `<option value="${esc(property.id)}">${esc(property.name || property.address_line || "Piso")}</option>`
     ).join("");
-    propertyFilter.value = selectedProperty;
+    propertyFilter.value = (visibleProperties || []).some(property => property.id === selectedProperty) ? selectedProperty : "";
 
     let query = supabase
       .from("photo_verification_runs_v2")

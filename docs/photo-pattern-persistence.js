@@ -89,7 +89,6 @@ if (params.get("mode") === "pattern") {
 
         const link = document.createElement("a");
         link.className = "ghost";
-        link.href = "./photo-patterns.html";
         link.textContent = "Dibujar silueta";
         link.href = `./photo-pattern-editor.html?pattern_id=${patternId}`;
         message.after(link);

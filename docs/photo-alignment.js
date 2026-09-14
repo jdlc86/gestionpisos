@@ -14,23 +14,26 @@
 
   const ZONE_COLS = 3;
   const ZONE_ROWS = 2;
-  const GREEN_SCORE = 0.56;
-  const YELLOW_SCORE = 0.34;
-  const MIN_GREEN_ZONE = 0.28;
-  const MIN_YELLOW_ZONE = 0.16;
-  const GREEN_FRAMES_REQUIRED = 4;
+  const GREEN_SCORE = 0.50;
+  const YELLOW_SCORE = 0.29;
+  const MIN_GREEN_ZONE = 0.22;
+  const MIN_YELLOW_ZONE = 0.12;
+  const GREEN_FRAMES_REQUIRED = 5;
 
   let filteredScore = 0;
   let timer = 0;
   let greenFrames = 0;
 
-  function renderState(score, zoneScores) {
+  function renderState(score, zoneScores, texturePenalty = 1) {
     const usefulZones = zoneScores.filter(v => v >= MIN_YELLOW_ZONE).length;
     const greenZones = zoneScores.filter(v => v >= MIN_GREEN_ZONE).length;
+    const weakest = Math.min(...zoneScores);
+
     const stableGreen =
       score >= GREEN_SCORE &&
       greenZones >= 5 &&
-      Math.min(...zoneScores) >= 0.12;
+      weakest >= 0.10 &&
+      texturePenalty >= 0.72;
 
     greenFrames = stableGreen ? greenFrames + 1 : 0;
 
@@ -56,6 +59,7 @@
 
     window.__allaisoAlignmentScore = +score.toFixed(3);
     window.__allaisoAlignmentZones = zoneScores.map(v => +v.toFixed(3));
+    window.__allaisoTexturePenalty = +texturePenalty.toFixed(3);
   }
 
   function drawVideoFrame(w, h) {
@@ -118,9 +122,9 @@
 
     const ow = Math.max(1, overlay.clientWidth);
     const oh = Math.max(1, overlay.clientHeight);
-    const scale = 240 / Math.max(ow, oh);
-    const w = Math.max(108, Math.round(ow * scale));
-    const h = Math.max(108, Math.round(oh * scale));
+    const scale = 260 / Math.max(ow, oh);
+    const w = Math.max(116, Math.round(ow * scale));
+    const h = Math.max(116, Math.round(oh * scale));
 
     if (frameCanvas.width !== w || frameCanvas.height !== h) {
       frameCanvas.width = maskCanvas.width = w;
@@ -132,39 +136,73 @@
     const frame = frameCtx.getImageData(0, 0, w, h).data;
     const mask = maskCtx.getImageData(0, 0, w, h).data;
     const gray = new Uint8Array(w * h);
+    const alpha = new Uint8Array(w * h);
 
     for (let i = 0, p = 0; i < frame.length; i += 4, p++) {
       gray[p] = (frame[i] * 77 + frame[i + 1] * 150 + frame[i + 2] * 29) >> 8;
+      alpha[p] = mask[i + 3];
     }
 
     const zoneStrength = new Float32Array(ZONE_COLS * ZONE_ROWS);
     const zoneHits = new Uint32Array(ZONE_COLS * ZONE_ROWS);
     const zoneSamples = new Uint32Array(ZONE_COLS * ZONE_ROWS);
 
-    for (let y = 3; y < h - 3; y += 2) {
-      for (let x = 3; x < w - 3; x += 2) {
+    let outsideEdgeTotal = 0;
+    let outsideSamples = 0;
+
+    for (let y = 3; y < h - 3; y += 3) {
+      for (let x = 3; x < w - 3; x += 3) {
         const p = y * w + x;
-        if (mask[p * 4 + 3] < 48) continue;
+        if (alpha[p] >= 32) continue;
+
+        const gx = gray[p + 1] - gray[p - 1];
+        const gy = gray[p + w] - gray[p - w];
+        outsideEdgeTotal += Math.min(1, Math.hypot(gx, gy) / 110);
+        outsideSamples++;
+      }
+    }
+
+    const outsideEdgeMean = outsideSamples ? outsideEdgeTotal / outsideSamples : 0;
+
+    for (let y = 4; y < h - 4; y += 2) {
+      for (let x = 4; x < w - 4; x += 2) {
+        const p = y * w + x;
+        if (alpha[p] < 48) continue;
+
+        const mgx = alpha[p + 1] - alpha[p - 1];
+        const mgy = alpha[p + w] - alpha[p - w];
+        const mNorm = Math.hypot(mgx, mgy);
+
+        if (mNorm < 18) continue;
+
+        const enx = mgx / mNorm;
+        const eny = mgy / mNorm;
 
         let best = 0;
+
         for (let oy = -2; oy <= 2; oy++) {
           for (let ox = -2; ox <= 2; ox++) {
             const q = (y + oy) * w + x + ox;
-            const gx = Math.abs(gray[q + 1] - gray[q - 1]);
-            const gy = Math.abs(gray[q + w] - gray[q - w]);
-            const edge = gx + gy;
-            if (edge > best) best = edge;
+            const fgx = gray[q + 1] - gray[q - 1];
+            const fgy = gray[q + w] - gray[q - w];
+            const fNorm = Math.hypot(fgx, fgy);
+            if (fNorm < 16) continue;
+
+            const strength = Math.min(1, Math.max(0, (fNorm - 18) / 95));
+            const orientation = Math.abs((fgx / fNorm) * enx + (fgy / fNorm) * eny);
+            const oriented = strength * orientation * orientation;
+
+            if (oriented > best) best = oriented;
           }
         }
 
-        const strength = Math.min(1, Math.max(0, (best - 28) / 118));
         const zx = Math.min(ZONE_COLS - 1, Math.floor(x * ZONE_COLS / w));
         const zy = Math.min(ZONE_ROWS - 1, Math.floor(y * ZONE_ROWS / h));
         const zone = zy * ZONE_COLS + zx;
 
-        zoneStrength[zone] += strength;
+        zoneStrength[zone] += best;
         zoneSamples[zone]++;
-        if (strength >= 0.42) zoneHits[zone]++;
+        if (best >= 0.34) zoneHits[zone]++;
       }
     }
 
@@ -180,7 +218,7 @@
       populated++;
       const meanStrength = zoneStrength[i] / zoneSamples[i];
       const hitCoverage = zoneHits[i] / zoneSamples[i];
-      zoneScores.push(meanStrength * 0.55 + hitCoverage * 0.45);
+      zoneScores.push(meanStrength * 0.60 + hitCoverage * 0.40);
     }
 
     if (populated < 4) return;
@@ -188,21 +226,27 @@
     const ordered = [...zoneScores].sort((a, b) => a - b);
     const trimmed = ordered.slice(1);
     const spatialScore = trimmed.reduce((a, b) => a + b, 0) / trimmed.length;
-    const balancePenalty = 0.7 + 0.3 * Math.min(1, ordered[1] / 0.35);
-    const rawScore = spatialScore * balancePenalty;
+    const balancePenalty = 0.68 + 0.32 * Math.min(1, ordered[1] / 0.30);
+
+    const texturePenalty = Math.max(
+      0.58,
+      Math.min(1, 1.08 - Math.max(0, outsideEdgeMean - 0.20) * 1.35)
+    );
+
+    const rawScore = spatialScore * balancePenalty * texturePenalty;
 
     filteredScore = filteredScore
-      ? filteredScore * 0.68 + rawScore * 0.32
+      ? filteredScore * 0.70 + rawScore * 0.30
       : rawScore;
 
-    renderState(filteredScore, zoneScores);
+    renderState(filteredScore, zoneScores, texturePenalty);
   }
 
   function watchCamera() {
     if (!overlay.hidden && !timer) {
       filteredScore = 0;
       greenFrames = 0;
-      renderState(0, [0, 0, 0, 0, 0, 0]);
+      renderState(0, [0, 0, 0, 0, 0, 0], 1);
       analyze();
       timer = setInterval(analyze, 250);
     } else if (overlay.hidden && timer) {
@@ -223,4 +267,5 @@ window.addEventListener('allaiso:photo-captured', event => {
   if (!event.detail) return;
   event.detail.alignmentScore = window.__allaisoAlignmentScore ?? null;
   event.detail.alignmentZones = window.__allaisoAlignmentZones ?? null;
+  event.detail.texturePenalty = window.__allaisoTexturePenalty ?? null;
 });

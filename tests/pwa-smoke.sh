@@ -15,7 +15,7 @@ grep -q 'app.css' docs/index.html
 grep -q 'app.js' docs/index.html
 grep -q 'serviceWorker' docs/app.js
 grep -q 'GestionPisos' docs/manifest.webmanifest
-grep -q 'gestionpisos-shell-v1' docs/sw.js
+grep -q 'gestionpisos-shell-v2' docs/sw.js
 grep -q 'operations.html' docs/index.html
 grep -q 'Notificaciones' docs/operations.html
 grep -q 'Pagos' docs/operations.html
@@ -35,5 +35,22 @@ grep -q 'id="closeCamera"' docs/photo-camera.html
 grep -q 'id="flashCamera"' docs/photo-camera.html
 grep -q 'id="captureCamera"' docs/photo-camera.html
 grep -q '<svg' docs/photo-camera.html
+
+test -s docs/login.html
+test -s docs/login.js
+test -s docs/reset-password.html
+test -s docs/reset-password.js
+test -s docs/auth.css
+test -s docs/auth-guard.js
+test -s docs/supabase-client.js
+grep -q 'signInWithPassword' docs/login.js
+grep -q 'resetPasswordForEmail' docs/login.js
+grep -q 'updateUser' docs/reset-password.js
+grep -q 'getSession' docs/supabase-client.js
+grep -q 'sb_publishable_' docs/supabase-client.js
+grep -q 'auth-guard.js' docs/index.html
+grep -q 'auth-guard.js' docs/photo-camera.html
+grep -q 'login.html' docs/auth-guard.js
+grep -q 'login.html' docs/sw.js
 
 echo 'PWA smoke checks passed'

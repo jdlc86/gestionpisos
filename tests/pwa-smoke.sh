@@ -32,6 +32,13 @@ test -s docs/photo-pattern-persistence.js
 grep -q 'photo-patterns.html' docs/portfolio.html
 grep -q 'photo_patterns_v2' docs/photo-patterns.js
 grep -q 'mode", "pattern"' docs/photo-patterns.js
+grep -q 'zone_label' docs/photo-patterns.js
+grep -q 'target_key: zoneLabel' docs/photo-pattern-persistence.js
+grep -q 'cameraMode !== "pattern"' docs/photo-camera.js
+if grep -q 'roomSelect' docs/photo-patterns.js; then
+  echo 'Photo patterns must not depend on rooms.'
+  exit 1
+fi
 grep -q 'photo-pattern-persistence.js' docs/photo-camera.html
 grep -q 'reference_storage_path' docs/photo-pattern-persistence.js
 grep -q 'active: false' docs/photo-pattern-persistence.js

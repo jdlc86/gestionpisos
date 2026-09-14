@@ -36,7 +36,18 @@ function renderPatterns(patterns) {
     const meta = document.createElement("span");
     meta.textContent = [property?.name, pattern.target_key].filter(Boolean).join(" · ");
 
-    card.append(strong, meta);
+    const verify = document.createElement("button");
+    verify.type = "button";
+    verify.className = "secondary";
+    verify.textContent = "Probar verificación";
+    verify.addEventListener("click", () => {
+      const url = new URL("./photo-camera.html", window.location.href);
+      url.searchParams.set("mode", "verify");
+      url.searchParams.set("pattern_id", pattern.id);
+      window.location.assign(url.href);
+    });
+
+    card.append(strong, meta, verify);
     list.append(card);
   });
 }

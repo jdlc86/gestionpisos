@@ -198,6 +198,18 @@ function renderStrokeList() {
       renderAll();
     });
 
+    const closeToggle = document.createElement("button");
+    closeToggle.type = "button";
+    closeToggle.className = "ghost";
+    closeToggle.disabled = !canWrite;
+    closeToggle.textContent = stroke.closed ? "Abrir trazo" : "Cerrar trazo";
+    closeToggle.addEventListener("click", () => {
+      pushHistory();
+      stroke.closed = !stroke.closed;
+      dirty = true;
+      renderAll();
+    });
+
     const visible = document.createElement("button");
     visible.type = "button";
     visible.className = "ghost";
@@ -226,7 +238,7 @@ function renderStrokeList() {
     meta.className = "stroke-row__meta";
     meta.textContent = stroke.raw_points.length + " puntos";
 
-    row.append(label, smooth, visible, remove, meta);
+    row.append(label, smooth, closeToggle, visible, remove, meta);
     strokeList.append(row);
   });
 }

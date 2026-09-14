@@ -11,11 +11,19 @@ grep -q '>Pisos<' docs/portfolio.html
 grep -q '>Habitaciones<' docs/portfolio.html
 grep -Eq 'href="\./portfolio\.css"' docs/portfolio.html
 grep -Eq 'src="\./portfolio\.js"' docs/portfolio.html
-grep -q 'Sin escritura remota' docs/portfolio.html
-grep -q 'ownerId' docs/portfolio.js
-grep -q 'propertyId' docs/portfolio.js
-grep -q 'archivedAt' docs/portfolio.js
+grep -q 'type="module" src="./portfolio.js"' docs/portfolio.html
+grep -q 'supabase-client.js' docs/portfolio.js
+grep -q 'from("owners")' docs/portfolio.js
+grep -q 'from("properties_v2")' docs/portfolio.js
+grep -q 'from("rooms_v2")' docs/portfolio.js
+grep -q 'from("audit_log_v2")' docs/portfolio.js
+grep -q 'owner_has_active_properties' docs/portfolio.js
+grep -q 'property_has_active_rooms' docs/portfolio.js
 grep -q 'showHistory' docs/portfolio.js
+if grep -q 'demostración local\|Sin escritura remota\|no envía datos a Supabase' docs/portfolio.html; then
+  echo 'Cartera still advertises local-only behavior.'
+  exit 1
+fi
 
 legacy_pattern="(properties|rooms|tenancies|property_staff_assignments|property_staff_access_v2)"
 if grep -EIn "from\(['\"]${legacy_pattern}['\"]\)|\.from\(['\"]${legacy_pattern}['\"]\)" \

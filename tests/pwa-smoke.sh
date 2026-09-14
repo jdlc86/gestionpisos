@@ -15,6 +15,8 @@ test -s docs/photo-verifications.js
 node --check docs/photo-verifications.js
 grep -q 'photo-verifications.html?v=2026091501' docs/operations.html
 grep -q 'review-photo-verification' docs/photo-verifications.js
+grep -q 'Fotoverificación aprobada correctamente' docs/photo-verifications.js
+grep -q 'photo-verifications.js?v=2026091502' docs/photo-verifications.html
 grep -q 'createSignedUrl' docs/photo-verifications.js
 test -s supabase/functions/review-photo-verification/index.ts
 grep -q 'apply_photo_verification_review_v2' supabase/functions/review-photo-verification/index.ts

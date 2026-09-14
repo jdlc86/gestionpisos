@@ -42,9 +42,10 @@ function statusLabel(status) {
   })[status] || status;
 }
 
-async function load() {
+async function load(options = {}) {
+  const preservedMessage = options.preserveMessage || "";
   list.innerHTML = "";
-  message.textContent = "Cargando fotoverificaciones…";
+  if (!preservedMessage) message.textContent = "Cargando fotoverificaciones…";
   refreshBtn.disabled = true;
   try {
     const user = await getCurrentUser();
@@ -104,7 +105,14 @@ async function load() {
     const propertyMap = new Map((properties || []).map(p => [p.id,p]));
     const patternMap = new Map((patterns || []).map(p => [p.id,p]));
 
-    message.textContent = runs.length + (runs.length === 1 ? " resultado" : " resultados");
+    if (preservedMessage) {
+      message.textContent = preservedMessage;
+      window.setTimeout(() => {
+        message.textContent = runs.length + (runs.length === 1 ? " resultado" : " resultados");
+      }, 2500);
+    } else {
+      message.textContent = runs.length + (runs.length === 1 ? " resultado" : " resultados");
+    }
     list.innerHTML = runs.map(run => {
       const property = propertyMap.get(run.property_id);
       const runItems = byRun.get(run.id) || [];
@@ -212,8 +220,11 @@ async function decide(decision) {
     if (error) throw error;
     if (!data?.ok) throw new Error(data?.error || "review_failed");
     dialog.close();
-    message.textContent = decision === "approved" ? "Fotoverificación aprobada." : "Fotoverificación rechazada.";
-    await load();
+    const successMessage = decision === "approved"
+      ? "Fotoverificación aprobada correctamente."
+      : "Fotoverificación rechazada correctamente.";
+    message.textContent = successMessage;
+    await load({ preserveMessage: successMessage });
   } catch (error) {
     console.error(error);
     message.textContent = "No se pudo guardar la revisión.";

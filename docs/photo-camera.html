@@ -33,20 +33,7 @@
   <section id="cameraOverlay" class="photo-camera" hidden aria-label="Cámara de fotoverificación">
     <video id="cameraVideo" class="photo-camera__video" autoplay playsinline muted></video>
 
-    <div id="cameraGuide" class="photo-camera__guide photo-camera__guide--pending" aria-hidden="true">
-      <svg class="photo-camera__bench-guide" viewBox="0 0 1000 620" preserveAspectRatio="xMidYMid meet">
-        <g class="bench-guide__shape">
-          <path d="M105 185 L892 185 L875 278 L126 278 Z"/>
-          <path d="M92 326 L905 326 L888 430 L111 430 Z"/>
-          <path d="M177 279 L151 535 M819 279 L850 535"/>
-          <path d="M477 169 C466 102 478 55 510 54 C544 54 556 102 546 170"/>
-          <path d="M477 170 C468 239 470 322 491 390 C506 437 535 446 556 421 C573 401 570 369 550 350"/>
-          <path d="M477 169 L546 169 M491 390 L550 350"/>
-          <circle cx="181" cy="219" r="7"/><circle cx="813" cy="219" r="7"/>
-          <circle cx="178" cy="373" r="7"/><circle cx="818" cy="373" r="7"/>
-        </g>
-      </svg>
-    </div>
+    <div id="cameraGuide" class="photo-camera__guide photo-camera__guide--pending" aria-hidden="true"></div>
 
     <div id="alignmentHint" class="photo-camera__hint">Busca el mismo encuadre que el patrón</div>
 
@@ -75,9 +62,8 @@
   </section>
 
   <canvas id="captureCanvas" hidden></canvas>
-  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/ort.min.js"></script>
   <script src="./photo-camera.js" defer></script>
-  <script type="module" src="./photo-reference-guide.js?v=202609148"></script>
+  <script type="module" src="./photo-reference-guide.js?v=2026091501"></script>
   <script type="module" src="./photo-pattern-persistence.js"></script>
   <script type="module" src="./photo-persistence.js"></script>
   <script type="module" src="./auth-guard.js"></script>

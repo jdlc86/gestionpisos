@@ -38,23 +38,7 @@
       <ol id="guideItems"></ol>
     </section>
   </main>
-
-  <script>
-    window.__opencvReady = new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error("opencv_runtime_timeout")), 30000);
-      window.Module = {
-        onRuntimeInitialized() {
-          clearTimeout(timeout);
-          resolve(window.cv || window.Module);
-        }
-      };
-      window.__opencvLoadError = reject;
-    });
-  </script>
-  <script defer
-    src="https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.10.0-release.1/dist/opencv.js"
-    onerror="window.__opencvLoadError && window.__opencvLoadError(new Error('opencv_script_load_failed'))"></script>
-  <script type="module" src="./photo-gemini-guide.js?v=2026091407"></script>
+  <script type="module" src="./photo-gemini-guide.js?v=2026091408"></script>
   <script type="module" src="./auth-guard.js"></script>
 </body>
 </html>

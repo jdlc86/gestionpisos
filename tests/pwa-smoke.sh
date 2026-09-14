@@ -39,6 +39,8 @@ test -s docs/photo-pattern-editor.html
 test -s docs/photo-pattern-editor.css
 test -s docs/photo-pattern-editor.js
 grep -q 'photo-pattern-editor.html' docs/photo-patterns.js
+grep -q 'url.searchParams.set("v", "2026091402")' docs/photo-patterns.js
+grep -q 'photo-pattern-editor.html?v=2026091402' docs/photo-pattern-persistence.js
 grep -q 'Editar silueta' docs/photo-patterns.js
 grep -q 'Dibujar silueta' docs/photo-patterns.js
 grep -q 'contour_data' docs/photo-pattern-editor.js

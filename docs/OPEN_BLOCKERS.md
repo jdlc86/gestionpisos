@@ -403,3 +403,137 @@ Para cerrar un bloqueo se requiere:
 5. Security Advisor revisado;
 6. cambios versionados en GitHub;
 7. PR y checks verdes cuando afecte al repositorio.
+
+
+---
+
+## B-10 — Fotoverificación
+
+### Estado
+
+PENDIENTE
+
+Issue de seguimiento: #5.
+
+El contrato contempla patrones versionados, siluetas, cámara full-screen, verificación manual/IA/híbrida, solicitudes aleatorias y Storage privado. El esquema todavía no está aplicado en Supabase.
+
+---
+
+## B-11 — Inspecciones de empleados
+
+### Estado
+
+PENDIENTE
+
+El modelo funcional está definido: plantillas, checklist, visitas programadas/aleatorias, resultados, revisión y enlace futuro con B-10. El DDL inicial fue bloqueado antes de llegar a Supabase.
+
+---
+
+## B-12 — Centro documental
+
+### Estado
+
+PENDIENTE
+
+Issue de seguimiento: #6.
+
+Debe mantener Allaiso como centro documental, sin flujo directo propietario ↔ inquilino, con Storage privado, versionado, visibilidad por actor y auditoría.
+
+---
+
+## B-13 — Notificaciones, email y broadcast
+
+### Estado
+
+PARCIALMENTE IMPLEMENTADO
+
+Aplicado en Supabase:
+
+- `notifications_v2`;
+- `broadcasts_v2`;
+- RLS de lectura propia de notificaciones;
+- ROOT/ADMIN gestionan broadcasts por organización;
+- `mark_notification_read()` limita al cliente a marcar su propia notificación como leída;
+- cron `gestionpisos-notification-dispatch` activo cada 5 minutos;
+- generación automática de avisos de pago, vencidos, reclamaciones programadas y fan-out de broadcasts;
+- restricciones de coherencia para audiencia por piso y broadcasts programados.
+
+Pendiente:
+
+- proveedor real de email;
+- trazabilidad del envío email y reintentos;
+- push/web-push si se adopta;
+- pruebas con identidades reales;
+- auditoría completa de creación/cancelación/envío de broadcasts.
+
+El cron y las migraciones nuevas están versionados con los mismos timestamps que el historial remoto.
+
+---
+
+## B-14 — Estadísticas por rol
+
+### Estado
+
+PARCIALMENTE IMPLEMENTADO
+
+Aplicado en Supabase:
+
+- `v_property_incident_stats`;
+- `v_property_cleaning_stats`;
+- `v_property_occupancy_stats`;
+- `v_portfolio_stats`.
+
+Todas las vistas se crearon con `security_invoker = true` para no eludir RLS.
+
+Pendiente:
+
+- validar resultados con datos reales;
+- paneles finales por tenant/owner/employee/admin/root;
+- pruebas de aislamiento con identidades reales;
+- revisar rendimiento con carga representativa.
+
+---
+
+## B-15 — Pagos, recordatorios y reclamaciones
+
+### Estado
+
+PARCIALMENTE IMPLEMENTADO
+
+Aplicado en Supabase:
+
+- `payment_obligations_v2`;
+- `reminder_rules_v2`;
+- `claims_v2`;
+- RLS de lectura propia para el inquilino;
+- ROOT/ADMIN gestionan obligaciones, reglas y reclamaciones dentro de su organización;
+- cron de B-13 convierte obligaciones vencidas a `overdue` y genera notificaciones según reglas;
+- reclamaciones programadas generan su notificación al vencer.
+
+Pendiente:
+
+- integración con email real;
+- definición del origen/conciliación de pagos;
+- flujo de marcado como pagado;
+- pruebas con identidades reales;
+- auditoría completa de cambios de obligación y reclamación.
+
+---
+
+## UI — Centro Operativo
+
+### Estado
+
+IMPLEMENTACIÓN VISUAL / SIN AUTH
+
+En la rama de trabajo existen:
+
+- `docs/operations.html`;
+- `docs/operations.css`;
+- `docs/operations.js`;
+- enlace desde `docs/index.html`;
+- cobertura en `tests/pwa-smoke.sh`.
+
+Incluye áreas de Notificaciones/Broadcast, Pagos/Reclamaciones y Estadísticas.
+
+Los formularios son locales y no escriben remotamente hasta cerrar B-03.

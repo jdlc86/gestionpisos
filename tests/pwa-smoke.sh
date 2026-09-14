@@ -102,6 +102,12 @@ grep -q 'makeManualMask' docs/photo-reference-guide.js
 grep -q 'manual_silhouette_missing' docs/photo-reference-guide.js
 grep -q 'dataset.referenceEngine = "manual"' docs/photo-reference-guide.js
 grep -q '__allaisoReferenceMaskCanvas' docs/photo-alignment.js
+grep -q "__allaisoSetGuideState?.('pending')" docs/photo-alignment.js
+grep -q "__allaisoSetGuideState?.('warn')" docs/photo-alignment.js
+grep -q "__allaisoSetGuideState?.('ok')" docs/photo-alignment.js
+grep -q 'paintVisibleGuide' docs/photo-reference-guide.js
+grep -q 'GUIDE_COLORS' docs/photo-reference-guide.js
+grep -q '__allaisoSetGuideState' docs/photo-reference-guide.js
 grep -q 'photo-reference-guide.js' docs/photo-camera.html
 grep -q 'cameraMode !== "pattern"' docs/photo-camera.js
 if grep -q 'roomSelect' docs/photo-patterns.js; then
@@ -117,8 +123,8 @@ test -s docs/photo-camera.html
 test -s docs/photo-camera.css
 test -s docs/photo-camera.js
 grep -q 'photo-camera.css?v=2026091501' docs/photo-camera.html
-grep -q 'photo-reference-guide.js?v=2026091501' docs/photo-camera.html
-grep -q 'photo-alignment.js?v=2026091501' docs/photo-camera.js
+grep -q 'photo-reference-guide.js?v=2026091502' docs/photo-camera.html
+grep -q 'photo-alignment.js?v=2026091502' docs/photo-camera.js
 grep -q 'photo-camera.js' docs/photo-camera.html
 grep -q 'id="closeCamera"' docs/photo-camera.html
 grep -q 'id="flashCamera"' docs/photo-camera.html

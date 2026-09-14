@@ -8,6 +8,30 @@ const guide = document.getElementById("cameraGuide");
 const openCamera = document.getElementById("openCamera");
 const cameraMessage = document.getElementById("cameraMessage");
 
+let visibleGuideCanvas = null;
+let analysisMaskCanvas = null;
+
+const GUIDE_COLORS = {
+  pending: "#ef4444",
+  warn: "#facc15",
+  ok: "#4ade80"
+};
+
+function paintVisibleGuide(state = "pending") {
+  if (!visibleGuideCanvas || !analysisMaskCanvas) return;
+  const color = GUIDE_COLORS[state] || GUIDE_COLORS.pending;
+  const ctx = visibleGuideCanvas.getContext("2d");
+  ctx.clearRect(0, 0, visibleGuideCanvas.width, visibleGuideCanvas.height);
+  ctx.globalCompositeOperation = "source-over";
+  ctx.drawImage(analysisMaskCanvas, 0, 0);
+  ctx.globalCompositeOperation = "source-in";
+  ctx.fillStyle = color;
+  ctx.fillRect(0, 0, visibleGuideCanvas.width, visibleGuideCanvas.height);
+  ctx.globalCompositeOperation = "source-over";
+}
+
+window.__allaisoSetGuideState = paintVisibleGuide;
+
 function uuidLike(value) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value || "");
 }
@@ -145,6 +169,7 @@ async function loadReference() {
 
   const { canvas: mask, count } = makeManualMask(pattern.contour_data);
 
+  analysisMaskCanvas = mask;
   window.__allaisoReferenceMaskCanvas = mask;
   window.__allaisoReferencePattern = {
     id: pattern.id,
@@ -158,8 +183,9 @@ async function loadReference() {
     preview.width = mask.width;
     preview.height = mask.height;
     preview.className = "photo-camera__reference-mask";
-    preview.getContext("2d").drawImage(mask, 0, 0);
+    visibleGuideCanvas = preview;
     guide.append(preview);
+    paintVisibleGuide("pending");
   }
 
   document.documentElement.dataset.referenceGuide = "ready";

@@ -78,7 +78,7 @@ Deno.serve(async (req: Request) => {
   const user = userData?.user;
   if (userError || !user) return json(401, { error: "invalid_session" });
 
-  let body: { pattern_id?: string; contour_data?: unknown };
+  let body: { pattern_id?: string; contour_data?: unknown; base_version?: number };
   try {
     body = await req.json();
   } catch {
@@ -87,18 +87,24 @@ Deno.serve(async (req: Request) => {
 
   const patternId = body.pattern_id?.trim();
   if (!patternId) return json(400, { error: "pattern_id_required" });
+  if (!Number.isInteger(body.base_version) || Number(body.base_version) < 1) {
+    return json(400, { error: "base_version_required" });
+  }
   if (!validContourData(body.contour_data)) {
     return json(400, { error: "invalid_contour_data" });
   }
 
   const { data: pattern, error: patternError } = await userClient
     .from("photo_patterns_v2")
-    .select("id,organization_id,property_id,active")
+    .select("id,organization_id,property_id,active,version")
     .eq("id", patternId)
     .maybeSingle();
 
   if (patternError) return json(500, { error: "pattern_lookup_failed" });
   if (!pattern?.active) return json(404, { error: "pattern_not_available" });
+  if (Number(pattern.version) !== Number(body.base_version)) {
+    return json(409, { error: "pattern_version_conflict", current_version: pattern.version });
+  }
 
   const role = String(user.app_metadata?.role || "");
   let allowed = false;
@@ -129,16 +135,25 @@ Deno.serve(async (req: Request) => {
 
   if (!allowed) return json(403, { error: "insufficient_write_permission" });
 
-  const { error: updateError } = await admin
+  const nextVersion = Number(pattern.version) + 1;
+  const { data: updated, error: updateError } = await admin
     .from("photo_patterns_v2")
-    .update({ contour_data: body.contour_data })
-    .eq("id", pattern.id);
+    .update({
+      contour_data: body.contour_data,
+      version: nextVersion
+    })
+    .eq("id", pattern.id)
+    .eq("version", pattern.version)
+    .select("id,version")
+    .maybeSingle();
 
   if (updateError) return json(500, { error: "contour_save_failed" });
+  if (!updated) return json(409, { error: "pattern_version_conflict" });
 
   return json(200, {
     ok: true,
     pattern_id: pattern.id,
+    version: updated.version,
     stroke_count: (body.contour_data as any).strokes.length,
   });
 });

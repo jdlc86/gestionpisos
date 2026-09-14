@@ -92,16 +92,10 @@ if grep -q 'photo-gemini-guide.html' docs/photo-patterns.js; then
 fi
 grep -q 'pattern_id' docs/photo-patterns.js
 grep -q 'reference_storage_path' docs/photo-reference-guide.js
-grep -q 'photo-verification' docs/photo-reference-guide.js
-grep -q '__allaisoReferenceMaskCanvas' docs/photo-reference-guide.js
-grep -q 'mobilesam.encoder.onnx' docs/photo-reference-guide.js
-grep -q 'mobilesam.decoder.quant.onnx' docs/photo-reference-guide.js
-grep -q '__allaisoStructuralRegions' docs/photo-reference-guide.js
-grep -q 'Guía estructural lista' docs/photo-reference-guide.js
-grep -q 'onnxruntime-web@1.14.0' docs/photo-camera.html
-grep -q 'openCamera.disabled = true' docs/photo-reference-guide.js
-grep -q 'openCamera.disabled = false' docs/photo-reference-guide.js
-grep -q 'La verificación no puede continuar' docs/photo-reference-guide.js
+grep -q 'contour_data' docs/photo-reference-guide.js
+grep -q 'makeManualMask' docs/photo-reference-guide.js
+grep -q 'manual_silhouette_missing' docs/photo-reference-guide.js
+grep -q 'dataset.referenceEngine = "manual"' docs/photo-reference-guide.js
 grep -q '__allaisoReferenceMaskCanvas' docs/photo-alignment.js
 grep -q 'photo-reference-guide.js' docs/photo-camera.html
 grep -q 'cameraMode !== "pattern"' docs/photo-camera.js
@@ -117,7 +111,6 @@ grep -q 'active: true' docs/photo-pattern-persistence.js
 test -s docs/photo-camera.html
 test -s docs/photo-camera.css
 test -s docs/photo-camera.js
-grep -q 'photo-camera.html' docs/cleaning.html
 grep -q 'photo-camera.css' docs/photo-camera.html
 grep -q 'photo-camera.js' docs/photo-camera.html
 grep -q 'id="closeCamera"' docs/photo-camera.html
@@ -150,3 +143,14 @@ grep -q 'submit-photo-verification' docs/photo-persistence.js
 grep -q 'alignment_meta' docs/photo-persistence.js
 
 echo 'PWA smoke checks passed'
+
+# Legacy automatic photo guide code must stay removed.
+test ! -e docs/photo-gemini-guide.html
+test ! -e docs/photo-gemini-guide.js
+test ! -e docs/photo-gemini-guide.css
+test ! -e docs/bench-guide-approved.svg
+test ! -e supabase/functions/generate-photo-pattern-guide/index.ts
+if grep -R -E -i 'mobilesam|onnxruntime|CONTORNO_GEMINI_API_KEY|generate-photo-pattern-guide|photo-gemini-guide|buildSobel|Gemini exterior' docs supabase/functions --exclude='PHOTO_VERIFICATION_CONTRACT.md'; then
+  echo 'Legacy automatic photo guide code must stay removed.'
+  exit 1
+fi

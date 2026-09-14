@@ -44,7 +44,15 @@ docker run --rm \
     psql -v ON_ERROR_STOP=1 -U postgres \
       -f /work/supabase/migrations/20260913205141_close_owners_and_occupancy_blockers.sql
     psql -v ON_ERROR_STOP=1 -U postgres \
+      -f /work/supabase/migrations/20260914064353_beta0_photo_verification_tables.sql
+    psql -v ON_ERROR_STOP=1 -U postgres \
+      -f /work/supabase/migrations/20260914064402_beta0_photo_verification_rls.sql
+    psql -v ON_ERROR_STOP=1 -U postgres \
+      -f /work/supabase/migrations/20260914074246_beta0_photo_verification_write_policies.sql
+    psql -v ON_ERROR_STOP=1 -U postgres \
       -f /work/tests/database-regression.sql
+    psql -v ON_ERROR_STOP=1 -U postgres \
+      -f /work/tests/photo-verification-regression.sql
 
     trap - EXIT
     cleanup

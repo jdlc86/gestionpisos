@@ -66,6 +66,17 @@ Legacy bootstrap tables `properties`, `rooms`, `tenancies`, `property_staff_assi
 - 20260913203106 beta0_cleaning_core
 - 20260913203112 beta0_cleaning_admin_rls
 - 20260913205141 close_owners_and_occupancy_blockers
+- 20260914064224 beta0_cleaning_swap_participant_read
+- 20260914064231 beta0_cleaning_swap_write_policies
+- 20260914064239 beta0_cleaning_swap_integrity
+- 20260914064248 beta0_cleaning_swap_validation_trigger
+- 20260914064258 beta0_cleaning_swap_decision_trigger
+- 20260914064353 beta0_photo_verification_tables
+- 20260914064402 beta0_photo_verification_rls
+- 20260914064410 beta0_photo_verification_storage
+- 20260914064421 beta0_photo_storage_org_scope
+- 20260914074246 beta0_photo_verification_write_policies
+- 20260914074301 beta0_photo_storage_read_org_hardening
 
 The SQL for `20260913205141 close_owners_and_occupancy_blockers` is versioned at
 `supabase/migrations/20260913205141_close_owners_and_occupancy_blockers.sql`.
@@ -73,14 +84,18 @@ The preceding remote entries are recorded here, but their SQL source files are
 not present in this repository; this reproducibility debt remains open in
 `docs/OPEN_BLOCKERS.md`.
 
+The five B-08 migrations and four foundational B-10 migrations listed above
+were recovered from the remote migration history's `statements` field and are
+versioned with their exact remote timestamps and names. The two final B-10
+policy migrations were generated locally, applied remotely and renamed to the
+versions assigned by the remote history.
+
 ## Security status
 
-After `20260913205141`, Supabase Security Advisor reports no critical findings.
-Two pre-existing notices remain:
+After `20260914074301`, Supabase Security Advisor reports no critical findings.
+One accepted notice remains:
 
-- `Leaked Password Protection Disabled` (`WARN`), accepted for the current plan;
-- `cleaning_swap_requests_v2` has RLS enabled with no policy (`INFO`), safely
-  deny-by-default but incomplete for the future tenant swap flow.
+- `Leaked Password Protection Disabled` (`WARN`), accepted for the current plan.
 
 The Performance Advisor reports no critical findings. Its existing backlog is
 22 unindexed foreign keys, 27 RLS init-plan warnings, 50 unused indexes (the

@@ -302,23 +302,19 @@ canal documental directo propietario ↔ inquilino.
 
 ### Estado
 
-PENDIENTE
+CERRADO ESTRUCTURALMENTE EN SUPABASE — 2026-09-14
 
 ### Verificación
 
-- RLS está activa en las cuatro tablas de Limpieza.
-- Planes, tareas y deudas solo tienen lectura ROOT/ADMIN por organización.
-- `cleaning_swap_requests_v2` tiene RLS activa y ninguna política; el estado
-  actual es deny-by-default.
-- No existe aún una operación controlada que compruebe ocupación vigente en el
-  mismo piso, reasigne la tarea, mantenga histórico y cree la deuda.
+Las policies, restricciones y funciones de decisión de B-08 están aplicadas
+remotamente y sus cinco migraciones exactas ya están versionadas en Git. La
+evidencia detallada se conserva en la sección B-08 actualizada al final de este
+documento.
 
 ### Impacto
 
-No existe ahora un flujo cliente inseguro para elegir usuarios de otro piso,
-pero tampoco está implementado el intercambio descrito en
-`docs/CLEANING_CONTRACT.md`. Mantener la UI bloqueada hasta disponer de RPC o
-backend autorizado y pruebas negativas multi-piso.
+Las pruebas multiusuario reales siguen dependiendo de B-03; no reabrir el
+diseño estructural salvo que esas pruebas detecten una regresión.
 
 ---
 
@@ -336,6 +332,11 @@ repositorio recibido no contiene sus archivos SQL en `supabase/migrations`.
 
 La migración nueva `20260913205141 close_owners_and_occupancy_blockers` sí está
 versionada con su SQL exacto.
+
+El 2026-09-14 se recuperaron desde `supabase_migrations.schema_migrations` y se
+versionaron literalmente las cinco migraciones recientes de B-08 y las cuatro
+migraciones fundacionales de B-10. Las migraciones históricas anteriores que no
+estaban ya en Git siguen siendo deuda separada de B-09.
 
 ### Impacto
 
@@ -411,11 +412,37 @@ Para cerrar un bloqueo se requiere:
 
 ### Estado
 
-PENDIENTE
+NÚCLEO BACKEND Y SEGURIDAD CERRADOS — 2026-09-14
 
 Issue de seguimiento: #5.
 
-El contrato contempla patrones versionados, siluetas, cámara full-screen, verificación manual/IA/híbrida, solicitudes aleatorias y Storage privado. El esquema todavía no está aplicado en Supabase.
+### Evidencia verificada
+
+- Las cinco tablas B-10 existen y mantienen RLS activa.
+- ROOT puede insertar y actualizar políticas, patrones y solicitudes aleatorias.
+- ADMIN solo puede insertar y actualizar esas filas dentro de la organización
+  indicada en `app_metadata`.
+- No existe policy cliente de `DELETE`; la baja se representa mediante estado,
+  actividad o cancelación, conforme al contrato de histórico.
+- Un actor solo puede insertar un item si el `run_id` pertenece a un run cuyo
+  `actor_user_id = auth.uid()`.
+- Un usuario normal no puede modificar políticas/patrones ni crear solicitudes
+  aleatorias, aunque sea el usuario asignado.
+- El bucket `photo-verification` es privado, no tiene lectura anónima y exige el
+  prefijo de organización para toda lectura no-ROOT, incluido el propietario
+  del objeto.
+- Migraciones remotas nuevas:
+  `20260914074246 beta0_photo_verification_write_policies` y
+  `20260914074301 beta0_photo_storage_read_org_hardening`.
+- La matriz RLS aislada en PostgreSQL 17 pasó con casos positivos y negativos;
+  no creó usuarios reales y terminó en rollback.
+- Security Advisor posterior: solo `Leaked Password Protection Disabled`, ya
+  aceptado por la limitación del plan en B-06.
+
+### Pendiente funcional
+
+B-10 no está completo: faltan cámara full-screen, patrón/guía visual, contornos,
+comparación IA y pruebas funcionales con identidades reales de B-03.
 
 ---
 
@@ -545,7 +572,7 @@ Los formularios son locales y no escriben remotamente hasta cerrar B-03.
 
 ### Estado
 
-CERRADO ESTRUCTURALMENTE EN SUPABASE / VERSIONADO GIT PENDIENTE
+CERRADO ESTRUCTURALMENTE EN SUPABASE / VERSIONADO EN GIT
 
 Aplicado remotamente el 2026-09-14:
 
@@ -578,7 +605,9 @@ Security Advisor posterior:
 - solo permanece la advertencia conocida de Leaked Password Protection.
 
 Pendiente para cierre total:
-- pruebas multiusuario reales de B-03;
-- versionar en Git los cinco SQL exactos anteriores. La escritura de esos archivos fue bloqueada por la capa de herramientas, no por GitHub/Supabase.
+- pruebas multiusuario reales de B-03.
+
+Los cinco SQL exactos se recuperaron del campo `statements` del historial remoto
+y están versionados con los mismos timestamps y nombres.
 
 No reabrir el diseño de B-08 salvo que las pruebas reales detecten una regresión.

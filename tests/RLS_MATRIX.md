@@ -83,3 +83,28 @@ Covered negative cases:
 
 This targeted regression does not replace the full matrix above with real
 Supabase Auth identities.
+
+## Automated B-10 regression
+
+`tests/photo-verification-regression.sql` runs in the same disposable
+PostgreSQL 17 fixture and verifies the B-10 write boundary without creating
+real Auth users.
+
+Covered positive cases:
+
+- ROOT inserts and updates verification policies, photo patterns and random
+  photo requests;
+- ADMIN inserts and updates the same resources inside its organization;
+- an actor inserts a photo item into its own verification run.
+
+Covered negative cases:
+
+- ADMIN cannot insert B-10 resources in another organization;
+- a normal user cannot create or update policies/patterns;
+- an assigned user cannot create a random request;
+- an actor cannot insert a photo item into another user's run;
+- no authenticated client receives a physical-delete policy for B-10.
+
+Storage is verified against the remote catalog: the bucket is private, has no
+anonymous photo-read policy, and every non-ROOT read requires the JWT
+organization to match the first storage path segment.

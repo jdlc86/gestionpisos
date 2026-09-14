@@ -148,5 +148,5 @@
 
 const cameraMode = new URLSearchParams(window.location.search).get("mode");
 if (cameraMode !== "pattern") {
-  import("./photo-alignment.js?v=2026091502").catch(()=>{});
+  import("./photo-alignment.js?v=2026091503").catch(()=>{});
 }

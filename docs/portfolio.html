@@ -19,7 +19,7 @@
     </header>
 
     <section class="portfolio-hero">
-      <span class="badge">Beta 0 · demostración local</span>
+      <span class="badge">Beta 0 · datos reales</span>
       <h2>Propietarios, pisos y habitaciones</h2>
       <p>La estructura central de la cartera de Allaiso. Las bajas conservan histórico y las relaciones nunca se pierden.</p>
     </section>
@@ -36,6 +36,10 @@
         <h3 id="sectionTitle">Propietarios</h3>
       </div>
       <div class="toolbar-actions">
+        <label id="organizationField" class="filter-label" for="organizationSelect" hidden>
+          Organización
+          <select id="organizationSelect"></select>
+        </label>
         <label class="filter-label" for="statusFilter">
           Estado
           <select id="statusFilter">
@@ -70,9 +74,9 @@
         <div id="editorFields" class="editor-fields"></div>
         <div class="editor-actions">
           <button id="cancelEditorBtn" type="button" class="ghost">Cancelar</button>
-          <button id="saveDraftBtn" type="submit" class="primary">Guardar demostración</button>
+          <button id="saveDraftBtn" type="submit" class="primary">Guardar</button>
         </div>
-        <p class="muted small">Los cambios viven solo en esta pestaña y se pierden al recargar. Esta pantalla no envía datos a Supabase.</p>
+        <p class="muted small">Los cambios se guardan en Supabase y quedan sujetos a RLS y auditoría.</p>
       </form>
     </dialog>
 
@@ -91,10 +95,10 @@
 
     <section class="status">
       <span class="dot"></span>
-      <span><strong>Sin escritura remota.</strong> Interacción local para validar alta, edición, estados, archivo e histórico antes de conectar Auth.</span>
+      <span id="portfolioStatus"><strong>Conectando…</strong> Cargando cartera autorizada.</span>
     </section>
   </main>
-  <script src="./portfolio.js" defer></script>
+  <script type="module" src="./portfolio.js"></script>
   <script type="module" src="./auth-guard.js"></script>
 </body>
 </html>

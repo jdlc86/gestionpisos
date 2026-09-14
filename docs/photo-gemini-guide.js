@@ -15,44 +15,79 @@ function uuidLike(value) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value || "");
 }
 
-async function waitForOpenCv(timeoutMs = 30000) {
-  const started = performance.now();
+async function loadOpenCvOfficial(timeoutMs = 30000) {
+  if (window.cv?.Mat && window.cv?.Canny) return window.cv;
+
+  let runtimeResolve;
+  let runtimeReject;
+  const runtimeReady = new Promise((resolve, reject) => {
+    runtimeResolve = resolve;
+    runtimeReject = reject;
+  });
+
+  const previousModule = window.Module || {};
+  window.Module = {
+    ...previousModule,
+    onRuntimeInitialized() {
+      try {
+        previousModule.onRuntimeInitialized?.();
+      } catch (error) {
+        console.warn("Previous OpenCV runtime callback failed", error);
+      }
+      runtimeResolve(window.cv || window.Module);
+    }
+  };
+
+  const script = document.createElement("script");
+  script.src = "https://docs.opencv.org/4.10.0/opencv.js";
+  script.async = true;
+  script.crossOrigin = "anonymous";
+
+  const scriptLoaded = new Promise((resolve, reject) => {
+    script.onload = resolve;
+    script.onerror = () => reject(new Error("opencv_script_load_failed"));
+  });
+
+  document.head.append(script);
+
+  const timeout = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error("opencv_runtime_timeout")), timeoutMs)
+  );
 
   try {
-    if (window.__opencvReady) {
-      const ready = await Promise.race([
-        window.__opencvReady,
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("opencv_runtime_timeout")), timeoutMs)
-        )
-      ]);
+    await Promise.race([scriptLoaded, timeout]);
 
-      let cv = window.cv || ready;
-      if (cv && typeof cv.then === "function") cv = await cv;
-      if (cv?.Mat && cv?.Canny) {
-        window.cv = cv;
-        return cv;
-      }
-    }
-  } catch (error) {
-    console.warn("OpenCV bootstrap promise failed", error);
-  }
-
-  while (performance.now() - started < timeoutMs) {
     let cv = window.cv;
     if (cv && typeof cv.then === "function") {
-      try {
-        cv = await cv;
-        window.cv = cv;
-      } catch {
-        cv = null;
-      }
+      cv = await Promise.race([cv, timeout]);
+      window.cv = cv;
     }
-    if (cv?.Mat && cv?.Canny) return cv;
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
 
-  throw new Error("opencv_runtime_unavailable");
+    if (cv?.Mat && cv?.Canny) return cv;
+
+    const ready = await Promise.race([runtimeReady, timeout]);
+    cv = window.cv || ready;
+    if (cv && typeof cv.then === "function") cv = await Promise.race([cv, timeout]);
+
+    if (cv?.Mat && cv?.Canny) {
+      window.cv = cv;
+      return cv;
+    }
+
+    throw new Error("opencv_runtime_unavailable");
+  } catch (error) {
+    runtimeReject?.(error);
+    throw error;
+  }
+}
+
+async function waitForOpenCv(timeoutMs = 30000) {
+  try {
+    return await loadOpenCvOfficial(timeoutMs);
+  } catch (error) {
+    console.error("OpenCV official loader failed", error);
+    throw error;
+  }
 }
 
 function drawDiagnosticBoxes(items) {

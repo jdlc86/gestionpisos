@@ -196,7 +196,7 @@ grep -Fq 'create-organization-user' docs/permissions.js
 grep -Fq 'display_name:name,email,role' docs/permissions.js
 grep -Fq 'MODULE_NOT_STARTED' docs/permissions.html
 grep -Fq 'MODULE_IMPORT_FAILED' docs/permissions.html
-grep -Fq 'import("./permissions.js?v=202609165")' docs/permissions.html
+grep -Fq 'import("./permissions.js?v=202609166")' docs/permissions.html
 grep -Fq 'split("\n").join(" ")' docs/permissions.html
 grep -Fq 'window.__permissionsBooted=true' docs/permissions.js
 grep -Fq 'supabase.rpc("get_effective_organization_id")' docs/permissions.js
@@ -249,3 +249,7 @@ grep -Fq 'grant_property_staff_access_v3' docs/permissions.js
 
 grep -Fq 'confirm.textContent="Guardando…"' docs/permissions.js
 grep -Fq 'await onConfirm();closeModal();' docs/permissions.js
+
+grep -Fq 'Confirmación recibida.' docs/permissions.js
+grep -Fq 'Enviando acceso al servidor…' docs/permissions.js
+grep -Fq 'Acceso guardado.' docs/permissions.js

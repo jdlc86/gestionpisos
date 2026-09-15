@@ -127,6 +127,8 @@ const editorTitle = $("editorTitle");
 const editorFields = $("editorFields");
 const saveButton = $("saveDraftBtn");
 const saveErrorDialog = $("saveErrorDialog");
+const welcomeConfirmDialog = $("welcomeConfirmDialog");
+let pendingWelcomeChoice = null;
 const saveErrorMessage = $("saveErrorMessage");
 const historyDialog = $("historyDialog");
 const historyTitle = $("historyTitle");
@@ -377,6 +379,16 @@ function openEditor(id = null) {
   const item = id ? findItem(current, id) : null;
   editorTitle.textContent = item ? `Editar ${view.singular}` : `Nuevo ${view.singular}`;
   editorFields.replaceChildren(...view.fields.map(field => makeField(field, item)), statusField(item));
+  // A suspended tenant keeps identity/contact data, but a future reactivation
+  // must never inherit dates from the previous stay.
+  if (current === "occupancies" && item?.status === "blocked") {
+    const startsOn = editorForm.elements.namedItem("startsOn");
+    const endsOn = editorForm.elements.namedItem("endsOn");
+    const indefinite = editorForm.elements.namedItem("indefinite");
+    if (startsOn) startsOn.value = "";
+    if (endsOn) endsOn.value = "";
+    if (indefinite) indefinite.checked = false;
+  }
   editorDialog.showModal();
 }
 
@@ -496,9 +508,24 @@ async function saveItem(event) {
   event.preventDefault();
   if (!editorForm.reportValidity()) return;
 
-  saveButton.disabled = true;
   const data = Object.fromEntries(new FormData(editorForm).entries());
   const existing = editingId ? findItem(current, editingId) : null;
+  const isTenantActivation = current === "occupancies" && data.status === "active" &&
+    (!existing || existing.status === "blocked");
+  if (isTenantActivation && !pendingWelcomeChoice) {
+    const property = findItem("properties", data.propertyId);
+    const room = findItem("rooms", data.roomId);
+    $("welcomeTenant").textContent = data.fullName.trim();
+    $("welcomeProperty").textContent = itemName("properties", property);
+    $("welcomeRoom").textContent = itemName("rooms", room);
+    $("welcomeStart").textContent = data.startsOn || "Pendiente";
+    $("welcomeEmail").textContent = data.email.trim();
+    $("welcomeConfirmText").textContent = `Vas a dar de alta a ${data.fullName.trim()}. Puedes guardar el alta sin correo o enviar la bienvenida a ${data.email.trim()}.`;
+    welcomeConfirmDialog.showModal();
+    return;
+  }
+
+  saveButton.disabled = true;
   const archivedAt = archivedAtFor(data.status, existing);
   const now = new Date().toISOString();
   let createdTenantId = null;
@@ -598,9 +625,21 @@ async function saveItem(event) {
         ends_on: data.indefinite ? null : data.endsOn,
         status: data.status
       };
-      const query = existing
-        ? supabase.from("occupancies_v2").update(payload).eq("id", existing.id)
-        : supabase.from("occupancies_v2").insert(payload);
+      const isReactivation = existing?.status === "blocked" && data.status === "active";
+      let query;
+      if (isReactivation) {
+        // A reactivation is a new stay period. Preserve the suspended occupancy as
+        // history and let the DB exclusion constraint validate the new room period.
+        const closePrevious = await supabase.from("occupancies_v2")
+          .update({ ends_on: data.startsOn, status: "archived" })
+          .eq("id", existing.id);
+        if (closePrevious.error) throw closePrevious.error;
+        query = supabase.from("occupancies_v2").insert(payload);
+      } else {
+        query = existing
+          ? supabase.from("occupancies_v2").update(payload).eq("id", existing.id)
+          : supabase.from("occupancies_v2").insert(payload);
+      }
       const { error } = await query;
       if (error) {
         if (createdTenantId) {
@@ -625,11 +664,19 @@ async function saveItem(event) {
       if (error) throw error;
     }
 
+    const welcomeChoice = pendingWelcomeChoice;
+    pendingWelcomeChoice = null;
     editorDialog.close();
     await loadPortfolio();
+    if (welcomeChoice === "send") {
+      setStatus("El alta se guardó correctamente. El envío de bienvenida todavía no está configurado; no se ha enviado ningún correo.", "Alta guardada.");
+    }
   } catch (error) {
     console.error("portfolio save failed", error);
-    const message = friendlyWriteError(error, "No se pudo guardar el cambio.");
+    let message = friendlyWriteError(error, "No se pudo guardar el cambio.");
+    if (String(error?.code || "") === "23P01") {
+      message = "La habitación ya está ocupada durante ese periodo. Elige otra fecha de entrada, fecha de salida o habitación.";
+    }
     saveErrorMessage.textContent = message;
     if (!saveErrorDialog.open) saveErrorDialog.showModal();
   } finally {
@@ -856,3 +903,15 @@ bootstrap();
 
 $("saveErrorAcceptBtn").addEventListener("click", () => saveErrorDialog.close());
 $("saveErrorCancelBtn").addEventListener("click", () => { saveErrorDialog.close(); editorDialog.close(); });
+
+function continueTenantActivation(choice) {
+  pendingWelcomeChoice = choice;
+  welcomeConfirmDialog.close();
+  editorForm.requestSubmit();
+}
+$("welcomeCancelBtn").addEventListener("click", () => {
+  pendingWelcomeChoice = null;
+  welcomeConfirmDialog.close();
+});
+$("welcomeSaveOnlyBtn").addEventListener("click", () => continueTenantActivation("save"));
+$("welcomeSendBtn").addEventListener("click", () => continueTenantActivation("send"));

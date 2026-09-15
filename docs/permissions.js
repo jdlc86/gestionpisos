@@ -34,7 +34,7 @@ $("writeControlActions").innerHTML=actions.join("");
 document.querySelectorAll(".grant-staff-access").forEach(button=>button.addEventListener("click",()=>{
  const propertyId=button.dataset.propertyId,select=document.getElementById(`staff-${propertyId}`),target=byId.get(select?.value),canWrite=document.getElementById(`staff-write-${propertyId}`)?.checked===true;
  if(!select||!target)return;
- modal("Dar acceso a vivienda",`${personName(target)} tendrá ${canWrite?"lectura y escritura":"solo lectura"} en esta vivienda. No se convertirá en responsable.`,"Dar acceso",()=>rpc("grant_property_staff_access_v3",{p_property_id:propertyId,p_employee_user_id:select.value,p_can_write:canWrite},"Dando acceso…"));
+ modal("Dar acceso a vivienda",`${personName(target)} tendrá ${canWrite?"lectura y escritura":"solo lectura"} en esta vivienda. No se convertirá en responsable.`,"Dar acceso",async()=>{const userId=select.value;$("permissionStatus").innerHTML="<strong>Confirmación recibida.</strong> Enviando acceso al servidor…";const result=await rpc("grant_property_staff_access_v3",{p_property_id:propertyId,p_employee_user_id:userId,p_can_write:canWrite},"Enviando al servidor…");$("permissionStatus").innerHTML="<strong>Acceso guardado.</strong> Actualizando Gestión de Permisos…";return result;});
 }));
 document.querySelectorAll(".revoke-staff-access").forEach(button=>button.addEventListener("click",()=>{
  const target=byId.get(button.dataset.userId);

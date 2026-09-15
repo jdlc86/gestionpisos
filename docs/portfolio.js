@@ -416,7 +416,7 @@ function mapOccupancy(row) {
     id: row.id, tenantId: row.tenant_id, propertyId: row.property_id, roomId: row.room_id,
     fullName: row.tenants_v2?.full_name || row.occupant_email, documentType: row.tenants_v2?.document_type || "other",
     documentNumber: row.tenants_v2?.document_number || "", email: row.tenants_v2?.email || row.occupant_email,
-    startsOn: row.starts_on, endsOn: row.ends_on, status: row.status, userId: row.user_id
+    startsOn: row.starts_on, endsOn: row.ends_on, suspendedAt: row.suspended_at, status: row.status, userId: row.user_id
   };
 }
 
@@ -629,7 +629,8 @@ async function saveItem(event) {
         occupant_email: tenantPayload.email,
         starts_on: data.startsOn,
         ends_on: data.indefinite ? null : data.endsOn,
-        status: data.status
+        status: data.status,
+        suspended_at: data.status === "blocked" ? (existing?.status === "blocked" ? existing.suspendedAt : now) : null
       };
       const isReactivation = existing?.status === "blocked" && data.status === "active";
       let query;

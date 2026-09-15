@@ -52,7 +52,7 @@ Deno.serve(async (req: Request) => {
 
   const { data: run, error: runError } = await admin
     .from("photo_verification_runs_v2")
-    .select("id,organization_id,actor_user_id,status")
+    .select("id,organization_id,actor_user_id,status,purpose,cleaning_task_id")
     .eq("id", runId)
     .maybeSingle();
 
@@ -98,6 +98,27 @@ Deno.serve(async (req: Request) => {
   if (updateError) return json(500, { error: "submit_failed" });
   if (!updated) return json(409, { error: "run_changed" });
 
+  let cleaningAudit: Record<string, unknown> | null = null;
+
+  if (run.purpose === "cleaning") {
+    if (!run.cleaning_task_id) {
+      return json(409, { error: "cleaning_task_link_missing" });
+    }
+
+    const { data: auditData, error: auditError } = await admin
+      .schema("private")
+      .rpc("select_cleaning_audit_v2", {
+        p_cleaning_task_id: run.cleaning_task_id,
+        p_photo_run_id: run.id,
+      });
+
+    if (auditError) {
+      console.error(auditError);
+      return json(500, { error: "cleaning_audit_selection_failed" });
+    }
+    cleaningAudit = auditData as Record<string, unknown> | null;
+  }
+
   await admin.from("audit_log_v2").insert({
     organization_id: run.organization_id,
     actor_user_id: user.id,
@@ -105,8 +126,24 @@ Deno.serve(async (req: Request) => {
     entity_type: "photo_verification_run",
     entity_id: run.id,
     result: "success",
-    details: { item_id: item.id },
+    details: {
+      item_id: item.id,
+      purpose: run.purpose,
+      cleaning_task_id: run.cleaning_task_id,
+      cleaning_audit_id: cleaningAudit?.id || null,
+      selected_for_cleaning_review: cleaningAudit?.selected_for_review ?? null,
+    },
   });
 
-  return json(200, { ok: true, run: updated });
+  return json(200, {
+    ok: true,
+    run: updated,
+    cleaning_audit: run.purpose === "cleaning"
+      ? {
+          selected_for_review: cleaningAudit?.selected_for_review ?? false,
+          status: cleaningAudit?.status ?? null,
+          review_deadline: cleaningAudit?.review_deadline ?? null,
+        }
+      : null,
+  });
 });

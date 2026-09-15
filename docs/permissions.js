@@ -1,3 +1,4 @@
+window.__permissionsBooted=true;
 import { supabase, getCurrentSession } from "./supabase-client.js";
 const $=(id)=>document.getElementById(id); const esc=(v)=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const personName=(p)=>p?.display_name||p?.email||"Usuario sin nombre"; const roles=(p)=>Array.isArray(p?.roles)?p.roles:[];

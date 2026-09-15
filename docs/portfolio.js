@@ -621,16 +621,17 @@ async function saveItem(event) {
         }
       }
 
+      const isSuspended = data.status === "blocked";
       const payload = {
         organization_id: organizationId,
         tenant_id: tenantId,
         property_id: data.propertyId,
         room_id: data.roomId,
         occupant_email: tenantPayload.email,
-        starts_on: data.startsOn,
-        ends_on: data.indefinite ? null : data.endsOn,
+        starts_on: isSuspended ? null : data.startsOn,
+        ends_on: isSuspended ? null : (data.indefinite ? null : data.endsOn),
         status: data.status,
-        suspended_at: data.status === "blocked" ? (existing?.status === "blocked" ? existing.suspendedAt : now) : null
+        suspended_at: isSuspended ? (existing?.status === "blocked" ? existing.suspendedAt : now) : null
       };
       const isReactivation = existing?.status === "blocked" && data.status === "active";
       let query;

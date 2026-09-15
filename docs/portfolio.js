@@ -29,6 +29,21 @@ const views = {
       { key: "postalCode", label: "Código postal", type: "text" }
     ]
   },
+  occupancies: {
+    title: "Inquilinos",
+    action: "Añadir inquilino",
+    emptyTitle: "No hay inquilinos en este estado",
+    emptyText: "Las ocupaciones relacionan al inquilino con su piso, habitación y periodo de estancia.",
+    singular: "inquilino",
+    statuses: ["active", "blocked", "archived"],
+    fields: [
+      { key: "email", label: "Email", type: "email", required: true },
+      { key: "propertyId", label: "Piso", type: "relation", relation: "properties", required: true },
+      { key: "roomId", label: "Habitación", type: "relation", relation: "rooms", required: true },
+      { key: "startsOn", label: "Fecha de entrada", type: "date", required: true },
+      { key: "endsOn", label: "Fecha de salida", type: "date" }
+    ]
+  },
   rooms: {
     title: "Habitaciones",
     action: "Añadir habitación",
@@ -68,7 +83,7 @@ const auditLabels = {
   room_reactivated: "Reactivado"
 };
 
-const state = { organizations: [], owners: [], properties: [], rooms: [] };
+const state = { organizations: [], owners: [], properties: [], rooms: [], occupancies: [] };
 let current = "owners";
 let editingId = null;
 let organizationId = null;
@@ -117,6 +132,7 @@ function itemName(type, item) {
   if (!item) return "Sin relación";
   if (type === "owners") return item.fullName;
   if (type === "properties") return item.name;
+  if (type === "occupancies") return item.email;
   return item.label;
 }
 
@@ -134,7 +150,8 @@ function renderSummary() {
   summary.replaceChildren(
     makeSummaryCell(state.owners.filter(x => x.status !== "archived").length, "propietarios en cartera"),
     makeSummaryCell(state.properties.filter(x => x.status !== "archived").length, "pisos en cartera"),
-    makeSummaryCell(state.rooms.filter(x => x.status !== "archived").length, "habitaciones en cartera")
+    makeSummaryCell(state.rooms.filter(x => x.status !== "archived").length, "habitaciones en cartera"),
+    makeSummaryCell(state.occupancies.filter(x => x.status !== "archived").length, "inquilinos")
   );
 }
 
@@ -160,6 +177,13 @@ function relationChips(item) {
       createElement("span", "relation-chip", `Propietario: ${itemName("owners", owner)}`),
       createElement("span", "relation-chip", `${rooms.length} habitación${rooms.length === 1 ? "" : "es"}`)
     );
+  } else if (current === "occupancies") {
+    const property = findItem("properties", item.propertyId);
+    const room = findItem("rooms", item.roomId);
+    chips.append(
+      createElement("span", "relation-chip", `Piso: ${itemName("properties", property)}`),
+      createElement("span", "relation-chip", `Habitación: ${itemName("rooms", room)}`)
+    );
   } else {
     const property = findItem("properties", item.propertyId);
     const owner = property ? findItem("owners", property.ownerId) : null;
@@ -174,6 +198,7 @@ function relationChips(item) {
 function descriptionFor(item) {
   if (current === "owners") return [item.email, item.phone].filter(Boolean).join(" · ") || "Sin datos de contacto";
   if (current === "properties") return [item.address, item.city, item.postalCode].filter(Boolean).join(" · ");
+  if (current === "occupancies") return [item.startsOn ? `Entrada: ${item.startsOn}` : "", item.endsOn ? `Salida: ${item.endsOn}` : "Sin fecha de salida"].filter(Boolean).join(" · ");
   return item.description || "Sin descripción";
 }
 
@@ -304,6 +329,13 @@ function mapProperty(row) {
   };
 }
 
+function mapOccupancy(row) {
+  return {
+    id: row.id, propertyId: row.property_id, roomId: row.room_id, email: row.occupant_email,
+    startsOn: row.starts_on, endsOn: row.ends_on, status: row.status, userId: row.user_id
+  };
+}
+
 function mapRoom(row) {
   return {
     id: row.id, propertyId: row.property_id, label: row.label, description: row.description,
@@ -342,6 +374,13 @@ async function loadPortfolio() {
   } else {
     state.rooms = [];
   }
+
+  const occupanciesResult = await supabase.from("occupancies_v2")
+    .select("id,property_id,room_id,occupant_email,starts_on,ends_on,status,user_id")
+    .eq("organization_id", organizationId)
+    .order("starts_on", { ascending: false });
+  if (occupanciesResult.error) throw occupanciesResult.error;
+  state.occupancies = occupanciesResult.data.map(mapOccupancy);
 
   render();
   setStatus("Lectura y escritura protegidas por RLS. Las bajas son lógicas y los cambios quedan auditados.", "Sincronizado.");
@@ -408,6 +447,23 @@ async function saveItem(event) {
         : supabase.from("properties_v2").insert(payload);
       const { error } = await query;
       if (error) throw error;
+    } else if (current === "occupancies") {
+      const room = findItem("rooms", data.roomId);
+      if (!room || room.propertyId !== data.propertyId) throw new Error("room_property_mismatch");
+      const payload = {
+        organization_id: organizationId,
+        property_id: data.propertyId,
+        room_id: data.roomId,
+        occupant_email: data.email.trim().toLowerCase(),
+        starts_on: data.startsOn,
+        ends_on: data.endsOn || null,
+        status: data.status
+      };
+      const query = existing
+        ? supabase.from("occupancies_v2").update(payload).eq("id", existing.id)
+        : supabase.from("occupancies_v2").insert(payload);
+      const { error } = await query;
+      if (error) throw error;
     } else {
       const payload = {
         property_id: data.propertyId,
@@ -454,6 +510,8 @@ async function archiveItem(id) {
       result = await supabase.from("owners").update({ status: "archived", archived_at: now, updated_at: now }).eq("id", id);
     } else if (current === "properties") {
       result = await supabase.from("properties_v2").update({ status: "archived", archived_at: now, updated_at: now }).eq("id", id);
+    } else if (current === "occupancies") {
+      result = await supabase.from("occupancies_v2").update({ status: "archived" }).eq("id", id);
     } else {
       result = await supabase.from("rooms_v2").update({ status: "archived", archived_at: now, updated_at: now }).eq("id", id);
     }
@@ -472,7 +530,7 @@ async function showHistory(id) {
   historyList.replaceChildren(createElement("li", "", "Cargando histórico…"));
   historyDialog.showModal();
 
-  const entityType = current === "owners" ? "owner" : current === "properties" ? "property" : "room";
+  const entityType = current === "owners" ? "owner" : current === "properties" ? "property" : current === "occupancies" ? "occupancy" : "room";
   const { data, error } = await supabase.from("audit_log_v2")
     .select("action,created_at")
     .eq("organization_id", organizationId)

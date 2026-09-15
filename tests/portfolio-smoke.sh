@@ -63,7 +63,7 @@ grep -Fq 'Esta habitación ya tiene un inquilino durante las fechas seleccionada
 python3 - <<'PY'
 from pathlib import Path
 s=Path("docs/portfolio.js").read_text()
-boot=s[s.index("async function bootstrap"):s.index('document.querySelectorAll(".segment")')]
+boot=s[s.index("async function bootstrap"):s.index("async function loadPortfolio")]
 load=s[s.index("async function loadPortfolio"):s.index("function archivedAtFor")]
 assert 'operationalPortfolio = !["root","admin"].includes(role)' in boot
 assert 'current = "occupancies"' in boot

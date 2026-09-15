@@ -191,6 +191,8 @@ grep -q 'alignment_meta' docs/photo-persistence.js
 test -s docs/permissions.html
 test -s docs/permissions.js
 node --check docs/permissions.js
+grep -Fq 'MODULE_NOT_STARTED' docs/permissions.html
+grep -Fq 'window.__permissionsBooted=true' docs/permissions.js
 grep -Fq 'select("organization_id")' docs/permissions.js
 grep -Fq 'p_organization_id:organizationId' docs/permissions.js
 ! grep -Fq '\\n    if(profileError)' docs/permissions.js

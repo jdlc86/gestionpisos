@@ -20,3 +20,5 @@ html[data-theme="dark"] .module-icon--incidents{background:#490202;border-color:
 html[data-theme="dark"] .module-icon--cleaning{background:#3b2e00;border-color:#9e6a03;color:#e3b341}
 html[data-theme="dark"] .module-icon--inspections{background:#271052;border-color:#8957e5;color:#d2a8ff}
 html[data-theme="dark"] .module-icon--documents{background:#0b3b3c;border-color:#238636;color:#7ee787}
+
+.module-emoji{display:inline-block;width:34px;flex:0 0 34px;font-size:27px;line-height:1;text-align:center}

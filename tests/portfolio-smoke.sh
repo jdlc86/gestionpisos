@@ -69,9 +69,12 @@ assert 'operationalPortfolio = !["root","admin"].includes(role)' in boot
 assert 'current = "occupancies"' in boot
 assert 'button.hidden = !allowed' in boot
 assert 'if (operationalPortfolio)' in load
-operator_branch=load[load.index("if (operationalPortfolio)"):load.index("if (state.properties.length)")]
-assert 'state.owners = []' in operator_branch
-assert 'from("owners")' in operator_branch  # query exists only in the else/admin branch
-assert 'else {' in operator_branch
+owner_split=load[load.index("if (operationalPortfolio)"):load.index("if (state.properties.length)")]
+assert 'state.owners = []' in owner_split
+assert 'else {' in owner_split
+admin_branch=owner_split[owner_split.index("else {"):]
+assert 'from("owners")' in admin_branch, "owners query must remain admin-only"
+operator_only=owner_split[:owner_split.index("else {")]
+assert 'from("owners")' not in operator_only, "operator branch must not query owners"
 print("PASS scoped operator portfolio regression")
 PY

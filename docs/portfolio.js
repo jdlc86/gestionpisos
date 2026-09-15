@@ -110,6 +110,7 @@ let editingId = null;
 let organizationId = null;
 let role = null;
 let operationalPortfolio = false;
+let operationalCanWrite = true;
 
 const $ = id => document.getElementById(id);
 const title = $("sectionTitle");
@@ -979,7 +980,26 @@ async function bootstrap() {
         button.classList.toggle("active", allowed);
       });
       if (!organizationId) throw new Error("operator_organization_missing");
+      const nowIso = new Date().toISOString();
+      const { data: assignments, error: assignmentError } = await supabase
+        .from("property_staff_access_v3")
+        .select("property_id,can_write,valid_from,valid_until,revoked_at")
+        .eq("employee_user_id", user.id)
+        .is("revoked_at", null);
+      if (assignmentError) throw assignmentError;
+      const activeAssignments = (assignments || []).filter(item =>
+        (!item.valid_from || item.valid_from <= nowIso) && (!item.valid_until || item.valid_until > nowIso)
+      );
+      operationalCanWrite = activeAssignments.some(item => item.can_write === true);
+      action.disabled = !operationalCanWrite;
+      action.title = operationalCanWrite ? "" : "Solo lectura: no tienes permiso de escritura sobre las viviendas asignadas.";
       await loadPortfolio();
+      if (!state.properties.length) {
+        action.disabled = true;
+        setStatus("No tienes viviendas asignadas actualmente.", "Sin cartera asignada.");
+      } else if (!operationalCanWrite) {
+        setStatus("Puedes consultar tus viviendas e inquilinos, pero no modificarlos.", "Acceso de solo lectura.");
+      }
       return;
     }
 

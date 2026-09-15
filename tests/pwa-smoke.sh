@@ -16,7 +16,7 @@ node --check docs/photo-verifications.js
 grep -q 'photo-verifications.html?v=2026091501' docs/operations.html
 grep -q 'review-photo-verification' docs/photo-verifications.js
 grep -q 'Fotoverificación aprobada correctamente' docs/photo-verifications.js
-grep -q 'photo-verifications.js?v=2026091506' docs/photo-verifications.html
+grep -q 'photo-verifications.js?v=2026091507' docs/photo-verifications.html
 grep -q 'photo-verifications.css?v=2026091505' docs/photo-verifications.html
 grep -q 'id="reviewToast"' docs/photo-verifications.html
 grep -q 'id="propertyFilter"' docs/photo-verifications.html
@@ -206,3 +206,8 @@ grep -q 'id="evolutionPattern"' docs/photo-verifications.js
 grep -q 'id="evolutionFrom"' docs/photo-verifications.js
 grep -q 'id="evolutionTo"' docs/photo-verifications.js
 grep -q 'evolution-picker' docs/photo-verifications.css
+
+grep -q 'Evolución de fotoverificaciones' docs/photo-verifications.js
+grep -q 'disabledIndex' docs/photo-verifications.js
+grep -q 'evolutionOption(entry,index,rightIndex)' docs/photo-verifications.js
+grep -q 'evolutionOption(entry,index,leftIndex)' docs/photo-verifications.js

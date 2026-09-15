@@ -396,6 +396,11 @@ function applyOccupancyStatusRules(item = null) {
     indefinite.disabled = true;
     endsOn.disabled = false;
     endsOn.required = true;
+    // A Baja may come from Suspendido. Disabled controls are intentionally
+    // absent from FormData, so keep only the fields that Baja actually needs
+    // participating in native constraint validation.
+    startsOn.setCustomValidity("");
+    indefinite.setCustomValidity("");
     const today = new Date();
     today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
     endsOn.min = today.toISOString().slice(0, 10);
@@ -555,6 +560,9 @@ function friendlyWriteError(error, fallback) {
 
 async function saveItem(event) {
   event.preventDefault();
+  const statusControl = editorForm.elements.namedItem("status");
+  const isOffboardingSubmit = current === "occupancies" && statusControl?.value === "archived";
+  if (isOffboardingSubmit) applyOccupancyStatusRules(editingId ? findItem(current, editingId) : null);
   if (!editorForm.reportValidity()) return;
 
   const data = Object.fromEntries(new FormData(editorForm).entries());

@@ -12,7 +12,7 @@ $("adminsList").innerHTML=admins.length?admins.map(p=>card(personName(p),p.email
 $("employeesList").innerHTML=employees.length?employees.map(p=>card(personName(p),p.email,"Empleado")).join(""):card("Sin empleados","No hay empleados activos.");
 $("propertiesList").innerHTML=(data?.properties||[]).length?data.properties.map(p=>card(p.name||"Vivienda",[p.address_line,p.city].filter(Boolean).join(" · "),p.responsible_user_id?`Responsable: ${personName(byId.get(p.responsible_user_id))}`:"Sin responsable")).join(""):card("Sin viviendas","No hay viviendas activas.");
 const rows=[writeHolder?card("Control de escritura",personName(byId.get(writeHolder.holder_user_id)),"Titular actual"):card("Control de escritura","No existe titular activo.","Sin titular")];requests.filter(r=>r.capability==="write_control").forEach(r=>rows.push(card("Solicitud pendiente",personName(byId.get(r.requester_user_id)),"Pendiente")));$("capabilitiesList").innerHTML=rows.join("");
-const actions=[];if(data?.actor?.is_admin&&!writeHolder?.holder_user_id===me){} 
+const actions=[];
 if(data?.actor?.is_admin&&writeHolder?.holder_user_id!==me&&!myRequest) actions.push('<button id="requestWriteControl" class="primary" type="button">Solicitar control de escritura</button>');
 if(myRequest) actions.push('<span class="permission-note">Tu solicitud está pendiente de decisión.</span>');
 const pendingForHolder=requests.filter(r=>r.capability==="write_control"&&writeHolder?.holder_user_id===me);

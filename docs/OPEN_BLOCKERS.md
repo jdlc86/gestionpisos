@@ -625,3 +625,46 @@ Los cinco SQL exactos se recuperaron del campo `statements` del historial remoto
 y están versionados con los mismos timestamps y nombres.
 
 No reabrir el diseño de B-08 salvo que las pruebas reales detecten una regresión.
+
+
+---
+
+## B-16 — Inquilinos, dossier privado y baja verificable
+
+### Estado
+
+PARCIALMENTE IMPLEMENTADO — 2026-09-15
+
+### Implementado y desplegado
+
+- `tenants_v2` separa la identidad estable del inquilino de `occupancies_v2`.
+- Alta administrativa: nombre completo, DNI/NIE/Pasaporte/Otro, número, email, piso, habitación y fechas.
+- La salida indefinida se representa en BD mediante `ends_on = NULL`.
+- `tenant_documents_v2` admite múltiples adjuntos con nombre y tipo.
+- Bucket `tenant-documents-v2` privado, máximo 10 MB, PDF/JPEG/PNG/WebP.
+- ROOT y ADMIN tienen políticas separadas; ADMIN queda limitado por organización.
+- UI de documentos: subir, ver mediante URL firmada de 60 s y eliminar con confirmación.
+- PR #85: identidad del inquilino.
+- PR #86: almacenamiento documental privado.
+- PR #87: interfaz documental.
+
+### En curso
+
+PR #88 introduce:
+- etiquetas Alta / Suspendido / Baja · pendiente de eliminación;
+- deshabilitado real de Fecha de salida cuando Indefinido está activo;
+- `deletion_requested_at/by`;
+- `tenant_privacy_events_v2` como auditoría mínima de privacidad.
+
+### Pendiente obligatorio
+
+- Edge Function privilegiada para suspensión/reactivación/baja/purga.
+- Bloqueo efectivo de Auth al suspender o dar de baja.
+- Inventario completo de referencias antes de purgar.
+- Política explícita de retención para contratos/facturación/históricos antes de borrar.
+- Purga coordinada de Storage + tablas eliminables + Auth.
+- Verificación posterior de que no quedan datos eliminables.
+- Email transaccional final basado en el resultado real; nunca afirmar borrado total si existe retención.
+- Pruebas positivas/negativas multiusuario.
+
+No considerar cerrada la baja RGPD hasta completar y verificar todos esos puntos.

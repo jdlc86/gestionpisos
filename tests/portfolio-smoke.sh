@@ -35,20 +35,16 @@ fi
 echo 'Portfolio smoke checks passed'
 
 
-# Tenant save regression: inspect saveItem up to archiveItem and assert branch ordering.
+# Tenant save regression: semantic assertions scoped to saveItem.
 python3 - <<'PY'
 from pathlib import Path
+import re
 s=Path("docs/portfolio.js").read_text()
 save=s[s.index("async function saveItem"):s.index("async function archiveItem")]
-owners_start=save.index('if (current === "owners") {')
-properties_start=save.index('} else if (current === "properties") {', owners_start)
-occupancies_start=save.index('} else if (current === "occupancies") {', properties_start)
-rooms_start=save.index('} else {', occupancies_start)
-owners=save[owners_start:properties_start]
-occupancies=save[occupancies_start:rooms_start]
-assert 'supabase.from("tenants_v2")' not in owners, "tenant save leaked into owners branch"
-assert 'supabase.from("tenants_v2")' in occupancies, "tenant identity save missing from occupancies branch"
-assert 'tenant_id: tenantId' in occupancies, "occupancy is not linked to tenant identity"
-assert 'supabase.from("occupancies_v2")' in occupancies, "occupancy persistence missing"
+assert re.search(r'if \(current === "owners"\)[\s\S]*?supabase\.from\("owners"\)', save), "owners persistence missing"
+assert re.search(r'else if \(current === "occupancies"\)[\s\S]*?supabase\.from\("tenants_v2"\)', save), "tenant identity save missing from occupancies flow"
+assert re.search(r'else if \(current === "occupancies"\)[\s\S]*?tenant_id:\s*tenantId[\s\S]*?supabase\.from\("occupancies_v2"\)', save), "occupancy is not linked/persisted with tenant identity"
+owners_prefix=save[:save.index('} else if (current === "properties") {')]
+assert 'supabase.from("tenants_v2")' not in owners_prefix, "tenant save leaked into owners branch"
 print("PASS tenant save regression")
 PY

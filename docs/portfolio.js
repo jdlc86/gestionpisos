@@ -388,6 +388,12 @@ function applyOccupancyStatusRules(item = null) {
   if (!status || !startsOn || !indefinite || !endsOn) return;
 
   const isOffboarding = status.value === "archived";
+  const isProtectedTransition = status.value === "blocked" || isOffboarding;
+  const protectedNames = ["fullName", "documentType", "documentNumber", "email", "propertyId", "roomId"];
+  protectedNames.forEach(name => {
+    const control = editorForm.elements.namedItem(name);
+    if (control) control.disabled = isProtectedTransition;
+  });
   if (isOffboarding) {
     // Baja closes the relationship; it never asks for or edits an entry date.
     startsOn.disabled = true;
@@ -581,6 +587,18 @@ async function saveItem(event) {
 
   const data = Object.fromEntries(new FormData(editorForm).entries());
   const existing = editingId ? findItem(current, editingId) : null;
+  const protectedTransition = current === "occupancies" && existing &&
+    (statusControl?.value === "blocked" || statusControl?.value === "archived");
+  if (protectedTransition) {
+    // Suspensión/Baja always use the identity and location from the last saved Alta.
+    data.fullName = existing.fullName;
+    data.documentType = existing.documentType;
+    data.documentNumber = existing.documentNumber;
+    data.email = existing.email;
+    data.propertyId = existing.propertyId;
+    data.roomId = existing.roomId;
+    data.status = statusControl.value;
+  }
 
   // Baja is a state transition, not a generic record edit. It has one
   // transactional backend path and does not inherit Alta/Suspensión writes.

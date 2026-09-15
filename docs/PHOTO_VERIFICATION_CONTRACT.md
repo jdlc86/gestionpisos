@@ -71,3 +71,38 @@ El flujo activo ya no usa Gemini, Sobel, OpenCV, MobileSAM ni ONNX para crear o 
 La pantalla `photo-verifications.html` permite a ROOT/ADMIN consultar runs visibles por RLS, revisar la captura privada mediante URL firmada y filtrar por estado.
 
 Las decisiones de aprobar/rechazar no abren UPDATE directo al frontend. Se envían a `review-photo-verification`, que exige sesión válida, rol ROOT/ADMIN y AAL2. La aplicación atómica de la decisión se ejecuta mediante `apply_photo_verification_review_v2`, accesible únicamente a `service_role`, y actualiza run + items + auditoría dentro de la misma transacción.
+
+
+## Separación de propósito — limpieza vs. estado/mantenimiento (2026-09-15)
+
+La infraestructura de patrón, silueta, cámara, alineación, JPEG privado e historial es compartida, pero el propósito de una captura debe ser explícito.
+
+### Evidencia de limpieza
+
+Pertenece a una tarea recurrente de limpieza. Puede ser seleccionada para auditoría humana o análisis IA. La auditoría humana admite decisión por fotografía y cierre automático del expediente. Aprobar/rechazar es una decisión de limpieza, no una propiedad universal de toda fotoverificación.
+
+### Evidencia de estado/mantenimiento
+
+Sirve para documentar o comprobar el estado físico del inmueble: humedad, grietas, mobiliario, equipos, reparación, etc. Puede ser solicitada por el sistema o por personal autorizado y realizada, según permisos, por trabajador o inquilino.
+
+Estas evidencias NO deben mostrar aprobar/rechazar de limpieza.
+
+### Un solo flujo para el inquilino
+
+Cuando coincidan una limpieza y una comprobación de mantenimiento, la UI puede presentarlas dentro de una misma sesión para reducir fricción. Internamente cada evidencia conserva su propósito y reglas.
+
+Ejemplo:
+- Cocina — limpieza
+- Baño — limpieza
+- Salón — limpieza
+- Bajo fregadero — comprobación de posible humedad
+
+La cuarta captura no participa en el resultado de limpieza aunque se haya tomado en la misma sesión.
+
+### Evolución
+
+La comparación temporal es evidencia visual. No debe afirmar automáticamente deterioro, daño o responsabilidad. Una IA futura puede proponer observaciones que requieren reglas de confirmación posteriores.
+
+### Compatibilidad
+
+No reinterpretar verificaciones históricas existentes como limpiezas si no existe evidencia explícita de ese propósito. La introducción de nuevos tipos debe ser aditiva y versionada.

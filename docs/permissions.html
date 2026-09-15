@@ -14,4 +14,13 @@
 <section class="status"><span class="dot"></span><span id="permissionStatus"><strong>Conectando…</strong> Cargando contexto autorizado.</span></section>
 </main>
 <div id="permissionModal" class="permission-modal" hidden><div class="permission-modal-backdrop" data-modal-close></div><section class="permission-modal-card" role="dialog" aria-modal="true" aria-labelledby="permissionModalTitle"><h3 id="permissionModalTitle"></h3><p id="permissionModalText"></p><div class="permission-modal-actions"><button class="ghost" type="button" data-modal-close>Cancelar</button><button id="permissionModalConfirm" class="primary" type="button">Confirmar</button></div></section></div>
-<script src="./app.js?v=202609152" defer></script><script type="module" src="./permissions.js?v=202609156"></script><script type="module" src="./auth-guard.js"></script></body></html>
+<script>
+window.__permissionsBooted=false;
+window.addEventListener("DOMContentLoaded",()=>setTimeout(()=>{
+  if(window.__permissionsBooted)return;
+  const status=document.getElementById("permissionStatus");
+  const error=document.getElementById("permissionError");
+  if(error){error.hidden=false;error.textContent="No se pudo iniciar Gestión de Permisos. Diagnóstico: MODULE_NOT_STARTED";}
+  if(status)status.innerHTML="<strong>Carga detenida.</strong> El módulo de permisos no llegó a iniciarse.";
+},5000));
+</script><script src="./app.js?v=202609152" defer></script><script type="module" src="./permissions.js?v=202609157"></script><script type="module" src="./auth-guard.js"></script></body></html>

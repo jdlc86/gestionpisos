@@ -982,7 +982,7 @@ async function bootstrap() {
       if (!organizationId) throw new Error("operator_organization_missing");
       const nowIso = new Date().toISOString();
       const { data: assignments, error: assignmentError } = await supabase
-        .from("property_staff_assignments")
+        .from("property_staff_access_v3")
         .select("property_id,can_write,valid_from,valid_until,revoked_at")
         .eq("employee_user_id", user.id)
         .is("revoked_at", null);

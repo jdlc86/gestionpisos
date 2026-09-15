@@ -35,38 +35,25 @@ fi
 echo 'Portfolio smoke checks passed'
 
 
-# Tenant save regression: semantic assertions scoped to saveItem.
+# Tenant onboarding regression: creation must use the atomic property-scoped RPC.
 python3 - <<'PY'
 from pathlib import Path
-import re
 s=Path("docs/portfolio.js").read_text()
 save=s[s.index("async function saveItem"):s.index("async function archiveItem")]
-assert re.search(r'if \(current === "owners"\)[\s\S]*?supabase\.from\("owners"\)', save), "owners persistence missing"
-assert re.search(r'else if \(current === "occupancies"\)[\s\S]*?supabase\.from\("tenants_v2"\)', save), "tenant identity save missing from occupancies flow"
-assert re.search(r'else if \(current === "occupancies"\)[\s\S]*?tenant_id:\s*tenantId[\s\S]*?supabase\.from\("occupancies_v2"\)', save), "occupancy is not linked/persisted with tenant identity"
-owners_prefix=save[:save.index('} else if (current === "properties") {')]
-assert 'supabase.from("tenants_v2")' not in owners_prefix, "tenant save leaked into owners branch"
-print("PASS tenant save regression")
+assert 'supabase.rpc("create_tenant_occupancy_v3"' in save, "atomic tenant onboarding RPC missing"
+assert 'p_property_id: data.propertyId' in save and 'p_room_id: data.roomId' in save, "property/room scope missing"
+assert 'createdTenantId' not in save, "manual tenant rollback should be removed"
+assert 'tenant rollback failed' not in save, "legacy rollback path remains"
+print("PASS atomic tenant onboarding regression")
 PY
-
-grep -q 'id="editorError"' docs/portfolio.html
-grep -q 'createdTenantId' docs/portfolio.js
-grep -q 'tenant rollback failed' docs/portfolio.js
-! grep -q 'editorError.textContent = message' docs/portfolio.js
 
 grep -q 'id="saveErrorDialog"' docs/portfolio.html
 grep -q 'saveErrorDialog.showModal()' docs/portfolio.js
 grep -q 'saveErrorAcceptBtn' docs/portfolio.js
 grep -q 'saveErrorCancelBtn' docs/portfolio.js
-
-grep -q 'linkedOccupancies' docs/portfolio.js
-grep -q 'tenant_orphan_identity_conflict' docs/portfolio.js
-grep -q 'no tiene ninguna ocupación' docs/portfolio.js
-
 grep -q 'error?.code === "23505"' docs/portfolio.js
 grep -q 'error?.code === "23503"' docs/portfolio.js
 grep -q 'error?.code === "23514"' docs/portfolio.js
 grep -q 'No se pudo guardar el inquilino.' docs/portfolio.js
-
 grep -q 'error?.code === "23P01"' docs/portfolio.js
 grep -q 'Esta habitación ya tiene un inquilino durante las fechas seleccionadas' docs/portfolio.js

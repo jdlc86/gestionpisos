@@ -12,3 +12,12 @@ ROOT es un rol protegido. RLS es obligatoria en datos sensibles. La autorizació
 - Nunca comunicar “no conservamos ningún dato” sin una verificación posterior de todas las dependencias y posibles obligaciones de retención.
 - La comunicación final debe distinguir datos eliminados de datos que deban conservarse bloqueados por obligación legal.
 - Los documentos de identidad se almacenan exclusivamente en Storage privado; las URLs de visualización deben ser firmadas y de corta duración.
+
+
+## Privacidad del inquilino
+
+- **Suspendido** debe impedir acceso sin destruir la ficha.
+- **Baja · pendiente de eliminación** revoca acceso e inicia el proceso de salida, pero no garantiza borrado inmediato.
+- La purga definitiva debe inventariar referencias, respetar retenciones aplicables, eliminar datos eliminables en Storage/BD/Auth y verificar el resultado.
+- Nunca comunicar «no conservamos ningún dato» sin verificación posterior.
+- Los documentos de identidad viven exclusivamente en Storage privado y solo se visualizan mediante acceso autorizado temporal.

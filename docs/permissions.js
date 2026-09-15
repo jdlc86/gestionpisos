@@ -10,7 +10,13 @@ async function rpc(name,args){if(busy)return;busy=true;try{const {data,error}=aw
 function render(data){ctx=data;const people=data?.people||[],byId=new Map(people.map(p=>[p.user_id,p])),admins=people.filter(p=>roles(p).includes("admin")),employees=people.filter(p=>roles(p).includes("employee")),holders=data?.capability_holders||[],requests=data?.pending_requests||[],writeHolder=holders.find(h=>h.capability==="write_control"),me=data?.actor?.user_id,myRequest=requests.find(r=>r.capability==="write_control"&&r.requester_user_id===me);
 $("adminsList").innerHTML=admins.length?admins.map(p=>card(personName(p),p.email,p.user_id===writeHolder?.holder_user_id?"Control de escritura":"Admin")).join(""):card("Sin administradores","No hay administradores activos.");
 $("employeesList").innerHTML=employees.length?employees.map(p=>card(personName(p),p.email,"Empleado")).join(""):card("Sin empleados","No hay empleados activos.");
-$("propertiesList").innerHTML=(data?.properties||[]).length?data.properties.map(p=>card(p.name||"Vivienda",[p.address_line,p.city].filter(Boolean).join(" · "),p.responsible_user_id?`Responsable: ${personName(byId.get(p.responsible_user_id))}`:"Sin responsable")).join(""):card("Sin viviendas","No hay viviendas activas.");
+const canAssignResponsible=data?.actor?.is_root||writeHolder?.holder_user_id===me;
+const eligible=people.filter(p=>roles(p).some(r=>r==="employee"||r==="admin"));
+$("propertiesList").innerHTML=(data?.properties||[]).length?data.properties.map(p=>{
+ const current=p.responsible_user_id?personName(byId.get(p.responsible_user_id)):"Sin responsable";
+ const controls=canAssignResponsible&&eligible.length?`<div class="responsible-controls"><label for="responsible-${esc(p.id)}">Responsable</label><select id="responsible-${esc(p.id)}" data-property-id="${esc(p.id)}">${eligible.map(person=>`<option value="${esc(person.user_id)}" ${person.user_id===p.responsible_user_id?"selected":""}>${esc(personName(person))}</option>`).join("")}</select><button class="ghost assign-responsible" type="button" data-property-id="${esc(p.id)}">Cambiar responsable</button></div>`:"";
+ return `<article class="permission-item property-responsible-item"><div><strong>${esc(p.name||"Vivienda")}</strong><span>${esc([p.address_line,p.city].filter(Boolean).join(" · "))}</span><em>${esc(`Responsable: ${current}`)}</em></div>${controls}</article>`;
+}).join(""):card("Sin viviendas","No hay viviendas activas.");
 const rows=[writeHolder?card("Control de escritura",personName(byId.get(writeHolder.holder_user_id)),"Titular actual"):card("Control de escritura","No existe titular activo.","Sin titular")];requests.filter(r=>r.capability==="write_control").forEach(r=>rows.push(card("Solicitud pendiente",personName(byId.get(r.requester_user_id)),"Pendiente")));$("capabilitiesList").innerHTML=rows.join("");
 const actions=[];
 if(data?.actor?.is_admin&&writeHolder?.holder_user_id!==me&&!myRequest) actions.push('<button id="requestWriteControl" class="primary" type="button">Solicitar control de escritura</button>');
@@ -18,6 +24,13 @@ if(myRequest) actions.push('<span class="permission-note">Tu solicitud está pen
 const pendingForHolder=requests.filter(r=>r.capability==="write_control"&&writeHolder?.holder_user_id===me);
 pendingForHolder.forEach(r=>actions.push(`<div class="permission-decision"><span><strong>${esc(personName(byId.get(r.requester_user_id)))}</strong> solicita el control</span><button class="ghost reject-request" data-id="${esc(r.id)}">Rechazar</button><button class="primary accept-request" data-id="${esc(r.id)}">Aceptar</button></div>`));
 $("writeControlActions").innerHTML=actions.join("");
+document.querySelectorAll(".assign-responsible").forEach(button=>button.addEventListener("click",()=>{
+ const select=document.getElementById(`responsible-${button.dataset.propertyId}`);
+ const property=(data?.properties||[]).find(p=>p.id===button.dataset.propertyId);
+ const target=byId.get(select?.value);
+ if(!select||!target||select.value===property?.responsible_user_id)return;
+ modal("Cambiar responsable de vivienda",`${personName(target)} pasará a ser el único responsable activo de ${property?.name||"esta vivienda"}. El responsable anterior perderá esa asignación.`,"Cambiar responsable",()=>rpc("assign_property_responsible_v3",{p_property_id:button.dataset.propertyId,p_employee_user_id:select.value}));
+}));
 $("requestWriteControl")?.addEventListener("click",()=>modal("Solicitar control de escritura","El titular actual deberá aceptar o rechazar la solicitud. Hasta entonces no cambiará ningún permiso.","Solicitar",()=>rpc("request_admin_write_control",{p_organization_id:data.organization_id})));
 document.querySelectorAll(".accept-request").forEach(b=>b.addEventListener("click",()=>modal("Transferir control de escritura","Al aceptar, perderás inmediatamente el control de escritura y el administrador solicitante pasará a ser el único titular.","Aceptar transferencia",()=>rpc("decide_admin_write_control_request",{p_request_id:b.dataset.id,p_accept:true}))));
 document.querySelectorAll(".reject-request").forEach(b=>b.addEventListener("click",()=>modal("Rechazar solicitud","El titular actual conservará el control de escritura. La decisión quedará registrada.","Rechazar",()=>rpc("decide_admin_write_control_request",{p_request_id:b.dataset.id,p_accept:false}))));

@@ -680,7 +680,6 @@ async function saveItem(event) {
       }
 
       const isSuspended = data.status === "blocked";
-      const isOffboarding = data.status === "archived";
       const payload = {
         organization_id: organizationId,
         tenant_id: tenantId,

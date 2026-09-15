@@ -8,7 +8,10 @@
 - owners / propietarios
 - properties / pisos
 - rooms / habitaciones
-- tenancies / ocupaciones-contratos
+- tenants_v2 / identidad estable del inquilino
+- occupancies_v2 / ocupaciones-contratos
+- tenant_documents_v2 / dossier documental privado del inquilino
+- tenant_privacy_events_v2 / auditoría mínima del ciclo de privacidad
 - property_responsibilities / responsables y delegaciones
 - access_requests / solicitudes QR
 - qr_tokens / QR revocables
@@ -32,6 +35,10 @@ Los nombres finales pueden variar, pero estas responsabilidades no deben mezclar
 ## Reglas
 
 - No guardar “inquilino actual” como único histórico: usar ocupaciones con fechas.
+- La identidad del inquilino no se duplica por cada estancia: `tenants_v2` se relaciona con `occupancies_v2`.
+- Una ocupación con salida indefinida usa `ends_on = NULL`; la UI debe deshabilitar Fecha de salida mientras Indefinido esté activo.
+- Los documentos del inquilino viven en bucket privado y su metadata en `tenant_documents_v2`; nunca usar URL pública.
+- El borrado definitivo del inquilino es un workflow privilegiado y verificable, no un DELETE cliente.
 - No sobrescribir patrones: versionarlos.
 - No borrar históricos de negocio para representar una baja.
 - Documentos conservan autor, entidad, tipo, visibilidad, versión y timestamps.

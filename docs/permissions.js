@@ -47,4 +47,24 @@ $("requestWriteControl")?.addEventListener("click",()=>modal("Solicitar control 
 document.querySelectorAll(".accept-request").forEach(b=>b.addEventListener("click",()=>modal("Transferir control de escritura","Al aceptar, perderás inmediatamente el control de escritura y el administrador solicitante pasará a ser el único titular.","Aceptar transferencia",()=>rpc("decide_admin_write_control_request",{p_request_id:b.dataset.id,p_accept:true}))));
 document.querySelectorAll(".reject-request").forEach(b=>b.addEventListener("click",()=>modal("Rechazar solicitud","El titular actual conservará el control de escritura. La decisión quedará registrada.","Rechazar",()=>rpc("decide_admin_write_control_request",{p_request_id:b.dataset.id,p_accept:false}))));
 }
-async function load(){try{const session=await getCurrentSession();if(!session)return;const {data,error}=await supabase.rpc("get_permission_management_context",{p_organization_id:null});if(error)throw error;render(data);$("permissionContent").hidden=false;$("permissionError").hidden=true;$("permissionStatus").innerHTML="<strong>Contexto cargado.</strong> Las operaciones críticas se validan en backend.";}catch(e){$("permissionError").textContent=e?.message==="not_authorized"?"No tienes autorización para acceder a Gestión de Permisos.":"No se pudo cargar Gestión de Permisos. No se ha realizado ningún cambio.";$("permissionError").hidden=false;}} load();
+async function withTimeout(promise,ms,label){let timer;try{return await Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(label)),ms);})]);}finally{clearTimeout(timer);}}
+async function load(){
+  $("permissionStatus").innerHTML="<strong>Conectando…</strong> Cargando contexto autorizado.";
+  try{
+    const session=await withTimeout(getCurrentSession(),8000,"session_timeout");
+    if(!session) throw new Error("session_missing");
+    const {data,error}=await withTimeout(supabase.rpc("get_permission_management_context",{p_organization_id:null}),12000,"permissions_timeout");
+    if(error)throw error;
+    render(data);
+    $("permissionContent").hidden=false;
+    $("permissionError").hidden=true;
+    $("permissionStatus").innerHTML="<strong>Contexto cargado.</strong> Las operaciones críticas se validan en backend.";
+  }catch(e){
+    const code=e?.message||"";
+    $("permissionContent").hidden=true;
+    $("permissionError").textContent=code==="not_authorized"?"No tienes autorización para acceder a Gestión de Permisos.":code==="session_missing"?"Tu sesión no está disponible. Vuelve a Inicio e inicia sesión de nuevo.":code==="session_timeout"?"No se pudo comprobar tu sesión. Revisa la conexión e inténtalo de nuevo.":code==="permissions_timeout"?"El servidor tardó demasiado en cargar Gestión de Permisos. Inténtalo de nuevo.":"No se pudo cargar Gestión de Permisos. No se ha realizado ningún cambio.";
+    $("permissionError").hidden=false;
+    $("permissionStatus").innerHTML="<strong>Carga detenida.</strong> No se ha realizado ningún cambio.";
+  }
+}
+load();

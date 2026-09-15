@@ -234,7 +234,7 @@ function descriptionFor(item) {
   if (current === "occupancies") {
     const identity = [item.email, item.documentNumber ? `${item.documentType.toUpperCase()}: ${item.documentNumber}` : ""];
     if (item.status === "blocked") {
-      return [...identity, `⏸ Suspensión: ${item.suspendedAt ? formatDate(item.suspendedAt) : "---"}`].filter(Boolean).join(" · ");
+      return identity.filter(Boolean).join(" · ");
     }
     return [...identity, item.startsOn ? `📅 Entrada: ${item.startsOn}` : "", item.endsOn ? `Salida: ${item.endsOn}` : "Salida: indefinida"].filter(Boolean).join(" · ");
   }
@@ -261,6 +261,9 @@ function renderCard(item) {
   heading.append(createElement("span", "record-type-icon", viewIcons[current] || "•"), createElement("h4", "", itemName(current, item)));
   const meta = createElement("div", "record-meta");
   meta.append(createElement("span", `status-pill is-${item.status}`, labels[item.status] || item.status));
+  if (current === "occupancies" && item.status === "blocked") {
+    meta.append(createElement("span", "relation-chip", `⏸ Suspensión: ${item.suspendedAt ? formatDate(item.suspendedAt) : "---"}`));
+  }
   if (item.archivedAt) meta.append(createElement("span", "relation-chip", `Baja: ${formatDate(item.archivedAt)}`));
   content.append(
     heading,

@@ -188,6 +188,13 @@ grep -q 'photo_verification_items_v2' docs/photo-persistence.js
 grep -q 'submit-photo-verification' docs/photo-persistence.js
 grep -q 'alignment_meta' docs/photo-persistence.js
 
+test -s docs/permissions.html
+test -s docs/permissions.js
+node --check docs/permissions.js
+grep -Fq 'withTimeout(getCurrentSession(),8000,"session_timeout")' docs/permissions.js
+grep -Fq '"permissions_timeout"' docs/permissions.js
+grep -Fq '<strong>Carga detenida.</strong>' docs/permissions.js
+
 echo 'PWA smoke checks passed'
 
 # Legacy automatic photo guide code must stay removed.

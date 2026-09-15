@@ -52,4 +52,9 @@ PY
 grep -q 'id="editorError"' docs/portfolio.html
 grep -q 'createdTenantId' docs/portfolio.js
 grep -q 'tenant rollback failed' docs/portfolio.js
-grep -q 'editorError.textContent = message' docs/portfolio.js
+! grep -q 'editorError.textContent = message' docs/portfolio.js
+
+grep -q 'id="saveErrorDialog"' docs/portfolio.html
+grep -q 'saveErrorDialog.showModal()' docs/portfolio.js
+grep -q 'saveErrorAcceptBtn' docs/portfolio.js
+grep -q 'saveErrorCancelBtn' docs/portfolio.js

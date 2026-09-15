@@ -109,6 +109,8 @@ const editorForm = $("editorForm");
 const editorTitle = $("editorTitle");
 const editorFields = $("editorFields");
 const saveButton = $("saveDraftBtn");
+const saveErrorDialog = $("saveErrorDialog");
+const saveErrorMessage = $("saveErrorMessage");
 const historyDialog = $("historyDialog");
 const historyTitle = $("historyTitle");
 const historyList = $("historyList");
@@ -570,15 +572,8 @@ async function saveItem(event) {
   } catch (error) {
     console.error("portfolio save failed", error);
     const message = friendlyWriteError(error, "No se pudo guardar el cambio.");
-    const editorError = document.getElementById("editorError");
-    if (editorError) {
-      editorError.textContent = message;
-      editorError.hidden = false;
-      editorError.setAttribute("role", "alert");
-      editorError.scrollIntoView({ block: "nearest" });
-    } else {
-      setStatus(message, "Error.");
-    }
+    saveErrorMessage.textContent = message;
+    if (!saveErrorDialog.open) saveErrorDialog.showModal();
   } finally {
     saveButton.disabled = false;
   }
@@ -800,3 +795,6 @@ documentForm.addEventListener("submit", uploadDocument);
 documentsList.addEventListener("click", documentAction);
 
 bootstrap();
+
+$("saveErrorAcceptBtn").addEventListener("click", () => saveErrorDialog.close());
+$("saveErrorCancelBtn").addEventListener("click", () => { saveErrorDialog.close(); editorDialog.close(); });

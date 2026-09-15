@@ -1,2 +1,36 @@
-<!doctype html><html lang="es" data-auth-pending="1"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel="stylesheet" href="./app.css"><title>Allaiso · Limpieza</title></head><body><main class="shell"><header class="topbar"><div><p class="eyebrow">ALLAISO</p><h1>Limpieza</h1></div><a class="ghost" href="./">Inicio</a></header><section class="hero"><span class="badge">Beta 0</span><h2>Turnos, cambios y verificaciones</h2><p>Tareas de limpieza, solicitudes entre compañeros, deuda no monetaria y futura fotoverificación.</p></section><section class="grid"><article class="card"><strong>Pendientes</strong><span>Turnos asignados</span></article><article class="card"><strong>Cambios</strong><span>Solicitudes entre compañeros</span></article><article class="card"><strong>Deudas</strong><span>Compensaciones pendientes</span></article></section><section class="status"><span class="dot"></span><span>B-08 cerrado estructuralmente. Fotoverificación continúa en B-10.</span></section></main>  <script type="module" src="./auth-guard.js"></script>
+<!doctype html>
+<html lang="es" data-auth-pending="1">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <link rel="stylesheet" href="./app.css">
+  <title>Allaiso · Limpieza</title>
+</head>
+<body>
+<main class="shell">
+  <header class="topbar"><div><p class="eyebrow">ALLAISO</p><h1>Limpieza</h1></div><a class="ghost" href="./">Inicio</a></header>
+  <section class="hero">
+    <span class="badge">Fotoverificación</span>
+    <h2 id="cleaningTitle">Tu limpieza</h2>
+    <p id="cleaningIntro">Consulta las zonas que debes fotografiar. Las zonas asignadas no cambian si sales y vuelves.</p>
+  </section>
+
+  <section id="taskLookup" class="card">
+    <strong>Abrir tarea de limpieza</strong>
+    <span>Introduce el identificador de la tarea asignada para esta primera prueba del flujo.</span>
+    <form id="taskForm">
+      <label for="taskId">ID de tarea</label>
+      <input id="taskId" name="task_id" autocomplete="off" required placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+      <button class="primary" type="submit">Abrir limpieza</button>
+    </form>
+  </section>
+
+  <section id="cleaningTask" hidden>
+    <div class="status"><span class="dot"></span><span id="taskMeta"></span></div>
+    <section id="checklist" class="grid" aria-label="Fotos solicitadas"></section>
+  </section>
+  <p id="cleaningMessage" class="status" role="status" aria-live="polite"></p>
+</main>
+<script type="module" src="./cleaning.js?v=2026091501"></script>
+<script type="module" src="./auth-guard.js"></script>
 </body></html>

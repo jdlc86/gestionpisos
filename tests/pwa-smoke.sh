@@ -196,7 +196,7 @@ grep -Fq 'create-organization-user' docs/permissions.js
 grep -Fq 'display_name:name,email,role' docs/permissions.js
 grep -Fq 'MODULE_NOT_STARTED' docs/permissions.html
 grep -Fq 'MODULE_IMPORT_FAILED' docs/permissions.html
-grep -Fq 'import("./permissions.js?v=202609161")' docs/permissions.html
+grep -Fq 'import("./permissions.js?v=202609162")' docs/permissions.html
 grep -Fq 'split("\n").join(" ")' docs/permissions.html
 grep -Fq 'window.__permissionsBooted=true' docs/permissions.js
 grep -Fq 'supabase.rpc("get_effective_organization_id")' docs/permissions.js
@@ -207,6 +207,8 @@ grep -Fq '"permissions_timeout"' docs/permissions.js
 grep -Fq '<strong>Carga detenida.</strong>' docs/permissions.js
 grep -Fq 'Diagnóstico: ' docs/permissions.js
 grep -Fq 'replace(/[^A-Za-z0-9_.-]/g,"")' docs/permissions.js
+node --check docs/permissions.js
+! grep -Fq 'replace(/[\r' docs/permissions.js
 
 echo 'PWA smoke checks passed'
 

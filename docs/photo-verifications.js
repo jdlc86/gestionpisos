@@ -5,6 +5,7 @@ const message = document.getElementById("reviewMessage");
 const filter = document.getElementById("statusFilter");
 const propertyFilter = document.getElementById("propertyFilter");
 const refreshBtn = document.getElementById("refreshBtn");
+const evolutionBtn = document.getElementById("evolutionBtn");
 const dialog = document.getElementById("reviewDialog");
 const image = document.getElementById("reviewImage");
 const details = document.getElementById("reviewDetails");
@@ -19,6 +20,7 @@ let currentRun = null;
 let currentItem = null;
 let busy = false;
 let toastTimer = null;
+let lastHistory = null;
 
 function showToast(text, { error = false } = {}) {
   if (!toast) return;
@@ -136,6 +138,7 @@ async function load(options = {}) {
     const propertyMap = new Map((visibleProperties || []).map(p => [p.id,p]));
     const patternMap = new Map((patterns || []).map(p => [p.id,p]));
     const reviewerMap = new Map((reviewers || []).map(p => [p.user_id,p]));
+    lastHistory = { runs, byRun, propertyMap, patternMap };
 
     if (preservedMessage) {
       message.textContent = preservedMessage;
@@ -287,8 +290,63 @@ async function decide(decision) {
 filter.addEventListener("change", load);
 propertyFilter.addEventListener("change", load);
 refreshBtn.addEventListener("click", load);
+evolutionBtn.addEventListener("click", showEvolution);
 closeDialogBtn.addEventListener("click", () => dialog.close());
 approveBtn.addEventListener("click", () => decide("approved"));
 rejectBtn.addEventListener("click", () => decide("rejected"));
+
+async function showEvolution() {
+  if (!lastHistory?.runs?.length) {
+    showToast("No hay verificaciones para comparar.", { error:true });
+    return;
+  }
+  const groups = new Map();
+  for (const run of lastHistory.runs) {
+    for (const item of lastHistory.byRun.get(run.id) || []) {
+      const key = item.pattern_id || "unknown";
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push({ run, item });
+    }
+  }
+  const comparable = [...groups.entries()]
+    .map(([patternId, entries]) => ({ patternId, entries: entries.sort((a,b) => new Date(a.item.captured_at) - new Date(b.item.captured_at)) }))
+    .filter(group => group.entries.length >= 2);
+  if (!comparable.length) {
+    showToast("Aún no hay dos verificaciones del mismo patrón para mostrar evolución.", { error:true });
+    return;
+  }
+  const group = comparable[0];
+  const pattern = lastHistory.patternMap.get(group.patternId);
+  const first = group.entries[0];
+  const latest = group.entries[group.entries.length - 1];
+  const signed = await Promise.all([first, latest].map(async entry => {
+    const { data, error } = await supabase.storage.from("photo-verification").createSignedUrl(entry.item.storage_path, 120);
+    return error ? null : data?.signedUrl;
+  }));
+  if (!signed[0] || !signed[1]) {
+    showToast("No se pudieron cargar las imágenes de evolución.", { error:true });
+    return;
+  }
+  const firstScore = first.item.alignment_score == null ? "—" : Math.round(Number(first.item.alignment_score) * 100) + "%";
+  const latestScore = latest.item.alignment_score == null ? "—" : Math.round(Number(latest.item.alignment_score) * 100) + "%";
+  details.innerHTML = `
+    <div class="review-chip review-chip--wide">Patrón <strong>${esc(pattern?.name || pattern?.target_key || "Fotoverificación")}</strong></div>
+    <div class="evolution-grid">
+      <figure><img src="${esc(signed[0])}" alt="Primera verificación"><figcaption>Primera · ${esc(fmtDate(first.item.captured_at))} · ${esc(firstScore)} · ${esc(statusLabel(first.run.status))}</figcaption></figure>
+      <figure><img src="${esc(signed[1])}" alt="Última verificación"><figcaption>Última · ${esc(fmtDate(latest.item.captured_at))} · ${esc(latestScore)} · ${esc(statusLabel(latest.run.status))}</figcaption></figure>
+    </div>
+    <div class="review-chip review-chip--wide">Historial <strong>${group.entries.length} verificaciones del mismo patrón</strong></div>`;
+  image.removeAttribute("src");
+  image.style.display = "none";
+  reasonWrap.hidden = true;
+  approveBtn.hidden = true;
+  rejectBtn.hidden = true;
+  dialog.addEventListener("close", () => {
+    image.style.display = "";
+    approveBtn.hidden = false;
+    rejectBtn.hidden = false;
+  }, { once:true });
+  dialog.showModal();
+}
 
 load();

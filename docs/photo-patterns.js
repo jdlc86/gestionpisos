@@ -65,6 +65,39 @@ function renderPatterns(patterns) {
         window.location.assign(url.href);
       });
       actions.append(edit);
+
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "secondary";
+      remove.textContent = "Eliminar";
+      remove.addEventListener("click", async () => {
+        if (!window.confirm(`¿Eliminar el patrón “${pattern.name}”? Si ya tiene histórico, se conservará retirado.`)) return;
+        remove.disabled = true;
+        message.textContent = "Comprobando uso del patrón…";
+        const { data, error } = await supabase.functions.invoke("manage-photo-pattern", {
+          body: { pattern_id: pattern.id }
+        });
+        remove.disabled = false;
+        const result = data?.result;
+        if (error || !result) {
+          console.error("pattern lifecycle failed", error, data);
+          message.textContent = "No se pudo procesar el patrón.";
+          return;
+        }
+        if (result.action === "blocked") {
+          const uses = Array.isArray(result.usage?.uses) ? result.usage.uses : [];
+          const cleaning = uses.find(item => item.kind === "cleaning");
+          message.textContent = cleaning
+            ? `Este patrón está siendo usado por una limpieza${cleaning.label ? " del " + cleaning.label : ""} y no puede eliminarse ni modificarse mientras siga activa.`
+            : "Este patrón está siendo utilizado por un proceso activo y no puede eliminarse ni modificarse.";
+          return;
+        }
+        message.textContent = result.action === "retired"
+          ? "El patrón tiene histórico: se ha retirado y no se utilizará en nuevas asignaciones."
+          : "Patrón eliminado.";
+        await load();
+      });
+      actions.append(remove);
     }
 
     if (count > 0) {

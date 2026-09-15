@@ -67,3 +67,6 @@ grep -q 'error?.code === "23505"' docs/portfolio.js
 grep -q 'error?.code === "23503"' docs/portfolio.js
 grep -q 'error?.code === "23514"' docs/portfolio.js
 grep -q 'No se pudo guardar el inquilino.' docs/portfolio.js
+
+grep -q 'error?.code === "23P01"' docs/portfolio.js
+grep -q 'Esta habitación ya tiene un inquilino durante las fechas seleccionadas' docs/portfolio.js

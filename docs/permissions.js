@@ -4,11 +4,14 @@ const $=(id)=>document.getElementById(id); const esc=(v)=>String(v??"").replace(
 const personName=(p)=>p?.display_name||p?.email||"Usuario sin nombre"; const roles=(p)=>Array.isArray(p?.roles)?p.roles:[];
 const card=(title,meta="",badge="")=>`<article class="permission-item"><div><strong>${esc(title)}</strong>${meta?`<span>${esc(meta)}</span>`:""}</div>${badge?`<em>${esc(badge)}</em>`:""}</article>`;
 let ctx=null,busy=false;
+async function createOrganizationUser(payload){const {data,error}=await supabase.functions.invoke("create-organization-user",{body:payload});if(error)throw error;return data;}
 function modal(title,text,confirmLabel,onConfirm){$("permissionModalTitle").textContent=title;$("permissionModalText").textContent=text;$("permissionModalConfirm").textContent=confirmLabel;$("permissionModalConfirm").onclick=async()=>{closeModal();await onConfirm();};$("permissionModal").hidden=false;}
 function closeModal(){$("permissionModal").hidden=true;$("permissionModalConfirm").onclick=null;}
 document.querySelectorAll("[data-modal-close]").forEach(el=>el.addEventListener("click",closeModal));
+$("createUserForm")?.addEventListener("submit",async(e)=>{e.preventDefault();if(busy)return;const name=$("newUserName").value.trim(),email=$("newUserEmail").value.trim(),role=$("newUserRole").value;if(!name||!email)return;modal("Crear usuario",`Se creará ${name} (${email}) con rol ${role} dentro de esta organización.`,`Crear`,async()=>{busy=true;const button=$("createUserButton");button.disabled=true;$("createUserNote").textContent="Creando usuario…";try{await createOrganizationUser({display_name:name,email,role});$("createUserForm").reset();$("createUserNote").textContent="Usuario creado correctamente.";await load();}catch(err){$("createUserNote").textContent="No se pudo crear el usuario.";$("permissionError").textContent=err?.message||"No se pudo crear el usuario.";$("permissionError").hidden=false;}finally{busy=false;button.disabled=false;}});});
 async function rpc(name,args){if(busy)return;busy=true;try{const {data,error}=await supabase.rpc(name,args);if(error)throw error;await load();return data;}catch(e){$("permissionError").textContent=e?.message||"La operación no pudo completarse.";$("permissionError").hidden=false;}finally{busy=false;}}
-function render(data){ctx=data;const people=data?.people||[],byId=new Map(people.map(p=>[p.user_id,p])),admins=people.filter(p=>roles(p).includes("admin")),employees=people.filter(p=>roles(p).includes("employee")),holders=data?.capability_holders||[],requests=data?.pending_requests||[],writeHolder=holders.find(h=>h.capability==="write_control"),me=data?.actor?.user_id,myRequest=requests.find(r=>r.capability==="write_control"&&r.requester_user_id===me);
+function render(data){ctx=data;
+const canCreate=data?.actor?.is_root||data?.capability_holders?.some(h=>h.capability==="permission_management"&&h.holder_user_id===data?.actor?.user_id);if($("createUserForm"))$("createUserForm").hidden=!canCreate;if($("createUserNote")&&!canCreate)$("createUserNote").textContent="Solo ROOT o el administrador con control de Gestión de Permisos puede crear usuarios.";const people=data?.people||[],byId=new Map(people.map(p=>[p.user_id,p])),admins=people.filter(p=>roles(p).includes("admin")),employees=people.filter(p=>roles(p).includes("employee")),holders=data?.capability_holders||[],requests=data?.pending_requests||[],writeHolder=holders.find(h=>h.capability==="write_control"),me=data?.actor?.user_id,myRequest=requests.find(r=>r.capability==="write_control"&&r.requester_user_id===me);
 $("adminsList").innerHTML=admins.length?admins.map(p=>card(personName(p),p.email,p.user_id===writeHolder?.holder_user_id?"Control de escritura":"Admin")).join(""):card("Sin administradores","No hay administradores activos.");
 $("employeesList").innerHTML=employees.length?employees.map(p=>card(personName(p),p.email,"Empleado")).join(""):card("Sin empleados","No hay empleados activos.");
 const canAssignResponsible=data?.actor?.is_root||writeHolder?.holder_user_id===me;
@@ -66,7 +69,8 @@ async function load(){
   }catch(e){
     const code=e?.message||"";
     const safeCode=String(e?.code||"").replace(/[^A-Za-z0-9_.-]/g,"").slice(0,48);
-    const safeMessage=String(code).replace(/[\r\n<>]/g," ").slice(0,160);
+    const safeMessage=String(code).replace(/[\r
+<>]/g," ").slice(0,160);
     $("permissionContent").hidden=true;
     $("permissionError").textContent=code==="not_authorized"?"No tienes autorización para acceder a Gestión de Permisos.":code==="session_missing"?"Tu sesión no está disponible. Vuelve a Inicio e inicia sesión de nuevo.":code==="session_timeout"?"No se pudo comprobar tu sesión. Revisa la conexión e inténtalo de nuevo.":code==="permissions_timeout"?"El servidor tardó demasiado en cargar Gestión de Permisos. Inténtalo de nuevo.":"No se pudo cargar Gestión de Permisos. No se ha realizado ningún cambio.";
     if(!["not_authorized","session_missing","session_timeout","permissions_timeout"].includes(code)){

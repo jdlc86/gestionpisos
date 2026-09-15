@@ -109,6 +109,7 @@ let current = "owners";
 let editingId = null;
 let organizationId = null;
 let role = null;
+let operationalPortfolio = false;
 
 const $ = id => document.getElementById(id);
 const title = $("sectionTitle");
@@ -180,12 +181,14 @@ function makeSummaryCell(value, label) {
 }
 
 function renderSummary() {
-  summary.replaceChildren(
-    makeSummaryCell(state.owners.filter(x => x.status !== "archived").length, "propietarios en cartera"),
-    makeSummaryCell(state.properties.filter(x => x.status !== "archived").length, "pisos en cartera"),
-    makeSummaryCell(state.rooms.filter(x => x.status !== "archived").length, "habitaciones en cartera"),
+  const cells = [];
+  if (!operationalPortfolio) cells.push(makeSummaryCell(state.owners.filter(x => x.status !== "archived").length, "propietarios en cartera"));
+  cells.push(
+    makeSummaryCell(state.properties.filter(x => x.status !== "archived").length, "pisos asignados"),
+    makeSummaryCell(state.rooms.filter(x => x.status !== "archived").length, "habitaciones"),
     makeSummaryCell(state.occupancies.filter(x => x.status !== "archived").length, "inquilinos")
   );
+  summary.replaceChildren(...cells);
 }
 
 function visibleItems() {
@@ -527,22 +530,23 @@ async function loadPortfolio() {
   if (!organizationId) return;
   setStatus("Cargando datos autorizados…", "Supabase");
 
-  const [ownersResult, propertiesResult] = await Promise.all([
-    supabase.from("owners")
+  const propertiesResult = await supabase.from("properties_v2")
+    .select("id,owner_id,name,address_line,city,postal_code,status,archived_at")
+    .eq("organization_id", organizationId)
+    .order("created_at");
+  if (propertiesResult.error) throw propertiesResult.error;
+  state.properties = propertiesResult.data.map(mapProperty);
+
+  if (operationalPortfolio) {
+    state.owners = [];
+  } else {
+    const ownersResult = await supabase.from("owners")
       .select("id,full_name,email,phone,status,archived_at")
       .eq("organization_id", organizationId)
-      .order("created_at"),
-    supabase.from("properties_v2")
-      .select("id,owner_id,name,address_line,city,postal_code,status,archived_at")
-      .eq("organization_id", organizationId)
-      .order("created_at")
-  ]);
-
-  if (ownersResult.error) throw ownersResult.error;
-  if (propertiesResult.error) throw propertiesResult.error;
-
-  state.owners = ownersResult.data.map(mapOwner);
-  state.properties = propertiesResult.data.map(mapProperty);
+      .order("created_at");
+    if (ownersResult.error) throw ownersResult.error;
+    state.owners = ownersResult.data.map(mapOwner);
+  }
 
   if (state.properties.length) {
     const roomsResult = await supabase.from("rooms_v2")
@@ -961,9 +965,21 @@ async function bootstrap() {
   try {
     const user = await getCurrentUser();
     role = user?.app_metadata?.role || null;
-    if (!["root","admin"].includes(role)) {
-      action.disabled = true;
-      setStatus("Esta sección de gestión está reservada a ROOT/ADMIN.", "Acceso limitado.");
+    operationalPortfolio = !["root","admin"].includes(role);
+
+    if (operationalPortfolio) {
+      organizationField.hidden = true;
+      organizationId = user?.app_metadata?.organization_id || null;
+      state.organizations = organizationId ? [{ id: organizationId, name: "Cartera asignada" }] : [];
+      current = "occupancies";
+      document.querySelectorAll(".segment").forEach(button => {
+        const allowed = ["occupancies"].includes(button.dataset.view);
+        button.hidden = !allowed;
+        button.disabled = !allowed;
+        button.classList.toggle("active", allowed);
+      });
+      if (!organizationId) throw new Error("operator_organization_missing");
+      await loadPortfolio();
       return;
     }
 

@@ -33,7 +33,7 @@ Deno.serve(async(req)=>{
    allowed=(grants||[]).some((g:any)=>(!g.valid_from||Date.parse(g.valid_from)<=now)&&(!g.valid_until||Date.parse(g.valid_until)>now));
  }
  if(!allowed) return reply(403,{error:"insufficient_write_permission"});
- const {data:result,error:re}=await admin.schema("private").rpc("delete_or_retire_photo_pattern_v2",{p_pattern_id:patternId});
+ const {data:result,error:re}=await admin.rpc("manage_photo_pattern_lifecycle_v2",{p_pattern_id:patternId});
  if(re) return reply(500,{error:"pattern_lifecycle_failed"});
  return reply(200,{result,pattern:{id:pattern.id,name:pattern.name}});
 });

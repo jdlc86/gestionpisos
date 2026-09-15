@@ -14,8 +14,11 @@ const canAssignResponsible=data?.actor?.is_root||writeHolder?.holder_user_id===m
 const eligible=people.filter(p=>roles(p).some(r=>r==="employee"||r==="admin"));
 $("propertiesList").innerHTML=(data?.properties||[]).length?data.properties.map(p=>{
  const current=p.responsible_user_id?personName(byId.get(p.responsible_user_id)):"Sin responsable";
+ const accessRows=(p.staff_access||[]).map(a=>`<div class="staff-access-row"><span><strong>${esc(personName(byId.get(a.employee_user_id)))}</strong> · ${a.can_write?"Lectura y escritura":"Solo lectura"}</span>${canAssignResponsible?`<button class="ghost revoke-staff-access" type="button" data-property-id="${esc(p.id)}" data-user-id="${esc(a.employee_user_id)}">Revocar</button>`:""}</div>`).join("");
+ const accessCandidates=eligible.filter(person=>person.user_id!==p.responsible_user_id&&!(p.staff_access||[]).some(a=>a.employee_user_id===person.user_id));
+ const accessControls=canAssignResponsible&&accessCandidates.length?`<div class="staff-access-add"><select id="staff-${esc(p.id)}">${accessCandidates.map(person=>`<option value="${esc(person.user_id)}">${esc(personName(person))}</option>`).join("")}</select><label><input id="staff-write-${esc(p.id)}" type="checkbox"> Permitir escritura</label><button class="ghost grant-staff-access" type="button" data-property-id="${esc(p.id)}">Dar acceso</button></div>`:"";
  const controls=canAssignResponsible&&eligible.length?`<div class="responsible-controls"><label for="responsible-${esc(p.id)}">Responsable</label><select id="responsible-${esc(p.id)}" data-property-id="${esc(p.id)}">${eligible.map(person=>`<option value="${esc(person.user_id)}" ${person.user_id===p.responsible_user_id?"selected":""}>${esc(personName(person))}</option>`).join("")}</select><button class="ghost assign-responsible" type="button" data-property-id="${esc(p.id)}">Cambiar responsable</button></div>`:"";
- return `<article class="permission-item property-responsible-item"><div><strong>${esc(p.name||"Vivienda")}</strong><span>${esc([p.address_line,p.city].filter(Boolean).join(" · "))}</span><em>${esc(`Responsable: ${current}`)}</em></div>${controls}</article>`;
+ return `<article class="permission-item property-responsible-item"><div><strong>${esc(p.name||"Vivienda")}</strong><span>${esc([p.address_line,p.city].filter(Boolean).join(" · "))}</span><em>${esc(`Responsable: ${current}`)}</em></div><div class="property-access-management">${controls}<div class="staff-access-list">${accessRows||'<span class="permission-note">Sin accesos adicionales.</span>'}</div>${accessControls}</div></article>`;
 }).join(""):card("Sin viviendas","No hay viviendas activas.");
 const rows=[writeHolder?card("Control de escritura",personName(byId.get(writeHolder.holder_user_id)),"Titular actual"):card("Control de escritura","No existe titular activo.","Sin titular")];requests.filter(r=>r.capability==="write_control").forEach(r=>rows.push(card("Solicitud pendiente",personName(byId.get(r.requester_user_id)),"Pendiente")));$("capabilitiesList").innerHTML=rows.join("");
 const actions=[];
@@ -24,6 +27,15 @@ if(myRequest) actions.push('<span class="permission-note">Tu solicitud está pen
 const pendingForHolder=requests.filter(r=>r.capability==="write_control"&&writeHolder?.holder_user_id===me);
 pendingForHolder.forEach(r=>actions.push(`<div class="permission-decision"><span><strong>${esc(personName(byId.get(r.requester_user_id)))}</strong> solicita el control</span><button class="ghost reject-request" data-id="${esc(r.id)}">Rechazar</button><button class="primary accept-request" data-id="${esc(r.id)}">Aceptar</button></div>`));
 $("writeControlActions").innerHTML=actions.join("");
+document.querySelectorAll(".grant-staff-access").forEach(button=>button.addEventListener("click",()=>{
+ const propertyId=button.dataset.propertyId,select=document.getElementById(`staff-${propertyId}`),target=byId.get(select?.value),canWrite=document.getElementById(`staff-write-${propertyId}`)?.checked===true;
+ if(!select||!target)return;
+ modal("Dar acceso a vivienda",`${personName(target)} tendrá ${canWrite?"lectura y escritura":"solo lectura"} en esta vivienda. No se convertirá en responsable.`,"Dar acceso",()=>rpc("grant_property_staff_access_v3",{p_property_id:propertyId,p_employee_user_id:select.value,p_can_write:canWrite}));
+}));
+document.querySelectorAll(".revoke-staff-access").forEach(button=>button.addEventListener("click",()=>{
+ const target=byId.get(button.dataset.userId);
+ modal("Revocar acceso a vivienda",`${personName(target)} perderá su acceso adicional a esta vivienda. Esto no modifica al responsable.`,"Revocar acceso",()=>rpc("revoke_property_staff_access_v3",{p_property_id:button.dataset.propertyId,p_employee_user_id:button.dataset.userId}));
+}));
 document.querySelectorAll(".assign-responsible").forEach(button=>button.addEventListener("click",()=>{
  const select=document.getElementById(`responsible-${button.dataset.propertyId}`);
  const property=(data?.properties||[]).find(p=>p.id===button.dataset.propertyId);

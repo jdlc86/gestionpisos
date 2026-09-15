@@ -1,7 +1,7 @@
 # Beta 0 estado
 
 Proyecto Supabase: qsxtmmkftsohkqqmytbb
-Actualizado: 2026-09-14
+Actualizado: 2026-09-15
 
 ## Estado actual
 
@@ -16,3 +16,10 @@ No hay usuarios operativos de prueba creados todavía.
 ## Condición de estabilidad
 
 No declarar Beta 0 estable hasta completar y probar las políticas v2 con identidades reales, MFA administrativo, persistencia segura de fotoverificación y los demás bloqueos registrados en docs/OPEN_BLOCKERS.md.
+
+
+## Inquilinos y privacidad — 2026-09-15
+
+La identidad del inquilino ya está separada de sus ocupaciones históricas mediante `tenants_v2` + `occupancies_v2`. El dossier documental privado está desplegado con Storage privado y UI de adjuntos.
+
+La baja definitiva todavía **no está cerrada**. El diseño aprobado distingue Alta, Suspendido y Baja · pendiente de eliminación. El PR #88 prepara el estado de offboarding y la auditoría mínima, pero falta el workflow server-side que bloquee Auth, determine retenciones, purgue datos/Storage/Auth, verifique el resultado y solo entonces envíe la comunicación final.

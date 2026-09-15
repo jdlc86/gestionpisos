@@ -97,6 +97,20 @@
       </section>
     </dialog>
 
+    <dialog id="documentsDialog">
+      <section class="editor history-panel">
+        <div class="editor-head"><div><p class="eyebrow">FICHA DEL INQUILINO</p><h3 id="documentsTitle">Documentos</h3></div><button id="closeDocumentsBtn" type="button" class="icon-btn" aria-label="Cerrar">×</button></div>
+        <form id="documentForm" class="editor-fields">
+          <label>Nombre del documento<input id="documentName" required maxlength="120" placeholder="Ej. Pasaporte 2026"></label>
+          <label>Tipo<select id="documentType"><option value="identification">Identificación</option><option value="contract">Contrato</option><option value="authorization">Autorización</option><option value="other">Otro</option></select></label>
+          <label>Archivo<input id="documentFile" type="file" required accept=".pdf,image/jpeg,image/png,image/webp"></label>
+          <button class="primary" type="submit">Añadir documento</button>
+          <p class="muted small">PDF o imagen · máximo 10 MB · almacenamiento privado.</p>
+        </form>
+        <ol id="documentsList" class="history-list"></ol>
+      </section>
+    </dialog>
+
     <section class="status">
       <span class="dot"></span>
       <span id="portfolioStatus"><strong>Conectando…</strong> Cargando cartera autorizada.</span>

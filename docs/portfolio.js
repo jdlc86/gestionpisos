@@ -1,5 +1,22 @@
 import { supabase, getCurrentUser } from "./supabase-client.js";
 
+const themeToggle = document.getElementById("themeToggle");
+const themeIcon = document.getElementById("themeIcon");
+const THEME_KEY = "gestionpisos-theme";
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  if (themeIcon) themeIcon.textContent = theme === "dark" ? "☀" : "☾";
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.content = theme === "dark" ? "#0d1117" : "#ffffff";
+}
+const storedTheme = localStorage.getItem(THEME_KEY);
+applyTheme(storedTheme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+themeToggle?.addEventListener("click", () => {
+  const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+  localStorage.setItem(THEME_KEY, next);
+  applyTheme(next);
+});
+
 const views = {
   owners: {
     title: "Propietarios",

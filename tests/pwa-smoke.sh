@@ -16,8 +16,8 @@ node --check docs/photo-verifications.js
 grep -q 'photo-verifications.html?v=2026091501' docs/operations.html
 grep -q 'review-photo-verification' docs/photo-verifications.js
 grep -q 'Fotoverificación aprobada correctamente' docs/photo-verifications.js
-grep -q 'photo-verifications.js?v=2026091504' docs/photo-verifications.html
-grep -q 'photo-verifications.css?v=2026091503' docs/photo-verifications.html
+grep -q 'photo-verifications.js?v=2026091505' docs/photo-verifications.html
+grep -q 'photo-verifications.css?v=2026091504' docs/photo-verifications.html
 grep -q 'id="reviewToast"' docs/photo-verifications.html
 grep -q 'id="propertyFilter"' docs/photo-verifications.html
 grep -q 'reviewed_by' docs/photo-verifications.js
@@ -197,3 +197,7 @@ if grep -R -E -i 'mobilesam|onnxruntime|CONTORNO_GEMINI_API_KEY|generate-photo-p
   echo 'Legacy automatic photo guide code must stay removed.'
   exit 1
 fi
+
+grep -q 'id="evolutionBtn"' docs/photo-verifications.html
+grep -q 'showEvolution' docs/photo-verifications.js
+grep -q 'evolution-grid' docs/photo-verifications.css

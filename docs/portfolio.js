@@ -387,7 +387,7 @@ function openEditor(id = null) {
     const indefinite = editorForm.elements.namedItem("indefinite");
     if (startsOn) startsOn.value = "";
     if (endsOn) endsOn.value = "";
-    if (indefinite) indefinite.checked = false;
+    if (indefinite) indefinite.checked = true;
   }
   editorDialog.showModal();
 }
@@ -566,6 +566,7 @@ async function saveItem(event) {
       const room = findItem("rooms", data.roomId);
       if (!room || room.propertyId !== data.propertyId) throw new Error("room_property_mismatch");
       if (!data.indefinite && !data.endsOn) throw new Error("end_date_required");
+      if (data.startsOn && data.endsOn && data.endsOn < data.startsOn) throw new Error("end_date_before_start");
 
       const tenantPayload = {
         organization_id: organizationId,
@@ -674,7 +675,11 @@ async function saveItem(event) {
   } catch (error) {
     console.error("portfolio save failed", error);
     let message = friendlyWriteError(error, "No se pudo guardar el cambio.");
-    if (String(error?.code || "") === "23P01") {
+    if (String(error?.message || "") === "end_date_required") {
+      message = "Define una fecha de salida o marca «Estancia indefinida».";
+    } else if (String(error?.message || "") === "end_date_before_start") {
+      message = "La fecha de salida no puede ser anterior a la fecha de entrada.";
+    } else if (String(error?.code || "") === "23P01") {
       message = "La habitación ya está ocupada durante ese periodo. Elige otra fecha de entrada, fecha de salida o habitación.";
     }
     saveErrorMessage.textContent = message;

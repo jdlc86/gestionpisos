@@ -86,5 +86,5 @@ grep -Fq 'can_operate_property_v3(p_property_id,true)' "$operator_migration"
 grep -Fq 'room_property_mismatch' "$operator_migration"
 grep -Fq 'revoke all on function public.create_tenant_occupancy_v3' "$operator_migration"
 grep -Fq 'grant execute on function public.create_tenant_occupancy_v3' "$operator_migration"
-grep -Fq 'property_staff_access_v3' supabase/migrations/20260915100000_property_access_v3.sql
-grep -Fq 'employee_user_id = ( SELECT auth.uid() AS uid)' supabase/migrations/20260915100000_property_access_v3.sql || true
+grep -Fq 'property_staff_access_v3' docs/portfolio.js
+! grep -Fq '.from("property_staff_assignments")' docs/portfolio.js

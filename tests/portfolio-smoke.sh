@@ -79,7 +79,7 @@ print("PASS scoped operator portfolio regression")
 PY
 
 # Operator write-state regression.
-grep -Fq '.from("property_staff_assignments")' docs/portfolio.js
+grep -Fq '.from("property_staff_access_v3")' docs/portfolio.js
 grep -Fq 'operationalCanWrite = activeAssignments.some(item => item.can_write === true)' docs/portfolio.js
 grep -Fq 'action.disabled = !operationalCanWrite' docs/portfolio.js
 grep -Fq 'No tienes viviendas asignadas actualmente.' docs/portfolio.js

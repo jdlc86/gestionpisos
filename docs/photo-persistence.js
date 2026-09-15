@@ -14,18 +14,24 @@ function captureContext() {
   const roomId = params.get("room_id");
   const sourceType = params.get("source_type") || "manual";
   const sourceId = params.get("source_id");
+  const purpose = params.get("purpose") || (sourceType === "cleaning_task" ? "cleaning" : "general");
 
   if (!uuidLike(patternId)) return null;
   if (roomId && !uuidLike(roomId)) return null;
   if (!["manual","cleaning_task","random_request"].includes(sourceType)) return null;
   if (sourceType !== "manual" && !uuidLike(sourceId)) return null;
   if (sourceType === "manual" && sourceId) return null;
+  if (!["general","cleaning","maintenance","state"].includes(purpose)) return null;
+  if (purpose === "cleaning" && sourceType !== "cleaning_task") return null;
+  if (sourceType === "cleaning_task" && purpose !== "cleaning") return null;
 
   return {
     patternId,
     roomId: roomId || null,
     sourceType,
-    sourceId: sourceId || null
+    sourceId: sourceId || null,
+    purpose,
+    cleaningTaskId: purpose === "cleaning" ? sourceId : null
   };
 }
 
@@ -61,6 +67,8 @@ async function persistCapture(detail) {
       source_type: context.sourceType,
       source_id: context.sourceId,
       verification_mode: "manual",
+      purpose: context.purpose,
+      cleaning_task_id: context.cleaningTaskId,
       status: "capturing"
     })
     .select("id,organization_id,property_id,status")
@@ -113,7 +121,9 @@ async function persistCapture(detail) {
   if (submitError) throw submitError;
   if (!submitted?.ok) throw new Error("submit_failed");
 
-  setMessage("Fotoverificación enviada correctamente.");
+  setMessage(context.purpose === "cleaning"
+    ? "Foto de limpieza enviada correctamente."
+    : "Fotoverificación enviada correctamente.");
   window.__allaisoLastPhotoRun = {
     runId: run.id,
     itemId,

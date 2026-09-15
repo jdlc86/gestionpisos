@@ -37,10 +37,14 @@ const views = {
     singular: "inquilino",
     statuses: ["active", "blocked", "archived"],
     fields: [
+      { key: "fullName", label: "Nombre completo", type: "text", required: true },
+      { key: "documentType", label: "Tipo de documento", type: "select", options: [["dni","DNI"],["nie","NIE"],["passport","Pasaporte"],["other","Otro"]], required: true },
+      { key: "documentNumber", label: "Número de documento", type: "text", required: true },
       { key: "email", label: "Email", type: "email", required: true },
       { key: "propertyId", label: "Piso", type: "relation", relation: "properties", required: true },
       { key: "roomId", label: "Habitación", type: "relation", relation: "rooms", required: true },
       { key: "startsOn", label: "Fecha de entrada", type: "date", required: true },
+      { key: "indefinite", label: "Estancia indefinida", type: "checkbox" },
       { key: "endsOn", label: "Fecha de salida", type: "date" }
     ]
   },
@@ -132,7 +136,7 @@ function itemName(type, item) {
   if (!item) return "Sin relación";
   if (type === "owners") return item.fullName;
   if (type === "properties") return item.name;
-  if (type === "occupancies") return item.email;
+  if (type === "occupancies") return item.fullName || item.email;
   return item.label;
 }
 
@@ -198,7 +202,7 @@ function relationChips(item) {
 function descriptionFor(item) {
   if (current === "owners") return [item.email, item.phone].filter(Boolean).join(" · ") || "Sin datos de contacto";
   if (current === "properties") return [item.address, item.city, item.postalCode].filter(Boolean).join(" · ");
-  if (current === "occupancies") return [item.startsOn ? `Entrada: ${item.startsOn}` : "", item.endsOn ? `Salida: ${item.endsOn}` : "Sin fecha de salida"].filter(Boolean).join(" · ");
+  if (current === "occupancies") return [item.email, item.documentNumber ? `${item.documentType.toUpperCase()}: ${item.documentNumber}` : "", item.startsOn ? `Entrada: ${item.startsOn}` : "", item.endsOn ? `Salida: ${item.endsOn}` : "Sin fecha de salida"].filter(Boolean).join(" · ");
   return item.description || "Sin descripción";
 }
 
@@ -277,6 +281,13 @@ function makeField(field, item) {
       option.textContent = itemName(field.relation, related);
       input.append(option);
     });
+  } else if (field.type === "select") {
+    input = document.createElement("select");
+    field.options.forEach(([value, label]) => {
+      const option = document.createElement("option"); option.value = value; option.textContent = label; input.append(option);
+    });
+  } else if (field.type === "checkbox") {
+    input = document.createElement("input"); input.type = "checkbox";
   } else if (field.type === "textarea") {
     input = document.createElement("textarea");
   } else {
@@ -286,7 +297,8 @@ function makeField(field, item) {
   }
   input.name = field.key;
   input.required = Boolean(field.required);
-  input.value = item?.[field.key] || "";
+  if (field.type === "checkbox") input.checked = item ? !item.endsOn : true;
+  else input.value = item?.[field.key] || "";
   wrapper.append(input);
   return wrapper;
 }
@@ -331,7 +343,9 @@ function mapProperty(row) {
 
 function mapOccupancy(row) {
   return {
-    id: row.id, propertyId: row.property_id, roomId: row.room_id, email: row.occupant_email,
+    id: row.id, tenantId: row.tenant_id, propertyId: row.property_id, roomId: row.room_id,
+    fullName: row.tenants_v2?.full_name || row.occupant_email, documentType: row.tenants_v2?.document_type || "other",
+    documentNumber: row.tenants_v2?.document_number || "", email: row.tenants_v2?.email || row.occupant_email,
     startsOn: row.starts_on, endsOn: row.ends_on, status: row.status, userId: row.user_id
   };
 }
@@ -376,7 +390,7 @@ async function loadPortfolio() {
   }
 
   const occupanciesResult = await supabase.from("occupancies_v2")
-    .select("id,property_id,room_id,occupant_email,starts_on,ends_on,status,user_id")
+    .select("id,tenant_id,property_id,room_id,occupant_email,starts_on,ends_on,status,user_id,tenants_v2(full_name,document_type,document_number,email)")
     .eq("organization_id", organizationId)
     .order("starts_on", { ascending: false });
   if (occupanciesResult.error) throw occupanciesResult.error;
@@ -417,8 +431,27 @@ async function saveItem(event) {
 
   try {
     if (current === "owners") {
+      if (!data.indefinite && !data.endsOn) throw new Error("end_date_required");
+      const tenantPayload = {
+        organization_id: organizationId,
+        full_name: data.fullName.trim(),
+        document_type: data.documentType,
+        document_number: data.documentNumber.trim().toUpperCase(),
+        email: data.email.trim().toLowerCase(),
+        status: data.status
+      };
+      let tenantId = existing?.tenantId || null;
+      if (tenantId) {
+        const { error } = await supabase.from("tenants_v2").update(tenantPayload).eq("id", tenantId);
+        if (error) throw error;
+      } else {
+        const { data: tenant, error } = await supabase.from("tenants_v2").insert(tenantPayload).select("id").single();
+        if (error) throw error;
+        tenantId = tenant.id;
+      }
       const payload = {
         organization_id: organizationId,
+        tenant_id: tenantId,
         full_name: data.fullName.trim(),
         email: data.email?.trim() || null,
         phone: data.phone?.trim() || null,
@@ -456,7 +489,7 @@ async function saveItem(event) {
         room_id: data.roomId,
         occupant_email: data.email.trim().toLowerCase(),
         starts_on: data.startsOn,
-        ends_on: data.endsOn || null,
+        ends_on: data.indefinite ? null : data.endsOn,
         status: data.status
       };
       const query = existing

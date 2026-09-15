@@ -3,7 +3,7 @@
 
 create table if not exists public.cleaning_audits_v2 (
   id uuid primary key default gen_random_uuid(),
-  organization_id uuid not null references public.organizations_v2(id),
+  organization_id uuid not null references public.organizations(id),
   property_id uuid not null references public.properties_v2(id),
   cleaning_task_id uuid not null references public.cleaning_tasks_v2(id),
   photo_run_id uuid references public.photo_verification_runs_v2(id),

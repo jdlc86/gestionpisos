@@ -456,3 +456,10 @@ html[data-theme="dark"] .summary-cell,html[data-theme="dark"] .history-list li{b
 .relation-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
 .relation-chip{display:inline-flex;align-items:center;min-height:24px;padding:2px 7px;border:1px solid var(--gp-border);border-radius:6px;background:transparent;color:var(--gp-muted);font-size:12px;line-height:1.25}
 html[data-theme="dark"] .status-pill.is-active::before{background:#3fb950}html[data-theme="dark"] .status-pill.is-blocked::before,html[data-theme="dark"] .status-pill.is-maintenance::before{background:#d29922}html[data-theme="dark"] .status-pill.is-archived::before,html[data-theme="dark"] .status-pill.is-offboarding::before{background:#f85149}html[data-theme="dark"] .status-pill.is-onboarding::before{background:#58a6ff}
+
+/* Card metadata is information, not a control: no pills or boxes. */
+.record-meta,.relation-chips{display:flex;flex-wrap:wrap;align-items:center;gap:0;margin-top:8px}
+.status-pill,.relation-chip{display:inline-flex;align-items:center;min-height:auto;padding:0;border:0!important;border-radius:0;background:transparent!important;color:var(--gp-muted);font-size:12px;font-weight:500;line-height:1.4}
+.status-pill{font-weight:600}.relation-chip::before{content:"·";margin:0 8px;color:var(--gp-border)}
+.relation-chips .relation-chip:first-child::before{content:"";margin:0}
+.record-meta + .relation-chips{margin-top:5px}

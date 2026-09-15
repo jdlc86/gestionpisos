@@ -47,10 +47,10 @@ assert 'tenant rollback failed' not in tenant_branch, "legacy rollback path rema
 print("PASS atomic tenant onboarding regression")
 PY
 
-grep -q 'id="saveErrorDialog"' docs/portfolio.html
-grep -q 'saveErrorDialog.showModal()' docs/portfolio.js
-grep -q 'saveErrorAcceptBtn' docs/portfolio.js
-grep -q 'saveErrorCancelBtn' docs/portfolio.js
+grep -Fq 'id="saveErrorDialog"' docs/portfolio.html
+grep -Fq 'saveErrorDialog.showModal()' docs/portfolio.js
+grep -Fq 'saveErrorAcceptBtn' docs/portfolio.js
+grep -Fq 'saveErrorCancelBtn' docs/portfolio.js
 grep -Fq 'error?.code === "23505"' docs/portfolio.js
 grep -Fq 'error?.code === "23503"' docs/portfolio.js
 grep -Fq 'error?.code === "23514"' docs/portfolio.js

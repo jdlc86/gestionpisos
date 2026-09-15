@@ -9,9 +9,9 @@ grep -Eq 'href="\./portfolio\.html"' docs/index.html
 grep -q '>Propietarios<' docs/portfolio.html
 grep -q '>Pisos<' docs/portfolio.html
 grep -q '>Habitaciones<' docs/portfolio.html
-grep -Eq 'href="\./portfolio\.css"' docs/portfolio.html
-grep -Eq 'src="\./portfolio\.js"' docs/portfolio.html
-grep -q 'type="module" src="./portfolio.js"' docs/portfolio.html
+grep -Eq 'href="\./portfolio\.css\?v=[0-9]+"' docs/portfolio.html
+grep -Eq 'src="\./portfolio\.js\?v=[0-9]+"' docs/portfolio.html
+grep -Eq 'type="module" src="\./portfolio\.js\?v=[0-9]+"' docs/portfolio.html
 grep -q 'supabase-client.js' docs/portfolio.js
 grep -q 'from("owners")' docs/portfolio.js
 grep -q 'from("properties_v2")' docs/portfolio.js

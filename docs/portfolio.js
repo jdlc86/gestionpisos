@@ -645,7 +645,7 @@ async function saveItem(event) {
         // A reactivation is a new stay period. Preserve the suspended occupancy as
         // history and let the DB exclusion constraint validate the new room period.
         const closePrevious = await supabase.from("occupancies_v2")
-          .update({ ends_on: data.startsOn, status: "archived" })
+          .update({ starts_on: null, ends_on: null, status: "archived" })
           .eq("id", existing.id);
         if (closePrevious.error) throw closePrevious.error;
         query = supabase.from("occupancies_v2").insert(payload);

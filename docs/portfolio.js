@@ -199,7 +199,7 @@ function relationChips(item) {
   const chips = createElement("div", "relation-chips");
   if (current === "owners") {
     const properties = state.properties.filter(property => property.ownerId === item.id);
-    chips.append(createElement("span", "relation-chip", `${properties.length} piso${properties.length === 1 ? "" : "s"}`));
+    chips.append(createElement("span", "relation-chip relation-count", `🏠 ${properties.length} piso${properties.length === 1 ? "" : "s"}`));
     properties.slice(0, 2).forEach(property => chips.append(createElement("span", "relation-chip", property.name)));
   } else if (current === "properties") {
     const owner = findItem("owners", item.ownerId);

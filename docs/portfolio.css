@@ -447,3 +447,12 @@ html[data-theme="dark"] .summary-cell,html[data-theme="dark"] .history-list li{b
 .record-type-icon{display:grid;flex:0 0 30px;width:30px;height:30px;place-items:center;border:1px solid var(--gp-border);border-radius:6px;background:var(--gp-subtle);color:var(--gp-text);font-size:15px}
 .action-label{display:inline-flex;align-items:center;gap:6px}
 .action-icon{width:14px;text-align:center;font-size:14px;line-height:1}
+
+/* Semantic metadata: compact, quiet and consistent with the card system. */
+.record-meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:9px}
+.status-pill{display:inline-flex;align-items:center;gap:6px;padding:0;border:0;background:transparent;color:var(--gp-muted);font-size:12px;font-weight:600}
+.status-pill::before{content:"";width:7px;height:7px;border-radius:50%;background:#8c959f}
+.status-pill.is-active::before{background:#1a7f37}.status-pill.is-blocked::before{background:#bf8700}.status-pill.is-archived::before{background:#cf222e}.status-pill.is-onboarding::before{background:#0969da}.status-pill.is-maintenance::before{background:#bf8700}.status-pill.is-offboarding::before{background:#cf222e}
+.relation-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.relation-chip{display:inline-flex;align-items:center;min-height:24px;padding:2px 7px;border:1px solid var(--gp-border);border-radius:6px;background:transparent;color:var(--gp-muted);font-size:12px;line-height:1.25}
+html[data-theme="dark"] .status-pill.is-active::before{background:#3fb950}html[data-theme="dark"] .status-pill.is-blocked::before,html[data-theme="dark"] .status-pill.is-maintenance::before{background:#d29922}html[data-theme="dark"] .status-pill.is-archived::before,html[data-theme="dark"] .status-pill.is-offboarding::before{background:#f85149}html[data-theme="dark"] .status-pill.is-onboarding::before{background:#58a6ff}

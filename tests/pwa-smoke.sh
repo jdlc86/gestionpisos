@@ -191,6 +191,9 @@ grep -q 'alignment_meta' docs/photo-persistence.js
 test -s docs/permissions.html
 test -s docs/permissions.js
 node --check docs/permissions.js
+grep -Fq 'select("organization_id")' docs/permissions.js
+grep -Fq 'p_organization_id:organizationId' docs/permissions.js
+! grep -Fq '\\n    if(profileError)' docs/permissions.js
 grep -Fq 'withTimeout(getCurrentSession(),8000,"session_timeout")' docs/permissions.js
 grep -Fq '"permissions_timeout"' docs/permissions.js
 grep -Fq '<strong>Carga detenida.</strong>' docs/permissions.js

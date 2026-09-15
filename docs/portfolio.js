@@ -495,7 +495,7 @@ async function openTasks(item) {
 }
 async function loadTasks() {
   tasksList.replaceChildren(createElement("li","muted","Cargando tareas…"));
-  const {data,error}=await supabase.from("tenant_tasks_v2").select("id,task_type,title,description,status,due_at,origin,tenant_task_actions_v2(id,action_key,label,from_status,to_status,requires_note,sort_order)").eq("tenant_id",tasksTenant.tenantId).order("created_at",{ascending:false});
+  const {data,error}=await supabase.from("tenant_tasks_v2").select("id,task_type,title,description,status,due_at,origin,tenant_task_actions_v2(id,action_key,label,from_status,to_status,requires_note,sort_order,actor)").eq("tenant_id",tasksTenant.tenantId).order("created_at",{ascending:false});
   if(error){ tasksList.replaceChildren(createElement("li","status error","No se pudieron cargar las tareas.")); return; }
   tasksList.replaceChildren();
   if(!data.length){tasksList.append(createElement("li","muted","Este inquilino todavía no tiene tareas."));return;}
@@ -503,8 +503,10 @@ async function loadTasks() {
     const li=createElement("li","history-item"); li.append(createElement("strong","",task.title));
     li.append(createElement("span","",`${taskStatusLabels[task.status]||task.status}${task.due_at?" · "+formatDate(task.due_at):""}`));
     if(task.description) li.append(createElement("p","muted small",task.description));
-    const available=(task.tenant_task_actions_v2||[]).filter(a=>a.from_status===task.status).sort((a,b)=>a.sort_order-b.sort_order);
+    const available=(task.tenant_task_actions_v2||[]).filter(a=>a.from_status===task.status && a.actor==="agency").sort((a,b)=>a.sort_order-b.sort_order);
     if(available.length){const row=createElement("div","editor-actions"); available.forEach(a=>{const btn=createElement("button","ghost",a.label);btn.type="button";btn.onclick=()=>runTaskAction(task,a);row.append(btn)});li.append(row);}
+    const waiting=(task.tenant_task_actions_v2||[]).filter(a=>a.from_status===task.status && a.actor!=="agency");
+    if(!available.length && waiting.length) li.append(createElement("p","muted small",waiting.some(a=>a.actor==="tenant")?"Pendiente de acción del inquilino":waiting.some(a=>a.actor==="assignee")?"Pendiente de acción del responsable asignado":"Pendiente de una acción automática"));
     tasksList.append(li);
   });
 }

@@ -118,6 +118,20 @@
       </section>
     </dialog>
 
+    <dialog id="tasksDialog">
+      <section class="editor history-panel">
+        <div class="editor-head"><div><p class="eyebrow">ACTIVIDADES</p><h3 id="tasksTitle">Tareas del inquilino</h3></div><button id="closeTasksBtn" type="button" class="icon-btn" aria-label="Cerrar">×</button></div>
+        <form id="taskForm" class="editor-fields">
+          <label>Tipo<select id="taskType"><option value="generic">Tarea genérica</option><option value="key_pickup">Recogida de llaves</option><option value="key_delivery">Entrega de llaves</option><option value="check_in">Entrada al piso</option><option value="check_out">Salida del piso</option><option value="cleaning">Limpieza</option><option value="rent_payment">Pago de alquiler</option><option value="rent_claim">Reclamación de alquiler</option><option value="damage_claim">Reclamación de daños</option><option value="deposit">Fianza</option><option value="incident">Gestionar incidencia</option></select></label>
+          <label>Título<input id="taskTitle" required maxlength="160" placeholder="Describe brevemente la actividad"></label>
+          <label>Descripción<textarea id="taskDescription" maxlength="2000" placeholder="Información útil para realizar o entender la tarea"></textarea></label>
+          <label>Fecha prevista<input id="taskDueAt" type="datetime-local"></label>
+          <button class="primary" type="submit">Crear tarea</button>
+        </form>
+        <ol id="tasksList" class="history-list"></ol>
+      </section>
+    </dialog>
+
     <dialog id="historyDialog">
       <section class="editor history-panel">
         <div class="editor-head">
@@ -150,7 +164,7 @@
       <span id="portfolioStatus"><strong>Conectando…</strong> Cargando cartera autorizada.</span>
     </section>
   </main>
-  <script type="module" src="./portfolio.js?v=202609175"></script>
+  <script type="module" src="./portfolio.js?v=202609176"></script>
   <script type="module" src="./auth-guard.js"></script>
 </body>
 </html>

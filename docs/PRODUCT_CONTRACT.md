@@ -32,6 +32,8 @@ Un propietario puede tener varios pisos. Los pisos conservan histórico de propi
 - Verificación del estado del inmueble con foto patrón, silueta y revisión IA/manual.
 - Solicitudes aleatorias/configurables de evidencia de zonas/equipos.
 - Documentos centralizados por la gestora.
+- Ficha de inquilino separada de sus ocupaciones históricas.
+- Dossier privado multiarchivo del inquilino con nombre descriptivo y clasificación.
 - Notificaciones internas, push PWA y email.
 - Broadcast de empresa por piso, conjunto de pisos, rol o toda la organización.
 - Recordatorios de pagos, impagos y reclamaciones.
@@ -50,4 +52,4 @@ La empresa gestora es el emisor visible de comunicaciones institucionales y broa
 
 ## Estado y baja
 
-Las bajas deben preservar histórico. El borrado físico de datos de negocio no es el mecanismo normal de baja.
+Las bajas deben preservar el histórico de negocio cuando exista una razón legítima u obligación de conservación. El ciclo del inquilino distingue **Alta**, **Suspendido**, **Baja · pendiente de eliminación** y purga verificada. La suspensión bloquea acceso sin borrar la ficha. La baja inicia offboarding y no equivale a DELETE inmediato. Solo tras inventariar dependencias, aplicar las retenciones exigibles, purgar Storage/BD/Auth y verificar el resultado puede comunicarse al interesado qué datos fueron eliminados y cuáles, si alguno, deben conservarse bloqueados.

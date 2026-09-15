@@ -33,3 +33,18 @@ if grep -EIn "from\(['\"]${legacy_pattern}['\"]\)|\.from\(['\"]${legacy_pattern}
 fi
 
 echo 'Portfolio smoke checks passed'
+
+
+# Tenant save regression: identity creation/reuse must live inside occupancies branch.
+python3 - <<'PY'
+from pathlib import Path
+s=Path("docs/portfolio.js").read_text()
+a=s.index('} else if (current === "occupancies") {', s.index("async function saveItem"))
+b=s.index('} else {', a)
+block=s[a:b]
+assert 'supabase.from("tenants_v2")' in block, "tenant identity save missing from occupancies branch"
+assert 'tenant_id: tenantId' in block, "occupancy is not linked to tenant identity"
+owners=s[s.index('if (current === "owners") {', s.index("async function saveItem")):a]
+assert 'supabase.from("tenants_v2")' not in owners, "tenant save leaked into owners branch"
+print("PASS tenant save regression")
+PY

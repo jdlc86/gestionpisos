@@ -246,7 +246,7 @@ function formatDate(value) {
 }
 
 const viewIcons = { owners: "♙", properties: "⌂", rooms: "▣", occupancies: "♟" };
-const actionIcons = { edit: "✎", history: "↺", documents: "▤", "photo-history": "▧", archive: "⊘" };
+const actionIcons = { edit: "✎", history: "↺", documents: "▤", tasks: "☑", "photo-history": "▧", archive: "⊘" };
 
 function iconLabel(kind, label) {
   const span = createElement("span", "action-label");
@@ -482,6 +482,43 @@ function mapRoom(row) {
   };
 }
 
+
+const tasksDialog = $("tasksDialog"), tasksTitle = $("tasksTitle"), tasksList = $("tasksList"), taskForm = $("taskForm");
+let tasksTenant = null;
+const taskStatusLabels = {pending:"Pendiente",requested:"Solicitada",scheduled:"Programada",assigned:"Asignada",accepted:"Aceptada",in_progress:"En curso",submitted:"En revisión",open:"Abierta",draft:"Borrador",claimed:"Reclamada",waiting_info:"Esperando información",under_review:"En revisión",received:"Recibida",completed:"Completada",rejected:"Rechazada",disputed:"En disputa",refunded:"Devuelta",partially_held:"Retención parcial",held:"Retenida"};
+async function openTasks(item) {
+  tasksTenant=item; tasksTitle.textContent=`Tareas · ${item.fullName}`; taskForm.reset(); tasksDialog.showModal(); await loadTasks();
+}
+async function loadTasks() {
+  tasksList.replaceChildren(createElement("li","muted","Cargando tareas…"));
+  const {data,error}=await supabase.from("tenant_tasks_v2").select("id,task_type,title,description,status,due_at,origin,tenant_task_actions_v2(id,action_key,label,from_status,to_status,requires_note,sort_order)").eq("tenant_id",tasksTenant.tenantId).order("created_at",{ascending:false});
+  if(error){ tasksList.replaceChildren(createElement("li","status error","No se pudieron cargar las tareas.")); return; }
+  tasksList.replaceChildren();
+  if(!data.length){tasksList.append(createElement("li","muted","Este inquilino todavía no tiene tareas."));return;}
+  data.forEach(task=>{
+    const li=createElement("li","history-item"); li.append(createElement("strong","",task.title));
+    li.append(createElement("span","",`${taskStatusLabels[task.status]||task.status}${task.due_at?" · "+formatDate(task.due_at):""}`));
+    if(task.description) li.append(createElement("p","muted small",task.description));
+    const available=(task.tenant_task_actions_v2||[]).filter(a=>a.from_status===task.status).sort((a,b)=>a.sort_order-b.sort_order);
+    if(available.length){const row=createElement("div","editor-actions"); available.forEach(a=>{const btn=createElement("button","ghost",a.label);btn.type="button";btn.onclick=()=>runTaskAction(task,a);row.append(btn)});li.append(row);}
+    tasksList.append(li);
+  });
+}
+async function runTaskAction(task,a){
+  let note=null;
+  if(a.requires_note){note=window.prompt(`${a.label}: explica el motivo o la información necesaria.`);if(note===null)return;if(!note.trim()){showSaveError("Esta acción necesita una explicación.");return;}}
+  const {error}=await supabase.rpc("apply_tenant_task_action_v2",{p_task_id:task.id,p_action_key:a.action_key,p_note:note});
+  if(error){showSaveError("No se pudo realizar la acción. Actualiza las tareas y vuelve a intentarlo.");return;} await loadTasks();
+}
+function showSaveError(message){saveErrorMessage.textContent=message;if(!saveErrorDialog.open)saveErrorDialog.showModal();}
+taskForm?.addEventListener("submit",async e=>{
+ e.preventDefault(); if(!tasksTenant)return;
+ const due=$("taskDueAt").value?new Date($("taskDueAt").value).toISOString():null;
+ const {error}=await supabase.rpc("create_tenant_task_v2",{p_tenant_id:tasksTenant.tenantId,p_task_type:$("taskType").value,p_title:$("taskTitle").value.trim(),p_description:$("taskDescription").value.trim()||null,p_due_at:due,p_property_id:tasksTenant.propertyId,p_room_id:tasksTenant.roomId,p_origin:"manual"});
+ if(error){showSaveError("No se pudo crear la tarea. Revisa los datos y vuelve a intentarlo.");return;} taskForm.reset(); await loadTasks();
+});
+$("closeTasksBtn")?.addEventListener("click",()=>tasksDialog.close());
+
 async function loadPortfolio() {
   if (!organizationId) return;
   setStatus("Cargando datos autorizados…", "Supabase");
@@ -678,6 +715,11 @@ async function saveItem(event) {
       const { error } = await query;
       if (error) throw error;
     } else if (current === "occupancies") {
+    const tasksBtn = createElement("button", "ghost");
+    tasksBtn.type = "button"; tasksBtn.append(iconLabel("tasks", "Tareas"));
+    tasksBtn.addEventListener("click", () => openTasks(item));
+    actions.append(tasksBtn);
+
       const room = findItem("rooms", data.roomId);
       if (!room || room.propertyId !== data.propertyId) throw new Error("room_property_mismatch");
       if (!data.indefinite && !data.endsOn) throw new Error("end_date_required");

@@ -295,58 +295,54 @@ closeDialogBtn.addEventListener("click", () => dialog.close());
 approveBtn.addEventListener("click", () => decide("approved"));
 rejectBtn.addEventListener("click", () => decide("rejected"));
 
-async function showEvolution() {
-  if (!lastHistory?.runs?.length) {
-    showToast("No hay verificaciones para comparar.", { error:true });
-    return;
-  }
-  const groups = new Map();
-  for (const run of lastHistory.runs) {
-    for (const item of lastHistory.byRun.get(run.id) || []) {
-      const key = item.pattern_id || "unknown";
-      if (!groups.has(key)) groups.set(key, []);
-      groups.get(key).push({ run, item });
-    }
-  }
-  const comparable = [...groups.entries()]
-    .map(([patternId, entries]) => ({ patternId, entries: entries.sort((a,b) => new Date(a.item.captured_at) - new Date(b.item.captured_at)) }))
-    .filter(group => group.entries.length >= 2);
-  if (!comparable.length) {
-    showToast("Aún no hay dos verificaciones del mismo patrón para mostrar evolución.", { error:true });
-    return;
-  }
-  const group = comparable[0];
+let lastEvolutionGroups = [];
+
+async function signedEvolutionUrl(entry) {
+  const { data, error } = await supabase.storage.from("photo-verification").createSignedUrl(entry.item.storage_path, 120);
+  return error ? null : data?.signedUrl;
+}
+function evolutionOption(entry, index) {
+  const score = entry.item.alignment_score == null ? "—" : Math.round(Number(entry.item.alignment_score) * 100) + "%";
+  return `<option value="${index}">${esc(fmtDate(entry.item.captured_at))} · ${esc(score)} · ${esc(statusLabel(entry.run.status))}</option>`;
+}
+async function renderEvolutionComparison(group, leftIndex, rightIndex) {
   const pattern = lastHistory.patternMap.get(group.patternId);
-  const first = group.entries[0];
-  const latest = group.entries[group.entries.length - 1];
-  const signed = await Promise.all([first, latest].map(async entry => {
-    const { data, error } = await supabase.storage.from("photo-verification").createSignedUrl(entry.item.storage_path, 120);
-    return error ? null : data?.signedUrl;
-  }));
-  if (!signed[0] || !signed[1]) {
-    showToast("No se pudieron cargar las imágenes de evolución.", { error:true });
-    return;
-  }
-  const firstScore = first.item.alignment_score == null ? "—" : Math.round(Number(first.item.alignment_score) * 100) + "%";
-  const latestScore = latest.item.alignment_score == null ? "—" : Math.round(Number(latest.item.alignment_score) * 100) + "%";
+  const left = group.entries[leftIndex], right = group.entries[rightIndex];
+  const signed = await Promise.all([signedEvolutionUrl(left), signedEvolutionUrl(right)]);
+  if (!signed[0] || !signed[1]) { showToast("No se pudieron cargar las imágenes de evolución.", { error:true }); return; }
+  const score = entry => entry.item.alignment_score == null ? "—" : Math.round(Number(entry.item.alignment_score) * 100) + "%";
   details.innerHTML = `
-    <div class="review-chip review-chip--wide">Patrón <strong>${esc(pattern?.name || pattern?.target_key || "Fotoverificación")}</strong></div>
-    <div class="evolution-grid">
-      <figure><img src="${esc(signed[0])}" alt="Primera verificación"><figcaption>Primera · ${esc(fmtDate(first.item.captured_at))} · ${esc(firstScore)} · ${esc(statusLabel(first.run.status))}</figcaption></figure>
-      <figure><img src="${esc(signed[1])}" alt="Última verificación"><figcaption>Última · ${esc(fmtDate(latest.item.captured_at))} · ${esc(latestScore)} · ${esc(statusLabel(latest.run.status))}</figcaption></figure>
+    <div class="evolution-picker">
+      <label>Patrón<select id="evolutionPattern">${lastEvolutionGroups.map((candidate,index) => {
+        const p = lastHistory.patternMap.get(candidate.patternId);
+        return `<option value="${index}" ${candidate === group ? "selected" : ""}>${esc(p?.name || p?.target_key || "Fotoverificación")} (${candidate.entries.length})</option>`;
+      }).join("")}</select></label>
+      <label>Comparar desde<select id="evolutionFrom">${group.entries.map(evolutionOption).join("")}</select></label>
+      <label>Comparar con<select id="evolutionTo">${group.entries.map(evolutionOption).join("")}</select></label>
     </div>
-    <div class="review-chip review-chip--wide">Historial <strong>${group.entries.length} verificaciones del mismo patrón</strong></div>`;
-  image.removeAttribute("src");
-  image.style.display = "none";
-  reasonWrap.hidden = true;
-  approveBtn.hidden = true;
-  rejectBtn.hidden = true;
-  dialog.addEventListener("close", () => {
-    image.style.display = "";
-    approveBtn.hidden = false;
-    rejectBtn.hidden = false;
-  }, { once:true });
+    <div class="evolution-grid">
+      <figure><img src="${esc(signed[0])}" alt="Verificación inicial"><figcaption>${esc(fmtDate(left.item.captured_at))} · ${esc(score(left))} · ${esc(statusLabel(left.run.status))}</figcaption></figure>
+      <figure><img src="${esc(signed[1])}" alt="Verificación comparada"><figcaption>${esc(fmtDate(right.item.captured_at))} · ${esc(score(right))} · ${esc(statusLabel(right.run.status))}</figcaption></figure>
+    </div>
+    <div class="review-chip review-chip--wide">Patrón <strong>${esc(pattern?.name || pattern?.target_key || "Fotoverificación")}</strong> · ${group.entries.length} verificaciones</div>`;
+  const patternSelect=document.getElementById("evolutionPattern"), fromSelect=document.getElementById("evolutionFrom"), toSelect=document.getElementById("evolutionTo");
+  fromSelect.value=String(leftIndex); toSelect.value=String(rightIndex);
+  patternSelect.addEventListener("change",()=>{ const next=lastEvolutionGroups[Number(patternSelect.value)]; renderEvolutionComparison(next,0,next.entries.length-1); });
+  fromSelect.addEventListener("change",()=>renderEvolutionComparison(group,Number(fromSelect.value),Number(toSelect.value)));
+  toSelect.addEventListener("change",()=>renderEvolutionComparison(group,Number(fromSelect.value),Number(toSelect.value)));
+}
+async function showEvolution() {
+  if (!lastHistory?.runs?.length) { showToast("No hay verificaciones para comparar.", { error:true }); return; }
+  const groups=new Map();
+  for (const run of lastHistory.runs) for (const item of lastHistory.byRun.get(run.id)||[]) {
+    const key=item.pattern_id||"unknown"; if(!groups.has(key)) groups.set(key,[]); groups.get(key).push({run,item});
+  }
+  lastEvolutionGroups=[...groups.entries()].map(([patternId,entries])=>({patternId,entries:entries.sort((a,b)=>new Date(a.item.captured_at)-new Date(b.item.captured_at))})).filter(group=>group.entries.length>=2);
+  if(!lastEvolutionGroups.length){ showToast("Aún no hay dos verificaciones del mismo patrón para mostrar evolución.",{error:true}); return; }
+  image.removeAttribute("src"); image.style.display="none"; reasonWrap.hidden=true; approveBtn.hidden=true; rejectBtn.hidden=true;
+  dialog.addEventListener("close",()=>{image.style.display="";approveBtn.hidden=false;rejectBtn.hidden=false;},{once:true});
   dialog.showModal();
+  await renderEvolutionComparison(lastEvolutionGroups[0],0,lastEvolutionGroups[0].entries.length-1);
 }
 
 load();

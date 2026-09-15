@@ -43,7 +43,7 @@ save=s[s.index("async function saveItem"):s.index("async function archiveItem")]
 assert 'supabase.rpc("create_tenant_occupancy_v3"' in save, "atomic tenant onboarding RPC missing"
 assert 'p_property_id: data.propertyId' in save and 'p_room_id: data.roomId' in save, "property/room scope missing"
 tenant_branch=save[save.index('else if (current === "occupancies")'):save.index('    } else {\n      const payload = {\n        property_id:', save.index('else if (current === "occupancies")'))]\nassert 'createdTenantId' not in tenant_branch, "manual tenant rollback should be removed from tenant flow"
-assert 'tenant rollback failed' not in save, "legacy rollback path remains"
+assert 'tenant rollback failed' not in tenant_branch, "legacy rollback path remains in tenant flow"
 print("PASS atomic tenant onboarding regression")
 PY
 

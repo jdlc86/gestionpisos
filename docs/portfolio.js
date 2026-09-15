@@ -377,6 +377,16 @@ function openEditor(id = null) {
   const item = id ? findItem(current, id) : null;
   editorTitle.textContent = item ? `Editar ${view.singular}` : `Nuevo ${view.singular}`;
   editorFields.replaceChildren(...view.fields.map(field => makeField(field, item)), statusField(item));
+  // A suspended tenant keeps identity/contact data, but a future reactivation
+  // must never inherit dates from the previous stay.
+  if (current === "occupancies" && item?.status === "blocked") {
+    const startsOn = editorForm.elements.namedItem("startsOn");
+    const endsOn = editorForm.elements.namedItem("endsOn");
+    const indefinite = editorForm.elements.namedItem("indefinite");
+    if (startsOn) startsOn.value = "";
+    if (endsOn) endsOn.value = "";
+    if (indefinite) indefinite.checked = false;
+  }
   editorDialog.showModal();
 }
 

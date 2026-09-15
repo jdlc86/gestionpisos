@@ -58,3 +58,20 @@ grep -Fq 'error?.code === "23514"' docs/portfolio.js
 grep -Fq 'No se pudo guardar el inquilino.' docs/portfolio.js
 grep -Fq 'error?.code === "23P01"' docs/portfolio.js
 grep -Fq 'Esta habitación ya tiene un inquilino durante las fechas seleccionadas' docs/portfolio.js
+
+# Operator portfolio regression: operational staff must not load owner data or structural views.
+python3 - <<'PY'
+from pathlib import Path
+s=Path("docs/portfolio.js").read_text()
+boot=s[s.index("async function bootstrap"):s.index('document.querySelectorAll(".segment")')]
+load=s[s.index("async function loadPortfolio"):s.index("function archivedAtFor")]
+assert 'operationalPortfolio = !["root","admin"].includes(role)' in boot
+assert 'current = "occupancies"' in boot
+assert 'button.hidden = !allowed' in boot
+assert 'if (operationalPortfolio)' in load
+operator_branch=load[load.index("if (operationalPortfolio)"):load.index("if (state.properties.length)")]
+assert 'state.owners = []' in operator_branch
+assert 'from("owners")' in operator_branch  # query exists only in the else/admin branch
+assert 'else {' in operator_branch
+print("PASS scoped operator portfolio regression")
+PY

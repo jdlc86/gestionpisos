@@ -598,9 +598,21 @@ async function saveItem(event) {
         ends_on: data.indefinite ? null : data.endsOn,
         status: data.status
       };
-      const query = existing
-        ? supabase.from("occupancies_v2").update(payload).eq("id", existing.id)
-        : supabase.from("occupancies_v2").insert(payload);
+      const isReactivation = existing?.status === "blocked" && data.status === "active";
+      let query;
+      if (isReactivation) {
+        // A reactivation is a new stay period. Preserve the suspended occupancy as
+        // history and let the DB exclusion constraint validate the new room period.
+        const closePrevious = await supabase.from("occupancies_v2")
+          .update({ ends_on: data.startsOn, status: "archived" })
+          .eq("id", existing.id);
+        if (closePrevious.error) throw closePrevious.error;
+        query = supabase.from("occupancies_v2").insert(payload);
+      } else {
+        query = existing
+          ? supabase.from("occupancies_v2").update(payload).eq("id", existing.id)
+          : supabase.from("occupancies_v2").insert(payload);
+      }
       const { error } = await query;
       if (error) {
         if (createdTenantId) {
@@ -629,7 +641,10 @@ async function saveItem(event) {
     await loadPortfolio();
   } catch (error) {
     console.error("portfolio save failed", error);
-    const message = friendlyWriteError(error, "No se pudo guardar el cambio.");
+    let message = friendlyWriteError(error, "No se pudo guardar el cambio.");
+    if (String(error?.code || "") === "23P01") {
+      message = "La habitación ya está ocupada durante ese periodo. Elige otra fecha de entrada, fecha de salida o habitación.";
+    }
     saveErrorMessage.textContent = message;
     if (!saveErrorDialog.open) saveErrorDialog.showModal();
   } finally {

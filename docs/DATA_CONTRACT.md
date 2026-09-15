@@ -38,3 +38,13 @@ Los nombres finales pueden variar, pero estas responsabilidades no deben mezclar
 - Incidencia, visita y verificación son conceptos distintos.
 - Toda referencia entre empresa/piso/usuario debe poder validarse por RLS.
 - Datos de prueba deben poder identificarse y limpiarse sin afectar históricos reales.
+
+
+## Modelo de inquilinos v2
+
+- `tenants_v2`: identidad estable del inquilino.
+- `occupancies_v2`: estancia histórica en piso/habitación; `ends_on = NULL` representa salida indefinida.
+- `tenant_documents_v2`: metadatos del dossier privado multiarchivo.
+- `tenant_privacy_events_v2`: auditoría mínima del ciclo de privacidad.
+
+La identidad no se duplica por estancia. El borrado definitivo es un workflow privilegiado y verificable, no un DELETE cliente.

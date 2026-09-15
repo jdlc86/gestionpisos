@@ -191,6 +191,9 @@ grep -q 'alignment_meta' docs/photo-persistence.js
 test -s docs/permissions.html
 test -s docs/permissions.js
 node --check docs/permissions.js
+grep -Fq 'id="createUserForm"' docs/permissions.html
+grep -Fq 'create-organization-user' docs/permissions.js
+grep -Fq 'display_name:name,email,role' docs/permissions.js
 grep -Fq 'MODULE_NOT_STARTED' docs/permissions.html
 grep -Fq 'window.__permissionsBooted=true' docs/permissions.js
 grep -Fq 'supabase.rpc("get_effective_organization_id")' docs/permissions.js

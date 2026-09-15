@@ -26,10 +26,10 @@ window.addEventListener("DOMContentLoaded",()=>setTimeout(()=>{
 },5000));
 </script><script src="./app.js?v=202609152" defer></script><script type="module">
 window.__permissionsModuleRequested=true;
-import("./permissions.js?v=202609160").catch(err=>{
+import("./permissions.js?v=202609161").catch(err=>{
  const error=document.getElementById("permissionError"),status=document.getElementById("permissionStatus");
- if(error){error.hidden=false;error.textContent="No se pudo iniciar Gestión de Permisos. Diagnóstico: MODULE_IMPORT_FAILED · "+String(err?.message||err).replace(/[\\r\
-<>]/g," ").slice(0,120);}
+ const detail=String(err?.message||err).split("\n").join(" ").replace(/[<>]/g," ").slice(0,120);
+ if(error){error.hidden=false;error.textContent="No se pudo iniciar Gestión de Permisos. Diagnóstico: MODULE_IMPORT_FAILED · "+detail;}
  if(status)status.innerHTML="<strong>Carga detenida.</strong> Falló la carga del módulo o una de sus dependencias.";
 });
 </script><script type="module" src="./auth-guard.js"></script></body></html>

@@ -740,78 +740,38 @@ async function saveItem(event) {
       // the DB trigger then promotes the tenant to active.
       if (isReactivation) tenantPayload.status = "blocked";
 
-      let tenantId = existing?.tenantId || null;
-      if (tenantId) {
-        const { error } = await supabase.from("tenants_v2").update(tenantPayload).eq("id", tenantId);
+      if (!existing) {
+        const { error } = await supabase.rpc("create_tenant_occupancy_v3", {
+          p_property_id: data.propertyId,
+          p_room_id: data.roomId,
+          p_full_name: tenantPayload.full_name,
+          p_document_type: tenantPayload.document_type,
+          p_document_number: tenantPayload.document_number,
+          p_email: tenantPayload.email,
+          p_starts_on: data.startsOn,
+          p_ends_on: data.indefinite ? null : data.endsOn,
+          p_indefinite: Boolean(data.indefinite)
+        });
         if (error) throw error;
-      } else if (!tenantId) {
-        const normalizedEmail = tenantPayload.email;
-        const { data: matches, error: lookupError } = await supabase.from("tenants_v2")
-          .select("id,full_name,document_type,document_number,email,status")
-          .eq("organization_id", organizationId)
-          .ilike("email", normalizedEmail);
-        if (lookupError) throw lookupError;
-        const sameEmail = (matches || []).find(t => t.email.trim().toLowerCase() === normalizedEmail);
-        if (sameEmail) {
-          const { data: linkedOccupancies, error: linkedError } = await supabase.from("occupancies_v2")
-            .select("id,status")
-            .eq("organization_id", organizationId)
-            .eq("tenant_id", sameEmail.id);
-          if (linkedError) throw linkedError;
-          const sameDocument = sameEmail.document_type === tenantPayload.document_type &&
-            sameEmail.document_number.trim().toUpperCase() === tenantPayload.document_number;
-          const isOrphan = !linkedOccupancies?.length;
-          if (!sameDocument) {
-            if (isOrphan) throw new Error("tenant_orphan_identity_conflict");
-            throw new Error("tenant_email_identity_conflict");
-          }
-          const prompt = isOrphan
-            ? `Este inquilino ya está registrado, pero no tiene ninguna ocupación. ¿Quieres utilizar la ficha de ${sameEmail.full_name} para asignarla a este piso y habitación?`
-            : `Este email ya pertenece a ${sameEmail.full_name}. ¿Quieres reutilizar este inquilino para crear una nueva ocupación?`;
-          if (!window.confirm(prompt)) return;
-          tenantId = sameEmail.id;
-        } else {
-          const { data: tenant, error } = await supabase.from("tenants_v2").insert(tenantPayload).select("id").single();
-          if (error) throw error;
-          tenantId = tenant.id;
-          createdTenantId = tenant.id;
-        }
-      }
-
-      const isSuspended = data.status === "blocked";
-      const payload = {
-        organization_id: organizationId,
-        tenant_id: tenantId,
-        property_id: data.propertyId,
-        room_id: data.roomId,
-        occupant_email: tenantPayload.email,
-        starts_on: isSuspended ? null : data.startsOn,
-        ends_on: isSuspended ? null : (data.indefinite ? null : data.endsOn),
-        status: data.status,
-        suspended_at: isSuspended ? (existing?.status === "blocked" ? existing.suspendedAt : now) : null
-      };
-      let query;
-      if (isReactivation) {
-        // A reactivation is a new stay period. Preserve the suspended occupancy as
-        // history and let the DB exclusion constraint validate the new room period.
-        const closePrevious = await supabase.from("occupancies_v2")
-          .update({ starts_on: null, ends_on: null, status: "archived" })
-          .eq("id", existing.id);
-        if (closePrevious.error) throw closePrevious.error;
-        query = supabase.from("occupancies_v2").insert(payload);
       } else {
-        query = existing
-          ? supabase.from("occupancies_v2").update(payload).eq("id", existing.id)
-          : supabase.from("occupancies_v2").insert(payload);
-      }
-      const { error } = await query;
-       if (error) {
-        if (createdTenantId) {
-          const rollback = await supabase.from("tenants_v2").delete().eq("id", createdTenantId);
-          if (rollback.error) console.error("tenant rollback failed", rollback.error);
-          createdTenantId = null;
-        }
-        throw error;
+        const tenantId = existing.tenantId;
+        const { error: tenantError } = await supabase.from("tenants_v2").update(tenantPayload).eq("id", tenantId);
+        if (tenantError) throw tenantError;
+        const isSuspended = data.status === "blocked";
+        const payload = {
+          organization_id: organizationId, tenant_id: tenantId, property_id: data.propertyId, room_id: data.roomId,
+          occupant_email: tenantPayload.email, starts_on: isSuspended ? null : data.startsOn,
+          ends_on: isSuspended ? null : (data.indefinite ? null : data.endsOn), status: data.status,
+          suspended_at: isSuspended ? (existing.status === "blocked" ? existing.suspendedAt : now) : null
+        };
+        const isReactivation = existing.status === "blocked" && data.status === "active";
+        let query;
+        if (isReactivation) {
+          const closePrevious = await supabase.from("occupancies_v2").update({ starts_on:null,ends_on:null,status:"archived" }).eq("id",existing.id);
+          if (closePrevious.error) throw closePrevious.error;
+          query = supabase.from("occupancies_v2").insert(payload);
+        } else query = supabase.from("occupancies_v2").update(payload).eq("id",existing.id);
+        const { error } = await query; if (error) throw error;
       }
     } else {
       const payload = {

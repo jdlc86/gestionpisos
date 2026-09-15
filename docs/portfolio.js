@@ -792,15 +792,15 @@ async function archiveItem(id) {
     } else if (current === "properties") {
       result = await supabase.from("properties_v2").update({ status: "archived", archived_at: now, updated_at: now }).eq("id", id);
     } else if (current === "occupancies") {
-      const nowIso = new Date().toISOString();
-      result = await supabase.from("occupancies_v2").update({ status: "archived" }).eq("id", id);
-      if (!result.error && item.tenantId) {
-        const user = await getCurrentUser();
-        const tenantUpdate = await supabase.from("tenants_v2").update({
-          status:"archived", archived_at:nowIso, deletion_requested_at:nowIso, deletion_requested_by:user.id
-        }).eq("id",item.tenantId);
-        if (tenantUpdate.error) throw tenantUpdate.error;
+      // Inquilinos have one Baja workflow: always open the editor so the same
+      // mandatory exit-date rules and save sequence are used.
+      openEditor(id);
+      const status = editorForm.elements.namedItem("status");
+      if (status) {
+        status.value = "archived";
+        status.dispatchEvent(new Event("change"));
       }
+      return;
     } else {
       result = await supabase.from("rooms_v2").update({ status: "archived", archived_at: now, updated_at: now }).eq("id", id);
     }

@@ -431,6 +431,7 @@ function archivedAtFor(status, existing) {
 
 function friendlyWriteError(error, fallback) {
   if (error?.message === "tenant_email_identity_conflict") return "Ese email ya pertenece a otro inquilino con un documento diferente. Revisa la ficha existente antes de continuar.";
+  if (error?.message === "tenant_orphan_identity_conflict") return "Ese email pertenece a una ficha existente sin ocupaciones, pero el documento no coincide. Revisa la identidad antes de reutilizarla.";
 
   const text = String(error?.message || error || "");
   if (text.includes("owner_has_active_properties")) {
@@ -516,11 +517,22 @@ async function saveItem(event) {
         if (lookupError) throw lookupError;
         const sameEmail = (matches || []).find(t => t.email.trim().toLowerCase() === normalizedEmail);
         if (sameEmail) {
+          const { data: linkedOccupancies, error: linkedError } = await supabase.from("occupancies_v2")
+            .select("id,status")
+            .eq("organization_id", organizationId)
+            .eq("tenant_id", sameEmail.id);
+          if (linkedError) throw linkedError;
           const sameDocument = sameEmail.document_type === tenantPayload.document_type &&
             sameEmail.document_number.trim().toUpperCase() === tenantPayload.document_number;
-          if (!sameDocument) throw new Error("tenant_email_identity_conflict");
-          const reuse = window.confirm(`Este email ya pertenece a ${sameEmail.full_name}. ¿Quieres reutilizar este inquilino para crear una nueva ocupación?`);
-          if (!reuse) return;
+          const isOrphan = !linkedOccupancies?.length;
+          if (!sameDocument) {
+            if (isOrphan) throw new Error("tenant_orphan_identity_conflict");
+            throw new Error("tenant_email_identity_conflict");
+          }
+          const prompt = isOrphan
+            ? `Este inquilino ya está registrado, pero no tiene ninguna ocupación. ¿Quieres utilizar la ficha de ${sameEmail.full_name} para asignarla a este piso y habitación?`
+            : `Este email ya pertenece a ${sameEmail.full_name}. ¿Quieres reutilizar este inquilino para crear una nueva ocupación?`;
+          if (!window.confirm(prompt)) return;
           tenantId = sameEmail.id;
         } else {
           const { data: tenant, error } = await supabase.from("tenants_v2").insert(tenantPayload).select("id").single();

@@ -285,6 +285,10 @@ function renderCard(item) {
     const docs = createElement("button", "secondary"); docs.append(iconLabel("documents", "Documentos"));
     docs.type = "button"; docs.dataset.action = "documents"; docs.dataset.id = item.id; buttons.append(docs);
   }
+  if (current === "occupancies" && item.tenantId) {
+    const tasks = createElement("button", "secondary"); tasks.append(iconLabel("tasks", "Tareas"));
+    tasks.type = "button"; tasks.addEventListener("click", () => openTasks(item)); buttons.append(tasks);
+  }
   if (current === "properties") {
     const photos = createElement("button", "secondary"); photos.append(iconLabel("photo-history", "Fotoverificaciones"));
     photos.type = "button";
@@ -715,11 +719,6 @@ async function saveItem(event) {
       const { error } = await query;
       if (error) throw error;
     } else if (current === "occupancies") {
-    const tasksBtn = createElement("button", "ghost");
-    tasksBtn.type = "button"; tasksBtn.append(iconLabel("tasks", "Tareas"));
-    tasksBtn.addEventListener("click", () => openTasks(item));
-    actions.append(tasksBtn);
-
       const room = findItem("rooms", data.roomId);
       if (!room || room.propertyId !== data.propertyId) throw new Error("room_property_mismatch");
       if (!data.indefinite && !data.endsOn) throw new Error("end_date_required");

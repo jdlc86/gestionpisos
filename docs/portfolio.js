@@ -443,6 +443,9 @@ function friendlyWriteError(error, fallback) {
   if (text.includes("row-level security") || error?.code === "42501") {
     return "Tu rol actual no tiene permiso para realizar este cambio.";
   }
+  if (error?.code === "23P01" || text.includes("occupancies_v2_no_active_room_overlap")) {
+    return "Esta habitación ya tiene un inquilino durante las fechas seleccionadas. Cambia la habitación o modifica las fechas de la estancia.";
+  }
   if (error?.code === "23505") {
     const detail = String(error?.details || "");
     if (detail.includes("email") || text.includes("tenants_v2_org_email_uidx")) return "Ya existe un inquilino con ese email en esta gestoría.";

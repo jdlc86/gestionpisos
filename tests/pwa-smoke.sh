@@ -194,6 +194,8 @@ node --check docs/permissions.js
 grep -Fq 'withTimeout(getCurrentSession(),8000,"session_timeout")' docs/permissions.js
 grep -Fq '"permissions_timeout"' docs/permissions.js
 grep -Fq '<strong>Carga detenida.</strong>' docs/permissions.js
+grep -Fq 'Diagnóstico: ' docs/permissions.js
+grep -Fq 'replace(/[^A-Za-z0-9_.-]/g,"")' docs/permissions.js
 
 echo 'PWA smoke checks passed'
 

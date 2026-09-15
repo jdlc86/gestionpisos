@@ -51,3 +51,10 @@ La empresa gestora es el emisor visible de comunicaciones institucionales y broa
 ## Estado y baja
 
 Las bajas deben preservar histórico. El borrado físico de datos de negocio no es el mecanismo normal de baja.
+
+
+## Ciclo de vida del inquilino
+
+La identidad del inquilino se mantiene separada de sus ocupaciones históricas. Los estados visibles son **Alta**, **Suspendido** y **Baja · pendiente de eliminación**. Suspender conserva la ficha pero debe impedir el acceso. La baja inicia offboarding y no equivale a borrado inmediato. Solo una purga server-side verificada puede sustentar una comunicación final sobre qué datos fueron eliminados y cuáles deban conservarse bloqueados por obligación legal.
+
+El dossier del inquilino admite múltiples documentos privados con nombre descriptivo y clasificación; nunca se publican mediante URL permanente.

@@ -625,3 +625,31 @@ Los cinco SQL exactos se recuperaron del campo `statements` del historial remoto
 y están versionados con los mismos timestamps y nombres.
 
 No reabrir el diseño de B-08 salvo que las pruebas reales detecten una regresión.
+
+
+---
+
+## B-16 — Inquilinos, dossier privado y baja verificable
+
+### Estado
+
+PARCIALMENTE IMPLEMENTADO — 2026-09-15
+
+### Implementado
+
+- `tenants_v2` separa identidad de `occupancies_v2`.
+- Alta con nombre, documento, email, piso, habitación y fechas.
+- Dossier `tenant_documents_v2` y bucket privado `tenant-documents-v2` (10 MB; PDF/JPEG/PNG/WebP).
+- UI para subir, visualizar mediante URL firmada temporal y eliminar adjuntos.
+- Alta / Suspendido / Baja pendiente, fecha indefinida y auditoría mínima de privacidad desplegados mediante PR #88.
+
+### Pendiente obligatorio
+
+- Edge Function privilegiada para suspensión/reactivación/baja/purga.
+- Bloqueo efectivo de Auth al suspender o dar de baja.
+- Inventario completo de referencias y política explícita de retención.
+- Purga coordinada Storage + BD + Auth y verificación posterior.
+- Email final basado exclusivamente en el resultado verificado.
+- Pruebas multiusuario positivas y negativas.
+
+No cerrar B-16 hasta completar esos puntos.

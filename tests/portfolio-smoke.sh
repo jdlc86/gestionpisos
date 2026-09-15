@@ -58,3 +58,7 @@ grep -q 'id="saveErrorDialog"' docs/portfolio.html
 grep -q 'saveErrorDialog.showModal()' docs/portfolio.js
 grep -q 'saveErrorAcceptBtn' docs/portfolio.js
 grep -q 'saveErrorCancelBtn' docs/portfolio.js
+
+grep -q 'linkedOccupancies' docs/portfolio.js
+grep -q 'tenant_orphan_identity_conflict' docs/portfolio.js
+grep -q 'no tiene ninguna ocupación' docs/portfolio.js

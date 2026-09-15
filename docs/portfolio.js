@@ -642,10 +642,11 @@ async function saveItem(event) {
       if (isReactivation) tenantPayload.status = "blocked";
 
       let tenantId = existing?.tenantId || null;
-      if (tenantId) {
+      const deferTenantArchive = Boolean(tenantId && isOffboarding);
+      if (tenantId && !deferTenantArchive) {
         const { error } = await supabase.from("tenants_v2").update(tenantPayload).eq("id", tenantId);
         if (error) throw error;
-      } else {
+      } else if (!tenantId) {
         const normalizedEmail = tenantPayload.email;
         const { data: matches, error: lookupError } = await supabase.from("tenants_v2")
           .select("id,full_name,document_type,document_number,email,status")
@@ -706,6 +707,10 @@ async function saveItem(event) {
           : supabase.from("occupancies_v2").insert(payload);
       }
       const { error } = await query;
+      if (!error && deferTenantArchive) {
+        const { error: tenantArchiveError } = await supabase.from("tenants_v2").update(tenantPayload).eq("id", tenantId);
+        if (tenantArchiveError) throw tenantArchiveError;
+      }
       if (error) {
         if (createdTenantId) {
           const rollback = await supabase.from("tenants_v2").delete().eq("id", createdTenantId);

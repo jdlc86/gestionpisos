@@ -379,6 +379,11 @@ function openEditor(id = null) {
   const item = id ? findItem(current, id) : null;
   editorTitle.textContent = item ? `Editar ${view.singular}` : `Nuevo ${view.singular}`;
   editorFields.replaceChildren(...view.fields.map(field => makeField(field, item)), statusField(item));
+  // Every new occupancy starts with an explicit exit policy: indefinite by default.
+  if (current === "occupancies" && !item) {
+    const indefinite = editorForm.elements.namedItem("indefinite");
+    if (indefinite) indefinite.checked = true;
+  }
   // A suspended tenant keeps identity/contact data, but a future reactivation
   // must never inherit dates from the previous stay.
   if (current === "occupancies" && item?.status === "blocked") {

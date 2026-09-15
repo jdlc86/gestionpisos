@@ -69,8 +69,7 @@ async function load(){
   }catch(e){
     const code=e?.message||"";
     const safeCode=String(e?.code||"").replace(/[^A-Za-z0-9_.-]/g,"").slice(0,48);
-    const safeMessage=String(code).replace(/[\r
-<>]/g," ").slice(0,160);
+    const safeMessage=String(code).split("\\n").join(" ").split("\\r").join(" ").replace(/[<>]/g," ").slice(0,160);
     $("permissionContent").hidden=true;
     $("permissionError").textContent=code==="not_authorized"?"No tienes autorización para acceder a Gestión de Permisos.":code==="session_missing"?"Tu sesión no está disponible. Vuelve a Inicio e inicia sesión de nuevo.":code==="session_timeout"?"No se pudo comprobar tu sesión. Revisa la conexión e inténtalo de nuevo.":code==="permissions_timeout"?"El servidor tardó demasiado en cargar Gestión de Permisos. Inténtalo de nuevo.":"No se pudo cargar Gestión de Permisos. No se ha realizado ningún cambio.";
     if(!["not_authorized","session_missing","session_timeout","permissions_timeout"].includes(code)){

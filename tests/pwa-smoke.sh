@@ -55,7 +55,10 @@ test -s docs/photo-patterns.css
 test -s docs/photo-patterns.js
 node --check docs/photo-patterns.js
 test -s docs/photo-pattern-persistence.js
-grep -q 'photo-patterns.html?v=2026091502' docs/portfolio.html
+if grep -q 'photo-patterns.html' docs/portfolio.html; then
+  echo 'Cartera must not expose photo pattern configuration in its global header.'
+  exit 1
+fi
 grep -q 'photo-patterns.js?v=2026091502' docs/photo-patterns.html
 grep -q 'photo-patterns.css?v=2026091502' docs/photo-patterns.html
 grep -q 'photo_patterns_v2' docs/photo-patterns.js

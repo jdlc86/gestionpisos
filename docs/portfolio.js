@@ -379,6 +379,36 @@ function statusField(item) {
   return wrapper;
 }
 
+function applyOccupancyStatusRules(item = null) {
+  if (current !== "occupancies") return;
+  const status = editorForm.elements.namedItem("status");
+  const startsOn = editorForm.elements.namedItem("startsOn");
+  const indefinite = editorForm.elements.namedItem("indefinite");
+  const endsOn = editorForm.elements.namedItem("endsOn");
+  if (!status || !startsOn || !indefinite || !endsOn) return;
+
+  const isOffboarding = status.value === "archived";
+  if (isOffboarding) {
+    // Baja closes the relationship; it never asks for or edits an entry date.
+    startsOn.disabled = true;
+    startsOn.required = false;
+    indefinite.checked = false;
+    indefinite.disabled = true;
+    endsOn.disabled = false;
+    endsOn.required = true;
+    const today = new Date();
+    today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
+    endsOn.min = today.toISOString().slice(0, 10);
+  } else {
+    startsOn.disabled = false;
+    startsOn.required = status.value === "active";
+    indefinite.disabled = false;
+    endsOn.required = false;
+    endsOn.removeAttribute("min");
+    endsOn.disabled = indefinite.checked;
+  }
+}
+
 function openEditor(id = null) {
   const editorError = document.getElementById("editorError");
   if (editorError) { editorError.hidden = true; editorError.textContent = ""; }
@@ -403,6 +433,11 @@ function openEditor(id = null) {
     if (endsOn) endsOn.value = "";
     if (indefinite) indefinite.checked = true;
   }
+  const status = editorForm.elements.namedItem("status");
+  const indefinite = editorForm.elements.namedItem("indefinite");
+  if (status) status.addEventListener("change", () => applyOccupancyStatusRules(item));
+  if (indefinite) indefinite.addEventListener("change", () => applyOccupancyStatusRules(item));
+  applyOccupancyStatusRules(item);
   editorDialog.showModal();
 }
 
@@ -579,8 +614,16 @@ async function saveItem(event) {
     } else if (current === "occupancies") {
       const room = findItem("rooms", data.roomId);
       if (!room || room.propertyId !== data.propertyId) throw new Error("room_property_mismatch");
-      if (!data.indefinite && !data.endsOn) throw new Error("end_date_required");
-      if (data.startsOn && data.endsOn && data.endsOn < data.startsOn) throw new Error("end_date_before_start");
+      const isOffboarding = data.status === "archived";
+      if (!isOffboarding && !data.indefinite && !data.endsOn) throw new Error("end_date_required");
+      if (isOffboarding) {
+        if (!data.endsOn) throw new Error("offboarding_end_required");
+        const today = new Date();
+        today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
+        if (data.endsOn < today.toISOString().slice(0, 10)) throw new Error("offboarding_end_past");
+      } else if (data.startsOn && data.endsOn && data.endsOn < data.startsOn) {
+        throw new Error("end_date_before_start");
+      }
 
       const tenantPayload = {
         organization_id: organizationId,
@@ -637,14 +680,15 @@ async function saveItem(event) {
       }
 
       const isSuspended = data.status === "blocked";
+      const isOffboarding = data.status === "archived";
       const payload = {
         organization_id: organizationId,
         tenant_id: tenantId,
         property_id: data.propertyId,
         room_id: data.roomId,
         occupant_email: tenantPayload.email,
-        starts_on: isSuspended ? null : data.startsOn,
-        ends_on: isSuspended ? null : (data.indefinite ? null : data.endsOn),
+        starts_on: isSuspended ? null : (isOffboarding ? (existing?.startsOn || null) : data.startsOn),
+        ends_on: isSuspended ? null : (isOffboarding ? data.endsOn : (data.indefinite ? null : data.endsOn)),
         status: data.status,
         suspended_at: isSuspended ? (existing?.status === "blocked" ? existing.suspendedAt : now) : null
       };
@@ -698,6 +742,10 @@ async function saveItem(event) {
     let message = friendlyWriteError(error, "No se pudo guardar el cambio.");
     if (String(error?.message || "") === "end_date_required") {
       message = "Define una fecha de salida o marca «Estancia indefinida».";
+    } else if (String(error?.message || "") === "offboarding_end_required") {
+      message = "Para completar la baja debes indicar una fecha de salida.";
+    } else if (String(error?.message || "") === "offboarding_end_past") {
+      message = "La fecha de salida de una baja no puede estar en el pasado.";
     } else if (String(error?.message || "") === "end_date_before_start") {
       message = "La fecha de salida no puede ser anterior a la fecha de entrada.";
     } else if (String(error?.code || "") === "23P01") {

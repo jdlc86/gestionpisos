@@ -20,5 +20,8 @@ jobs:
       - name: Verify security regression artifacts
         run: bash tests/schema-regression-smoke.sh
 
+      - name: Verify property staff access v3 contract
+        run: bash tests/property-staff-access-v3-contract.sh
+
       - name: Run isolated PostgreSQL security regression
         run: bash tests/database-regression-v2.sh

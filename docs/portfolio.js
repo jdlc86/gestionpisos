@@ -413,7 +413,7 @@ async function loadPortfolio() {
     .eq("organization_id", organizationId)
     .order("starts_on", { ascending: false });
   if (occupanciesResult.error) throw occupanciesResult.error;
-  state.occupancies = occupanciesResult.data.map(mapOccupancy);
+  state.occupancies = occupanciesResult.data.map(mapOccupancy).filter(item => item.tenantId);
 
   render();
   setStatus("Lectura y escritura protegidas por RLS. Las bajas son lógicas y los cambios quedan auditados.", "Sincronizado.");
@@ -425,6 +425,8 @@ function archivedAtFor(status, existing) {
 }
 
 function friendlyWriteError(error, fallback) {
+  if (error?.message === "tenant_email_identity_conflict") return "Ese email ya pertenece a otro inquilino con un documento diferente. Revisa la ficha existente antes de continuar.";
+
   const text = String(error?.message || error || "");
   if (text.includes("owner_has_active_properties")) {
     return "Archiva primero los pisos activos de este propietario.";
@@ -465,9 +467,25 @@ async function saveItem(event) {
         const { error } = await supabase.from("tenants_v2").update(tenantPayload).eq("id", tenantId);
         if (error) throw error;
       } else {
-        const { data: tenant, error } = await supabase.from("tenants_v2").insert(tenantPayload).select("id").single();
-        if (error) throw error;
-        tenantId = tenant.id;
+        const normalizedEmail = tenantPayload.email;
+        const { data: matches, error: lookupError } = await supabase.from("tenants_v2")
+          .select("id,full_name,document_type,document_number,email,status")
+          .eq("organization_id", organizationId)
+          .ilike("email", normalizedEmail);
+        if (lookupError) throw lookupError;
+        const sameEmail = (matches || []).find(t => t.email.trim().toLowerCase() === normalizedEmail);
+        if (sameEmail) {
+          const sameDocument = sameEmail.document_type === tenantPayload.document_type &&
+            sameEmail.document_number.trim().toUpperCase() === tenantPayload.document_number;
+          if (!sameDocument) throw new Error("tenant_email_identity_conflict");
+          const reuse = window.confirm(`Este email ya pertenece a ${sameEmail.full_name}. ¿Quieres reutilizar este inquilino para crear una nueva ocupación?`);
+          if (!reuse) return;
+          tenantId = sameEmail.id;
+        } else {
+          const { data: tenant, error } = await supabase.from("tenants_v2").insert(tenantPayload).select("id").single();
+          if (error) throw error;
+          tenantId = tenant.id;
+        }
       }
       const payload = {
         organization_id: organizationId,

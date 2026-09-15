@@ -16,7 +16,7 @@
 </main>
 <div id="permissionModal" class="permission-modal" hidden><div class="permission-modal-backdrop" data-modal-close></div><section class="permission-modal-card" role="dialog" aria-modal="true" aria-labelledby="permissionModalTitle"><h3 id="permissionModalTitle"></h3><p id="permissionModalText"></p><div class="permission-modal-actions"><button class="ghost" type="button" data-modal-close>Cancelar</button><button id="permissionModalConfirm" class="primary" type="button">Confirmar</button></div></section></div>
 <script>
-window.__permissionsBooted=false;
+window.__permissionsBooted=false;window.__permissionsModuleRequested=false;
 window.addEventListener("DOMContentLoaded",()=>setTimeout(()=>{
   if(window.__permissionsBooted)return;
   const status=document.getElementById("permissionStatus");
@@ -24,4 +24,12 @@ window.addEventListener("DOMContentLoaded",()=>setTimeout(()=>{
   if(error){error.hidden=false;error.textContent="No se pudo iniciar Gestión de Permisos. Diagnóstico: MODULE_NOT_STARTED";}
   if(status)status.innerHTML="<strong>Carga detenida.</strong> El módulo de permisos no llegó a iniciarse.";
 },5000));
-</script><script src="./app.js?v=202609152" defer></script><script type="module" src="./permissions.js?v=202609159"></script><script type="module" src="./auth-guard.js"></script></body></html>
+</script><script src="./app.js?v=202609152" defer></script><script type="module">
+window.__permissionsModuleRequested=true;
+import("./permissions.js?v=202609160").catch(err=>{
+ const error=document.getElementById("permissionError"),status=document.getElementById("permissionStatus");
+ if(error){error.hidden=false;error.textContent="No se pudo iniciar Gestión de Permisos. Diagnóstico: MODULE_IMPORT_FAILED · "+String(err?.message||err).replace(/[\\r\
+<>]/g," ").slice(0,120);}
+ if(status)status.innerHTML="<strong>Carga detenida.</strong> Falló la carga del módulo o una de sus dependencias.";
+});
+</script><script type="module" src="./auth-guard.js"></script></body></html>

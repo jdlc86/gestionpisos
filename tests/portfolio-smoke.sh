@@ -35,16 +35,20 @@ fi
 echo 'Portfolio smoke checks passed'
 
 
-# Tenant save regression: identity creation/reuse must live inside occupancies branch.
+# Tenant save regression: inspect saveItem up to archiveItem and assert branch ordering.
 python3 - <<'PY'
 from pathlib import Path
 s=Path("docs/portfolio.js").read_text()
-a=s.index('} else if (current === "occupancies") {', s.index("async function saveItem"))
-b=s.index('} else {', a)
-block=s[a:b]
-assert 'supabase.from("tenants_v2")' in block, "tenant identity save missing from occupancies branch"
-assert 'tenant_id: tenantId' in block, "occupancy is not linked to tenant identity"
-owners=s[s.index('if (current === "owners") {', s.index("async function saveItem")):a]
+save=s[s.index("async function saveItem"):s.index("async function archiveItem")]
+owners_start=save.index('if (current === "owners") {')
+properties_start=save.index('} else if (current === "properties") {', owners_start)
+occupancies_start=save.index('} else if (current === "occupancies") {', properties_start)
+rooms_start=save.index('} else {', occupancies_start)
+owners=save[owners_start:properties_start]
+occupancies=save[occupancies_start:rooms_start]
 assert 'supabase.from("tenants_v2")' not in owners, "tenant save leaked into owners branch"
+assert 'supabase.from("tenants_v2")' in occupancies, "tenant identity save missing from occupancies branch"
+assert 'tenant_id: tenantId' in occupancies, "occupancy is not linked to tenant identity"
+assert 'supabase.from("occupancies_v2")' in occupancies, "occupancy persistence missing"
 print("PASS tenant save regression")
 PY

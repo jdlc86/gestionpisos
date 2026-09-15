@@ -64,9 +64,9 @@ const views = {
 };
 
 const labels = {
-  active: "Activo",
-  blocked: "Bloqueado",
-  archived: "Archivado",
+  active: "Alta",
+  blocked: "Suspendido",
+  archived: "Baja · pendiente de eliminación",
   onboarding: "En alta",
   maintenance: "Mantenimiento",
   offboarding: "En baja"
@@ -312,6 +312,13 @@ function makeField(field, item) {
   if (field.type === "checkbox") input.checked = item ? !item.endsOn : true;
   else input.value = item?.[field.key] || "";
   wrapper.append(input);
+  if (current === "occupancies" && field.key === "indefinite") {
+    input.addEventListener("change", () => {
+      const end = editorFields.querySelector('[name="endsOn"]');
+      if (end) { end.disabled = input.checked; if (input.checked) end.value = ""; }
+    });
+    queueMicrotask(() => input.dispatchEvent(new Event("change")));
+  }
   return wrapper;
 }
 
@@ -450,7 +457,8 @@ async function saveItem(event) {
         document_type: data.documentType,
         document_number: data.documentNumber.trim().toUpperCase(),
         email: data.email.trim().toLowerCase(),
-        status: data.status
+        status: data.status,
+        archived_at: data.status === "archived" ? (existing?.archivedAt || new Date().toISOString()) : null
       };
       let tenantId = existing?.tenantId || null;
       if (tenantId) {
@@ -556,7 +564,15 @@ async function archiveItem(id) {
     } else if (current === "properties") {
       result = await supabase.from("properties_v2").update({ status: "archived", archived_at: now, updated_at: now }).eq("id", id);
     } else if (current === "occupancies") {
+      const nowIso = new Date().toISOString();
       result = await supabase.from("occupancies_v2").update({ status: "archived" }).eq("id", id);
+      if (!result.error && item.tenantId) {
+        const user = await getCurrentUser();
+        const tenantUpdate = await supabase.from("tenants_v2").update({
+          status:"archived", archived_at:nowIso, deletion_requested_at:nowIso, deletion_requested_by:user.id
+        }).eq("id",item.tenantId);
+        if (tenantUpdate.error) throw tenantUpdate.error;
+      }
     } else {
       result = await supabase.from("rooms_v2").update({ status: "archived", archived_at: now, updated_at: now }).eq("id", id);
     }
@@ -564,7 +580,7 @@ async function archiveItem(id) {
     await loadPortfolio();
   } catch (error) {
     console.error("portfolio archive failed", error);
-    setStatus(friendlyWriteError(error, "No se pudo archivar el registro."), "Error.");
+    setStatus(friendlyWriteError(error, "No se pudo tramitar la baja."), "Error.");
   }
 }
 

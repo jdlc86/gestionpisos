@@ -48,3 +48,8 @@ owners_prefix=save[:save.index('} else if (current === "properties") {')]
 assert 'supabase.from("tenants_v2")' not in owners_prefix, "tenant save leaked into owners branch"
 print("PASS tenant save regression")
 PY
+
+grep -q 'id="editorError"' docs/portfolio.html
+grep -q 'createdTenantId' docs/portfolio.js
+grep -q 'tenant rollback failed' docs/portfolio.js
+grep -q 'editorError.textContent = message' docs/portfolio.js

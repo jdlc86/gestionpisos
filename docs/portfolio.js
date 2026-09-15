@@ -338,6 +338,9 @@ function statusField(item) {
 }
 
 function openEditor(id = null) {
+  const editorError = document.getElementById("editorError");
+  if (editorError) { editorError.hidden = true; editorError.textContent = ""; }
+
   editingId = id;
   const view = views[current];
   const item = id ? findItem(current, id) : null;
@@ -449,6 +452,7 @@ async function saveItem(event) {
   const existing = editingId ? findItem(current, editingId) : null;
   const archivedAt = archivedAtFor(data.status, existing);
   const now = new Date().toISOString();
+  let createdTenantId = null;
 
   try {
     if (current === "owners") {
@@ -520,6 +524,7 @@ async function saveItem(event) {
           const { data: tenant, error } = await supabase.from("tenants_v2").insert(tenantPayload).select("id").single();
           if (error) throw error;
           tenantId = tenant.id;
+          createdTenantId = tenant.id;
         }
       }
 
@@ -537,7 +542,14 @@ async function saveItem(event) {
         ? supabase.from("occupancies_v2").update(payload).eq("id", existing.id)
         : supabase.from("occupancies_v2").insert(payload);
       const { error } = await query;
-      if (error) throw error;
+      if (error) {
+        if (createdTenantId) {
+          const rollback = await supabase.from("tenants_v2").delete().eq("id", createdTenantId);
+          if (rollback.error) console.error("tenant rollback failed", rollback.error);
+          createdTenantId = null;
+        }
+        throw error;
+      }
     } else {
       const payload = {
         property_id: data.propertyId,
@@ -557,7 +569,16 @@ async function saveItem(event) {
     await loadPortfolio();
   } catch (error) {
     console.error("portfolio save failed", error);
-    setStatus(friendlyWriteError(error, "No se pudo guardar el cambio."), "Error.");
+    const message = friendlyWriteError(error, "No se pudo guardar el cambio.");
+    const editorError = document.getElementById("editorError");
+    if (editorError) {
+      editorError.textContent = message;
+      editorError.hidden = false;
+      editorError.setAttribute("role", "alert");
+      editorError.scrollIntoView({ block: "nearest" });
+    } else {
+      setStatus(message, "Error.");
+    }
   } finally {
     saveButton.disabled = false;
   }

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#ffffff">
-  <link rel="stylesheet" href="./app.css">
+  <link rel="stylesheet" href="./app.css?v=202609152">
   <link rel="stylesheet" href="./operations.css">
   <title>Allaiso · Centro Operativo</title>
 </head>
@@ -12,7 +12,7 @@
   <main class="shell operations-shell">
     <header class="topbar">
       <div><p class="eyebrow">ALLAISO</p><h1>Centro Operativo</h1></div>
-      <a class="ghost back-link" href="./">Inicio</a>
+      <div class="global-actions"><button class="global-icon" data-theme-toggle aria-label="Cambiar tema"><span data-theme-icon>☾</span></button><a class="global-icon" href="./" aria-label="Inicio" title="Inicio">⌂</a></div>
     </header>
 
     <section class="ops-hero">
@@ -90,5 +90,6 @@
 
   <script src="./operations.js" defer></script>
   <script type="module" src="./auth-guard.js"></script>
+  <script src="./app.js?v=202609152" defer></script>
 </body>
 </html>

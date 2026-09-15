@@ -589,6 +589,12 @@ async function saveItem(event) {
         archived_at: data.status === "archived" ? (existing?.archivedAt || now) : null
       };
 
+      const isReactivation = existing?.status === "blocked" && data.status === "active";
+      // During reactivation the occupancy transition owns the state change. Keep
+      // the tenant blocked until the new active occupancy is successfully inserted;
+      // the DB trigger then promotes the tenant to active.
+      if (isReactivation) tenantPayload.status = "blocked";
+
       let tenantId = existing?.tenantId || null;
       if (tenantId) {
         const { error } = await supabase.from("tenants_v2").update(tenantPayload).eq("id", tenantId);
@@ -639,7 +645,6 @@ async function saveItem(event) {
         status: data.status,
         suspended_at: isSuspended ? (existing?.status === "blocked" ? existing.suspendedAt : now) : null
       };
-      const isReactivation = existing?.status === "blocked" && data.status === "active";
       let query;
       if (isReactivation) {
         // A reactivation is a new stay period. Preserve the suspended occupancy as

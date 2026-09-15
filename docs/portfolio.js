@@ -558,6 +558,20 @@ function friendlyWriteError(error, fallback) {
   return fallback;
 }
 
+async function offboardOccupancy(existing, endsOn) {
+  if (!existing?.id || !existing?.tenantId) throw new Error("offboarding_missing_record");
+  if (!endsOn) throw new Error("offboarding_end_required");
+  const today = new Date();
+  today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
+  if (endsOn < today.toISOString().slice(0, 10)) throw new Error("offboarding_end_past");
+
+  const { error } = await supabase.rpc("offboard_tenant_occupancy_v2", {
+    p_occupancy_id: existing.id,
+    p_ends_on: endsOn
+  });
+  if (error) throw error;
+}
+
 async function saveItem(event) {
   event.preventDefault();
   const statusControl = editorForm.elements.namedItem("status");
@@ -567,6 +581,32 @@ async function saveItem(event) {
 
   const data = Object.fromEntries(new FormData(editorForm).entries());
   const existing = editingId ? findItem(current, editingId) : null;
+
+  // Baja is a state transition, not a generic record edit. It has one
+  // transactional backend path and does not inherit Alta/Suspensión writes.
+  if (current === "occupancies" && data.status === "archived") {
+    saveButton.disabled = true;
+    try {
+      await offboardOccupancy(existing, data.endsOn);
+      pendingWelcomeChoice = null;
+      editorDialog.close();
+      await loadPortfolio();
+    } catch (error) {
+      console.error("tenant offboarding failed", error);
+      let message = friendlyWriteError(error, "No se pudo completar la baja.");
+      if (String(error?.message || "").includes("offboarding_end")) {
+        message = String(error?.message || "").includes("past")
+          ? "La fecha de salida de una baja no puede estar en el pasado."
+          : "Para completar la baja debes indicar una fecha de salida.";
+      }
+      saveErrorMessage.textContent = message;
+      if (!saveErrorDialog.open) saveErrorDialog.showModal();
+    } finally {
+      saveButton.disabled = false;
+    }
+    return;
+  }
+
   const isTenantActivation = current === "occupancies" && data.status === "active" &&
     (!existing || existing.status === "blocked");
   if (isTenantActivation && !pendingWelcomeChoice) {
@@ -622,16 +662,8 @@ async function saveItem(event) {
     } else if (current === "occupancies") {
       const room = findItem("rooms", data.roomId);
       if (!room || room.propertyId !== data.propertyId) throw new Error("room_property_mismatch");
-      const isOffboarding = data.status === "archived";
-      if (!isOffboarding && !data.indefinite && !data.endsOn) throw new Error("end_date_required");
-      if (isOffboarding) {
-        if (!data.endsOn) throw new Error("offboarding_end_required");
-        const today = new Date();
-        today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
-        if (data.endsOn < today.toISOString().slice(0, 10)) throw new Error("offboarding_end_past");
-      } else if (data.startsOn && data.endsOn && data.endsOn < data.startsOn) {
-        throw new Error("end_date_before_start");
-      }
+      if (!data.indefinite && !data.endsOn) throw new Error("end_date_required");
+      if (data.startsOn && data.endsOn && data.endsOn < data.startsOn) throw new Error("end_date_before_start");
 
       const tenantPayload = {
         organization_id: organizationId,
@@ -650,8 +682,7 @@ async function saveItem(event) {
       if (isReactivation) tenantPayload.status = "blocked";
 
       let tenantId = existing?.tenantId || null;
-      const deferTenantArchive = Boolean(tenantId && isOffboarding);
-      if (tenantId && !deferTenantArchive) {
+      if (tenantId) {
         const { error } = await supabase.from("tenants_v2").update(tenantPayload).eq("id", tenantId);
         if (error) throw error;
       } else if (!tenantId) {
@@ -695,8 +726,8 @@ async function saveItem(event) {
         property_id: data.propertyId,
         room_id: data.roomId,
         occupant_email: tenantPayload.email,
-        starts_on: isSuspended ? null : (isOffboarding ? (existing?.startsOn || null) : data.startsOn),
-        ends_on: isSuspended ? null : (isOffboarding ? data.endsOn : (data.indefinite ? null : data.endsOn)),
+        starts_on: isSuspended ? null : data.startsOn,
+        ends_on: isSuspended ? null : (data.indefinite ? null : data.endsOn),
         status: data.status,
         suspended_at: isSuspended ? (existing?.status === "blocked" ? existing.suspendedAt : now) : null
       };
@@ -715,11 +746,7 @@ async function saveItem(event) {
           : supabase.from("occupancies_v2").insert(payload);
       }
       const { error } = await query;
-      if (!error && deferTenantArchive) {
-        const { error: tenantArchiveError } = await supabase.from("tenants_v2").update(tenantPayload).eq("id", tenantId);
-        if (tenantArchiveError) throw tenantArchiveError;
-      }
-      if (error) {
+       if (error) {
         if (createdTenantId) {
           const rollback = await supabase.from("tenants_v2").delete().eq("id", createdTenantId);
           if (rollback.error) console.error("tenant rollback failed", rollback.error);

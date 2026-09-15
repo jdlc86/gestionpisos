@@ -112,6 +112,14 @@ const saveButton = $("saveDraftBtn");
 const historyDialog = $("historyDialog");
 const historyTitle = $("historyTitle");
 const historyList = $("historyList");
+const documentsDialog = $("documentsDialog");
+const documentsTitle = $("documentsTitle");
+const documentsList = $("documentsList");
+const documentForm = $("documentForm");
+const documentName = $("documentName");
+const documentType = $("documentType");
+const documentFile = $("documentFile");
+let documentsTenantId = null;
 const statusLine = $("portfolioStatus");
 
 function setStatus(text, strong = "") {
@@ -230,6 +238,10 @@ function renderCard(item) {
     button.dataset.action = kind;
     button.dataset.id = item.id;
     buttons.append(button);
+  }
+  if (current === "occupancies" && item.tenantId) {
+    const docs = createElement("button", "secondary", "Documentos");
+    docs.type = "button"; docs.dataset.action = "documents"; docs.dataset.id = item.id; buttons.append(docs);
   }
   if (current === "properties") {
     const photos = createElement("button", "secondary", "Fotoverificaciones");
@@ -588,6 +600,73 @@ async function showHistory(id) {
   if (!entries.length) historyList.append(createElement("li", "", "Sin cambios registrados."));
 }
 
+async function openDocuments(occupancyId) {
+  const occupancy = findItem("occupancies", occupancyId);
+  if (!occupancy?.tenantId) return;
+  documentsTenantId = occupancy.tenantId;
+  documentsTitle.textContent = `Documentos · ${occupancy.fullName || occupancy.email}`;
+  documentsDialog.showModal();
+  await loadDocuments();
+}
+
+async function loadDocuments() {
+  documentsList.replaceChildren(createElement("li", "", "Cargando documentos…"));
+  const { data, error } = await supabase.from("tenant_documents_v2")
+    .select("id,document_type,display_name,storage_path,original_filename,created_at")
+    .eq("tenant_id", documentsTenantId).order("created_at", { ascending: false });
+  if (error) { documentsList.replaceChildren(createElement("li", "", "No se pudieron cargar los documentos.")); return; }
+  const labels = {identification:"Identificación",contract:"Contrato",authorization:"Autorización",other:"Otro"};
+  const rows = (data || []).map(doc => {
+    const li = createElement("li", "document-row");
+    const info = createElement("div");
+    info.append(createElement("strong", "", doc.display_name), createElement("span", "muted small", `${labels[doc.document_type] || doc.document_type} · ${doc.original_filename}`));
+    const actions = createElement("div", "record-actions");
+    for (const [action,label] of [["open-document","Ver"],["delete-document","Eliminar"]]) {
+      const btn=createElement("button", action==="delete-document"?"danger-soft":"secondary", label);
+      btn.type="button"; btn.dataset.action=action; btn.dataset.documentId=doc.id; btn.dataset.path=doc.storage_path; actions.append(btn);
+    }
+    li.append(info,actions); return li;
+  });
+  documentsList.replaceChildren(...rows);
+  if (!rows.length) documentsList.append(createElement("li", "", "Sin documentos adjuntos."));
+}
+
+async function uploadDocument(event) {
+  event.preventDefault();
+  const file=documentFile.files?.[0];
+  if (!file || !documentsTenantId) return;
+  const allowed=["application/pdf","image/jpeg","image/png","image/webp"];
+  if (!allowed.includes(file.type) || file.size>10485760) { setStatus("El archivo debe ser PDF o imagen y no superar 10 MB.","Documento no válido."); return; }
+  const user=await getCurrentUser();
+  const ext=(file.name.split(".").pop() || "bin").replace(/[^a-z0-9]/gi,"").toLowerCase();
+  const path=`${organizationId}/${documentsTenantId}/${crypto.randomUUID()}.${ext}`;
+  const uploaded=await supabase.storage.from("tenant-documents-v2").upload(path,file,{contentType:file.type,upsert:false});
+  if (uploaded.error) { setStatus("No se pudo subir el archivo.","Error."); return; }
+  const inserted=await supabase.from("tenant_documents_v2").insert({
+    organization_id:organizationId,tenant_id:documentsTenantId,document_type:documentType.value,
+    display_name:documentName.value.trim(),storage_path:path,original_filename:file.name,mime_type:file.type,size_bytes:file.size,uploaded_by:user.id
+  });
+  if (inserted.error) { await supabase.storage.from("tenant-documents-v2").remove([path]); setStatus("No se pudo registrar el documento.","Error."); return; }
+  documentForm.reset(); await loadDocuments();
+}
+
+async function documentAction(event) {
+  const btn=event.target.closest("button[data-action]"); if(!btn) return;
+  if(btn.dataset.action==="open-document"){
+    const {data,error}=await supabase.storage.from("tenant-documents-v2").createSignedUrl(btn.dataset.path,60);
+    if(error||!data?.signedUrl){setStatus("No se pudo abrir el documento.","Error.");return;}
+    window.open(data.signedUrl,"_blank","noopener,noreferrer");
+  }
+  if(btn.dataset.action==="delete-document"){
+    if(!window.confirm("¿Eliminar este documento? Esta acción elimina también el archivo privado.")) return;
+    const removed=await supabase.storage.from("tenant-documents-v2").remove([btn.dataset.path]);
+    if(removed.error){setStatus("No se pudo eliminar el archivo.","Error.");return;}
+    const deleted=await supabase.from("tenant_documents_v2").delete().eq("id",btn.dataset.documentId);
+    if(deleted.error){setStatus("El archivo se eliminó, pero no se pudo limpiar su registro. Requiere revisión.","Error.");return;}
+    await loadDocuments();
+  }
+}
+
 async function bootstrap() {
   try {
     const user = await getCurrentUser();
@@ -639,6 +718,7 @@ records.addEventListener("click", event => {
   if (button.dataset.action === "edit") openEditor(button.dataset.id);
   if (button.dataset.action === "archive") archiveItem(button.dataset.id);
   if (button.dataset.action === "history") showHistory(button.dataset.id);
+  if (button.dataset.action === "documents") openDocuments(button.dataset.id);
   if (button.dataset.action === "photo-history") {
     const url = new URL("./photo-verifications.html", window.location.href);
     url.searchParams.set("property_id", button.dataset.id);
@@ -657,5 +737,8 @@ editorForm.addEventListener("submit", saveItem);
 $("closeEditorBtn").addEventListener("click", () => editorDialog.close());
 $("cancelEditorBtn").addEventListener("click", () => editorDialog.close());
 $("closeHistoryBtn").addEventListener("click", () => historyDialog.close());
+$("closeDocumentsBtn").addEventListener("click", () => documentsDialog.close());
+documentForm.addEventListener("submit", uploadDocument);
+documentsList.addEventListener("click", documentAction);
 
 bootstrap();

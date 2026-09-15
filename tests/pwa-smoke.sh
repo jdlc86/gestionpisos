@@ -193,7 +193,7 @@ test -s docs/permissions.js
 node --check docs/permissions.js
 grep -Fq 'MODULE_NOT_STARTED' docs/permissions.html
 grep -Fq 'window.__permissionsBooted=true' docs/permissions.js
-grep -Fq 'select("organization_id")' docs/permissions.js
+grep -Fq 'supabase.rpc("get_effective_organization_id")' docs/permissions.js
 grep -Fq 'p_organization_id:organizationId' docs/permissions.js
 ! grep -Fq '\\n    if(profileError)' docs/permissions.js
 grep -Fq 'withTimeout(getCurrentSession(),8000,"session_timeout")' docs/permissions.js

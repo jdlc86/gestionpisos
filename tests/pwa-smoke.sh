@@ -196,7 +196,7 @@ grep -Fq 'create-organization-user' docs/permissions.js
 grep -Fq 'display_name:name,email,role' docs/permissions.js
 grep -Fq 'MODULE_NOT_STARTED' docs/permissions.html
 grep -Fq 'MODULE_IMPORT_FAILED' docs/permissions.html
-grep -Fq 'import("./permissions.js?v=202609162")' docs/permissions.html
+grep -Fq 'import("./permissions.js?v=202609163")' docs/permissions.html
 grep -Fq 'split("\n").join(" ")' docs/permissions.html
 grep -Fq 'window.__permissionsBooted=true' docs/permissions.js
 grep -Fq 'supabase.rpc("get_effective_organization_id")' docs/permissions.js
@@ -236,3 +236,9 @@ grep -q 'Evolución de fotoverificaciones' docs/photo-verifications.js
 grep -q 'disabledIndex' docs/photo-verifications.js
 grep -q 'evolutionOption(entry,index,rightIndex)' docs/photo-verifications.js
 grep -q 'evolutionOption(entry,index,leftIndex)' docs/photo-verifications.js
+
+# Permission Management is internal agency staff only.
+grep -Fq '<option value="employee">Empleado</option>' docs/permissions.html
+grep -Fq '<option value="admin">Administrador</option>' docs/permissions.html
+! grep -Fq '<option value="owner">Propietario</option>' docs/permissions.html
+! grep -Fq '<option value="tenant">Inquilino</option>' docs/permissions.html

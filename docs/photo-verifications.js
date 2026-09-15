@@ -14,6 +14,7 @@ const reasonWrap = document.getElementById("reasonWrap");
 const approveBtn = document.getElementById("approveBtn");
 const rejectBtn = document.getElementById("rejectBtn");
 const closeDialogBtn = document.getElementById("closeDialogBtn");
+const dialogTitle = document.getElementById("dialogTitle");
 const toast = document.getElementById("reviewToast");
 
 let currentRun = null;
@@ -193,6 +194,7 @@ async function load(options = {}) {
 }
 
 async function openRun(run, items, propertyMap, patternMap, reviewerMap) {
+  dialogTitle.textContent = "Revisar fotoverificación";
   currentRun = run;
   currentItem = items[0] || null;
   reason.value = "";
@@ -301,9 +303,9 @@ async function signedEvolutionUrl(entry) {
   const { data, error } = await supabase.storage.from("photo-verification").createSignedUrl(entry.item.storage_path, 120);
   return error ? null : data?.signedUrl;
 }
-function evolutionOption(entry, index) {
+function evolutionOption(entry, index, disabledIndex = -1) {
   const score = entry.item.alignment_score == null ? "—" : Math.round(Number(entry.item.alignment_score) * 100) + "%";
-  return `<option value="${index}">${esc(fmtDate(entry.item.captured_at))} · ${esc(score)} · ${esc(statusLabel(entry.run.status))}</option>`;
+  return `<option value="${index}" ${index === disabledIndex ? "disabled" : ""}>${esc(fmtDate(entry.item.captured_at))} · ${esc(score)} · ${esc(statusLabel(entry.run.status))}</option>`;
 }
 async function renderEvolutionComparison(group, leftIndex, rightIndex) {
   const pattern = lastHistory.patternMap.get(group.patternId);
@@ -317,8 +319,8 @@ async function renderEvolutionComparison(group, leftIndex, rightIndex) {
         const p = lastHistory.patternMap.get(candidate.patternId);
         return `<option value="${index}" ${candidate === group ? "selected" : ""}>${esc(p?.name || p?.target_key || "Fotoverificación")} (${candidate.entries.length})</option>`;
       }).join("")}</select></label>
-      <label>Comparar desde<select id="evolutionFrom">${group.entries.map(evolutionOption).join("")}</select></label>
-      <label>Comparar con<select id="evolutionTo">${group.entries.map(evolutionOption).join("")}</select></label>
+      <label>Comparar desde<select id="evolutionFrom">${group.entries.map((entry,index) => evolutionOption(entry,index,rightIndex)).join("")}</select></label>
+      <label>Comparar con<select id="evolutionTo">${group.entries.map((entry,index) => evolutionOption(entry,index,leftIndex)).join("")}</select></label>
     </div>
     <div class="evolution-grid">
       <figure><img src="${esc(signed[0])}" alt="Verificación inicial"><figcaption>${esc(fmtDate(left.item.captured_at))} · ${esc(score(left))} · ${esc(statusLabel(left.run.status))}</figcaption></figure>
@@ -332,6 +334,7 @@ async function renderEvolutionComparison(group, leftIndex, rightIndex) {
   toSelect.addEventListener("change",()=>renderEvolutionComparison(group,Number(fromSelect.value),Number(toSelect.value)));
 }
 async function showEvolution() {
+  dialogTitle.textContent = "Evolución de fotoverificaciones";
   if (!lastHistory?.runs?.length) { showToast("No hay verificaciones para comparar.", { error:true }); return; }
   const groups=new Map();
   for (const run of lastHistory.runs) for (const item of lastHistory.byRun.get(run.id)||[]) {
@@ -340,7 +343,7 @@ async function showEvolution() {
   lastEvolutionGroups=[...groups.entries()].map(([patternId,entries])=>({patternId,entries:entries.sort((a,b)=>new Date(a.item.captured_at)-new Date(b.item.captured_at))})).filter(group=>group.entries.length>=2);
   if(!lastEvolutionGroups.length){ showToast("Aún no hay dos verificaciones del mismo patrón para mostrar evolución.",{error:true}); return; }
   image.removeAttribute("src"); image.style.display="none"; reasonWrap.hidden=true; approveBtn.hidden=true; rejectBtn.hidden=true;
-  dialog.addEventListener("close",()=>{image.style.display="";approveBtn.hidden=false;rejectBtn.hidden=false;},{once:true});
+  dialog.addEventListener("close",()=>{image.style.display="";approveBtn.hidden=false;rejectBtn.hidden=false;dialogTitle.textContent="Revisar fotoverificación";},{once:true});
   dialog.showModal();
   await renderEvolutionComparison(lastEvolutionGroups[0],0,lastEvolutionGroups[0].entries.length-1);
 }

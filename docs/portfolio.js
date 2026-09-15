@@ -237,14 +237,25 @@ function formatDate(value) {
   return new Intl.DateTimeFormat("es-ES", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 }
 
+const viewIcons = { owners: "♙", properties: "⌂", rooms: "▣", occupancies: "♟" };
+const actionIcons = { edit: "✎", history: "↺", documents: "▤", "photo-history": "▧", archive: "⊘" };
+
+function iconLabel(kind, label) {
+  const span = createElement("span", "action-label");
+  span.append(createElement("span", "action-icon", actionIcons[kind] || "•"), document.createTextNode(label));
+  return span;
+}
+
 function renderCard(item) {
   const card = createElement("article", "record-card");
   const content = createElement("div");
+  const heading = createElement("div", "record-heading");
+  heading.append(createElement("span", "record-type-icon", viewIcons[current] || "•"), createElement("h4", "", itemName(current, item)));
   const meta = createElement("div", "record-meta");
   meta.append(createElement("span", `status-pill is-${item.status}`, labels[item.status] || item.status));
   if (item.archivedAt) meta.append(createElement("span", "relation-chip", `Baja: ${formatDate(item.archivedAt)}`));
   content.append(
-    createElement("h4", "", itemName(current, item)),
+    heading,
     createElement("p", "", descriptionFor(item)),
     meta,
     relationChips(item)
@@ -252,25 +263,26 @@ function renderCard(item) {
 
   const buttons = createElement("div", "record-actions");
   for (const [kind, label] of [["edit","Editar"],["history","Histórico"]]) {
-    const button = createElement("button", "secondary", label);
+    const button = createElement("button", "secondary");
+    button.append(iconLabel(kind, label));
     button.type = "button";
     button.dataset.action = kind;
     button.dataset.id = item.id;
     buttons.append(button);
   }
   if (current === "occupancies" && item.tenantId) {
-    const docs = createElement("button", "secondary", "Documentos");
+    const docs = createElement("button", "secondary"); docs.append(iconLabel("documents", "Documentos"));
     docs.type = "button"; docs.dataset.action = "documents"; docs.dataset.id = item.id; buttons.append(docs);
   }
   if (current === "properties") {
-    const photos = createElement("button", "secondary", "Fotoverificaciones");
+    const photos = createElement("button", "secondary"); photos.append(iconLabel("photo-history", "Fotoverificaciones"));
     photos.type = "button";
     photos.dataset.action = "photo-history";
     photos.dataset.id = item.id;
     buttons.append(photos);
   }
   if (item.status !== "archived") {
-    const archive = createElement("button", "danger-soft", "Archivar");
+    const archive = createElement("button", "danger-soft"); archive.append(iconLabel("archive", "Archivar"));
     archive.type = "button";
     archive.dataset.action = "archive";
     archive.dataset.id = item.id;

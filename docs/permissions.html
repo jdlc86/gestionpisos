@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="es" data-auth-pending="1">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#ffffff"><link rel="stylesheet" href="./app.css?v=202609154"><link rel="stylesheet" href="./permissions.css?v=202609151"><title>Allaiso · Gestión de Permisos</title></head>
+<body><main class="shell">
+<header class="topbar"><div><p class="eyebrow">ALLAISO</p><h1>Gestión de Permisos</h1></div><div class="global-actions"><button class="global-icon" data-theme-toggle aria-label="Cambiar tema"><span data-theme-icon>☾</span></button><a class="global-icon" href="./" aria-label="Inicio" title="Inicio">⌂</a></div></header>
+<section class="hero"><span class="badge">Seguridad</span><h2>Roles, responsabilidad y control administrativo</h2><p>Consulta el estado efectivo de acceso. Las operaciones críticas se validan siempre en Supabase.</p></section>
+<section id="permissionError" class="status error" role="alert" hidden></section>
+<section id="permissionContent" hidden>
+<div class="permission-grid">
+<section class="permission-panel"><p class="eyebrow">ADMINISTRACIÓN</p><h3>Administradores</h3><div id="adminsList" class="permission-list"></div></section>
+<section class="permission-panel"><p class="eyebrow">PERSONAS</p><h3>Empleados</h3><div id="employeesList" class="permission-list"></div></section>
+<section class="permission-panel wide"><p class="eyebrow">RESPONSABILIDAD</p><h3>Viviendas asignadas</h3><div id="propertiesList" class="permission-list"></div></section>
+<section class="permission-panel wide"><p class="eyebrow">CAPACIDADES</p><h3>Control administrativo</h3><div id="capabilitiesList" class="permission-list"></div></section>
+</div></section>
+<section class="status"><span class="dot"></span><span id="permissionStatus"><strong>Conectando…</strong> Cargando contexto autorizado.</span></section>
+</main><script src="./app.js?v=202609152" defer></script><script type="module" src="./permissions.js?v=202609151"></script><script type="module" src="./auth-guard.js"></script></body></html>

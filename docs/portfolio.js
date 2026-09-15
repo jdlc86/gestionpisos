@@ -466,7 +466,7 @@ async function loadPortfolio() {
   }
 
   const occupanciesResult = await supabase.from("occupancies_v2")
-    .select("id,tenant_id,property_id,room_id,occupant_email,starts_on,ends_on,status,user_id,tenants_v2(full_name,document_type,document_number,email)")
+    .select("id,tenant_id,property_id,room_id,occupant_email,starts_on,ends_on,suspended_at,status,user_id,tenants_v2(full_name,document_type,document_number,email)")
     .eq("organization_id", organizationId)
     .order("starts_on", { ascending: false });
   if (occupanciesResult.error) throw occupanciesResult.error;

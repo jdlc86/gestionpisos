@@ -1,3 +1,6 @@
+-- Read-only backend projection for the Gestión de Permisos UI.
+-- SECURITY DEFINER is intentional: callers receive only this bounded JSON projection;
+-- direct table grants are not required.
 create or replace function public.get_permission_management_context(p_organization_id uuid default null)
 returns jsonb
 language plpgsql
@@ -44,67 +47,32 @@ begin
 
  select jsonb_build_object(
    'organization_id',v_org,
-   'actor',jsonb_build_object(
-     'user_id',v_actor,'is_root',v_is_root,'is_admin',v_is_admin
-   ),
+   'actor',jsonb_build_object('user_id',v_actor,'is_root',v_is_root,'is_admin',v_is_admin),
    'people',coalesce((
      select jsonb_agg(x order by x->>'display_name',x->>'email')
      from (
-       select jsonb_build_object(
-         'user_id',u.user_id,
-         'display_name',p.display_name,
-         'email',p.email,
-         'profile_status',p.status,
-         'roles',u.roles
-       ) x
+       select jsonb_build_object('user_id',u.user_id,'display_name',p.display_name,'email',p.email,'profile_status',p.status,'roles',u.roles) x
        from (
          select ur.user_id,jsonb_agg(ur.role::text order by ur.role::text) roles
-         from public.user_roles ur
-         where ur.organization_id=v_org and ur.revoked_at is null
-         group by ur.user_id
-       ) u
-       left join public.profiles p on p.user_id=u.user_id
+         from public.user_roles ur where ur.organization_id=v_org and ur.revoked_at is null group by ur.user_id
+       ) u left join public.profiles p on p.user_id=u.user_id
      ) q
    ),'[]'::jsonb),
    'properties',coalesce((
-     select jsonb_agg(jsonb_build_object(
-       'id',pr.id,
-       'name',pr.name,
-       'address_line',pr.address_line,
-       'city',pr.city,
-       'status',pr.status,
-       'responsible_user_id',sa.employee_user_id,
-       'assignment_id',sa.id
-     ) order by pr.name)
+     select jsonb_agg(jsonb_build_object('id',pr.id,'name',pr.name,'address_line',pr.address_line,'city',pr.city,'status',pr.status,'responsible_user_id',sa.employee_user_id,'assignment_id',sa.id) order by pr.name)
      from public.properties_v2 pr
-     left join public.property_staff_access_v3 sa
-       on sa.property_id=pr.id
-      and sa.assignment_type='responsible'
-      and sa.revoked_at is null
+     left join public.property_staff_access_v3 sa on sa.property_id=pr.id and sa.assignment_type='responsible' and sa.revoked_at is null
      where pr.organization_id=v_org and pr.archived_at is null
    ),'[]'::jsonb),
    'capability_holders',coalesce((
-     select jsonb_agg(jsonb_build_object(
-       'id',h.id,
-       'capability',h.capability,
-       'holder_user_id',h.holder_user_id,
-       'granted_at',h.granted_at
-     ) order by h.capability)
-     from public.admin_capability_holders h
-     where h.organization_id=v_org and h.revoked_at is null
+     select jsonb_agg(jsonb_build_object('id',h.id,'capability',h.capability,'holder_user_id',h.holder_user_id,'granted_at',h.granted_at) order by h.capability)
+     from public.admin_capability_holders h where h.organization_id=v_org and h.revoked_at is null
    ),'[]'::jsonb),
    'pending_requests',coalesce((
-     select jsonb_agg(jsonb_build_object(
-       'id',r.id,
-       'capability',r.capability,
-       'requester_user_id',r.requester_user_id,
-       'requested_at',r.requested_at
-     ) order by r.requested_at)
-     from public.admin_capability_requests r
-     where r.organization_id=v_org and r.status='pending'
+     select jsonb_agg(jsonb_build_object('id',r.id,'capability',r.capability,'requester_user_id',r.requester_user_id,'requested_at',r.requested_at) order by r.requested_at)
+     from public.admin_capability_requests r where r.organization_id=v_org and r.status='pending'
    ),'[]'::jsonb)
  ) into v_result;
-
  return v_result;
 end
 $$;

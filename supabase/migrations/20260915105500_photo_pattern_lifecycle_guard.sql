@@ -13,12 +13,12 @@ with u as (
   join public.cleaning_tasks_v2 t on t.id=r.cleaning_task_id
   where r.pattern_id=p_pattern_id
   union all
-  select 'verification', i.run_id, coalesce(v.status,'unknown'), coalesce(v.created_at::date::text,'')
+  select 'verification', i.run_id, coalesce(v.status,'unknown'), coalesce(v.started_at::date::text,'')
   from public.photo_verification_items_v2 i
   join public.photo_verification_runs_v2 v on v.id=i.run_id
   where i.pattern_id=p_pattern_id
   union all
-  select 'random_request', r.id, coalesce(r.status,'unknown'), coalesce(r.created_at::date::text,'')
+  select 'random_request', r.id, coalesce(r.status,'unknown'), coalesce(r.requested_at::date::text,'')
   from public.random_photo_requests_v2 r where r.pattern_id=p_pattern_id
 )
 select jsonb_build_object(

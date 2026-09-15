@@ -463,3 +463,8 @@ html[data-theme="dark"] .status-pill.is-active::before{background:#3fb950}html[d
 .status-pill{font-weight:600}.relation-chip::before{content:"·";margin:0 8px;color:var(--gp-border)}
 .relation-chips .relation-chip:first-child::before{content:"";margin:0}
 .record-meta + .relation-chips{margin-top:5px}
+
+.confirmation-summary{display:grid;gap:0;margin:14px 0;border:1px solid var(--gp-border);border-radius:8px;overflow:hidden}
+.confirmation-summary div{display:grid;grid-template-columns:minmax(110px,.8fr) 1.4fr;gap:12px;padding:9px 11px;border-bottom:1px solid var(--gp-border)}
+.confirmation-summary div:last-child{border-bottom:0}.confirmation-summary dt{color:var(--gp-muted);font-size:12px}.confirmation-summary dd{margin:0;font-weight:600;overflow-wrap:anywhere}
+.welcome-actions{flex-wrap:wrap}

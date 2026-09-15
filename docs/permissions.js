@@ -54,9 +54,8 @@ async function load(){
   try{
     const session=await withTimeout(getCurrentSession(),8000,"session_timeout");
     if(!session) throw new Error("session_missing");
-    const {data:profile,error:profileError}=await withTimeout(supabase.from("profiles").select("organization_id").eq("user_id",session.user.id).maybeSingle(),8000,"organization_timeout");
-    if(profileError) throw profileError;
-    const organizationId=profile?.organization_id;
+    const {data:organizationId,error:organizationError}=await withTimeout(supabase.rpc("get_effective_organization_id"),8000,"organization_timeout");
+    if(organizationError) throw organizationError;
     if(!organizationId) throw new Error("organization_missing");
     const {data,error}=await withTimeout(supabase.rpc("get_permission_management_context",{p_organization_id:organizationId}),12000,"permissions_timeout");
     if(error)throw error;

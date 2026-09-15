@@ -231,7 +231,13 @@ function relationChips(item) {
 function descriptionFor(item) {
   if (current === "owners") return [item.email, item.phone].filter(Boolean).join(" · ") || "Sin datos de contacto";
   if (current === "properties") return [item.address, item.city, item.postalCode].filter(Boolean).join(" · ");
-  if (current === "occupancies") return [item.email, item.documentNumber ? `${item.documentType.toUpperCase()}: ${item.documentNumber}` : "", item.startsOn ? `Entrada: ${item.startsOn}` : "", item.endsOn ? `Salida: ${item.endsOn}` : "Sin fecha de salida"].filter(Boolean).join(" · ");
+  if (current === "occupancies") {
+    const identity = [item.email, item.documentNumber ? `${item.documentType.toUpperCase()}: ${item.documentNumber}` : ""];
+    if (item.status === "blocked") {
+      return [...identity, `⏸ Suspensión: ${item.suspendedAt ? formatDate(item.suspendedAt) : "---"}`].filter(Boolean).join(" · ");
+    }
+    return [...identity, item.startsOn ? `📅 Entrada: ${item.startsOn}` : "", item.endsOn ? `Salida: ${item.endsOn}` : "Salida: indefinida"].filter(Boolean).join(" · ");
+  }
   return item.description || "Sin descripción";
 }
 

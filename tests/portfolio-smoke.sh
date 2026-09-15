@@ -63,18 +63,17 @@ grep -Fq 'Esta habitación ya tiene un inquilino durante las fechas seleccionada
 python3 - <<'PY'
 from pathlib import Path
 s=Path("docs/portfolio.js").read_text()
-boot=s[s.index("async function bootstrap"):s.index("async function loadPortfolio")]
-load=s[s.index("async function loadPortfolio"):s.index("function archivedAtFor")]
-assert 'operationalPortfolio = !["root","admin"].includes(role)' in boot
-assert 'current = "occupancies"' in boot
-assert 'button.hidden = !allowed' in boot
-assert 'if (operationalPortfolio)' in load
-owner_split=load[load.index("if (operationalPortfolio)"):load.index("if (state.properties.length)")]
-assert 'state.owners = []' in owner_split
-assert 'else {' in owner_split
-admin_branch=owner_split[owner_split.index("else {"):]
-assert 'from("owners")' in admin_branch, "owners query must remain admin-only"
-operator_only=owner_split[:owner_split.index("else {")]
-assert 'from("owners")' not in operator_only, "operator branch must not query owners"
+assert 'operationalPortfolio = !["root","admin"].includes(role)' in s
+assert 'current = "occupancies"' in s
+assert 'button.hidden = !allowed' in s
+load_start=s.index("async function loadPortfolio")
+load_end=s.index("\nfunction ", load_start)
+load=s[load_start:load_end]
+marker='if (operationalPortfolio) {\n    state.owners = [];\n  } else {'
+assert marker in load, "owner split missing"
+operator_prefix=load[:load.index(marker)+len('if (operationalPortfolio) {\n    state.owners = [];')]
+admin_suffix=load[load.index(marker)+len(marker):]
+assert 'from("owners")' not in operator_prefix, "operator path must not query owners"
+assert 'from("owners")' in admin_suffix, "admin path must retain owners query"
 print("PASS scoped operator portfolio regression")
 PY

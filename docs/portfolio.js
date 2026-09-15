@@ -440,8 +440,22 @@ function friendlyWriteError(error, fallback) {
   if (text.includes("property_has_active_rooms")) {
     return "Archiva primero las habitaciones activas de este piso.";
   }
-  if (text.includes("row-level security")) {
+  if (text.includes("row-level security") || error?.code === "42501") {
     return "Tu rol actual no tiene permiso para realizar este cambio.";
+  }
+  if (error?.code === "23505") {
+    const detail = String(error?.details || "");
+    if (detail.includes("email") || text.includes("tenants_v2_org_email_uidx")) return "Ya existe un inquilino con ese email en esta gestoría.";
+    if (detail.includes("document") || text.includes("document")) return "Ya existe un inquilino con ese documento de identidad.";
+    return "Ya existe un registro con esos datos.";
+  }
+  if (error?.code === "23503") return "El piso, la habitación o el inquilino seleccionado ya no existe o no está disponible. Actualiza la pantalla y vuelve a intentarlo.";
+  if (error?.code === "23514") return "Alguno de los datos no cumple las reglas de la ficha. Revisa estado y fechas.";
+  if (text.includes("room_property_mismatch")) return "La habitación seleccionada no pertenece al piso indicado.";
+  if (text.includes("end_date_required")) return "Indica una fecha de salida o marca Indefinido.";
+  if (current === "occupancies" && (error?.code || error?.message)) {
+    const reference = error?.code ? ` (ref. ${error.code})` : "";
+    return `No se pudo guardar el inquilino. ${String(error?.message || fallback)}${reference}`;
   }
   return fallback;
 }

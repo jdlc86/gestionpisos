@@ -62,3 +62,8 @@ grep -q 'saveErrorCancelBtn' docs/portfolio.js
 grep -q 'linkedOccupancies' docs/portfolio.js
 grep -q 'tenant_orphan_identity_conflict' docs/portfolio.js
 grep -q 'no tiene ninguna ocupación' docs/portfolio.js
+
+grep -q 'error?.code === "23505"' docs/portfolio.js
+grep -q 'error?.code === "23503"' docs/portfolio.js
+grep -q 'error?.code === "23514"' docs/portfolio.js
+grep -q 'No se pudo guardar el inquilino.' docs/portfolio.js

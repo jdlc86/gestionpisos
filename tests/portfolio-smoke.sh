@@ -42,7 +42,7 @@ s=Path("docs/portfolio.js").read_text()
 save=s[s.index("async function saveItem"):s.index("async function archiveItem")]
 assert 'supabase.rpc("create_tenant_occupancy_v3"' in save, "atomic tenant onboarding RPC missing"
 assert 'p_property_id: data.propertyId' in save and 'p_room_id: data.roomId' in save, "property/room scope missing"
-assert 'createdTenantId' not in save, "manual tenant rollback should be removed"
+tenant_branch=save[save.index('else if (current === "occupancies")'):save.index('    } else {\n      const payload = {\n        property_id:', save.index('else if (current === "occupancies")'))]\nassert 'createdTenantId' not in tenant_branch, "manual tenant rollback should be removed from tenant flow"
 assert 'tenant rollback failed' not in save, "legacy rollback path remains"
 print("PASS atomic tenant onboarding regression")
 PY

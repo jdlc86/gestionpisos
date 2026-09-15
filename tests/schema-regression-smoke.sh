@@ -78,3 +78,13 @@ grep -q "new.version is distinct from old.version + 1" "$contour_authoring"
 grep -q "new.reference_storage_path is distinct from old.reference_storage_path" "$contour_authoring"
 grep -q "new.property_id is distinct from old.property_id" "$contour_authoring"
 grep -q "photo pattern version may change only with contour_data" "$contour_authoring"
+
+# Operator portfolio security contract.
+operator_migration="supabase/migrations/20260916010000_scoped_tenant_onboarding.sql"
+test -s "$operator_migration"
+grep -Fq 'can_operate_property_v3(p_property_id,true)' "$operator_migration"
+grep -Fq 'room_property_mismatch' "$operator_migration"
+grep -Fq 'revoke all on function public.create_tenant_occupancy_v3' "$operator_migration"
+grep -Fq 'grant execute on function public.create_tenant_occupancy_v3' "$operator_migration"
+grep -Fq 'property_staff_access_v3' docs/portfolio.js
+! grep -Fq '.from("property_staff_assignments")' docs/portfolio.js

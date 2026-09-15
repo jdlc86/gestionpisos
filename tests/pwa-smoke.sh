@@ -243,7 +243,7 @@ grep -Fq '<option value="admin">Administrador</option>' docs/permissions.html
 ! grep -Fq '<option value="owner">Propietario</option>' docs/permissions.html
 ! grep -Fq '<option value="tenant">Inquilino</option>' docs/permissions.html
 
-grep -Fq 'Dando acceso…' docs/permissions.js
+grep -Fq 'Enviando al servidor…' docs/permissions.js
 grep -Fq 'Cambio no guardado.' docs/permissions.js
 grep -Fq 'grant_property_staff_access_v3' docs/permissions.js
 

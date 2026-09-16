@@ -30,11 +30,62 @@
     </section>
   </main>
   <script>
-    // Fail closed if the ES module cannot load: never let the browser submit
-    // credentials as a native form request or place them in the URL.
-    document.getElementById("loginForm")?.addEventListener("submit", event => event.preventDefault());
-    if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(() => {});
+    (() => {
+      const form = document.getElementById("loginForm");
+      const message = document.getElementById("authMessage");
+      const recoveryKey = "allaiso-login-module-recovery-v2";
+
+      // Fail closed: credentials must never be submitted by the browser itself.
+      form?.addEventListener("submit", event => event.preventDefault());
+
+      window.__loginModuleReady = false;
+      window.__loginModuleFailureHandled = false;
+      window.__handleLoginModuleFailure = async error => {
+        if (window.__loginModuleReady || window.__loginModuleFailureHandled) return;
+        window.__loginModuleFailureHandled = true;
+        console.error("login_module_load_failed", error);
+
+        const alreadyRecovered = sessionStorage.getItem(recoveryKey) === "1";
+        if (!alreadyRecovered) {
+          sessionStorage.setItem(recoveryKey, "1");
+          if (message) message.textContent = "Actualizando el acceso…";
+
+          try {
+            if ("serviceWorker" in navigator) {
+              const registrations = await navigator.serviceWorker.getRegistrations();
+              await Promise.all(registrations
+                .filter(registration => new URL(registration.scope).pathname.includes("/gestionpisos/"))
+                .map(registration => registration.unregister()));
+            }
+            if ("caches" in window) {
+              const keys = await caches.keys();
+              await Promise.all(keys
+                .filter(key => key.startsWith("gestionpisos-shell-"))
+                .map(key => caches.delete(key)));
+            }
+          } catch (cleanupError) {
+            console.error("login_cache_recovery_failed", cleanupError);
+          }
+
+          const refreshed = new URL(window.location.href);
+          refreshed.searchParams.set("auth_refresh", "2026091603");
+          window.location.replace(refreshed.href);
+          return;
+        }
+
+        if (message) {
+          message.textContent = "No se pudo cargar el módulo de acceso. Comprueba la conexión y vuelve a abrir GestionPisos.";
+          message.classList.add("is-error");
+        }
+      };
+
+      setTimeout(() => {
+        if (!window.__loginModuleReady) window.__handleLoginModuleFailure?.(new Error("login_module_timeout"));
+      }, 4000);
+    })();
   </script>
-  <script type="module" src="./login.js?v=2026091602"></script>
+  <script type="module">
+    import("./login.js?v=2026091603").catch(error => window.__handleLoginModuleFailure?.(error));
+  </script>
 </body>
 </html>

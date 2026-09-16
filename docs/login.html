@@ -15,12 +15,12 @@
       <h1>Acceso a GestionPisos</h1>
       <p class="auth-lead">Inicia sesión con tu cuenta autorizada.</p>
 
-      <form id="loginForm" class="auth-form">
+      <form id="loginForm" class="auth-form" method="post">
         <label>Email
-          <input id="email" name="email" type="email" autocomplete="email" required>
+          <input id="email" type="email" autocomplete="email" required>
         </label>
         <label>Contraseña
-          <input id="password" name="password" type="password" autocomplete="current-password" required>
+          <input id="password" type="password" autocomplete="current-password" required>
         </label>
         <button id="loginBtn" class="primary auth-primary" type="submit">Entrar</button>
       </form>
@@ -29,6 +29,11 @@
       <p id="authMessage" class="auth-message" role="status" aria-live="polite"></p>
     </section>
   </main>
-  <script type="module" src="./login.js?v=2026091601"></script>
+  <script>
+    // Fail closed if the ES module cannot load: never let the browser submit
+    // credentials as a native form request or place them in the URL.
+    document.getElementById("loginForm")?.addEventListener("submit", event => event.preventDefault());
+  </script>
+  <script type="module" src="./login.js?v=2026091602"></script>
 </body>
 </html>

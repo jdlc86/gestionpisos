@@ -20,6 +20,8 @@ jobs:
         run: bash tests/auth-recovery-smoke.sh
       - name: Run staff onboarding smoke
         run: bash tests/staff-onboarding-smoke.sh
+      - name: Verify staff onboarding auth claim ordering
+        run: bash tests/staff-onboarding-auth-claims-smoke.sh
       - name: Run permissions administrative control smoke
         run: bash tests/permissions-admin-control-smoke.sh
       - name: Run permissions responsibility flow smoke

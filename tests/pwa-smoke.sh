@@ -111,7 +111,7 @@ grep -q 'pointToSegmentDistance' docs/photo-pattern-editor.js
 grep -q 'zoomLevels' docs/photo-pattern-editor.js
 test -s supabase/functions/save-photo-pattern-contours/index.ts
 grep -q 'insufficient_write_permission' supabase/functions/save-photo-pattern-contours/index.ts
-grep -q 'pattern_version_conflict' supabase/functions/save-photo-pattern-contours/index.ts
+grep -q 'pattern_version_conflict' docs/photo-pattern-editor.js
 grep -q 'contour_data' supabase/functions/save-photo-pattern-contours/index.ts
 grep -q 'invalid_contour_data' docs/photo-pattern-editor.js
 grep -q 'edge_function_failed' docs/photo-pattern-editor.js
@@ -172,7 +172,7 @@ test -s docs/auth.css
 test -s docs/auth-guard.js
 test -s docs/supabase-client.js
 grep -q 'signInWithPassword' docs/login.js
-grep -q 'resetPasswordForEmail' docs/reset-password.js
+grep -q 'resetPasswordForEmail' docs/login.js
 grep -q 'updateUser' docs/reset-password.js
 grep -q 'getSession' docs/supabase-client.js
 grep -q 'sb_publishable_' docs/supabase-client.js

@@ -23,5 +23,8 @@ jobs:
       - name: Verify property staff access v3 contract
         run: bash tests/property-staff-access-v3-contract.sh
 
+      - name: Verify administrative write control contract
+        run: bash tests/admin-write-control-schema-smoke.sh
+
       - name: Run isolated PostgreSQL security regression
         run: bash tests/database-regression-v2.sh

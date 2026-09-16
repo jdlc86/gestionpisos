@@ -16,3 +16,5 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run PWA smoke checks
         run: bash tests/pwa-smoke.sh
+      - name: Run permissions administrative control smoke
+        run: bash tests/permissions-admin-control-smoke.sh

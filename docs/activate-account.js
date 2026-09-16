@@ -51,9 +51,16 @@ async function validateActivationSession() {
       return;
     }
     if (state.status === "active") {
-      activationReady = false;
-      setFormEnabled(false);
-      show("La cuenta ya está activada. Puedes iniciar sesión normalmente.");
+      // An earlier attempt may have activated the database role but failed while
+      // synchronizing Auth claims. Keep the retry path available; the backend is
+      // idempotent and will only publish claims after the DB role is authoritative.
+      activationReady = true;
+      passwordUpdated = true;
+      password.disabled = true;
+      confirmPassword.disabled = true;
+      button.disabled = false;
+      button.textContent = "Completar activación";
+      show("La cuenta está preparada. Pulsa Completar activación para sincronizar el acceso y terminar.");
       return;
     }
 
@@ -108,9 +115,11 @@ form.addEventListener("submit", async (event) => {
       passwordUpdated = true;
     }
 
-    const { data: completion, error: completionError } = await supabase.rpc("complete_internal_staff_onboarding");
+    const { data: completion, error: completionError } = await supabase.functions.invoke("complete-staff-onboarding", { body: {} });
     if (completionError) throw completionError;
-    if (!completion?.ok || completion?.status !== "active") throw new Error("activation_not_completed");
+    if (!completion?.ok || completion?.status !== "active" || completion?.auth_metadata_synced !== true) {
+      throw new Error("activation_not_completed");
+    }
 
     sessionStorage.removeItem("allaiso-staff-onboarding");
     const { error: signOutError } = await supabase.auth.signOut();

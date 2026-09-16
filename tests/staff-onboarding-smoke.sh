@@ -11,7 +11,9 @@ node --check docs/activate-account.js
 node --check docs/permissions-onboarding.js
 
 grep -Fq 'minlength="12"' docs/activate-account.html
-grep -Fq 'complete_internal_staff_onboarding' docs/activate-account.js
+grep -Fq 'complete-staff-onboarding' docs/activate-account.js
+grep -Fq 'auth_metadata_synced' docs/activate-account.js
+grep -Fq 'activate-account.js?v=2026091602' docs/activate-account.html
 grep -Fq 'updateUser({ password: password.value })' docs/activate-account.js
 grep -Fq 'Cuenta activada. Ya puedes iniciar sesión.' docs/login.js
 grep -Fq 'get_my_internal_staff_onboarding' docs/auth-guard.js
@@ -23,6 +25,7 @@ grep -Fq 'noindex,nofollow' docs/accept-invitation.html
 
 test -s supabase/functions/_shared/staff-onboarding-email.ts
 test -s supabase/functions/resend-staff-invitation/index.ts
+test -s supabase/functions/complete-staff-onboarding/index.ts
 grep -Fq 'provision_internal_staff_pending' supabase/functions/create-organization-user/index.ts
 ! grep -Fq 'provision_employee_profile_role' supabase/functions/create-organization-user/index.ts
 grep -Fq 'sendStaffOnboardingInvitation' supabase/functions/create-organization-user/index.ts
@@ -35,6 +38,12 @@ grep -Fq 'RESEND_API_KEY' supabase/functions/_shared/staff-onboarding-email.ts
 grep -Fq 'AUTH_EMAIL_FROM' supabase/functions/_shared/staff-onboarding-email.ts
 grep -Fq 'accept-invitation.html' supabase/functions/_shared/staff-onboarding-email.ts
 ! grep -Fq 'action_link:' supabase/functions/create-organization-user/index.ts
+
+grep -Fq 'complete_internal_staff_onboarding' supabase/functions/complete-staff-onboarding/index.ts
+grep -Fq 'app_metadata: nextMetadata' supabase/functions/complete-staff-onboarding/index.ts
+grep -Fq 'database_active: true' supabase/functions/complete-staff-onboarding/index.ts
+grep -Fq 'role: String(onboarding.intended_role)' supabase/functions/complete-staff-onboarding/index.ts
+grep -Fq 'organization_id: String(onboarding.organization_id)' supabase/functions/complete-staff-onboarding/index.ts
 
 grep -Fq 'Pendiente de activación' docs/permissions-onboarding.js
 grep -Fq 'Reenviar invitación' docs/permissions-onboarding.js

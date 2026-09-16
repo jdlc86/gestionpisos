@@ -111,7 +111,7 @@ grep -q 'pointToSegmentDistance' docs/photo-pattern-editor.js
 grep -q 'zoomLevels' docs/photo-pattern-editor.js
 test -s supabase/functions/save-photo-pattern-contours/index.ts
 grep -q 'insufficient_write_permission' supabase/functions/save-photo-pattern-contours/index.ts
-grep -q 'pattern_version_conflict' supabase/functions/save-photo-pattern-contours/index.ts
+grep -q 'pattern_version_conflict' docs/photo-pattern-editor.js
 grep -q 'contour_data' supabase/functions/save-photo-pattern-contours/index.ts
 grep -q 'invalid_contour_data' docs/photo-pattern-editor.js
 grep -q 'edge_function_failed' docs/photo-pattern-editor.js
@@ -196,7 +196,7 @@ grep -Fq 'create-organization-user' docs/permissions.js
 grep -Fq 'display_name:name,email,role' docs/permissions.js
 grep -Fq 'MODULE_NOT_STARTED' docs/permissions.html
 grep -Fq 'MODULE_IMPORT_FAILED' docs/permissions.html
-grep -Fq 'import("./permissions.js?v=202609169")' docs/permissions.html
+grep -Fq 'import("./permissions.js?v=202609170")' docs/permissions.html
 grep -Fq 'split("\n").join(" ")' docs/permissions.html
 grep -Fq 'window.__permissionsBooted=true' docs/permissions.js
 grep -Fq 'supabase.rpc("get_effective_organization_id")' docs/permissions.js
@@ -256,3 +256,9 @@ grep -Fq 'Acceso guardado.' docs/permissions.js
 
 grep -Fq 'grant_returned_empty' docs/permissions.js
 grep -Fq 'reloadAfter=true' docs/permissions.js
+
+grep -Fq 'class="ghost remove-staff"' docs/permissions.js
+grep -Fq 'deactivate_internal_staff_user' docs/permissions.js
+grep -Fq 'disable-internal-staff-auth' docs/permissions.js
+test -s supabase/functions/disable-internal-staff-auth/index.ts
+grep -Fq 'ban_duration: "876000h"' supabase/functions/disable-internal-staff-auth/index.ts

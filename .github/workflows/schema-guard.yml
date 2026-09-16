@@ -26,5 +26,8 @@ jobs:
       - name: Verify administrative write control contract
         run: bash tests/admin-write-control-schema-smoke.sh
 
+      - name: Verify internal staff deactivation contract
+        run: bash tests/internal-staff-deactivation-schema-smoke.sh
+
       - name: Run isolated PostgreSQL security regression
         run: bash tests/database-regression-v2.sh

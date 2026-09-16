@@ -30,7 +30,7 @@ grep -Fq 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/+esm' docs/s
 grep -Fq 'https://esm.sh/@supabase/supabase-js@2.57.4' docs/supabase-client.js
 grep -Fq 'supabase_client_module_load_failed' docs/supabase-client.js
 
-grep -Fq "gestionpisos-shell-v3" docs/sw.js
+grep -Fq "gestionpisos-shell-v2" docs/sw.js
 grep -Fq "if(url.origin!==self.location.origin) return;" docs/sw.js
 grep -Fq "caches.match(event.request,{ignoreSearch:true})" docs/sw.js
 grep -Fq "if(event.request.mode==='navigate')" docs/sw.js

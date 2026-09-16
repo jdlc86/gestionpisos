@@ -8,6 +8,18 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="stylesheet" href="./app.css?v=202609154">
   <title>GestionPisos</title>
+  <script>
+    (() => {
+      const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+      const query = new URLSearchParams(window.location.search);
+      if (hash.get("type") !== "recovery" && query.get("type") !== "recovery") return;
+      sessionStorage.setItem("allaiso-password-recovery", "1");
+      const target = new URL("./reset-password.html", window.location.href);
+      target.search = window.location.search;
+      target.hash = window.location.hash;
+      window.location.replace(target.href);
+    })();
+  </script>
 </head>
 <body>
   <main class="shell">

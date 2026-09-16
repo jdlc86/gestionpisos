@@ -21,9 +21,10 @@ Aplica a cualquier desarrollador, agente IA o sesión que modifique GestionPisos
 16. Bug relevante corregido debe añadir prueba de regresión cuando sea viable.
 17. Está prohibido borrar históricos para resolver inconsistencias.
 18. Producción puede ser entorno de prueba mientras no haya usuarios reales, manteniendo trazabilidad y reversibilidad.
+19. Los correos críticos de autenticación en producción no pueden depender del SMTP incorporado de Supabase; deben usar entrega transaccional propia según `docs/AUTH_EMAIL_DELIVERY_MIGRATION.md`.
 
 ## Antes de modificar autorización, datos o seguridad
-Leer: `docs/SECURITY_CONTRACT.md`, `docs/PERMISSIONS_CONTRACT.md`, `docs/DATA_CONTRACT.md`, `docs/AUTH_CONTRACT.md`.
+Leer: `docs/SECURITY_CONTRACT.md`, `docs/PERMISSIONS_CONTRACT.md`, `docs/DATA_CONTRACT.md`, `docs/AUTH_CONTRACT.md` y `docs/AUTH_EMAIL_DELIVERY_MIGRATION.md`.
 
 Si implementación y contrato discrepan, manda el contrato hasta que una decisión explícita lo cambie.
 
@@ -42,3 +43,4 @@ Si implementación y contrato discrepan, manda el contrato hasta que una decisi�
 - No hacer cambios manuales no reproducibles desde Git.
 - No fusionar con checks críticos fallando.
 - No reescribir auditoría/históricos.
+- No considerar apto para producción un flujo de recuperación que dependa del SMTP incorporado de Supabase o de un límite equivalente a 2 correos/hora.

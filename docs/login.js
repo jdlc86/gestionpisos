@@ -41,21 +41,28 @@ if (existing) window.location.replace(targetPage());
 
 form.addEventListener("submit", async event => {
   event.preventDefault();
+  if (loginBtn.disabled) return;
   loginBtn.disabled = true;
   show("Comprobando acceso…");
 
-  const { error } = await supabase.auth.signInWithPassword({
-    email: email.value.trim(),
-    password: password.value
-  });
+  try {
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email.value.trim().toLowerCase(),
+      password: password.value
+    });
 
-  if (error) {
+    if (error) {
+      show("No se pudo iniciar sesión. Comprueba el email y la contraseña.", true);
+      return;
+    }
+
+    window.location.replace(targetPage());
+  } catch (error) {
+    console.error("login_request_failed", error);
+    show("No se pudo contactar con el servicio de acceso. Comprueba tu conexión e inténtalo de nuevo.", true);
+  } finally {
     loginBtn.disabled = false;
-    show("No se pudo iniciar sesión. Comprueba tus credenciales.", true);
-    return;
   }
-
-  window.location.replace(targetPage());
 });
 
 forgotBtn.addEventListener("click", async () => {

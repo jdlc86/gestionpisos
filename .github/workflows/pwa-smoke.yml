@@ -16,6 +16,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run PWA smoke checks
         run: bash tests/pwa-smoke.sh
+      - name: Run login auth smoke
+        run: bash tests/login-auth-smoke.sh
       - name: Run auth recovery smoke
         run: bash tests/auth-recovery-smoke.sh
       - name: Run staff onboarding smoke

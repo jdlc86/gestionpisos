@@ -11,7 +11,7 @@ grep -Fq 'resetPasswordForEmail' docs/login.js
 grep -Fq 'redirectTo: recoveryRedirectUrl()' docs/login.js
 grep -Fq 'if (error)' docs/login.js
 grep -Fq 'Si la cuenta existe, recibirás un enlace' docs/login.js
-grep -Fq 'login.js?v=2026091601' docs/login.html
+grep -Fq 'login.js?v=2026091602' docs/login.html
 
 grep -Fq 'id="confirmPassword"' docs/reset-password.html
 grep -Fq 'Validando enlace de recuperación' docs/reset-password.html

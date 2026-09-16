@@ -22,6 +22,7 @@ Aplica a cualquier desarrollador, agente IA o sesión que modifique GestionPisos
 17. Está prohibido borrar históricos para resolver inconsistencias.
 18. Producción puede ser entorno de prueba mientras no haya usuarios reales, manteniendo trazabilidad y reversibilidad.
 19. Los correos críticos de autenticación en producción no pueden depender del SMTP incorporado de Supabase; deben usar entrega transaccional propia según `docs/AUTH_EMAIL_DELIVERY_MIGRATION.md`.
+20. Un ADMIN/EMPLOYEE pendiente de onboarding no tiene rol interno ni acceso operativo activo. Solo puede adquirirlos después de verificar su correo y crear personalmente su contraseña; nunca se usan contraseñas temporales conocidas por el administrador.
 
 ## Antes de modificar autorización, datos o seguridad
 Leer: `docs/SECURITY_CONTRACT.md`, `docs/PERMISSIONS_CONTRACT.md`, `docs/DATA_CONTRACT.md`, `docs/AUTH_CONTRACT.md` y `docs/AUTH_EMAIL_DELIVERY_MIGRATION.md`.
@@ -44,3 +45,4 @@ Si implementación y contrato discrepan, manda el contrato hasta que una decisi�
 - No fusionar con checks críticos fallando.
 - No reescribir auditoría/históricos.
 - No considerar apto para producción un flujo de recuperación que dependa del SMTP incorporado de Supabase o de un límite equivalente a 2 correos/hora.
+- No asignar viviendas, accesos adicionales ni capacidades administrativas a personal interno cuyo onboarding siga pendiente.

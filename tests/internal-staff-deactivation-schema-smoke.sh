@@ -20,5 +20,17 @@ test -s supabase/functions/disable-internal-staff-auth/index.ts
 grep -Fq 'can_manage_permissions' supabase/functions/disable-internal-staff-auth/index.ts
 grep -Fq 'staff_still_active' supabase/functions/disable-internal-staff-auth/index.ts
 grep -Fq 'ban_duration: "876000h"' supabase/functions/disable-internal-staff-auth/index.ts
+grep -Fq 'retiredEmailFor' supabase/functions/disable-internal-staff-auth/index.ts
+grep -Fq '@deleted.invalid' supabase/functions/disable-internal-staff-auth/index.ts
+grep -Fq 'auth_email_retire_failed' supabase/functions/disable-internal-staff-auth/index.ts
 
-echo 'Internal staff deactivation schema contract passed'
+test -s supabase/functions/create-organization-user/index.ts
+grep -Fq 'retireArchivedEmailOwner' supabase/functions/create-organization-user/index.ts
+grep -Fq '.eq("status", "archived")' supabase/functions/create-organization-user/index.ts
+grep -Fq 'hasActiveRole' supabase/functions/create-organization-user/index.ts
+grep -Fq 'wasInternalStaffHere' supabase/functions/create-organization-user/index.ts
+grep -Fq 'bannedUntil' supabase/functions/create-organization-user/index.ts
+grep -Fq 'email_in_use' supabase/functions/create-organization-user/index.ts
+grep -Fq 'reclaimed_archived_email' supabase/functions/create-organization-user/index.ts
+
+echo 'Internal staff deactivation and email reuse schema contract passed'

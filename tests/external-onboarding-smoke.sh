@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+test -s docs/activate-external-account.html
+test -s docs/activate-external-account.js
+test -s docs/portfolio-onboarding.js
+test -s supabase/functions/send-external-welcome/index.ts
+test -s supabase/functions/complete-external-onboarding/index.ts
+test -s supabase/functions/_shared/external-onboarding-email.ts
+
+node --check docs/activate-external-account.js
+node --check docs/portfolio-onboarding.js
+
+grep -Fq 'minlength="12"' docs/activate-external-account.html
+grep -Fq 'complete-external-onboarding' docs/activate-external-account.js
+grep -Fq 'auth_metadata_synced' docs/activate-external-account.js
+grep -Fq 'get_my_external_account_onboarding' docs/auth-guard.js
+grep -Fq 'activate-external-account.html' docs/auth-guard.js
+
+grep -Fq 'portfolio-onboarding.js?v=2026091601' docs/portfolio.html
+grep -Fq 'Guardar y enviar bienvenida' docs/portfolio.html
+grep -Fq 'Bienvenida del propietario' docs/portfolio-onboarding.js
+grep -Fq 'Enviar bienvenida' docs/portfolio-onboarding.js
+grep -Fq 'Reenviar bienvenida' docs/portfolio-onboarding.js
+grep -Fq 'get_external_onboarding_statuses' docs/portfolio-onboarding.js
+grep -Fq 'send-external-welcome' docs/portfolio-onboarding.js
+grep -Fq 'email_internal_identity_conflict' docs/portfolio-onboarding.js
+
+grep -Fq 'auth.admin.generateLink' supabase/functions/_shared/external-onboarding-email.ts
+grep -Fq 'https://api.resend.com/emails' supabase/functions/_shared/external-onboarding-email.ts
+grep -Fq 'RESEND_API_KEY' supabase/functions/_shared/external-onboarding-email.ts
+grep -Fq 'AUTH_EMAIL_FROM' supabase/functions/_shared/external-onboarding-email.ts
+grep -Fq 'accept-invitation.html' supabase/functions/_shared/external-onboarding-email.ts
+
+grep -Fq 'email_internal_identity_conflict' supabase/functions/send-external-welcome/index.ts
+grep -Fq 'email_external_identity_conflict' supabase/functions/send-external-welcome/index.ts
+grep -Fq 'email_auth_identity_conflict' supabase/functions/send-external-welcome/index.ts
+grep -Fq 'can_manage_permissions' supabase/functions/send-external-welcome/index.ts
+grep -Fq 'can_operate_property_v3' supabase/functions/send-external-welcome/index.ts
+! grep -Fq 'password:' supabase/functions/send-external-welcome/index.ts
+
+# Claims may only be published after the authoritative DB completion call.
+FILE='supabase/functions/complete-external-onboarding/index.ts'
+db_line=$(grep -n 'complete_external_account_onboarding' "$FILE" | head -1 | cut -d: -f1)
+claims_line=$(grep -n 'app_metadata: nextMetadata' "$FILE" | head -1 | cut -d: -f1)
+if [ -z "$db_line" ] || [ -z "$claims_line" ] || [ "$db_line" -ge "$claims_line" ]; then
+  echo 'External Auth claims must only be synchronized after authoritative DB activation.' >&2
+  exit 1
+fi
+grep -Fq 'external_auth_metadata_sync_failed' "$FILE"
+grep -Fq 'database_active: true' "$FILE"
+
+echo 'External owner/tenant onboarding smoke checks passed'

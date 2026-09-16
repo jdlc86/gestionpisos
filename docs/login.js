@@ -32,6 +32,8 @@ function isRateLimitError(error) {
 const params = new URLSearchParams(window.location.search);
 if (params.get("password") === "updated") {
   show("Contraseña actualizada. Ya puedes iniciar sesión.");
+} else if (params.get("activated") === "1") {
+  show("Cuenta activada. Ya puedes iniciar sesión.");
 }
 
 const existing = await getCurrentSession().catch(() => null);
@@ -74,7 +76,7 @@ forgotBtn.addEventListener("click", async () => {
 
     if (error) {
       if (isRateLimitError(error)) {
-        show("Se han realizado demasiados intentos. Espera un poco y vuelve a probar.", true);
+        show("Límite temporal de recuperación. Por seguridad no podemos enviar otro correo en este momento. Espera unos minutos y vuelve a intentarlo.", true);
       } else {
         show("No se pudo enviar el enlace de recuperación. Inténtalo de nuevo más tarde.", true);
       }

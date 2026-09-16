@@ -196,7 +196,7 @@ grep -Fq 'create-organization-user' docs/permissions.js
 grep -Fq 'display_name:name,email,role' docs/permissions.js
 grep -Fq 'MODULE_NOT_STARTED' docs/permissions.html
 grep -Fq 'MODULE_IMPORT_FAILED' docs/permissions.html
-grep -Fq 'import("./permissions.js?v=202609167")' docs/permissions.html
+grep -Fq 'import("./permissions.js?v=202609168")' docs/permissions.html
 grep -Fq 'split("\n").join(" ")' docs/permissions.html
 grep -Fq 'window.__permissionsBooted=true' docs/permissions.js
 grep -Fq 'supabase.rpc("get_effective_organization_id")' docs/permissions.js

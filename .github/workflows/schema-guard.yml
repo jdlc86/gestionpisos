@@ -29,5 +29,8 @@ jobs:
       - name: Verify internal staff deactivation contract
         run: bash tests/internal-staff-deactivation-schema-smoke.sh
 
+      - name: Verify responsibility resolution contract
+        run: bash tests/responsibility-resolution-schema-smoke.sh
+
       - name: Run isolated PostgreSQL security regression
         run: bash tests/database-regression-v2.sh

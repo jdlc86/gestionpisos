@@ -17,8 +17,23 @@
 
 - “Olvidé mi contraseña” → email → enlace de un solo uso → nueva contraseña.
 - Respuesta neutra para evitar enumeración de cuentas.
+- El enlace debe volver a una URL de producción autorizada; `localhost` está prohibido fuera de desarrollo local.
+- La pantalla de nueva contraseña solo se habilita tras validar una sesión/token de recuperación legítimo.
 - Al completar recuperación/cambio se invalidan todas las demás sesiones.
 - ROOT/ADMIN deben completar MFA según política.
+
+## Entrega profesional de correos de autenticación
+
+El envío de correos críticos de autenticación en producción **no puede depender del SMTP incorporado de Supabase**.
+
+- El SMTP incorporado solo se acepta para desarrollo/pruebas.
+- Producción debe usar SMTP personalizado con un proveedor transaccional controlado por el proyecto.
+- Proveedor preferido inicial: Resend; la aplicación no debe quedar acoplada al proveedor.
+- Las credenciales SMTP nunca pueden residir en frontend, GitHub Pages, commits ni documentación pública.
+- El dominio remitente debe tener SPF, DKIM y DMARC configurados.
+- Los límites de Auth deben revisarse y configurarse explícitamente tras activar SMTP personalizado.
+- Un entorno limitado por el SMTP incorporado de Supabase o por un techo equivalente a 2 correos/hora no se considera apto para producción.
+- La política completa de migración, pruebas, observabilidad y resiliencia está en `docs/AUTH_EMAIL_DELIVERY_MIGRATION.md`.
 
 ## Bloqueo/revocación
 

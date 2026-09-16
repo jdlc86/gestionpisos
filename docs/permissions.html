@@ -6,7 +6,7 @@
 <section class="hero"><span class="badge">Seguridad</span><h2>Roles, responsabilidad y control administrativo</h2><p>Consulta el estado efectivo de acceso. Las operaciones críticas se validan siempre en Supabase.</p></section>
 <section id="permissionError" class="status error" role="alert" hidden></section>
 <section id="permissionContent" hidden><div class="permission-grid">
-<section class="permission-panel wide"><p class="eyebrow">ALTA</p><h3>Nuevo usuario</h3><form id="createUserForm" class="permission-actions"><input id="newUserName" required maxlength="120" placeholder="Nombre"><input id="newUserEmail" required type="email" maxlength="254" placeholder="Email"><select id="newUserRole"><option value="employee">Empleado</option><option value="admin">Administrador</option></select><button id="createUserButton" class="primary" type="submit">Crear usuario</button></form><span id="createUserNote" class="permission-note"></span></section>
+<section class="permission-panel wide"><p class="eyebrow">ALTA</p><h3>Nuevo usuario</h3><form id="createUserForm" class="permission-actions"><input id="newUserName" required maxlength="120" placeholder="Nombre"><input id="newUserEmail" required type="email" maxlength="254" placeholder="Email"><select id="newUserRole"><option value="employee">Empleado</option><option value="admin">Administrador</option></select><button id="createUserButton" class="primary" type="submit">Crear e invitar</button></form><span id="createUserNote" class="permission-note">El usuario elegirá su propia contraseña antes de recibir permisos activos.</span></section>
 <section class="permission-panel"><p class="eyebrow">ADMINISTRACIÓN</p><h3>Administradores</h3><div id="adminsList" class="permission-list"></div></section>
 <section class="permission-panel"><p class="eyebrow">PERSONAS</p><h3>Empleados</h3><div id="employeesList" class="permission-list"></div></section>
 <section class="permission-panel wide"><p class="eyebrow">RESPONSABILIDAD</p><h3>Viviendas asignadas</h3><div id="propertiesList" class="permission-list"></div></section>
@@ -26,7 +26,7 @@ window.addEventListener("DOMContentLoaded",()=>setTimeout(()=>{
 },5000));
 </script><script src="./app.js?v=202609152" defer></script><script type="module">
 window.__permissionsModuleRequested=true;
-import("./permissions.js?v=202609170").catch(err=>{
+import("./permissions-onboarding.js?v=2026091601").then(()=>import("./permissions.js?v=202609171")).catch(err=>{
  const error=document.getElementById("permissionError"),status=document.getElementById("permissionStatus");
  const detail=String(err?.message||err).split("\n").join(" ").replace(/[<>]/g," ").slice(0,120);
  if(error){error.hidden=false;error.textContent="No se pudo iniciar Gestión de Permisos. Diagnóstico: MODULE_IMPORT_FAILED · "+detail;}

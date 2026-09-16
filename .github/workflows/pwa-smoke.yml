@@ -18,6 +18,8 @@ jobs:
         run: bash tests/pwa-smoke.sh
       - name: Run auth recovery smoke
         run: bash tests/auth-recovery-smoke.sh
+      - name: Run staff onboarding smoke
+        run: bash tests/staff-onboarding-smoke.sh
       - name: Run permissions administrative control smoke
         run: bash tests/permissions-admin-control-smoke.sh
       - name: Run permissions responsibility flow smoke

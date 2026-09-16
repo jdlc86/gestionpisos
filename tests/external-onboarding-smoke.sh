@@ -17,7 +17,7 @@ grep -Fq 'auth_metadata_synced' docs/activate-external-account.js
 grep -Fq 'get_my_external_account_onboarding' docs/auth-guard.js
 grep -Fq 'activate-external-account.html' docs/auth-guard.js
 
-grep -Fq 'portfolio-onboarding.js?v=2026091601' docs/portfolio.html
+grep -Fq 'portfolio-onboarding.js?v=2026091602' docs/portfolio.html
 grep -Fq 'Guardar y enviar bienvenida' docs/portfolio.html
 grep -Fq 'Bienvenida del propietario' docs/portfolio-onboarding.js
 grep -Fq 'Enviar bienvenida' docs/portfolio-onboarding.js
@@ -25,6 +25,7 @@ grep -Fq 'Reenviar bienvenida' docs/portfolio-onboarding.js
 grep -Fq 'get_external_onboarding_statuses' docs/portfolio-onboarding.js
 grep -Fq 'send-external-welcome' docs/portfolio-onboarding.js
 grep -Fq 'email_internal_identity_conflict' docs/portfolio-onboarding.js
+grep -Fq 'delivery==="failed"?"Envío no confirmado":"Invitación pendiente"' docs/portfolio-onboarding.js
 
 grep -Fq 'auth.admin.generateLink' supabase/functions/_shared/external-onboarding-email.ts
 grep -Fq 'https://api.resend.com/emails' supabase/functions/_shared/external-onboarding-email.ts

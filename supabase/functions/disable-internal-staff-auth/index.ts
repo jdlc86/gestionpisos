@@ -12,6 +12,10 @@ function json(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), { status, headers: corsHeaders });
 }
 
+function retiredEmailFor(userId: string) {
+  return `retired+${userId}@deleted.invalid`;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json(405, { error: "method_not_allowed" });
@@ -71,6 +75,7 @@ Deno.serve(async (req: Request) => {
   if (targetError || !targetData?.user) return json(404, { error: "auth_user_not_found" });
 
   // Supabase documents 876000h as the supported 100-year ban duration.
+  // Ban first so access is closed even if retiring the email unexpectedly fails.
   const { error: banError } = await admin.auth.admin.updateUserById(targetUserId, {
     ban_duration: "876000h",
   });
@@ -79,5 +84,31 @@ Deno.serve(async (req: Request) => {
     return json(500, { error: "auth_disable_failed" });
   }
 
-  return json(200, { ok: true, target_user_id: targetUserId, auth_disabled: true });
+  // A deleted staff member remains in Auth to preserve the historical UUID. Move the
+  // Auth login email to a non-routable tombstone so the real address can be reused by
+  // a future employee without merging two people's audit histories.
+  const currentEmail = String(targetData.user.email || "").trim().toLowerCase();
+  const retiredEmail = retiredEmailFor(targetUserId);
+  let emailRetired = currentEmail === retiredEmail;
+  if (currentEmail && !emailRetired) {
+    const { error: retireError } = await admin.auth.admin.updateUserById(targetUserId, {
+      email: retiredEmail,
+    });
+    if (retireError) {
+      console.error(retireError);
+      return json(500, {
+        error: "auth_email_retire_failed",
+        auth_disabled: true,
+        target_user_id: targetUserId,
+      });
+    }
+    emailRetired = true;
+  }
+
+  return json(200, {
+    ok: true,
+    target_user_id: targetUserId,
+    auth_disabled: true,
+    email_retired: emailRetired,
+  });
 });

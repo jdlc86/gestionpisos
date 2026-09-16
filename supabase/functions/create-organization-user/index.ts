@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { sendStaffOnboardingInvitation } from "../_shared/staff-onboarding-email.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "https://jdlc86.github.io",
@@ -59,8 +60,6 @@ async function retireArchivedEmailOwner(
     if (authError || !authUser || authUser.deleted_at) continue;
     if (String(authUser.email || "").trim().toLowerCase() !== email) continue;
 
-    // Only reclaim an address from an account that was actually disabled by the
-    // staff-deactivation flow. This prevents taking an email from another live user.
     const bannedUntil = Date.parse(String(authUser.banned_until || ""));
     if (!Number.isFinite(bannedUntil) || bannedUntil <= Date.now()) continue;
 
@@ -153,21 +152,41 @@ Deno.serve(async (req: Request) => {
   }
 
   const userId = created.user.id;
-  const { error: provisionError } = await admin.rpc("provision_employee_profile_role", {
+  const { error: provisionError } = await admin.rpc("provision_internal_staff_pending", {
     p_user_id: userId,
     p_email: email,
     p_display_name: displayName,
     p_organization_id: organizationId,
     p_role: role,
+    p_created_by: actor.id,
   });
 
   if (provisionError) {
+    console.error(provisionError);
     await admin.auth.admin.deleteUser(userId).catch(() => {});
-    return json(500, { error: "profile_role_provision_failed" });
+    return json(500, { error: "pending_staff_provision_failed" });
+  }
+
+  let invitationStatus: "sent" | "failed" | "not_configured" | "cooldown" = "failed";
+  try {
+    const invitation = await sendStaffOnboardingInvitation(admin, {
+      userId,
+      organizationId,
+      actorUserId: actor.id,
+      email,
+      displayName,
+      role: role === "admin" ? "admin" : "employee",
+    });
+    invitationStatus = invitation.status;
+  } catch (error) {
+    console.error("initial_staff_invitation_failed", error);
+    invitationStatus = "failed";
   }
 
   return json(201, {
     user: { id: userId, email, display_name: displayName, role },
+    onboarding_status: "pending",
+    invitation_status: invitationStatus,
     reclaimed_archived_email: reclaimedArchivedEmail,
   });
 });

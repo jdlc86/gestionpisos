@@ -18,3 +18,5 @@ jobs:
         run: bash tests/pwa-smoke.sh
       - name: Run permissions administrative control smoke
         run: bash tests/permissions-admin-control-smoke.sh
+      - name: Run permissions responsibility flow smoke
+        run: bash tests/permissions-responsibility-flow-smoke.sh

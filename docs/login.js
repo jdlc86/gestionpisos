@@ -1,4 +1,8 @@
-import { supabase, getCurrentSession } from "./supabase-client.js";
+import { supabase, getCurrentSession } from "./supabase-client.js?v=2026091602";
+
+window.__loginModuleReady = true;
+window.__loginModuleFailureHandled = false;
+sessionStorage.removeItem("allaiso-login-module-recovery-v2");
 
 const form = document.getElementById("loginForm");
 const email = document.getElementById("email");

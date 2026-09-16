@@ -3,6 +3,7 @@ set -euo pipefail
 
 test -s docs/login.html
 test -s docs/login.js
+test -s docs/supabase-client.js
 test -s docs/sw.js
 
 node --check docs/login.js
@@ -12,12 +13,22 @@ grep -Fq 'id="loginForm" class="auth-form" method="post"' docs/login.html
 ! grep -Fq 'name="email"' docs/login.html
 ! grep -Fq 'name="password"' docs/login.html
 grep -Fq 'event => event.preventDefault()' docs/login.html
-grep -Fq 'navigator.serviceWorker.register("./sw.js")' docs/login.html
-grep -Fq 'login.js?v=2026091602' docs/login.html
+grep -Fq 'allaiso-login-module-recovery-v2' docs/login.html
+grep -Fq 'navigator.serviceWorker.getRegistrations()' docs/login.html
+grep -Fq 'key.startsWith("gestionpisos-shell-")' docs/login.html
+grep -Fq 'auth_refresh", "2026091603"' docs/login.html
+grep -Fq 'import("./login.js?v=2026091603")' docs/login.html
+grep -Fq 'No se pudo cargar el módulo de acceso.' docs/login.html
 
+grep -Fq 'supabase-client.js?v=2026091602' docs/login.js
+grep -Fq 'window.__loginModuleReady = true' docs/login.js
 grep -Fq 'signInWithPassword' docs/login.js
 grep -Fq 'login_request_failed' docs/login.js
 grep -Fq 'No se pudo contactar con el servicio de acceso.' docs/login.js
+
+grep -Fq 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/+esm' docs/supabase-client.js
+grep -Fq 'https://esm.sh/@supabase/supabase-js@2.57.4' docs/supabase-client.js
+grep -Fq 'supabase_client_module_load_failed' docs/supabase-client.js
 
 grep -Fq "gestionpisos-shell-v2" docs/sw.js
 grep -Fq "if(url.origin!==self.location.origin) return;" docs/sw.js

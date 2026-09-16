@@ -1,6 +1,6 @@
 const SUPABASE_MODULE_SOURCES = [
-  "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/+esm",
-  "https://esm.sh/@supabase/supabase-js@2.57.4"
+  "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/+esm",
+  "https://esm.sh/@supabase/supabase-js@2.116.0"
 ];
 
 let createClient = null;

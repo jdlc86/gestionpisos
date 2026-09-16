@@ -68,7 +68,7 @@
           }
 
           const refreshed = new URL(window.location.href);
-          refreshed.searchParams.set("auth_refresh", "2026091603");
+          refreshed.searchParams.set("auth_refresh", "2026091604");
           window.location.replace(refreshed.href);
           return;
         }
@@ -85,7 +85,7 @@
     })();
   </script>
   <script type="module">
-    import("./login.js?v=2026091603").catch(error => window.__handleLoginModuleFailure?.(error));
+    import("./login.js?v=2026091604").catch(error => window.__handleLoginModuleFailure?.(error));
   </script>
 </body>
 </html>

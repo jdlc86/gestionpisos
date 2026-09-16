@@ -8,24 +8,30 @@
 4. El correo abre primero una página del dominio de GestionPisos que requiere una acción humana antes de seguir el enlace de Auth, reduciendo el riesgo de consumo automático por escáneres de correo.
 5. El usuario demuestra control de su correo y crea personalmente una contraseña de al menos 12 caracteres.
 6. Solo después de completar la activación se activa su rol previsto. Las asignaciones históricas migradas desde el flujo antiguo solo se restauran si siguen siendo seguras y no pisan un responsable/acceso actual.
-7. El usuario es expulsado de la sesión de activación y debe iniciar sesión normalmente con sus nuevas credenciales.
+7. El rol/acceso se activa primero en base de datos y solo después se sincronizan los claims de Auth. La sesión de activación se cierra para forzar un JWT nuevo.
 8. Una invitación pendiente puede reenviarse con antiabuso/cooldown o revocarse sin borrar la identidad ni el histórico.
 9. ADMIN y ROOT deben completar MFA conforme a la política de seguridad antes de acciones sensibles.
 
 Un usuario pendiente **no es un empleado operativo todavía**. La interfaz puede mostrarlo para administración del onboarding, pero no puede ofrecerlo como responsable, acceso adicional ni titular de capacidades administrativas.
 
-## Alta de inquilino
+## Bienvenida de propietario e inquilino
 
-1. ADMIN precarga ocupación: piso, habitación, email y datos requeridos.
-2. ADMIN genera QR revocable asociado al piso.
-3. Inquilino escanea QR e introduce email.
-4. Backend valida que la solicitud concuerda con una ocupación prevista del piso.
-5. Se crea solicitud pendiente sin conceder acceso.
-6. ADMIN acepta o rechaza.
-7. Si acepta, se envía enlace de activación de un solo uso.
-8. Usuario establece su contraseña.
-9. Accede a la PWA con email + contraseña.
-10. Si el dispositivo conserva sesión válida, un QR puede resolver el contexto de piso sin pedir login de nuevo.
+La ficha de Cartera y la identidad de acceso son conceptos separados. Dar de alta un propietario o un inquilino no le concede acceso automáticamente.
+
+1. El gestor puede **Guardar sin enviar** o **Guardar y enviar bienvenida**.
+2. El envío crea/prepara una identidad Auth pendiente sin contraseña conocida por el gestor.
+3. El backend valida organización, sujeto, permisos e identidad de email antes de crear o reutilizar Auth.
+4. El correo de bienvenida se entrega por el proveedor transaccional profesional y utiliza un enlace de un solo uso.
+5. El propietario/inquilino crea personalmente una contraseña de al menos 12 caracteres.
+6. Backend vincula primero la identidad a `owners` o `tenants_v2`/`occupancies_v2` y activa el rol DB `owner` o `tenant`.
+7. Solo después del éxito DB se sincronizan `app_metadata.role` y `app_metadata.organization_id`; luego se fuerza un nuevo login.
+8. Las tarjetas de Cartera muestran el estado del acceso y permiten enviar/re-enviar una bienvenida pendiente.
+
+El modelo actual es de una identidad/rol principal por cuenta. Si un email ya corresponde a ADMIN/EMPLOYEE, OWNER, TENANT u otra identidad Auth no compatible, el alta de acceso **se bloquea** en vez de cruzar o fusionar cuentas silenciosamente. La política completa está en `docs/EXTERNAL_ONBOARDING_CONTRACT.md`.
+
+### Inquilino por QR
+
+El futuro/autoservicio mediante QR conserva estas reglas: el QR solo inicia identificación/solicitud, nunca concede acceso. La ocupación debe coincidir con la solicitud, el acceso requiere aprobación cuando proceda y la activación termina con contraseña personal y vínculo Auth verificable.
 
 ## Recuperación
 
@@ -58,6 +64,8 @@ Bloquear acceso no borra al usuario ni su histórico. Debe impedir nuevas operac
 - solicitud recibida cuando proceda
 - acceso aprobado/rechazado
 - activación/bienvenida de personal interno
+- bienvenida/activación de propietario
+- bienvenida/activación de inquilino
 - recuperación de contraseña
 - cambio de rol de empleado
 - eventos/reclamaciones configuradas

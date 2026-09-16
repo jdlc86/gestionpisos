@@ -9,6 +9,12 @@ async function pendingStaffOnboarding() {
   return data?.status === "pending" ? data : null;
 }
 
+async function pendingExternalOnboarding() {
+  const { data, error } = await supabase.rpc("get_my_external_account_onboarding");
+  if (error) return null;
+  return data?.status === "pending" ? data : null;
+}
+
 async function requireSession() {
   try {
     const session = await getCurrentSession();
@@ -17,9 +23,16 @@ async function requireSession() {
       return;
     }
 
-    const onboarding = await pendingStaffOnboarding();
-    if (onboarding) {
+    const staffOnboarding = await pendingStaffOnboarding();
+    if (staffOnboarding) {
       const activationUrl = new URL("./activate-account.html", window.location.href);
+      window.location.replace(activationUrl.href);
+      return;
+    }
+
+    const externalOnboarding = await pendingExternalOnboarding();
+    if (externalOnboarding) {
+      const activationUrl = new URL("./activate-external-account.html", window.location.href);
       window.location.replace(activationUrl.href);
       return;
     }

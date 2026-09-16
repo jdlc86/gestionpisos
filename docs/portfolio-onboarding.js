@@ -1,0 +1,179 @@
+import { supabase } from "./supabase-client.js";
+
+const $=id=>document.getElementById(id);
+let ownerSubmitDecision=null;
+let refreshTimer=null;
+let refreshRunning=false;
+let lastOrganizationId=null;
+
+function activeView(){return document.querySelector(".segment.is-active")?.dataset.view||"owners";}
+async function effectiveOrganizationId(){
+  const selected=$("organizationSelect")?.value;
+  if(selected)return selected;
+  const {data}=await supabase.auth.getUser();
+  return data?.user?.app_metadata?.organization_id||null;
+}
+function setPortfolioStatus(text,strong="Bienvenida"){
+  const status=$("portfolioStatus");if(!status)return;
+  status.replaceChildren();const s=document.createElement("strong");s.textContent=strong;status.append(s,document.createTextNode(" "+text));
+}
+function ensureOwnerWelcomeDialog(){
+  let dialog=$("ownerWelcomeDialog");if(dialog)return dialog;
+  dialog=document.createElement("dialog");dialog.id="ownerWelcomeDialog";
+  dialog.innerHTML=`<section class="editor"><div class="editor-head"><div><p class="eyebrow">CONFIRMAR ALTA</p><h3>Bienvenida del propietario</h3></div></div><p id="ownerWelcomeText"></p><dl class="confirmation-summary"><div><dt>Propietario</dt><dd id="ownerWelcomeName"></dd></div><div><dt>Email</dt><dd id="ownerWelcomeEmail"></dd></div></dl><p class="muted small">Puedes guardar la ficha sin crear acceso todavía. Si envías la bienvenida, el propietario creará su propia contraseña.</p><div class="editor-actions welcome-actions"><button id="ownerWelcomeCancel" type="button" class="ghost">Cancelar</button><button id="ownerWelcomeSave" type="button" class="ghost">Guardar sin enviar</button><button id="ownerWelcomeSend" type="button" class="primary">Guardar y enviar bienvenida</button></div></section>`;
+  document.body.appendChild(dialog);
+  $("ownerWelcomeCancel").addEventListener("click",()=>{ownerSubmitDecision=null;dialog.close();});
+  $("ownerWelcomeSave").addEventListener("click",()=>continueOwnerSave(false));
+  $("ownerWelcomeSend").addEventListener("click",()=>continueOwnerSave(true));
+  return dialog;
+}
+
+let pendingOwnerCreate=null;
+function continueOwnerSave(send){
+  const dialog=$("ownerWelcomeDialog");
+  ownerSubmitDecision=send?"send":"save";
+  dialog?.close();
+  const snapshot=pendingOwnerCreate;
+  $("editorForm")?.requestSubmit();
+  if(send&&snapshot)pollOwnerAndSend(snapshot);
+  queueMicrotask(()=>{ownerSubmitDecision=null;pendingOwnerCreate=null;});
+}
+
+document.addEventListener("submit",event=>{
+  if(event.target!==$("editorForm"))return;
+  if(activeView()!=="owners")return;
+  if(!$("editorTitle")?.textContent?.startsWith("Nuevo"))return;
+  if(ownerSubmitDecision)return;
+  const form=event.target;
+  const email=String(form.elements.namedItem("email")?.value||"").trim().toLowerCase();
+  if(!email)return;
+  event.preventDefault();event.stopImmediatePropagation();
+  const name=String(form.elements.namedItem("fullName")?.value||"").trim();
+  pendingOwnerCreate={email,name,startedAt:new Date(Date.now()-5000).toISOString()};
+  const dialog=ensureOwnerWelcomeDialog();
+  $("ownerWelcomeName").textContent=name;
+  $("ownerWelcomeEmail").textContent=email;
+  $("ownerWelcomeText").textContent=`Vas a dar de alta a ${name}. El acceso solo se creará si eliges enviar la bienvenida.`;
+  dialog.showModal();
+},true);
+
+async function functionErrorCode(error){
+  try{if(error?.context instanceof Response){const body=await error.context.clone().json();return String(body?.error||"");}}catch{}
+  return String(error?.message||"");
+}
+function friendlyWelcomeError(code){
+  if(code.includes("email_internal_identity_conflict"))return "Ese email ya está vinculado a un empleado o administrador. No se ha mezclado ninguna identidad.";
+  if(code.includes("email_external_identity_conflict"))return "Ese email ya está vinculado a otro propietario o inquilino. No se ha mezclado ninguna identidad.";
+  if(code.includes("email_auth_identity_conflict"))return "Ese email ya pertenece a otra cuenta de acceso. Revisa la identidad antes de continuar.";
+  if(code.includes("external_account_already_active"))return "La cuenta ya está activada; no necesita otra invitación de alta.";
+  if(code.includes("owner_email_required"))return "Añade un email al propietario antes de enviar la bienvenida.";
+  if(code.includes("tenant_not_active"))return "El inquilino debe estar en estado Alta antes de enviar la bienvenida.";
+  if(code.includes("invitation_cooldown"))return "La invitación se acaba de solicitar. Espera aproximadamente un minuto antes de reenviarla.";
+  if(code.includes("external_welcome_permission_required"))return "Tu usuario no tiene permiso para enviar esta bienvenida.";
+  return "No se pudo enviar la bienvenida. La ficha no se ha cruzado con ninguna otra identidad.";
+}
+
+async function sendWelcome(subjectType,subjectId,button=null){
+  if(button)button.disabled=true;
+  try{
+    const {data,error}=await supabase.functions.invoke("send-external-welcome",{body:{subject_type:subjectType,subject_id:subjectId}});
+    if(error)throw error;
+    const status=data?.invitation_status;
+    if(status==="sent")setPortfolioStatus("Correo de bienvenida enviado. La cuenta seguirá pendiente hasta que el usuario cree su contraseña.","Invitación enviada.");
+    else if(status==="not_configured")setPortfolioStatus("La identidad quedó preparada, pero el proveedor profesional de correo todavía no está configurado. Podrás reenviar la invitación después.","Correo pendiente.");
+    else if(status==="failed")setPortfolioStatus("La identidad quedó preparada, pero el proveedor de correo no confirmó el envío. Usa Reenviar bienvenida cuando se resuelva.","Envío no confirmado.");
+    else setPortfolioStatus("La invitación está preparada.","Bienvenida.");
+    scheduleRefresh(250);
+    return data;
+  }catch(error){
+    const code=await functionErrorCode(error);
+    setPortfolioStatus(friendlyWelcomeError(code),"Bienvenida no enviada.");
+    throw error;
+  }finally{if(button)button.disabled=false;}
+}
+
+async function pollOwnerAndSend(snapshot){
+  for(let attempt=0;attempt<25;attempt++){
+    const org=await effectiveOrganizationId();
+    if(org){
+      const {data}=await supabase.from("owners").select("id,created_at,status").eq("organization_id",org).eq("email",snapshot.email).eq("full_name",snapshot.name).eq("status","active").gte("created_at",snapshot.startedAt).order("created_at",{ascending:false}).limit(1);
+      if(data?.[0]){await sendWelcome("owner",data[0].id).catch(()=>{});return;}
+    }
+    await new Promise(resolve=>setTimeout(resolve,300));
+  }
+  setPortfolioStatus("La ficha se guardó, pero no se pudo identificar de forma segura el alta para enviar la bienvenida. Usa el botón Enviar bienvenida de la tarjeta.","Alta guardada.");
+}
+
+async function pollTenantAndSend(snapshot){
+  for(let attempt=0;attempt<30;attempt++){
+    const org=await effectiveOrganizationId();
+    if(org){
+      const {data}=await supabase.from("tenants_v2").select("id,status").eq("organization_id",org).eq("email",snapshot.email).eq("document_type",snapshot.documentType).eq("document_number",snapshot.documentNumber).eq("status","active").limit(1);
+      if(data?.[0]){await sendWelcome("tenant",data[0].id).catch(()=>{});return;}
+    }
+    await new Promise(resolve=>setTimeout(resolve,300));
+  }
+  setPortfolioStatus("El alta se guardó, pero no se pudo preparar la bienvenida automáticamente. Usa el botón Enviar bienvenida de la tarjeta.","Alta guardada.");
+}
+
+document.addEventListener("click",event=>{
+  const target=event.target.closest("button");
+  if(!target)return;
+  if(target.id==="welcomeSendBtn"){
+    const form=$("editorForm");
+    const email=String(form?.elements.namedItem("email")?.value||"").trim().toLowerCase();
+    const documentType=String(form?.elements.namedItem("documentType")?.value||"").trim();
+    const documentNumber=String(form?.elements.namedItem("documentNumber")?.value||"").trim().toUpperCase();
+    if(email&&documentType&&documentNumber)pollTenantAndSend({email,documentType,documentNumber});
+    return;
+  }
+  const action=target.dataset.externalWelcome;
+  if(action){event.preventDefault();event.stopPropagation();sendWelcome(target.dataset.subjectType,target.dataset.subjectId,target).catch(()=>{});}
+},true);
+
+function onboardingBadge(row){
+  if(!row)return {label:"Sin invitación",button:"Enviar bienvenida"};
+  if(row.status==="pending"){
+    const delivery=row.last_delivery_status;
+    return {label:delivery==="sent"?"Pendiente de activación":delivery==="not_configured"?"Correo pendiente":"Invitación pendiente",button:"Reenviar bienvenida"};
+  }
+  return {label:"Acceso activado",button:null};
+}
+function decorateCard(card,subjectType,subjectId,row,canSend=true){
+  if(card.querySelector("[data-external-onboarding-ui]"))return;
+  const meta=card.querySelector(".record-meta");
+  const actions=card.querySelector(".record-actions");
+  if(!meta||!actions)return;
+  const state=onboardingBadge(row);
+  const badge=document.createElement("span");badge.className="relation-chip";badge.dataset.externalOnboardingUi="1";badge.textContent=`Acceso: ${state.label}`;meta.appendChild(badge);
+  if(state.button&&canSend){const button=document.createElement("button");button.type="button";button.className="secondary";button.dataset.externalOnboardingUi="1";button.dataset.externalWelcome="1";button.dataset.subjectType=subjectType;button.dataset.subjectId=subjectId;button.textContent=state.button;actions.appendChild(button);}
+}
+
+async function refreshExternalOnboarding(){
+  if(refreshRunning)return;refreshRunning=true;
+  try{
+    const view=activeView();if(!["owners","occupancies"].includes(view))return;
+    const org=await effectiveOrganizationId();if(!org)return;lastOrganizationId=org;
+    const {data:statuses,error:statusError}=await supabase.rpc("get_external_onboarding_statuses",{p_organization_id:org});
+    if(statusError)return;
+    const rows=Array.isArray(statuses)?statuses:[];
+    const statusByKey=new Map(rows.map(row=>[`${row.subject_type}:${row.subject_id}`,row]));
+    const cards=[...document.querySelectorAll("#records .record-card")];
+    if(view==="owners"){
+      for(const card of cards){const id=card.querySelector('button[data-action="edit"]')?.dataset.id;if(!id)continue;const email=card.querySelector("p")?.textContent||"";decorateCard(card,"owner",id,statusByKey.get(`owner:${id}`),email.includes("@"));}
+    }else{
+      const occupancyIds=cards.map(card=>card.querySelector('button[data-action="edit"]')?.dataset.id).filter(Boolean);
+      if(!occupancyIds.length)return;
+      const {data:occupancies}=await supabase.from("occupancies_v2").select("id,tenant_id,status").in("id",occupancyIds);
+      const byOccupancy=new Map((occupancies||[]).map(row=>[row.id,row]));
+      for(const card of cards){const id=card.querySelector('button[data-action="edit"]')?.dataset.id;const oc=byOccupancy.get(id);if(!oc?.tenant_id)continue;decorateCard(card,"tenant",oc.tenant_id,statusByKey.get(`tenant:${oc.tenant_id}`),oc.status==="active");}
+    }
+  }finally{refreshRunning=false;}
+}
+function scheduleRefresh(delay=100){clearTimeout(refreshTimer);refreshTimer=setTimeout(refreshExternalOnboarding,delay);}
+
+const records=$("records");
+if(records)new MutationObserver(()=>scheduleRefresh()).observe(records,{childList:true,subtree:true});
+document.querySelectorAll(".segment").forEach(button=>button.addEventListener("click",()=>scheduleRefresh(100)));
+$("organizationSelect")?.addEventListener("change",()=>scheduleRefresh(200));
+scheduleRefresh(700);

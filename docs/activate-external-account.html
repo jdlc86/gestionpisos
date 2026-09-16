@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex,nofollow">
+  <link rel="stylesheet" href="./app.css">
+  <link rel="stylesheet" href="./auth.css">
+  <title>Allaiso · Activar acceso</title>
+</head>
+<body>
+  <main class="auth-shell">
+    <section class="auth-card">
+      <p class="eyebrow">ALLAISO</p>
+      <h1>Activa tu acceso</h1>
+      <p class="auth-lead">Confirma tu identidad creando una contraseña que solo tú conocerás.</p>
+      <form id="activationForm" class="auth-form">
+        <label>Nueva contraseña
+          <input id="newPassword" type="password" autocomplete="new-password" minlength="12" required disabled>
+        </label>
+        <label>Repite la nueva contraseña
+          <input id="confirmPassword" type="password" autocomplete="new-password" minlength="12" required disabled>
+        </label>
+        <button id="activationBtn" class="primary auth-primary" type="submit" disabled>Activar mi cuenta</button>
+      </form>
+      <button id="backToLogin" class="auth-link" type="button">Volver al acceso</button>
+      <p id="authMessage" class="auth-message" role="status" aria-live="polite">Validando invitación…</p>
+    </section>
+  </main>
+  <script>
+    (() => {
+      const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+      const query = new URLSearchParams(window.location.search);
+      if ((hash.get("type") === "recovery" || hash.get("type") === "invite") && query.get("onboarding") === "external") {
+        sessionStorage.setItem("allaiso-external-onboarding", "1");
+      }
+    })();
+  </script>
+  <script type="module" src="./activate-external-account.js?v=2026091601"></script>
+</body>
+</html>

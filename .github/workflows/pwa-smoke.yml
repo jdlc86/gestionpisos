@@ -22,6 +22,8 @@ jobs:
         run: bash tests/staff-onboarding-smoke.sh
       - name: Verify staff onboarding auth claim ordering
         run: bash tests/staff-onboarding-auth-claims-smoke.sh
+      - name: Run external owner/tenant onboarding smoke
+        run: bash tests/external-onboarding-smoke.sh
       - name: Run permissions administrative control smoke
         run: bash tests/permissions-admin-control-smoke.sh
       - name: Run permissions responsibility flow smoke

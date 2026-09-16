@@ -57,7 +57,6 @@
     </section>
 
     <section id="relationshipSummary" class="relationship-summary" aria-live="polite"></section>
-
     <section id="records" class="record-list" aria-live="polite"></section>
 
     <section id="emptyState" class="empty-state" hidden>
@@ -68,19 +67,10 @@
 
     <dialog id="editorDialog">
       <form id="editorForm" class="editor">
-          <p id="editorError" class="status error" role="alert" hidden></p>
-        <div class="editor-head">
-          <div>
-            <p class="eyebrow">ALLAISO</p>
-            <h3 id="editorTitle">Nuevo propietario</h3>
-          </div>
-          <button id="closeEditorBtn" type="button" class="icon-btn" aria-label="Cerrar">×</button>
-        </div>
+        <p id="editorError" class="status error" role="alert" hidden></p>
+        <div class="editor-head"><div><p class="eyebrow">ALLAISO</p><h3 id="editorTitle">Nuevo propietario</h3></div><button id="closeEditorBtn" type="button" class="icon-btn" aria-label="Cerrar">×</button></div>
         <div id="editorFields" class="editor-fields"></div>
-        <div class="editor-actions">
-          <button id="cancelEditorBtn" type="button" class="ghost">Cancelar</button>
-          <button id="saveDraftBtn" type="submit" class="primary">Guardar</button>
-        </div>
+        <div class="editor-actions"><button id="cancelEditorBtn" type="button" class="ghost">Cancelar</button><button id="saveDraftBtn" type="submit" class="primary">Guardar</button></div>
         <p class="muted small">Los cambios se guardan en Supabase y quedan sujetos a RLS y auditoría.</p>
       </form>
     </dialog>
@@ -97,24 +87,15 @@
           <div><dt>Email</dt><dd id="welcomeEmail"></dd></div>
         </dl>
         <p class="muted small">Cancelar vuelve al formulario para que puedas corregir cualquier dato antes del alta.</p>
-        <div class="editor-actions welcome-actions">
-          <button id="welcomeCancelBtn" type="button" class="ghost">Cancelar</button>
-          <button id="welcomeSaveOnlyBtn" type="button" class="ghost">Guardar sin enviar</button>
-          <button id="welcomeSendBtn" type="button" class="primary">Guardar y enviar bienvenida</button>
-        </div>
+        <div class="editor-actions welcome-actions"><button id="welcomeCancelBtn" type="button" class="ghost">Cancelar</button><button id="welcomeSaveOnlyBtn" type="button" class="ghost">Guardar sin enviar</button><button id="welcomeSendBtn" type="button" class="primary">Guardar y enviar bienvenida</button></div>
       </section>
     </dialog>
 
     <dialog id="saveErrorDialog">
       <section class="editor">
-        <div class="editor-head">
-          <div><p class="eyebrow">NO SE PUDO GUARDAR</p><h3 id="saveErrorTitle">Revisa los datos</h3></div>
-        </div>
+        <div class="editor-head"><div><p class="eyebrow">NO SE PUDO GUARDAR</p><h3 id="saveErrorTitle">Revisa los datos</h3></div></div>
         <p id="saveErrorMessage" role="alert"></p>
-        <div class="editor-actions">
-          <button id="saveErrorCancelBtn" type="button" class="ghost">Cancelar</button>
-          <button id="saveErrorAcceptBtn" type="button" class="primary">Aceptar</button>
-        </div>
+        <div class="editor-actions"><button id="saveErrorCancelBtn" type="button" class="ghost">Cancelar</button><button id="saveErrorAcceptBtn" type="button" class="primary">Aceptar</button></div>
       </section>
     </dialog>
 
@@ -134,13 +115,7 @@
 
     <dialog id="historyDialog">
       <section class="editor history-panel">
-        <div class="editor-head">
-          <div>
-            <p class="eyebrow">HISTÓRICO</p>
-            <h3 id="historyTitle">Cambios</h3>
-          </div>
-          <button id="closeHistoryBtn" type="button" class="icon-btn" aria-label="Cerrar">×</button>
-        </div>
+        <div class="editor-head"><div><p class="eyebrow">HISTÓRICO</p><h3 id="historyTitle">Cambios</h3></div><button id="closeHistoryBtn" type="button" class="icon-btn" aria-label="Cerrar">×</button></div>
         <ol id="historyList" class="history-list"></ol>
       </section>
     </dialog>
@@ -159,12 +134,10 @@
       </section>
     </dialog>
 
-    <section class="status">
-      <span class="dot"></span>
-      <span id="portfolioStatus"><strong>Conectando…</strong> Cargando cartera autorizada.</span>
-    </section>
+    <section class="status"><span class="dot"></span><span id="portfolioStatus"><strong>Conectando…</strong> Cargando cartera autorizada.</span></section>
   </main>
   <script type="module" src="./portfolio.js?v=202609177"></script>
+  <script type="module" src="./portfolio-onboarding.js?v=2026091601"></script>
   <script type="module" src="./auth-guard.js"></script>
 </body>
 </html>

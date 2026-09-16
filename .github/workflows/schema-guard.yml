@@ -35,5 +35,8 @@ jobs:
       - name: Verify internal staff onboarding contract
         run: bash tests/internal-staff-onboarding-schema-smoke.sh
 
+      - name: Verify external owner/tenant onboarding contract
+        run: bash tests/external-onboarding-schema-smoke.sh
+
       - name: Run isolated PostgreSQL security regression
         run: bash tests/database-regression-v2.sh

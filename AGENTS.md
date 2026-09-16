@@ -23,9 +23,12 @@ Aplica a cualquier desarrollador, agente IA o sesión que modifique GestionPisos
 18. Producción puede ser entorno de prueba mientras no haya usuarios reales, manteniendo trazabilidad y reversibilidad.
 19. Los correos críticos de autenticación en producción no pueden depender del SMTP incorporado de Supabase; deben usar entrega transaccional propia según `docs/AUTH_EMAIL_DELIVERY_MIGRATION.md`.
 20. Un ADMIN/EMPLOYEE pendiente de onboarding no tiene rol interno ni acceso operativo activo. Solo puede adquirirlos después de verificar su correo y crear personalmente su contraseña; nunca se usan contraseñas temporales conocidas por el administrador.
+21. La ficha de OWNER/TENANT y su identidad Auth son independientes hasta completar un onboarding explícito. Guardar una ficha nunca concede acceso por sí solo.
+22. Mientras el modelo Auth sea de un único rol/organización principal, un email ya vinculado a otro rol o identidad no se fusiona ni reutiliza silenciosamente. El conflicto debe bloquear la activación y preservar ambas relaciones de negocio sin cruzarlas.
+23. En cualquier onboarding, la autorización/vinculación se activa primero en base de datos y los claims privilegiados de Auth solo se sincronizan después del éxito DB.
 
 ## Antes de modificar autorización, datos o seguridad
-Leer: `docs/SECURITY_CONTRACT.md`, `docs/PERMISSIONS_CONTRACT.md`, `docs/DATA_CONTRACT.md`, `docs/AUTH_CONTRACT.md` y `docs/AUTH_EMAIL_DELIVERY_MIGRATION.md`.
+Leer: `docs/SECURITY_CONTRACT.md`, `docs/PERMISSIONS_CONTRACT.md`, `docs/DATA_CONTRACT.md`, `docs/AUTH_CONTRACT.md`, `docs/AUTH_EMAIL_DELIVERY_MIGRATION.md` y `docs/EXTERNAL_ONBOARDING_CONTRACT.md` cuando aplique.
 
 Si implementación y contrato discrepan, manda el contrato hasta que una decisión explícita lo cambie.
 
@@ -46,3 +49,4 @@ Si implementación y contrato discrepan, manda el contrato hasta que una decisi�
 - No reescribir auditoría/históricos.
 - No considerar apto para producción un flujo de recuperación que dependa del SMTP incorporado de Supabase o de un límite equivalente a 2 correos/hora.
 - No asignar viviendas, accesos adicionales ni capacidades administrativas a personal interno cuyo onboarding siga pendiente.
+- No cruzar automáticamente una identidad de personal interno con OWNER/TENANT por coincidencia de email.

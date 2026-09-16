@@ -135,7 +135,10 @@ function onboardingBadge(row){
   if(!row)return {label:"Sin invitación",button:"Enviar bienvenida"};
   if(row.status==="pending"){
     const delivery=row.last_delivery_status;
-    return {label:delivery==="sent"?"Pendiente de activación":delivery==="not_configured"?"Correo pendiente":"Invitación pendiente",button:"Reenviar bienvenida"};
+    return {
+      label:delivery==="sent"?"Pendiente de activación":delivery==="not_configured"?"Correo pendiente":delivery==="failed"?"Envío no confirmado":"Invitación pendiente",
+      button:"Reenviar bienvenida"
+    };
   }
   return {label:"Acceso activado",button:null};
 }

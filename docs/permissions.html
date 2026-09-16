@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="es" data-auth-pending="1">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#ffffff"><link rel="stylesheet" href="./app.css?v=202609154"><link rel="stylesheet" href="./permissions.css?v=202609153"><title>Allaiso · Gestión de Permisos</title></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#ffffff"><link rel="stylesheet" href="./app.css?v=202609154"><link rel="stylesheet" href="./permissions.css?v=202609154"><title>Allaiso · Gestión de Permisos</title></head>
 <body><main class="shell">
 <header class="topbar"><div><p class="eyebrow">ALLAISO</p><h1>Gestión de Permisos</h1></div><div class="global-actions"><button class="global-icon" data-theme-toggle aria-label="Cambiar tema"><span data-theme-icon>☾</span></button><a class="global-icon" href="./" aria-label="Inicio" title="Inicio">⌂</a></div></header>
 <section class="hero"><span class="badge">Seguridad</span><h2>Roles, responsabilidad y control administrativo</h2><p>Consulta el estado efectivo de acceso. Las operaciones críticas se validan siempre en Supabase.</p></section>
@@ -26,7 +26,7 @@ window.addEventListener("DOMContentLoaded",()=>setTimeout(()=>{
 },5000));
 </script><script src="./app.js?v=202609152" defer></script><script type="module">
 window.__permissionsModuleRequested=true;
-import("./permissions.js?v=202609169").catch(err=>{
+import("./permissions.js?v=202609170").catch(err=>{
  const error=document.getElementById("permissionError"),status=document.getElementById("permissionStatus");
  const detail=String(err?.message||err).split("\n").join(" ").replace(/[<>]/g," ").slice(0,120);
  if(error){error.hidden=false;error.textContent="No se pudo iniciar Gestión de Permisos. Diagnóstico: MODULE_IMPORT_FAILED · "+detail;}

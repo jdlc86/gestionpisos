@@ -7,10 +7,14 @@ Este procedimiento existe únicamente para una cuenta **ROOT o ADMIN** que conse
 - GestionPisos nunca permite eliminar el último factor verificado desde la interfaz normal.
 - La solicitud de recuperación **no elimina ni modifica nada**. Solo crea un evento pendiente y un `request_id` auditable.
 - El `request_id` no es un secreto, una contraseña ni una autorización. Nunca aprobar una recuperación únicamente por conocer el código de solicitud.
-- La ejecución destructiva es exclusiva de backend/plataforma y requiere credenciales de operador que nunca se exponen en GitHub Pages.
-- No ejecutar el endpoint de recuperación desde el navegador, una consola JavaScript del cliente ni una aplicación pública.
+- La ejecución destructiva es exclusiva de backend/plataforma y las credenciales privilegiadas nunca se exponen en GitHub Pages.
+- El operador usa la consola técnica `operator-recovery.html`, con una identidad de plataforma separada y MFA `aal2`; el navegador nunca llama directamente a `recover-privileged-mfa`.
+- Ser ROOT o ADMIN de GestionPisos no concede automáticamente la condición de operador de plataforma.
+- Un operador no puede aprobar su propia recuperación. Recuperar una cuenta ROOT exige además `can_recover_root=true`.
 - Antes de ejecutar hay que verificar por un canal independiente la identidad del titular y documentar esa comprobación en `verification_note`.
-- Cada recuperación queda registrada en `audit_log_v2`.
+- Cada solicitud, aprobación/rechazo, resultado y estado parcial queda registrado en `audit_log_v2`.
+
+La autorización y alta de operadores se documenta en `docs/PLATFORM_OPERATOR_CONSOLE.md`.
 
 ## Flujo del usuario
 
@@ -28,13 +32,15 @@ No son prueba suficiente por sí solas: conocer el email, conocer la contraseña
 
 ## Ejecución por plataforma
 
-Tras verificar la identidad, el operador llama desde infraestructura confiable a `recover-privileged-mfa` con:
+Tras verificar la identidad, el operador abre la consola técnica Allaiso, completa su propio MFA y revisa la solicitud pendiente. La consola habla únicamente con `operator-mfa-recovery`, que revalida que el usuario sea un operador activo en `platform_operators` y que la sesión esté en `aal2`.
+
+Al aprobar, el gateway backend llama internamente a `recover-privileged-mfa` con:
 
 - `request_id`: solicitud pendiente vigente.
-- `operator_reference`: identificador interno del operador/ticket/intervención.
+- `operator_reference`: referencia generada por backend a partir de la identidad técnica del operador.
 - `verification_note`: resumen de la verificación externa realizada.
 
-La función solo acepta la credencial backend de plataforma. Revalida que la solicitud esté pendiente, tenga menos de 60 minutos y que el objetivo siga siendo ROOT/ADMIN.
+La función destructiva solo acepta la credencial backend de plataforma. Revalida que la solicitud esté pendiente, tenga menos de 60 minutos y que el objetivo siga siendo ROOT/ADMIN.
 
 El orden de ejecución es deliberado:
 
@@ -59,6 +65,6 @@ Si el correo automático de recuperación falla, la recuperación de MFA puede q
 ## Pruebas y operación
 
 - No ejecutar una recuperación completa sobre una cuenta ROOT/ADMIN real como smoke test: por diseño invalida contraseña, sesiones y factores.
-- Las pruebas normales deben comprobar solo el alta/uso de factores y, si se necesita, la creación no destructiva de una solicitud.
-- Un simulacro completo requiere ventana controlada, confirmación explícita del titular y plan de recuperación de contraseña/MFA.
+- Las pruebas normales deben comprobar alta/uso de factores, creación no destructiva de solicitud, acceso del operador, listado y rechazo.
+- Un simulacro completo requiere una cuenta objetivo de prueba, una cuenta de operador independiente, ventana controlada y plan de recuperación de contraseña/MFA.
 - Ante cualquier resultado parcial, no borrar registros ni repetir a ciegas; revisar `audit_log_v2`, identificar la última etapa completada y reanudar de forma controlada.

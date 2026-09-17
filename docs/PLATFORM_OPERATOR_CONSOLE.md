@@ -28,11 +28,12 @@ La aprobación no ejecuta operaciones administrativas desde JavaScript. El gatew
 La configuración ordinaria se realiza desde **GestionPisos → Gestión de Permisos → Operadores de emergencia**.
 
 1. ROOT debe tener una sesión válida con MFA `aal2`.
-2. ROOT introduce el correo de una identidad Auth técnica ya existente y confirmada, además de un nombre visible.
+2. ROOT introduce el correo y nombre del operador. Si todavía no existe una identidad Auth técnica para ese correo, el backend la crea sin contraseña conocida por ROOT.
 3. El backend comprueba que la cuenta sea distinta del ROOT actual y que no tenga un rol operativo de GestionPisos.
-4. ROOT puede activar/desactivar al operador y conceder o retirar `can_recover_root`.
-5. No se borran filas para revocar acceso: se conserva el registro y cada cambio genera auditoría.
-6. La interfaz avisa si no queda ningún operador activo capaz de recuperar ROOT.
+4. Si la identidad es nueva, se envía mediante el proveedor profesional de correo un enlace de un solo uso para que el operador cree personalmente su contraseña.
+5. ROOT puede activar/desactivar al operador y conceder o retirar `can_recover_root`.
+6. No se borran filas para revocar acceso: se conserva el registro y cada cambio genera auditoría.
+7. La protección no se considera lista mientras no exista al menos un operador activo, autorizado para ROOT y con MFA verificado.
 
 La consola independiente de Allaiso **no permite** crear operadores, elevarse a sí misma ni modificar `can_recover_root`; solo consume la autorización previamente otorgada por ROOT para gestionar incidentes de recuperación.
 
@@ -42,9 +43,9 @@ La inserción administrativa directa en `public.platform_operators` queda reserv
 
 ## Preparación de un operador
 
-1. Crear o seleccionar una identidad Supabase Auth técnica distinta de la cuenta ROOT que podría necesitar recuperación.
-2. ROOT la autoriza desde Gestión de Permisos y decide si puede recuperar ROOT.
-3. El operador abre `operator-recovery.html`, inicia sesión y registra/verifica TOTP si todavía no lo tiene.
+1. ROOT designa el correo desde Gestión de Permisos y decide si puede recuperar ROOT.
+2. Si la cuenta técnica no existía, el operador recibe el correo profesional de activación, crea su propia contraseña y no recibe ninguna contraseña temporal.
+3. El operador abre `operator-recovery.html`, inicia sesión y registra/verifica TOTP.
 4. Probar primero `list` y `reject` con una solicitud de ensayo. Una aprobación real es destructiva para la contraseña, sesiones y factores MFA del usuario objetivo.
 
 No se debe reutilizar como único operador la misma cuenta ROOT cuya recuperación se pretende garantizar. La función bloquea la autoaprobación.

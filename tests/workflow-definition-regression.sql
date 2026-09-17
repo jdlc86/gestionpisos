@@ -288,17 +288,25 @@ select set_config(
   true
 );
 
-do $
-declare v_complete boolean;
+do $$
+declare
+  v_complete boolean;
+  v_flow_type text;
+  v_scope_type text;
 begin
-  select authoring_complete into v_complete
+  select authoring_complete, flow_type, scope_type
+  into v_complete, v_flow_type, v_scope_type
   from public.workflow_definitions_v2
   where id=current_setting('gestionpisos.workflow_legacy_id')::uuid;
+
   if v_complete then
     raise exception 'legacy implicit-default workflow unexpectedly marked complete';
   end if;
+  if v_flow_type is not null or v_scope_type is not null then
+    raise exception 'legacy implicit defaults leaked into workflow metadata';
+  end if;
 end;
-$;
+$$;
 
 reset role;
 rollback;

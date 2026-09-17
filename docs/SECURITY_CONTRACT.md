@@ -16,7 +16,7 @@ ROOT es un rol protegido. RLS es obligatoria en datos sensibles. La autorizació
 - Si no queda ningún operador activo con `can_recover_root=true`, la aplicación debe advertir a ROOT del riesgo de bloqueo, sin ocultar ni falsificar un mecanismo de recuperación inexistente.
 - El procedimiento operativo completo está en `docs/MFA_RECOVERY_RUNBOOK.md` y la separación de la consola en `docs/PLATFORM_OPERATOR_CONSOLE.md`.
 
-## Factory reset del entorno de prueba
+## Factory reset del entorno de pruebas
 
 - El reset total de datos de prueba es una operación **R4 destructiva** y nunca forma parte de la operativa normal.
 - Solo puede iniciarlo un usuario con rol `root`, sesión válida y `aal2`.

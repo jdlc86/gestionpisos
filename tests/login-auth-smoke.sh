@@ -60,7 +60,8 @@ grep -Fq 'id="mfaFactorSelect"' docs/mfa-challenge.html
 grep -Fq 'autocomplete="one-time-code"' docs/mfa-challenge.html
 
 grep -Fq 'privilegedMfaRoute(supabase, session, { requireEnrollment: true })' docs/auth-guard.js
-grep -Fq 'Seguridad MFA' docs/auth-guard.js
+grep -Fq '🛡️ MFA' docs/auth-guard.js
+! grep -Fq 'Seguridad MFA' docs/auth-guard.js
 grep -Fq 'authFlowUrl(mfa.route' docs/auth-guard.js
 
 grep -Fq 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/+esm' docs/supabase-client.js

@@ -6,7 +6,7 @@
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="noindex,nofollow">
   <link rel="stylesheet" href="./app.css">
-  <link rel="stylesheet" href="./auth.css?v=2026091703">
+  <link rel="stylesheet" href="./auth.css?v=2026091705">
   <title>Allaiso · Verificación MFA</title>
 </head>
 <body>
@@ -26,10 +26,22 @@
         <button id="mfaChallengeBtn" class="primary auth-primary" type="submit" disabled>Verificar</button>
       </form>
 
+      <button id="mfaRecoveryBtn" class="auth-link" type="button" disabled>No tengo acceso a mis autenticadores</button>
+      <section id="mfaRecoveryBox" class="mfa-recovery-box" hidden aria-live="polite">
+        <strong>Solicitud de recuperación creada</strong>
+        <p>Un operador técnico de Allaiso debe verificar tu identidad antes de retirar los factores perdidos. No se ha eliminado ningún autenticador todavía.</p>
+        <span class="mfa-section-help">Código de solicitud</span>
+        <div class="mfa-secret-row">
+          <code id="mfaRecoveryRequestId" class="mfa-secret"></code>
+          <button id="copyRecoveryRequestBtn" class="ghost mfa-copy" type="button">Copiar</button>
+        </div>
+        <p class="mfa-recovery-warning">La solicitud caduca en 60 minutos. Cuando se apruebe, se cerrarán tus sesiones, se invalidará tu contraseña actual y recibirás un enlace para crear una nueva.</p>
+      </section>
+
       <button id="cancelMfaBtn" class="auth-link" type="button">Cancelar y cerrar sesión</button>
       <p id="authMessage" class="auth-message" role="status" aria-live="polite">Comprobando tus factores MFA…</p>
     </section>
   </main>
-  <script type="module" src="./mfa-challenge.js?v=2026091702"></script>
+  <script type="module" src="./mfa-challenge.js?v=2026091703"></script>
 </body>
 </html>

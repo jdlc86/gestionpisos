@@ -88,7 +88,7 @@ grep -Fq 'operator_reference' supabase/functions/recover-privileged-mfa/index.ts
 grep -Fq 'verification_note' supabase/functions/recover-privileged-mfa/index.ts
 
 grep -Fq 'Nunca aprobar una recuperación únicamente por conocer el código de solicitud' docs/MFA_RECOVERY_RUNBOOK.md
-grep -Fq 'No ejecutar el endpoint de recuperación desde el navegador' docs/MFA_RECOVERY_RUNBOOK.md
+grep -Fq 'el navegador nunca llama directamente a `recover-privileged-mfa`' docs/MFA_RECOVERY_RUNBOOK.md
 
 grep -Fq "gestionpisos-shell-v2" docs/sw.js
 grep -Fq "'./mfa-setup.html'" docs/sw.js

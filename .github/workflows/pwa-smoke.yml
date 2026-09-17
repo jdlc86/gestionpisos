@@ -20,6 +20,10 @@ jobs:
         run: bash tests/login-auth-smoke.sh
       - name: Run auth recovery smoke
         run: bash tests/auth-recovery-smoke.sh
+      - name: Run MFA smoke
+        run: bash tests/mfa-smoke.sh
+      - name: Run platform operator recovery smoke
+        run: bash tests/platform-operator-recovery-smoke.sh
       - name: Run staff onboarding smoke
         run: bash tests/staff-onboarding-smoke.sh
       - name: Verify staff onboarding auth claim ordering

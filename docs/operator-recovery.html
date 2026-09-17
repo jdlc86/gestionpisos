@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <link rel="stylesheet" href="./app.css">
+  <link rel="stylesheet" href="./auth.css?v=2026091705">
+  <title>Allaiso · Consola de recuperación</title>
+  <style>
+    .operator-card{width:min(760px,100%)}.operator-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.operator-badge{padding:6px 10px;border-radius:999px;background:#f2f4f7;font-size:11px;font-weight:800}.operator-list{display:grid;gap:12px;margin-top:16px}.operator-request{border:1px solid #e4e6ea;border-radius:16px;padding:16px;background:#fafafa;display:grid;gap:10px}.operator-request h3{margin:0;font-size:16px}.operator-meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;font-size:12px;color:#6d7178}.operator-actions{display:flex;gap:8px;flex-wrap:wrap}.operator-note{width:100%;min-height:92px;resize:vertical;border:1px solid #d7d9dd;border-radius:14px;padding:12px;font:inherit;background:#fff;color:#17181a}.operator-danger{background:#b42318;color:#fff;border:0;border-radius:12px;padding:10px 13px;font-weight:750}.operator-secondary{border:1px solid #d7d9dd;border-radius:12px;padding:10px 13px;background:#fff;color:#17181a;font-weight:700}.operator-empty{padding:22px;border:1px dashed #d7d9dd;border-radius:16px;text-align:center;color:#6d7178}.operator-qr{display:block;width:min(230px,100%);margin:12px auto}.operator-code{font-size:22px!important;letter-spacing:.22em;text-align:center}.operator-warning{padding:12px 14px;border-radius:14px;background:#fff6ed;color:#9a3412;font-size:12px;line-height:1.45}@media(max-width:560px){.operator-meta{grid-template-columns:1fr}.operator-card{padding:22px}.operator-header{display:grid}}@media(prefers-color-scheme:dark){.operator-badge{background:#24272c}.operator-request{background:#111214;border-color:#31343a}.operator-note{background:#111214;color:#f4f4f5;border-color:#31343a}.operator-secondary{background:#181a1d;color:#f4f4f5;border-color:#31343a}.operator-warning{background:#3a2417;color:#fdba74}}
+  </style>
+</head>
+<body>
+  <main class="auth-shell">
+    <section class="auth-card operator-card">
+      <div class="operator-header">
+        <div>
+          <p class="eyebrow">ALLAISO · PLATAFORMA</p>
+          <h1>Recuperación MFA</h1>
+          <p class="auth-lead">Consola técnica separada de GestionPisos. Solo operadores autorizados y con MFA.</p>
+        </div>
+        <span class="operator-badge">BREAK-GLASS</span>
+      </div>
+
+      <section id="loginPanel">
+        <form id="operatorLoginForm" class="auth-form">
+          <label>Email de operador
+            <input id="operatorEmail" type="email" autocomplete="username" required>
+          </label>
+          <label>Contraseña
+            <input id="operatorPassword" type="password" autocomplete="current-password" required>
+          </label>
+          <button id="operatorLoginBtn" class="primary auth-primary" type="submit">Entrar</button>
+        </form>
+      </section>
+
+      <section id="mfaPanel" hidden>
+        <p class="mfa-section-title">Verificación del operador</p>
+        <p id="mfaHelp" class="mfa-section-help"></p>
+        <div id="mfaEnrollPanel" hidden>
+          <div class="operator-warning">Esta cuenta de operador todavía no tiene MFA. Debe registrarlo antes de poder aprobar o rechazar recuperaciones.</div>
+          <img id="operatorQr" class="operator-qr" alt="Código QR para MFA del operador" hidden>
+          <p id="operatorSecret" class="mfa-section-help" hidden></p>
+        </div>
+        <form id="operatorMfaForm" class="auth-form">
+          <label id="operatorFactorField" hidden>Autenticador
+            <select id="operatorFactorSelect"></select>
+          </label>
+          <label>Código de 6 dígitos
+            <input id="operatorMfaCode" class="operator-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="000000" required>
+          </label>
+          <button id="operatorMfaBtn" class="primary auth-primary" type="submit">Verificar operador</button>
+        </form>
+      </section>
+
+      <section id="consolePanel" hidden>
+        <div class="operator-header">
+          <div>
+            <p class="mfa-section-title">Solicitudes pendientes</p>
+            <p id="operatorIdentity" class="mfa-section-help"></p>
+          </div>
+          <div class="operator-actions">
+            <button id="refreshRequestsBtn" class="operator-secondary" type="button">Actualizar</button>
+            <button id="operatorLogoutBtn" class="operator-secondary" type="button">Cerrar sesión</button>
+          </div>
+        </div>
+        <div class="operator-warning">Aprobar una solicitud cerrará las sesiones del usuario, invalidará su contraseña y retirará sus factores MFA. Verifica su identidad por un canal independiente antes de continuar.</div>
+        <div id="requestList" class="operator-list"></div>
+      </section>
+
+      <p id="operatorMessage" class="auth-message" role="status" aria-live="polite"></p>
+    </section>
+  </main>
+  <script type="module" src="./operator-recovery.js?v=2026091701"></script>
+</body>
+</html>

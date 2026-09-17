@@ -14,7 +14,7 @@ grep -Fq 'operator-mfa-recovery' docs/operator-recovery.js
 grep -Fq 'signInWithPassword' docs/operator-recovery.js
 grep -Fq 'supabase.auth.mfa.challenge' docs/operator-recovery.js
 grep -Fq 'supabase.auth.mfa.verify' docs/operator-recovery.js
-grep -Fq 'Aprobar recuperación' docs/operator-recovery.html
+grep -Fq 'Aprobar recuperación' docs/operator-recovery.js
 grep -Fq 'Consola técnica separada de GestionPisos' docs/operator-recovery.html
 grep -Fq 'noindex,nofollow,noarchive' docs/operator-recovery.html
 

@@ -16,6 +16,19 @@ ROOT es un rol protegido. RLS es obligatoria en datos sensibles. La autorizació
 - Si no queda ningún operador activo con `can_recover_root=true`, la aplicación debe advertir a ROOT del riesgo de bloqueo, sin ocultar ni falsificar un mecanismo de recuperación inexistente.
 - El procedimiento operativo completo está en `docs/MFA_RECOVERY_RUNBOOK.md` y la separación de la consola en `docs/PLATFORM_OPERATOR_CONSOLE.md`.
 
+## Factory reset del entorno de prueba
+
+- El reset total de datos de prueba es una operación **R4 destructiva** y nunca forma parte de la operativa normal.
+- Solo puede iniciarlo un usuario con rol `root`, sesión válida y `aal2`.
+- El helper debe exigir una vista previa previa con caducidad corta y una confirmación explícita; una llamada directa sin esos pasos se rechaza.
+- El baseline protegido es exactamente: ROOT activo, una identidad técnica de operador de emergencia activa y con `can_recover_root=true`, la organización activa y la configuración estructural/plantillas expresamente preservadas.
+- Si no existe exactamente un operador técnico válido para recuperación de ROOT, el reset se bloquea en vez de adivinar qué identidad conservar.
+- El reset puede purgar auditoría histórica **solo en este flujo de pruebas**; inmediatamente después debe crear un nuevo evento `factory_reset_completed` que identifique ROOT, operador preservado, organización y momento de ejecución.
+- Los objetos de Storage se eliminan mediante la API oficial de Storage, nunca borrando filas de `storage.objects` por SQL.
+- El backend debe eliminar todas las identidades Auth no protegidas después de limpiar las referencias de negocio. Debe verificar como postcondición que solo permanecen ROOT y el operador técnico seleccionado.
+- Un fallo parcial debe devolverse como tal y el helper debe ser idempotente para permitir completar la limpieza sin reconstruir datos eliminados.
+- Este flujo solo es válido mientras el entorno siga siendo de pruebas y no contenga usuarios/datos reales. Antes de una puesta en producción real debe deshabilitarse o sustituirse por políticas de borrado/retención específicas.
+
 ## Privacidad del inquilino
 
 - **Suspendido** debe impedir acceso sin destruir la ficha.

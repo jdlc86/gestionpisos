@@ -39,6 +39,23 @@ Los nombres finales pueden variar, pero estas responsabilidades no deben mezclar
 - Toda referencia entre empresa/piso/usuario debe poder validarse por RLS.
 - Datos de prueba deben poder identificarse y limpiarse sin afectar históricos reales.
 
+## Baseline de factory reset para pruebas
+
+El helper de reset total existe únicamente para volver el entorno de pruebas a un baseline conocido. No sustituye a los flujos normales de baja/archivo.
+
+El reset conserva:
+- la organización activa de ROOT;
+- la identidad Auth de ROOT y su acceso/rol;
+- exactamente una identidad Auth técnica de operador de emergencia activa, independiente de ROOT y capaz de recuperar ROOT;
+- los factores MFA de esas dos identidades;
+- `platform_operators` para el operador preservado;
+- plantillas estructurales/seed como `tenant_task_workflow_templates_v2`;
+- un único recibo de auditoría nuevo `factory_reset_completed` posterior a la purga.
+
+El reset elimina datos operativos de prueba: propietarios, inquilinos, pisos, habitaciones, ocupaciones, personal no protegido, onboarding, permisos/asignaciones, solicitudes, tareas, incidencias, pagos, reclamaciones, comunicaciones, notificaciones, fotoverificación/patrones, documentos/metadatos, históricos de prueba y auditoría anterior. Las identidades Auth no protegidas se eliminan después de retirar sus referencias en BD.
+
+Storage se vacía mediante la API oficial en los buckets operativos declarados por el helper. No se borran directamente filas de `storage.objects`.
+
 
 ## Modelo de inquilinos v2
 

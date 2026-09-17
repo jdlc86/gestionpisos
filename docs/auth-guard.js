@@ -1,4 +1,10 @@
 import { supabase, getCurrentSession } from "./supabase-client.js";
+import {
+  authFlowUrl,
+  currentPageNext,
+  privilegedMfaRoute,
+  requiresPrivilegedMfa
+} from "./mfa-common.js?v=2026091701";
 
 const loginUrl = new URL("./login.html", window.location.href);
 loginUrl.searchParams.set("next", window.location.pathname.split("/").pop() || "index.html");
@@ -13,6 +19,20 @@ async function pendingExternalOnboarding() {
   const { data, error } = await supabase.rpc("get_my_external_account_onboarding");
   if (error) return null;
   return data?.status === "pending" ? data : null;
+}
+
+function addMfaSetupAction() {
+  const topbar = document.querySelector(".topbar");
+  if (!topbar || document.getElementById("mfaSetupAction")) return;
+  const button = document.createElement("button");
+  button.id = "mfaSetupAction";
+  button.type = "button";
+  button.className = "ghost";
+  button.textContent = "Configurar MFA";
+  button.addEventListener("click", () => {
+    window.location.assign(authFlowUrl("mfa-setup.html", currentPageNext()));
+  });
+  topbar.append(button);
 }
 
 async function requireSession() {
@@ -37,7 +57,15 @@ async function requireSession() {
       return;
     }
 
+    const mfa = await privilegedMfaRoute(supabase, session);
+    if (mfa.route) {
+      window.location.replace(authFlowUrl(mfa.route, currentPageNext()));
+      return;
+    }
+
     document.documentElement.removeAttribute("data-auth-pending");
+
+    if (requiresPrivilegedMfa(session) && !mfa.enrolled) addMfaSetupAction();
 
     const topbar = document.querySelector(".topbar");
     if (topbar && !document.getElementById("logoutBtn")) {
@@ -53,7 +81,8 @@ async function requireSession() {
       });
       topbar.append(button);
     }
-  } catch {
+  } catch (error) {
+    console.error("auth_guard_failed", error);
     window.location.replace(loginUrl.href);
   }
 }

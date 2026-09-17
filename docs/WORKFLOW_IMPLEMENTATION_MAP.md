@@ -4,13 +4,34 @@
 
 Este documento traduce `WORKFLOW_ARCHITECTURE.md` al estado real actual de GestionPisos. Su función es impedir que el nuevo motor se construya en paralelo a componentes que ya existen.
 
+El estado fechado de implementación se mantiene en `WORKFLOW_STATUS.md` y el contrato previo al motor persistente en `WORKFLOW_ENGINE_CONTRACT.md`.
+
 Regla de esta fase:
 
-> **No crear todavía tablas genéricas de workflow. Primero reutilizar, adaptar o encapsular lo existente y documentar qué pieza actual cumple cada responsabilidad.**
+> **No crear tablas genéricas de workflow sin aplicar primero el contrato del motor mínimo, la migración aditiva y las pruebas RLS. Reutilizar, adaptar o encapsular lo existente antes de introducir una pieza paralela.**
 
 La arquitectura objetivo sigue siendo:
 
 `Flujo → Disparador → Ejecución → Asignación → Tareas → Recursos → Evidencias → Revisión/Cierre → Historial`
+
+## Estado de implementación — 2026-09-18
+
+Ya están completados e integrados:
+
+- el mosaico principal **🔄 Flujos de Trabajo**;
+- el hub con **➕ Creador de Flujos**, **🧩 Mis Flujos**, **📷 Banco Fotográfico**, **📋 Tareas** y **🕘 Historial**;
+- la conexión real del **Banco Fotográfico** con la infraestructura de patrones existente;
+- el contrato `WORKFLOW_ENGINE_CONTRACT.md`;
+- la primera UI del **Creador de Flujos** como asistente de siete pasos;
+- el borrador local explícito en `sessionStorage`, sin publicación ni persistencia server-side;
+- smoke tests de navegación, PWA y protección con `auth-guard.js`.
+
+Cambios integrados:
+
+- PR #195 → hub de Flujos de Trabajo;
+- PR #196 → contrato del motor + Creador de Flujos local.
+
+Todavía **no existe un motor persistente genérico**, no se publican definiciones y no se crean ejecuciones genéricas desde el Creador.
 
 ## 1. Inventario funcional existente
 
@@ -168,6 +189,24 @@ Cuando exista el motor mínimo deberá aparecer un servicio genérico equivalent
 
 ## 3. Pantallas actuales y destino
 
+### `workflows.html`
+
+Estado: **operativo**.
+
+Es el hub transversal y expone los cinco módulos acordados. No debe contener lógica de dominio de Limpieza, Mantenimiento o Inspección.
+
+### `workflow-builder.html`
+
+Estado: **operativo como autoría local**.
+
+- asistente de siete pasos;
+- borrador en `sessionStorage`;
+- no publica ni persiste definiciones;
+- no crea tareas/ejecuciones/notificaciones;
+- enlaza con Banco Fotográfico como recurso reutilizable.
+
+Destino: convertirse progresivamente en cliente del servicio seguro de definiciones/versiones cuando exista el motor persistente.
+
 ### `photo-patterns.html`
 
 Estado: operativo.
@@ -208,28 +247,29 @@ Destino:
 
 ### `index.html`
 
-Cambio de Fase 2:
+Estado actual:
 
-- añadir el mosaico **🔄 Flujos de Trabajo**;
-- mantener temporalmente los accesos legacy mientras sus flujos no estén migrados;
-- retirar mosaicos específicos de primer nivel solo después de que exista una ruta equivalente y probada dentro del motor.
+- mosaico **🔄 Flujos de Trabajo** ya integrado;
+- accesos legacy se mantienen mientras sus flujos no estén migrados;
+- mosaicos específicos de primer nivel solo se retirarán después de disponer de ruta equivalente y probada dentro del motor.
 
 ## 4. Qué falta realmente
 
-No existe todavía una entidad completa que represente:
+El contrato del motor ya existe, pero todavía no hay persistencia genérica para:
 
-- una receta de flujo versionada;
-- un disparador genérico;
-- una regla de asignación genérica;
-- pasos ordenados de una receta;
-- una ejecución inmutable de esa receta;
-- congelación explícita de los recursos de la ejecución;
+- identidad estable de definición;
+- versiones publicadas inmutables;
+- disparadores genéricos;
+- reglas de asignación genéricas;
+- pasos ordenados persistentes;
+- ejecuciones inmutables;
+- congelación explícita de recursos/versiones;
 - idempotencia genérica de disparadores;
-- un historial transversal que una definición, ejecución, tarea, evidencia y cierre.
+- historial transversal que una definición, ejecución, tarea, evidencia y cierre.
 
-Tampoco existe todavía un servicio server-side que pueda recibir una definición publicada y crear de forma idempotente una ejecución con sus tareas.
+Tampoco existe todavía un servicio server-side que reciba una versión publicada y cree de forma idempotente una ejecución con sus tareas.
 
-Eso es el **motor mínimo** que se diseñará después de cerrar este mapeo y la navegación.
+Ese es el **siguiente incremento del motor mínimo**. El Creador actual valida la UX de autoría, pero no sustituye esa capa.
 
 ## 5. Mapa objetivo de reutilización
 
@@ -245,12 +285,12 @@ Eso es el **motor mínimo** que se diseñará después de cerrar este mapeo y la
 | Revisión fotográfica | `review-photo-verification` | Reutilizar para evidencia fotográfica |
 | Notificaciones | `notifications_v2` | Reutilizar |
 | Auditoría sensible | `audit_log_v2` | Reutilizar |
-| Definición de flujo | No existe | Diseñar después del mapeo |
-| Versión de flujo | No existe | Diseñar |
-| Disparador genérico | No existe | Diseñar |
-| Regla de asignación genérica | No existe | Diseñar |
-| Ejecución genérica | No existe | Diseñar |
-| Enlace genérico flujo→recurso | No existe | Diseñar |
+| Definición de flujo | No existe persistencia genérica | Implementar aditivamente según contrato |
+| Versión de flujo | No existe persistencia genérica | Implementar inmutable al publicar |
+| Disparador genérico | No existe | Implementar con idempotencia |
+| Regla de asignación genérica | No existe | Resolver server-side |
+| Ejecución genérica | No existe | Implementar con snapshot/versiones |
+| Enlace genérico flujo→recurso | No existe | Implementar sin copiar recursos |
 | Eventos transversales de ejecución | No existe como unidad completa | Diseñar sin duplicar históricos actuales |
 
 ## 6. Compatibilidad y transición
@@ -259,7 +299,7 @@ Durante la migración pueden convivir temporalmente:
 
 - tareas antiguas de Limpieza;
 - tareas genéricas de inquilino;
-- nuevas ejecuciones del motor.
+- nuevas ejecuciones del motor cuando se incorporen.
 
 La coexistencia debe ser explícita y limitada en el tiempo. Nunca se resolverá ocultando duplicidades en la UI.
 
@@ -272,38 +312,53 @@ Reglas:
 5. no se introduce una segunda cámara ni un segundo bucket;
 6. no se introduce otro sistema de notificaciones;
 7. no se elimina `cleaning.html` hasta disponer de sustituto funcional probado;
-8. no se crean tablas de workflow hasta revisar el contrato del motor mínimo contra este mapa.
+8. el primer DDL de workflow debe seguir `WORKFLOW_ENGINE_CONTRACT.md`, ser aditivo y disponer de pruebas RLS positivas y negativas.
 
-## 7. Primer incremento de producto
+## 7. Incrementos de producto completados
 
-Fase 2 se implementa con riesgo bajo y sin tocar base de datos:
+### Incremento A — Hub
+
+Completado en PR #195:
 
 - mosaico principal **🔄 Flujos de Trabajo**;
-- pantalla contenedora con:
-  - ➕ Creador de Flujos;
-  - 🧩 Mis Flujos;
-  - 📷 Banco Fotográfico;
-  - 📋 Tareas;
-  - 🕘 Historial;
+- pantalla contenedora con los cinco módulos;
 - conexión real de **Banco Fotográfico** con la herramienta ya existente;
-- los módulos todavía no implementados se muestran como “En preparación”, sin simular funcionalidad inexistente;
-- acceso legacy de Limpieza se mantiene hasta la migración funcional.
+- acceso legacy de Limpieza preservado;
+- smoke tests del hub.
 
-## 8. Próximo diseño técnico
+### Incremento B — Creador de Flujos local
 
-Antes de cualquier DDL del motor mínimo se debe producir un contrato específico que defina:
+Completado en PR #196:
 
-- identidad/versionado de una definición;
+- contrato `WORKFLOW_ENGINE_CONTRACT.md`;
+- Creador de Flujos de siete pasos;
+- borrador local explícito y recuperable durante la sesión;
+- resumen legible de la receta;
+- enlace a Banco Fotográfico;
+- integración PWA y protección con `auth-guard.js`;
+- sin DDL ni escritura en Supabase.
+
+## 8. Próximo incremento técnico
+
+El siguiente trabajo debe ser **persistencia mínima + publicación + ejecución manual idempotente**, no otra capa de UI aislada.
+
+Debe cubrir:
+
+- identidad estable de definición;
+- versión publicada inmutable;
 - estados de definición;
-- estructura de disparadores;
-- semántica e idempotency key de ejecución;
-- resolución server-side de asignaciones;
-- modelo de pasos;
+- persistencia de ámbito, disparador, asignación y pasos;
 - enlace versionado a recursos;
-- generación/adopción de tareas en `tenant_tasks_v2`;
-- cómo una ejecución referencia evidencias actuales;
+- servicio backend de crear/editar/publicar;
+- activación manual inicial;
+- `idempotency_key` de ejecución;
+- resolución server-side de asignaciones;
+- generación/adopción de tareas en `tenant_tasks_v2` cuando sea viable;
+- snapshot de recursos/versiones;
 - eventos de ciclo de vida;
 - permisos/RLS y pruebas negativas;
-- estrategia de migración de Limpieza.
+- trazabilidad necesaria para el futuro adaptador de Limpieza.
 
-Hasta entonces, **no se crean tablas nuevas de workflow**.
+La recurrencia automática se incorpora después de demostrar que la ejecución manual es segura, idempotente y auditable.
+
+La regla histórica del primer mapeo se mantiene como salvaguarda: **no se crean tablas nuevas de workflow** de forma improvisada o paralela; cualquier DDL nuevo debe derivarse explícitamente del contrato del motor, justificar su necesidad frente a las tablas existentes y venir acompañado de RLS y pruebas de regresión.

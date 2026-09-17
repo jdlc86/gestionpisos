@@ -6,7 +6,7 @@
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="noindex,nofollow">
   <link rel="stylesheet" href="./app.css">
-  <link rel="stylesheet" href="./auth.css?v=2026091702">
+  <link rel="stylesheet" href="./auth.css?v=2026091703">
   <title>Allaiso · Verificación MFA</title>
 </head>
 <body>
@@ -17,6 +17,9 @@
       <p class="auth-lead">Abre tu app autenticadora e introduce el código de 6 dígitos.</p>
 
       <form id="mfaChallengeForm" class="auth-form">
+        <label id="mfaFactorField" hidden>Autenticador
+          <select id="mfaFactorSelect" class="mfa-factor-select"></select>
+        </label>
         <label>Código de verificación
           <input id="mfaCode" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000" required disabled>
         </label>
@@ -24,9 +27,9 @@
       </form>
 
       <button id="cancelMfaBtn" class="auth-link" type="button">Cancelar y cerrar sesión</button>
-      <p id="authMessage" class="auth-message" role="status" aria-live="polite">Comprobando tu segundo factor…</p>
+      <p id="authMessage" class="auth-message" role="status" aria-live="polite">Comprobando tus factores MFA…</p>
     </section>
   </main>
-  <script type="module" src="./mfa-challenge.js?v=2026091701"></script>
+  <script type="module" src="./mfa-challenge.js?v=2026091702"></script>
 </body>
 </html>

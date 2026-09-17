@@ -1,4 +1,4 @@
-const CACHE='gestionpisos-shell-v2';
+const CACHE='gestionpisos-shell-v3';
 const ASSETS=['./','./index.html','./app.css','./app.js','./login.html','./auth.css','./login.js','./reset-password.html','./reset-password.js','./mfa-common.js','./mfa-setup.html','./mfa-setup.js','./mfa-challenge.html','./mfa-challenge.js','./supabase-client.js','./auth-guard.js','./manifest.webmanifest'];
 
 self.addEventListener('install',event=>{

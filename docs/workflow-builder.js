@@ -106,7 +106,7 @@ function renderSummary(){
   );
 }
 
-function showStep(next){
+function showStep(next,shouldScroll=false){
   currentStep=Math.max(0,Math.min(panels.length-1,next));
   panels.forEach((panel,index)=>panel.classList.toggle("is-active",index===currentStep));
   stepButtons.forEach((button,index)=>{
@@ -123,19 +123,19 @@ function showStep(next){
     nextButton.disabled=false;
   }
   saveDraft();
-  document.querySelector(".builder-card")?.scrollIntoView({block:"start",behavior:"smooth"});
+  if(shouldScroll)document.querySelector(".builder-card")?.scrollIntoView({block:"start",behavior:"smooth"});
 }
 
 form.addEventListener("input",saveDraft);
 form.addEventListener("change",()=>{updateTriggerFields();saveDraft();if(currentStep===panels.length-1)renderSummary()});
 triggerType.addEventListener("change",updateTriggerFields);
-backButton.addEventListener("click",()=>showStep(currentStep-1));
-nextButton.addEventListener("click",()=>{if(validateCurrentStep())showStep(currentStep+1)});
-stepButtons.forEach((button,index)=>button.addEventListener("click",()=>{if(index<=currentStep||validateCurrentStep())showStep(index)}));
+backButton.addEventListener("click",()=>showStep(currentStep-1,true));
+nextButton.addEventListener("click",()=>{if(validateCurrentStep())showStep(currentStep+1,true)});
+stepButtons.forEach((button,index)=>button.addEventListener("click",()=>{if(index<=currentStep||validateCurrentStep())showStep(index,true)}));
 clearButton.addEventListener("click",()=>{
   if(!window.confirm("¿Borrar el borrador local de este flujo?"))return;
   try{sessionStorage.removeItem(DRAFT_KEY)}catch{}
-  form.reset();currentStep=0;updateTriggerFields();showStep(0);
+  form.reset();currentStep=0;updateTriggerFields();showStep(0,true);
 });
 
 restoreDraft();

@@ -18,6 +18,10 @@ grep -Fq 'RESET_FACTORY_TEST_DATA' docs/factory-reset.js
 
 grep -Fq 'role !== "root"' supabase/functions/factory-reset-test-data/index.ts
 grep -Fq 'aal2_required' supabase/functions/factory-reset-test-data/index.ts
+grep -Fq 'resolveRootOrganization' supabase/functions/factory-reset-test-data/index.ts
+grep -Fq '.from("user_roles")' supabase/functions/factory-reset-test-data/index.ts
+grep -Fq '.from("profiles")' supabase/functions/factory-reset-test-data/index.ts
+grep -Fq 'root_organization_claim_mismatch' supabase/functions/factory-reset-test-data/index.ts
 grep -Fq 'factory_reset_requires_one_root_recovery_operator' supabase/functions/factory-reset-test-data/index.ts
 grep -Fq 'factory_reset_operator_mfa_required' supabase/functions/factory-reset-test-data/index.ts
 grep -Fq 'PREVIEW_TTL_MS = 5 * 60 * 1000' supabase/functions/factory-reset-test-data/index.ts
@@ -25,6 +29,7 @@ grep -Fq 'admin.storage.emptyBucket' supabase/functions/factory-reset-test-data/
 grep -Fq 'admin.auth.admin.deleteUser' supabase/functions/factory-reset-test-data/index.ts
 grep -Fq 'remainingUsers.length === 2' supabase/functions/factory-reset-test-data/index.ts
 grep -Fq 'factory_reset_test_data_service' supabase/functions/factory-reset-test-data/index.ts
+grep -Fq 'response.clone().json()' docs/factory-reset.js
 
 grep -Fq 'security definer' supabase/migrations/20260917170000_factory_reset_test_data_helper.sql
 grep -Fq 'factory_reset_completed' supabase/migrations/20260917170000_factory_reset_test_data_helper.sql

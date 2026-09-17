@@ -26,7 +26,17 @@ function resetConfirmationState() {
 async function invokeFactoryReset(body) {
   const { data, error } = await supabase.functions.invoke("factory-reset-test-data", { body });
   if (error) {
-    const detail = data?.error || error?.context?.body?.error || error.message || "factory_reset_request_failed";
+    let detail = data?.error || "";
+    const response = error?.context;
+    if (!detail && response && typeof response.clone === "function") {
+      try {
+        const payload = await response.clone().json();
+        detail = payload?.error || "";
+      } catch {
+        // Keep the SDK error as the final fallback.
+      }
+    }
+    detail = detail || error.message || "factory_reset_request_failed";
     throw new Error(String(detail));
   }
   if (data?.error) throw new Error(String(data.error));
@@ -37,6 +47,9 @@ function errorMessage(code) {
   const map = {
     root_required: "Solo ROOT puede utilizar este restablecimiento.",
     aal2_required: "Vuelve a iniciar sesión como ROOT y completa MFA antes de continuar.",
+    root_organization_required: "No se pudo resolver de forma unívoca la organización activa de ROOT.",
+    root_organization_lookup_failed: "No se pudo consultar la organización activa de ROOT.",
+    root_organization_claim_mismatch: "La sesión ROOT no coincide con la organización activa. Cierra sesión y vuelve a entrar.",
     factory_reset_requires_one_root_recovery_operator: "Debe existir exactamente un operador técnico activo capaz de recuperar ROOT.",
     factory_reset_operator_mfa_required: "El operador técnico preservado debe tener MFA verificado.",
     factory_reset_preview_expired: "La vista previa ha caducado. Prepárala de nuevo.",

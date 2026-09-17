@@ -6,29 +6,25 @@ Este documento resume el estado real de implementación de **Flujos de Trabajo**
 
 - `WORKFLOW_ARCHITECTURE.md` — arquitectura funcional objetivo;
 - `WORKFLOW_IMPLEMENTATION_MAP.md` — reutilización de piezas existentes;
-- `WORKFLOW_ENGINE_CONTRACT.md` — contrato del motor mínimo antes de DDL/server-side.
+- `WORKFLOW_ENGINE_CONTRACT.md` — contrato técnico del motor común.
 
-La cadena canónica permanece:
+Cadena canónica:
 
 `Definición → Versión publicada → Disparador → Ejecución → Asignación → Tareas → Recursos → Evidencias → Revisión/Cierre → Historial`
 
 ## 1. Decisión arquitectónica vigente
 
-Los procesos de negocio no tendrán motores independientes.
+**Limpieza, Inspección, Mantenimiento, Check-in, Check-out y futuros procesos son configuraciones del mismo motor transversal.**
 
-**Limpieza, Inspección, Mantenimiento, Check-in, Check-out y futuros procesos son tipos/configuraciones de un motor transversal de Flujos de Trabajo.**
+Los recursos reutilizables viven fuera del flujo. El primer recurso transversal operativo es el **Banco Fotográfico**.
 
-Los recursos reutilizables viven fuera del flujo. El primer recurso transversal real es el **Banco Fotográfico**.
+No se crearán motores paralelos de tareas, cámara, Storage, notificaciones o recurrencia por dominio.
 
-No se crearán motores paralelos de tareas, cámara, Storage, notificaciones o recurrencia para cada dominio.
+## 2. Navegación implementada
 
-## 2. Navegación ya implementada
+Desde Inicio existe **🔄 Flujos de Trabajo**.
 
-Desde la pantalla principal existe el mosaico:
-
-**🔄 Flujos de Trabajo**
-
-Dentro están visibles:
+Dentro están:
 
 - **➕ Creador de Flujos**;
 - **🧩 Mis Flujos**;
@@ -36,19 +32,15 @@ Dentro están visibles:
 - **📋 Tareas**;
 - **🕘 Historial**.
 
-El acceso de **Banco Fotográfico** reutiliza directamente `photo-patterns.html` y la infraestructura fotográfica existente. No se ha creado un segundo banco ni otra cámara.
+Banco Fotográfico reutiliza `photo-patterns.html`, editor, cámara, Storage privado y fotoverificación existentes.
 
-Los accesos legacy que todavía tienen funcionalidad no migrada, especialmente Limpieza, se mantienen temporalmente para evitar regresiones.
+Los accesos legacy funcionales, especialmente Limpieza, permanecen hasta disponer de sustitución extremo a extremo.
 
 ## 3. Creador de Flujos — estado actual
 
-El mosaico **➕ Creador de Flujos** ya abre un asistente de autoría.
+El Creador es un asistente de siete pasos:
 
-La primera versión implementada es deliberadamente un asistente paso a paso, no un editor gráfico de nodos.
-
-El asistente cubre siete bloques conceptuales:
-
-1. identidad del flujo;
+1. identidad;
 2. ámbito;
 3. activación;
 4. asignación;
@@ -56,188 +48,216 @@ El asistente cubre siete bloques conceptuales:
 6. cierre/revisión;
 7. revisión final.
 
-Actualmente permite definir, entre otros:
+### Persistencia de borradores
 
-- nombre, tipo y descripción;
+El borrador ya puede guardarse en servidor mediante `save_workflow_definition_draft_v1`.
+
+La persistencia usa:
+
+- `workflow_definitions_v2` para identidad estable, especificación editable y `revision`;
+- RLS de lectura por ROOT/ADMIN activo y organización;
+- ausencia deliberada de INSERT/UPDATE/DELETE directo desde cliente;
+- RPC `SECURITY DEFINER` que resuelve usuario/organización server-side;
+- auditoría `workflow_draft_created` / `workflow_draft_updated`;
+- control de concurrencia optimista: una revisión obsoleta se rechaza con `workflow_draft_conflict`.
+
+`sessionStorage` sigue usándose únicamente como recuperación local de cambios mientras se edita. Ya no es la única persistencia.
+
+### Límite intencional
+
+**Guardar no significa publicar.**
+
+Un borrador guardado todavía no:
+
+- crea una versión publicada;
+- selecciona de forma definitiva el piso/habitación/ocupación concreta;
+- genera ejecuciones;
+- crea tareas;
+- programa recurrencias;
+- dispara notificaciones operativas;
+- altera Limpieza.
+
+## 4. Mis Flujos — estado actual
+
+`workflow-definitions.html` ya consulta `workflow_definitions_v2` mediante RLS.
+
+Muestra:
+
+- nombre;
+- estado;
+- tipo;
 - ámbito conceptual;
-- disparador manual, recurrente, fecha concreta o evento;
-- asignación a responsable, rotación de ocupantes, persona fija, rol/capacidad o decisión manual;
-- pasos como confirmación, evidencia fotográfica, checklist/formulario o documento;
-- cierre automático, revisión humana o regla especializada del dominio;
-- notificación al crear/cerrar.
+- activación;
+- asignación;
+- revisión;
+- fecha de último cambio.
 
-### Límite intencional actual
+Los borradores pueden reabrirse en el Creador con su `id` y continuar editándose.
 
-El creador **todavía no publica ni persiste definiciones en Supabase**.
+No existen todavía acciones de publicar, ejecutar, pausar o archivar desde esta pantalla.
 
-El borrador se conserva únicamente en `sessionStorage` y está presentado como borrador local. No crea:
+## 5. Versiones publicadas — preparación
 
-- definiciones server-side;
-- versiones publicadas;
-- ejecuciones;
-- tareas;
-- notificaciones;
-- cambios de permisos;
-- registros de Limpieza.
+Existe `workflow_definition_versions_v2` para representar futuras versiones inmutables.
 
-Esta separación evita simular una funcionalidad backend que todavía no existe y permite validar primero la experiencia de autoría.
+En esta fase:
 
-## 4. Banco Fotográfico — estado actual
+- no hay RPC de publicación;
+- el cliente no tiene permisos de escritura directa;
+- la tabla permanece vacía hasta implementar publicación controlada.
 
-El Banco Fotográfico ya dispone de infraestructura operativa reutilizable:
+Esto evita publicar accidentalmente una receta incompleta mientras se valida la capa de autoría.
+
+## 6. Banco Fotográfico
+
+La infraestructura reutilizable sigue siendo:
 
 - `photo_patterns_v2`;
-- editor manual de siluetas y `contour_data`;
+- `contour_data` manual;
 - cámara fullscreen;
 - alineación local;
-- bucket privado existente;
+- Storage privado;
 - `photo_verification_runs_v2`;
 - `photo_verification_items_v2`;
-- revisión humana protegida;
-- Edge Functions existentes de patrones y fotoverificación.
+- revisión humana protegida.
 
-Conceptualmente queda desligado de Limpieza.
+Cuando exista una ejecución real, el motor deberá congelar la versión exacta del patrón/recurso utilizado.
 
-Un flujo podrá referenciar patrones del Banco Fotográfico y, al crear una ejecución, deberá congelarse la versión exacta del recurso utilizada.
+## 7. Tareas
 
-## 5. Tareas — estado actual
+No se ha creado `workflow_tasks`.
 
-No se ha creado una tabla nueva `workflow_tasks`.
-
-`tenant_tasks_v2` sigue siendo el candidato principal para materializar trabajo de usuario, acompañado de:
+`tenant_tasks_v2` sigue siendo el candidato principal para materializar trabajo de usuario, junto con:
 
 - `tenant_task_actions_v2`;
 - `tenant_task_history_v2`;
-- `tenant_task_workflow_templates_v2` como subcomponente de transiciones, no como motor completo.
+- `tenant_task_workflow_templates_v2` como subcomponente de transiciones.
 
-La decisión final debe ser aditiva y preservar histórico.
+La integración se decidirá de forma aditiva durante la ejecución manual del siguiente incremento.
 
-## 6. Limpieza — estado de transición
+## 8. Limpieza — transición
 
-Limpieza será el primer dominio que se conectará al motor común.
-
-Se conservan por ahora:
+Se conservan:
 
 - `cleaning_plans_v2`;
 - `cleaning_tasks_v2`;
 - swaps;
-- deudas no monetarias;
-- auditoría y revisión por foto;
+- deuda no monetaria;
+- auditoría por foto;
 - solicitudes fotográficas;
-- la ruta legacy `cleaning.html`.
+- `cleaning.html`.
 
-Estas estructuras no se convierten en el motor universal.
+Limpieza será el primer adaptador de dominio cuando el motor pueda publicar y ejecutar una definición real.
 
-Cuando el motor mínimo exista, Limpieza se conectará mediante un adaptador explícito que mantenga trazabilidad entre la ejecución genérica y las estructuras `cleaning_*` necesarias.
+## 9. Seguridad y pruebas de la persistencia
 
-La UI legacy no se retirará hasta que el ciclo equivalente funcione extremo a extremo.
+La persistencia de definiciones es un cambio R3 y dispone de pruebas negativas.
 
-## 7. Contrato del motor mínimo
+Se verifica que:
 
-`WORKFLOW_ENGINE_CONTRACT.md` ya está versionado y define antes de cualquier DDL:
+- TENANT no puede crear borradores;
+- un ADMIN de otra organización no puede leer definiciones ajenas;
+- ROOT/ADMIN no pueden insertar o editar directamente las tablas desde cliente;
+- la tabla de versiones no admite publicación directa;
+- la RPC puede crear/actualizar borradores autorizados;
+- una `revision` obsoleta no sobrescribe cambios concurrentes;
+- creación/edición queda auditada.
 
-- identidad estable de definición;
-- versiones publicadas inmutables;
-- disparadores e idempotencia;
-- resolución server-side de asignación;
-- pasos ordenados;
-- referencias versionadas a recursos;
-- ejecuciones inmutables;
-- reutilización de tareas/evidencias/notificaciones existentes;
-- estados y cierres;
-- RLS y autorización backend;
-- concurrencia;
-- adaptador de Limpieza.
+Las pruebas se ejecutan también en PostgreSQL 17 desechable desde Schema Guard.
 
-Por tanto, la condición documental previa al primer DDL ya está cubierta.
-
-## 8. Estado por módulo
+## 10. Estado por módulo
 
 | Módulo | Estado | Observación |
 | --- | --- | --- |
-| Flujos de Trabajo | Implementado | Hub visible desde Inicio |
-| Creador de Flujos | Implementado como autoría local | Sin publicación server-side todavía |
-| Mis Flujos | Pendiente | Depende de persistencia de definiciones/versiones |
-| Banco Fotográfico | Operativo/reutilizado | Usa infraestructura existente |
-| Tareas | Pendiente de integración genérica | Se evaluará reutilización de `tenant_tasks_v2` |
-| Historial | Pendiente de capa transversal | No sustituye históricos existentes |
-| Motor server-side | Pendiente | Sin DDL ni ejecución genérica aún |
-| Adaptador Limpieza | Pendiente | Legacy preservado durante transición |
+| Flujos de Trabajo | Implementado | Hub transversal |
+| Creador de Flujos | Implementado con persistencia de borradores | Sin publicación |
+| Mis Flujos | Implementado para definiciones/borradores | Sin ejecutar/publicar |
+| Banco Fotográfico | Operativo/reutilizado | Infraestructura existente |
+| Versiones publicadas | Estructura preparada | RPC de publicación pendiente |
+| Tareas | Pendiente de integración genérica | Evaluar `tenant_tasks_v2` |
+| Historial | Pendiente de ejecución transversal | No sustituye históricos actuales |
+| Ejecución genérica | Pendiente | Siguiente incremento |
+| Adaptador Limpieza | Pendiente | Legacy preservado |
 
-## 9. Cambios ya integrados
+## 11. Incrementos
 
 ### PR #195 — Hub de Flujos de Trabajo
 
-Introdujo:
+Introdujo hub y conexión con Banco Fotográfico.
 
-- mosaico principal **🔄 Flujos de Trabajo**;
-- pantalla contenedora con los cinco módulos;
-- enlace real al Banco Fotográfico existente;
-- mapa de implementación/reutilización;
-- smoke tests del hub.
+Merge: `37b0bd2520d7a57211f5e80df90fdc50bdde11f1`.
 
-Merge en `main`: `37b0bd2520d7a57211f5e80df90fdc50bdde11f1`.
+### PR #196 — Creador de Flujos local
 
-### PR #196 — Creador de Flujos
+Introdujo contrato del motor, asistente de siete pasos y borrador local.
 
-Introdujo:
+Merge: `112dbbdbc78146bc7e2be52d83b5385bacfc0c02`.
 
-- `WORKFLOW_ENGINE_CONTRACT.md`;
-- asistente de autoría de siete pasos;
-- borrador local explícito;
-- enlace a Banco Fotográfico desde el creador;
-- precache PWA del creador;
-- smoke tests de navegación/protección.
+### PR #197 — Documentación de estado
 
-Merge en `main`: `112dbbdbc78146bc7e2be52d83b5385bacfc0c02`.
+Separó arquitectura, contrato, mapeo y estado fechado antes del primer DDL.
 
-Los checks requeridos del PR y del despliegue posterior pasaron correctamente.
+Merge: `a111c2dbd71527cf32de3eda6b4de5781e16e585`.
 
-## 10. Próximo incremento técnico
+### Incremento actual — Persistencia de borradores + Mis Flujos
 
-El siguiente incremento ya no debe crear más pantallas simuladas. Debe empezar el **motor mínimo persistente** de manera aditiva y segura.
+Incluye:
 
-Antes de publicar un flujo real, ese incremento debe incluir como mínimo:
+- primer DDL aditivo del motor;
+- `workflow_definitions_v2`;
+- `workflow_definition_versions_v2` preparada para publicación;
+- RLS;
+- RPC de guardado seguro;
+- auditoría;
+- concurrencia optimista;
+- Creador conectado al servidor;
+- Mis Flujos conectado a RLS;
+- pruebas negativas y regresión.
 
-1. migración mínima para definición estable + versión publicada + ejecución;
-2. RLS positiva y negativa por organización/rol/ámbito;
-3. servicio backend para crear/editar/publicar definiciones;
-4. publicación inmutable de una versión;
-5. activación manual inicial con `idempotency_key`;
-6. resolución server-side de asignación;
-7. enlace trazable a tareas existentes cuando sea viable;
+## 12. Próximo incremento técnico
+
+El siguiente incremento debe ser **publicación inmutable + ejecución manual idempotente**.
+
+Orden recomendado:
+
+1. selección y validación server-side de la entidad concreta del ámbito;
+2. publicación a `workflow_definition_versions_v2` con versión inmutable;
+3. operación explícita y auditada de publicar;
+4. entidad mínima de ejecución;
+5. `idempotency_key` para “Ejecutar ahora”;
+6. resolución server-side del responsable;
+7. enlace/adopción de `tenant_tasks_v2` cuando encaje;
 8. snapshot de recursos/versiones;
-9. histórico de eventos suficiente para reconstruir la ejecución;
-10. pruebas de reintento para demostrar que no se duplican ejecución, tarea ni notificación.
+9. eventos de ciclo de vida suficientes para Historial;
+10. pruebas de reintento sin duplicar ejecución/tarea/notificación.
 
-La recurrencia automática puede incorporarse después de que la ejecución manual sea idempotente y auditable.
+La recurrencia automática se añadirá **después** de demostrar que la ejecución manual es idempotente y auditable.
 
-## 11. Reglas de no regresión
-
-Durante los siguientes incrementos:
+## 13. Reglas de no regresión
 
 - no duplicar `photo_patterns_v2` por flujo;
 - no crear una segunda cámara o bucket;
 - no crear otro sistema de notificaciones;
-- no reescribir histórico existente;
+- no reescribir históricos existentes;
 - no convertir `cleaning_plans_v2` en modelo universal;
 - no retirar `cleaning.html` antes de sustitución funcional probada;
-- no confiar en IDs/ámbitos enviados por cliente sin validación server-side;
-- no presentar un borrador local como flujo publicado;
-- no permitir que editar una definición cambie ejecuciones ya creadas.
+- no confiar en organización/ámbito enviados por cliente;
+- no presentar un borrador guardado como publicado;
+- no permitir que editar una definición cambie ejecuciones ya creadas;
+- no permitir publicación directa por INSERT cliente.
 
-## 12. Criterio para declarar el primer flujo real
+## 14. Criterio para declarar el primer flujo real
 
-Un flujo podrá considerarse realmente publicado solo cuando exista evidencia de que:
+Un flujo será operativo solo cuando exista evidencia de que:
 
-- la definición está persistida en servidor;
-- existe una versión publicada inmutable;
-- permisos/RLS bloquean accesos cruzados;
-- una activación crea una única ejecución;
-- la asignación se resuelve server-side;
-- la tarea queda trazada hasta la ejecución;
-- los recursos utilizados quedan congelados/versionados;
-- el cierre deja histórico reproducible;
-- los reintentos no duplican trabajo.
+- definición persistida;
+- versión publicada inmutable;
+- RLS bloquea accesos cruzados;
+- activación crea una única ejecución;
+- asignación se resuelve server-side;
+- tarea trazada a ejecución;
+- recursos congelados/versionados;
+- cierre con histórico reproducible;
+- reintentos no duplican trabajo.
 
-Hasta entonces, el Creador debe seguir presentándose como **autoría/borrador**, no como motor operativo completo.
+Hasta entonces, las definiciones visibles en **Mis Flujos** siguen siendo **borradores de autoría**, no procesos operativos activos.

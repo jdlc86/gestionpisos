@@ -16,22 +16,27 @@ La arquitectura objetivo sigue siendo:
 
 ## Estado de implementación — 2026-09-18
 
-Ya están completados e integrados:
+Ya están completados o implementados en el incremento actual:
 
 - el mosaico principal **🔄 Flujos de Trabajo**;
 - el hub con **➕ Creador de Flujos**, **🧩 Mis Flujos**, **📷 Banco Fotográfico**, **📋 Tareas** y **🕘 Historial**;
 - la conexión real del **Banco Fotográfico** con la infraestructura de patrones existente;
 - el contrato `WORKFLOW_ENGINE_CONTRACT.md`;
-- la primera UI del **Creador de Flujos** como asistente de siete pasos;
-- el borrador local explícito en `sessionStorage`, sin publicación ni persistencia server-side;
-- smoke tests de navegación, PWA y protección con `auth-guard.js`.
+- la UI del **Creador de Flujos** como asistente de siete pasos;
+- persistencia segura de borradores mediante `workflow_definitions_v2` y RPC server-side;
+- tabla `workflow_definition_versions_v2` preparada para futuras versiones publicadas, sin escritura cliente;
+- **Mis Flujos** como inventario de borradores visibles según RLS;
+- control de concurrencia optimista mediante `revision` y rechazo de ediciones obsoletas;
+- auditoría de creación/edición de borradores;
+- smoke tests, pruebas RLS positivas/negativas y regresión PostgreSQL aislada.
 
-Cambios integrados:
+Cambios integrados previamente:
 
 - PR #195 → hub de Flujos de Trabajo;
-- PR #196 → contrato del motor + Creador de Flujos local.
+- PR #196 → contrato del motor + Creador de Flujos local;
+- PR #197 → actualización documental del estado previo a persistencia.
 
-Todavía **no existe un motor persistente genérico**, no se publican definiciones y no se crean ejecuciones genéricas desde el Creador.
+El incremento actual añade persistencia de definiciones, pero **todavía no publica versiones ni crea ejecuciones/tareas genéricas**.
 
 ## 1. Inventario funcional existente
 
@@ -153,7 +158,29 @@ Decisión:
 - el motor no debe crear un segundo sistema de notificaciones;
 - la decisión de notificar forma parte de la definición/cierre del flujo, pero la entrega se delega a la infraestructura de notificación existente.
 
-## 2. Edge Functions actuales reutilizables
+### 1.7 Definiciones de Flujos de Trabajo
+
+Tablas introducidas de forma aditiva:
+
+- `workflow_definitions_v2`;
+- `workflow_definition_versions_v2`.
+
+Responsabilidad actual:
+
+- `workflow_definitions_v2` conserva identidad estable, metadatos resumidos, estado `draft`, especificación saneada y `revision` de concurrencia;
+- `workflow_definition_versions_v2` reserva la representación inmutable de versiones publicadas, pero en esta fase no existe RPC de publicación ni permiso de escritura cliente.
+
+Seguridad:
+
+- RLS obligatoria;
+- lectura limitada a ROOT y ADMIN activos de la organización correspondiente;
+- el cliente no tiene INSERT/UPDATE/DELETE directo;
+- la escritura del borrador pasa por `save_workflow_definition_draft_v1`;
+- organización y rol del autor se resuelven server-side desde `auth.uid()` + `user_roles`;
+- crear/editar deja eventos de auditoría;
+- `revision` evita sobrescribir silenciosamente un borrador modificado en otra sesión.
+
+## 2. Edge Functions y servicios actuales reutilizables
 
 ### `manage-photo-pattern`
 
@@ -187,6 +214,12 @@ Destino transitorio: **adaptador de Limpieza**. No debe evolucionar hasta conver
 
 Cuando exista el motor mínimo deberá aparecer un servicio genérico equivalente a “obtener mi tarea/ejecución y sus pasos”, y este endpoint podrá mantenerse como compatibilidad hasta retirar el flujo antiguo.
 
+### `save_workflow_definition_draft_v1`
+
+Responsabilidad actual: crear o actualizar un borrador de flujo mediante RPC `SECURITY DEFINER`, validando rol activo, organización, estructura de la receta y revisión esperada.
+
+Destino: servicio de autoría de definiciones. **No publica** y no debe evolucionar para crear ejecuciones de forma implícita.
+
 ## 3. Pantallas actuales y destino
 
 ### `workflows.html`
@@ -197,15 +230,25 @@ Es el hub transversal y expone los cinco módulos acordados. No debe contener l�
 
 ### `workflow-builder.html`
 
-Estado: **operativo como autoría local**.
+Estado: **operativo con borrador persistente**.
 
 - asistente de siete pasos;
-- borrador en `sessionStorage`;
-- no publica ni persiste definiciones;
-- no crea tareas/ejecuciones/notificaciones;
+- `sessionStorage` conserva cambios locales mientras se edita;
+- “Guardar borrador” persiste la definición mediante RPC server-side;
+- un borrador guardado puede reabrirse por `id` y continuar editándose;
+- el guardado no publica ni crea tareas/ejecuciones/notificaciones;
 - enlaza con Banco Fotográfico como recurso reutilizable.
 
-Destino: convertirse progresivamente en cliente del servicio seguro de definiciones/versiones cuando exista el motor persistente.
+Destino: incorporar publicación controlada y selección concreta de ámbito/recursos en el siguiente incremento.
+
+### `workflow-definitions.html`
+
+Estado: **operativo para Mis Flujos**.
+
+- lista definiciones visibles por RLS;
+- muestra estado, tipo, ámbito, activación, asignación, revisión y fecha de cambio;
+- permite reabrir borradores para edición;
+- no ofrece publicar, ejecutar, archivar ni borrar todavía.
 
 ### `photo-patterns.html`
 
@@ -255,21 +298,24 @@ Estado actual:
 
 ## 4. Qué falta realmente
 
-El contrato del motor ya existe, pero todavía no hay persistencia genérica para:
+Ya existe persistencia genérica para **identidad estable de definición y borrador editable**. También existe la tabla reservada para versiones publicadas, todavía sin endpoint de publicación.
 
-- identidad estable de definición;
-- versiones publicadas inmutables;
-- disparadores genéricos;
-- reglas de asignación genéricas;
-- pasos ordenados persistentes;
+Falta implementar:
+
+- publicación inmutable de una versión;
+- selección y validación concreta de ámbito;
+- referencias persistentes/versionadas a recursos;
+- disparadores genéricos ejecutables;
+- reglas de asignación resueltas server-side;
 - ejecuciones inmutables;
 - congelación explícita de recursos/versiones;
-- idempotencia genérica de disparadores;
+- idempotencia de ejecución;
+- enlace/adopción de tareas;
 - historial transversal que una definición, ejecución, tarea, evidencia y cierre.
 
 Tampoco existe todavía un servicio server-side que reciba una versión publicada y cree de forma idempotente una ejecución con sus tareas.
 
-Ese es el **siguiente incremento del motor mínimo**. El Creador actual valida la UX de autoría, pero no sustituye esa capa.
+Ese es el **siguiente incremento del motor mínimo**.
 
 ## 5. Mapa objetivo de reutilización
 
@@ -285,12 +331,12 @@ Ese es el **siguiente incremento del motor mínimo**. El Creador actual valida l
 | Revisión fotográfica | `review-photo-verification` | Reutilizar para evidencia fotográfica |
 | Notificaciones | `notifications_v2` | Reutilizar |
 | Auditoría sensible | `audit_log_v2` | Reutilizar |
-| Definición de flujo | No existe persistencia genérica | Implementar aditivamente según contrato |
-| Versión de flujo | No existe persistencia genérica | Implementar inmutable al publicar |
-| Disparador genérico | No existe | Implementar con idempotencia |
-| Regla de asignación genérica | No existe | Resolver server-side |
+| Definición de flujo | `workflow_definitions_v2` | Implementado para borradores persistentes |
+| Versión de flujo | `workflow_definition_versions_v2` | Tabla preparada; publicación pendiente |
+| Disparador genérico | No existe ejecución | Implementar con idempotencia |
+| Regla de asignación genérica | No existe ejecución | Resolver server-side |
 | Ejecución genérica | No existe | Implementar con snapshot/versiones |
-| Enlace genérico flujo→recurso | No existe | Implementar sin copiar recursos |
+| Enlace genérico flujo→recurso | No existe persistente | Implementar sin copiar recursos |
 | Eventos transversales de ejecución | No existe como unidad completa | Diseñar sin duplicar históricos actuales |
 
 ## 6. Compatibilidad y transición
@@ -299,6 +345,7 @@ Durante la migración pueden convivir temporalmente:
 
 - tareas antiguas de Limpieza;
 - tareas genéricas de inquilino;
+- borradores genéricos del nuevo motor;
 - nuevas ejecuciones del motor cuando se incorporen.
 
 La coexistencia debe ser explícita y limitada en el tiempo. Nunca se resolverá ocultando duplicidades en la UI.
@@ -307,12 +354,12 @@ Reglas:
 
 1. ningún histórico existente se reescribe;
 2. ningún patrón se duplica para “adaptarlo” a un flujo;
-3. una nueva definición solo afecta nuevas ejecuciones;
+3. una nueva definición solo afecta nuevas ejecuciones futuras;
 4. los IDs legacy permanecen trazables desde cualquier adaptador;
 5. no se introduce una segunda cámara ni un segundo bucket;
 6. no se introduce otro sistema de notificaciones;
 7. no se elimina `cleaning.html` hasta disponer de sustituto funcional probado;
-8. el primer DDL de workflow debe seguir `WORKFLOW_ENGINE_CONTRACT.md`, ser aditivo y disponer de pruebas RLS positivas y negativas.
+8. todo DDL de workflow debe seguir `WORKFLOW_ENGINE_CONTRACT.md`, ser aditivo y disponer de pruebas RLS positivas y negativas.
 
 ## 7. Incrementos de producto completados
 
@@ -338,18 +385,30 @@ Completado en PR #196:
 - integración PWA y protección con `auth-guard.js`;
 - sin DDL ni escritura en Supabase.
 
+### Incremento C — Persistencia de borradores + Mis Flujos
+
+Implementado en esta fase:
+
+- `workflow_definitions_v2` como identidad estable y borrador persistente;
+- `workflow_definition_versions_v2` preparada para publicación futura;
+- RLS de lectura por rol/organización;
+- ausencia deliberada de escritura directa cliente;
+- RPC `save_workflow_definition_draft_v1` para crear/editar de forma auditada;
+- revisión optimista contra ediciones concurrentes;
+- Creador conectado al servidor sin cambiar la semántica de “borrador”;
+- **Mis Flujos** conectado a las definiciones visibles por RLS;
+- pruebas negativas para TENANT, acceso cruzado y escritura directa.
+
 ## 8. Próximo incremento técnico
 
-El siguiente trabajo debe ser **persistencia mínima + publicación + ejecución manual idempotente**, no otra capa de UI aislada.
+El siguiente trabajo debe ser **publicación inmutable + ejecución manual idempotente**, no otra capa de UI aislada.
 
 Debe cubrir:
 
-- identidad estable de definición;
-- versión publicada inmutable;
-- estados de definición;
-- persistencia de ámbito, disparador, asignación y pasos;
-- enlace versionado a recursos;
-- servicio backend de crear/editar/publicar;
+- seleccionar/validar el ámbito concreto antes de publicar;
+- congelar una versión en `workflow_definition_versions_v2`;
+- impedir mutación de una versión ya publicada;
+- crear la entidad mínima de ejecución;
 - activación manual inicial;
 - `idempotency_key` de ejecución;
 - resolución server-side de asignaciones;
@@ -361,4 +420,4 @@ Debe cubrir:
 
 La recurrencia automática se incorpora después de demostrar que la ejecución manual es segura, idempotente y auditable.
 
-La regla histórica del primer mapeo se mantiene como salvaguarda: **no se crean tablas nuevas de workflow** de forma improvisada o paralela; cualquier DDL nuevo debe derivarse explícitamente del contrato del motor, justificar su necesidad frente a las tablas existentes y venir acompañado de RLS y pruebas de regresión.
+La regla histórica del primer mapeo se mantiene como salvaguarda: **no se crean tablas nuevas de workflow de forma improvisada o paralela**; cualquier DDL nuevo debe derivarse explícitamente del contrato del motor, justificar su necesidad frente a las tablas existentes y venir acompañado de RLS y pruebas de regresión.

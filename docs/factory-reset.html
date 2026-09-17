@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <link rel="stylesheet" href="./app.css">
+  <link rel="stylesheet" href="./auth.css?v=2026091705">
+  <title>GestionPisos · Restablecimiento de pruebas</title>
+  <style>
+    .reset-card{width:min(720px,100%)}
+    .reset-warning{padding:14px;border-radius:14px;background:#fff6ed;color:#9a3412;font-size:13px;line-height:1.5}
+    .reset-summary{display:grid;gap:8px;margin:16px 0;padding:14px;border:1px solid #e4e6ea;border-radius:14px;background:#fafafa;font-size:13px}
+    .reset-confirm{display:grid;gap:10px;margin-top:16px}
+    .reset-danger{background:#b42318;color:#fff;border:0;border-radius:12px;padding:12px 14px;font-weight:800}
+    .reset-danger:disabled{opacity:.45}
+    .reset-secondary{border:1px solid #d7d9dd;border-radius:12px;padding:11px 14px;background:#fff;color:#17181a;font-weight:700}
+    @media(prefers-color-scheme:dark){.reset-warning{background:#3a2417;color:#fdba74}.reset-summary{background:#111214;border-color:#31343a}.reset-secondary{background:#181a1d;color:#f4f4f5;border-color:#31343a}}
+  </style>
+</head>
+<body>
+  <main class="auth-shell">
+    <section class="auth-card reset-card">
+      <p class="eyebrow">ALLAISO · ROOT</p>
+      <h1>Restablecimiento de pruebas</h1>
+      <p class="auth-lead">Devuelve GestionPisos al baseline técnico conservando únicamente ROOT, el operador de emergencia, la organización y las plantillas estructurales.</p>
+
+      <div class="reset-warning">
+        Esta operación elimina datos operativos, usuarios no protegidos, históricos de prueba, auditoría anterior y archivos de Storage. No debe utilizarse cuando existan usuarios o datos reales.
+      </div>
+
+      <button id="previewResetBtn" class="primary auth-primary" type="button">Preparar restablecimiento</button>
+
+      <section id="previewPanel" hidden>
+        <div id="resetSummary" class="reset-summary"></div>
+        <div class="reset-confirm">
+          <label><input id="testDataConfirm" type="checkbox"> Confirmo que este entorno contiene únicamente datos de prueba.</label>
+          <label>Escribe <strong>RESTABLECER</strong>
+            <input id="resetPhrase" type="text" autocomplete="off" spellcheck="false">
+          </label>
+          <button id="executeResetBtn" class="reset-danger" type="button" disabled>Restablecer entorno de pruebas</button>
+        </div>
+      </section>
+
+      <button id="backBtn" class="reset-secondary" type="button">Volver a Gestión de Permisos</button>
+      <p id="resetMessage" class="auth-message" role="status" aria-live="polite"></p>
+    </section>
+  </main>
+  <script type="module" src="./factory-reset.js?v=2026091701"></script>
+</body>
+</html>

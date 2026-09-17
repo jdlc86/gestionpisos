@@ -3,13 +3,19 @@ set -euo pipefail
 
 test -s docs/WORKFLOW_ARCHITECTURE.md
 test -s docs/WORKFLOW_IMPLEMENTATION_MAP.md
+test -s docs/WORKFLOW_ENGINE_CONTRACT.md
 test -s docs/workflows.html
+test -s docs/workflow-builder.html
+test -s docs/workflow-builder.css
+test -s docs/workflow-builder.js
+node --check docs/workflow-builder.js
 
 grep -Fq 'href="./workflows.html"' docs/index.html
 grep -Fq '>🔄</span>Flujos de Trabajo' docs/index.html
 
 grep -Fq 'data-workflow-module="builder"' docs/workflows.html
 grep -Fq '>➕</span>Creador de Flujos' docs/workflows.html
+grep -Fq 'href="./workflow-builder.html"' docs/workflows.html
 grep -Fq 'data-workflow-module="definitions"' docs/workflows.html
 grep -Fq '>🧩</span>Mis Flujos' docs/workflows.html
 grep -Fq 'data-workflow-module="photo-bank"' docs/workflows.html
@@ -21,8 +27,24 @@ grep -Fq 'data-workflow-module="history"' docs/workflows.html
 grep -Fq '>🕘</span>Historial' docs/workflows.html
 
 grep -Fq './auth-guard.js' docs/workflows.html
+grep -Fq './auth-guard.js' docs/workflow-builder.html
 grep -Fq 'data-theme-toggle' docs/workflows.html
+grep -Fq 'data-theme-toggle' docs/workflow-builder.html
 grep -Fq 'class="ui-nav-icon"' docs/workflows.html
+
+grep -Fq 'Borrador local' docs/workflow-builder.html
+grep -Fq 'Paso 1 de 7' docs/workflow-builder.html
+grep -Fq 'Paso 7 de 7' docs/workflow-builder.html
+grep -Fq 'sessionStorage.setItem(DRAFT_KEY' docs/workflow-builder.js
+grep -Fq 'Aún no publicado.' docs/workflow-builder.html
+grep -Fq 'No crea tareas, no programa ejecuciones y no modifica la base de datos.' docs/workflow-builder.html
+grep -Fq 'photo-patterns.html?from=workflow-builder' docs/workflow-builder.html
+
+grep -Fq 'Definición → Versión publicada → Disparador → Ejecución' docs/WORKFLOW_ENGINE_CONTRACT.md
+grep -Fq 'idempotency_key' docs/WORKFLOW_ENGINE_CONTRACT.md
+grep -Fq 'tenant_tasks_v2' docs/WORKFLOW_ENGINE_CONTRACT.md
+grep -Fq 'photo_patterns_v2' docs/WORKFLOW_ENGINE_CONTRACT.md
+grep -Fq 'RLS obligatoria' docs/WORKFLOW_ENGINE_CONTRACT.md
 
 # Transitional safety: the working legacy cleaning route remains reachable until
 # the generic task runner has been implemented and validated end to end.

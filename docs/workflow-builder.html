@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#ffffff">
   <meta name="description" content="Creador de Flujos de GestionPisos">
   <link rel="stylesheet" href="./app.css?v=2026091703">
-  <link rel="stylesheet" href="./workflow-builder.css?v=2026091801">
+  <link rel="stylesheet" href="./workflow-builder.css?v=2026091802">
   <title>Allaiso · Creador de Flujos</title>
 </head>
 <body>
@@ -21,9 +21,9 @@
     </header>
 
     <section class="hero">
-      <span class="badge">Borrador local</span>
+      <span class="badge">Borrador persistente</span>
       <h2>Construye la receta paso a paso.</h2>
-      <p>Esta fase permite diseñar y revisar un flujo sin guardar todavía datos de negocio en el servidor. La publicación se activará únicamente cuando el motor backend y sus permisos estén listos.</p>
+      <p>Puedes guardar la definición como borrador en GestionPisos y continuar después desde Mis Flujos. Guardar no publica, no programa ejecuciones y no crea tareas.</p>
     </section>
 
     <section class="builder-layout">
@@ -62,7 +62,7 @@
             <option value="room">Una habitación</option>
             <option value="occupancy">Una ocupación / inquilino</option>
           </select></label>
-          <div class="builder-note">La selección de la entidad concreta se conectará al catálogo real cuando activemos el guardado server-side. No se utilizarán nombres visibles como credencial.</div>
+          <div class="builder-note">En esta fase se guarda el tipo de ámbito. La entidad concreta se seleccionará y validará server-side antes de publicar; un nombre visible nunca será una credencial.</div>
         </section>
 
         <section class="builder-panel" data-step="2">
@@ -125,22 +125,25 @@
           <p class="eyebrow">Paso 7 de 7</p>
           <h2>Revisión del borrador</h2>
           <div id="workflowSummary" class="builder-summary"></div>
-          <div class="builder-warning"><strong>Aún no publicado.</strong> Este borrador solo vive en este navegador. No crea tareas, no programa ejecuciones y no modifica la base de datos.</div>
+          <div class="builder-warning"><strong>Guardado no significa publicado.</strong> El borrador puede persistirse en el servidor, pero todavía no crea tareas, no programa ejecuciones y no activa reglas operativas.</div>
         </section>
+
+        <div id="builderServerStatus" class="builder-note builder-server-status" role="status" aria-live="polite">Comprobando estado del borrador…</div>
 
         <div class="builder-actions">
           <button id="builderBack" type="button" class="secondary" disabled>Atrás</button>
-          <button id="builderClear" type="button" class="secondary">Borrar borrador</button>
+          <button id="builderClear" type="button" class="secondary">Descartar cambios locales</button>
+          <button id="builderSave" type="button" class="secondary">Guardar borrador</button>
           <button id="builderNext" type="button" class="primary">Continuar</button>
         </div>
       </form>
     </section>
 
-    <section class="status"><span class="dot"></span><span>Fase de autoría local. El siguiente incremento conectará borradores versionados al motor server-side con RLS y publicación controlada.</span></section>
+    <section class="status"><span class="dot"></span><span>Persistencia de borradores activa. La publicación y la creación de ejecuciones siguen bloqueadas hasta el siguiente incremento del motor.</span></section>
   </main>
 
   <script src="./app.js?v=202609152" defer></script>
-  <script type="module" src="./workflow-builder.js?v=2026091801"></script>
+  <script type="module" src="./workflow-builder.js?v=2026091802"></script>
   <script type="module" src="./auth-guard.js"></script>
 </body>
 </html>

@@ -1,3 +1,5 @@
+import { supabase } from "./supabase-client.js";
+
 const DRAFT_KEY="gestionpisos.workflow-builder.draft.v1";
 const form=document.getElementById("workflowBuilderForm");
 const panels=[...document.querySelectorAll(".builder-panel")];
@@ -5,10 +7,15 @@ const stepButtons=[...document.querySelectorAll(".builder-step")];
 const backButton=document.getElementById("builderBack");
 const nextButton=document.getElementById("builderNext");
 const clearButton=document.getElementById("builderClear");
+const saveButton=document.getElementById("builderSave");
 const triggerType=document.getElementById("triggerType");
 const recurrenceRow=document.getElementById("recurrenceRow");
 const summary=document.getElementById("workflowSummary");
+const serverStatus=document.getElementById("builderServerStatus");
 let currentStep=0;
+let currentDefinitionId=new URLSearchParams(window.location.search).get("id")||null;
+let currentRevision=null;
+let loadingServerDraft=false;
 
 const labels={
   flowType:{cleaning:"Limpieza",inspection:"Inspección",maintenance:"Mantenimiento",checkin:"Check-in",checkout:"Check-out",custom:"Personalizado"},
@@ -40,14 +47,19 @@ function draft(){
   };
 }
 
-function saveDraft(){
+function serverDraft(){
+  const data=draft();
+  delete data.currentStep;
+  return data;
+}
+
+function saveLocalDraft(){
+  if(loadingServerDraft)return;
   try{sessionStorage.setItem(DRAFT_KEY,JSON.stringify(draft()))}catch{}
 }
 
 function setChecked(name,next){const node=field(name);if(node)node.checked=Boolean(next)}
-function restoreDraft(){
-  let saved=null;
-  try{saved=JSON.parse(sessionStorage.getItem(DRAFT_KEY)||"null")}catch{}
+function applyDraft(saved,{restoreStep=true}={}){
   if(!saved||typeof saved!=="object")return;
   for(const name of ["flowName","flowType","flowDescription","scopeType","triggerType","recurrence","assignmentType","closeType"]){
     const node=field(name);if(node&&typeof saved[name]==="string")node.value=saved[name];
@@ -58,7 +70,62 @@ function restoreDraft(){
   setChecked("stepDocument",saved.steps?.document);
   setChecked("notifyOnCreate",saved.notifications?.onCreate);
   setChecked("notifyOnClose",saved.notifications?.onClose);
-  if(Number.isInteger(saved.currentStep))currentStep=Math.max(0,Math.min(panels.length-1,saved.currentStep));
+  if(restoreStep&&Number.isInteger(saved.currentStep))currentStep=Math.max(0,Math.min(panels.length-1,saved.currentStep));
+}
+
+function restoreLocalDraft(){
+  let saved=null;
+  try{saved=JSON.parse(sessionStorage.getItem(DRAFT_KEY)||"null")}catch{}
+  applyDraft(saved);
+}
+
+function setServerStatus(message,tone="neutral"){
+  if(!serverStatus)return;
+  serverStatus.textContent=message;
+  serverStatus.dataset.tone=tone;
+}
+
+function errorMessage(error){
+  const text=String(error?.message||error?.details||"");
+  if(text.includes("workflow_draft_conflict"))return "Este borrador cambió en otra sesión. Recarga antes de volver a guardar para no sobrescribir cambios.";
+  if(text.includes("workflow_author_role_required"))return "Solo ROOT o ADMIN pueden guardar definiciones de flujo.";
+  if(text.includes("workflow_definition_not_editable"))return "Este flujo ya no es un borrador editable.";
+  if(text.includes("workflow_definition_not_found"))return "No se encontró este borrador o ya no pertenece a tu ámbito.";
+  if(text.includes("not_authenticated"))return "La sesión ya no es válida. Vuelve a iniciar sesión.";
+  if(text.includes("organization_selection_required"))return "No se puede determinar de forma inequívoca la organización del borrador.";
+  return "No se pudo guardar el borrador en el servidor. No se ha publicado ni creado ninguna tarea.";
+}
+
+async function loadServerDraft(){
+  if(!currentDefinitionId)return;
+  loadingServerDraft=true;
+  setServerStatus("Cargando borrador guardado…");
+  const {data,error}=await supabase
+    .from("workflow_definitions_v2")
+    .select("id,status,revision,draft_spec,updated_at")
+    .eq("id",currentDefinitionId)
+    .maybeSingle();
+
+  if(error||!data){
+    loadingServerDraft=false;
+    setServerStatus(error?errorMessage(error):"No se encontró este borrador o no tienes permiso para verlo.","error");
+    saveButton.disabled=true;
+    return;
+  }
+  if(data.status!=="draft"){
+    loadingServerDraft=false;
+    setServerStatus("Este flujo ya no está en estado borrador y no puede editarse desde esta pantalla.","error");
+    saveButton.disabled=true;
+    return;
+  }
+
+  currentRevision=Number(data.revision);
+  applyDraft(data.draft_spec,{restoreStep:false});
+  currentStep=0;
+  loadingServerDraft=false;
+  updateTriggerFields();
+  showStep(0,false);
+  setServerStatus(`Borrador guardado · revisión ${currentRevision}. Guardar cambios no publica el flujo.`,"success");
 }
 
 function updateTriggerFields(){recurrenceRow.hidden=triggerType.value!=="recurring"}
@@ -70,6 +137,19 @@ function validateCurrentStep(){
     name.setCustomValidity("Escribe un nombre para identificar el flujo.");
     name.reportValidity();
     name.setCustomValidity("");
+    return false;
+  }
+  return true;
+}
+
+function validateBeforeSave(){
+  const name=field("flowName");
+  if(!name||name.value.trim().length<3){
+    currentStep=0;
+    showStep(0,true);
+    name?.setCustomValidity("Escribe un nombre de al menos 3 caracteres.");
+    name?.reportValidity();
+    name?.setCustomValidity("");
     return false;
   }
   return true;
@@ -117,27 +197,79 @@ function showStep(next,shouldScroll=false){
   if(currentStep===panels.length-1){
     nextButton.textContent="Borrador revisado";
     nextButton.disabled=true;
+    nextButton.classList.remove("primary");
+    nextButton.classList.add("secondary");
+    saveButton.classList.remove("secondary");
+    saveButton.classList.add("primary");
     renderSummary();
   }else{
     nextButton.textContent="Continuar";
     nextButton.disabled=false;
+    nextButton.classList.remove("secondary");
+    nextButton.classList.add("primary");
+    saveButton.classList.remove("primary");
+    saveButton.classList.add("secondary");
   }
-  saveDraft();
+  saveLocalDraft();
   if(shouldScroll)document.querySelector(".builder-card")?.scrollIntoView({block:"start",behavior:"smooth"});
 }
 
-form.addEventListener("input",saveDraft);
-form.addEventListener("change",()=>{updateTriggerFields();saveDraft();if(currentStep===panels.length-1)renderSummary()});
+async function saveServerDraft(){
+  if(!validateBeforeSave())return;
+  const originalText=saveButton.textContent;
+  saveButton.disabled=true;
+  saveButton.textContent="Guardando…";
+  setServerStatus("Guardando borrador en GestionPisos…");
+
+  const args={p_spec:serverDraft()};
+  if(currentDefinitionId)args.p_definition_id=currentDefinitionId;
+  if(currentDefinitionId&&Number.isFinite(currentRevision))args.p_expected_revision=currentRevision;
+
+  const {data,error}=await supabase.rpc("save_workflow_definition_draft_v1",args);
+  if(error||!Array.isArray(data)||!data[0]){
+    setServerStatus(errorMessage(error),"error");
+    saveButton.disabled=false;
+    saveButton.textContent=originalText;
+    return;
+  }
+
+  currentDefinitionId=data[0].definition_id;
+  currentRevision=Number(data[0].revision);
+  const url=new URL(window.location.href);
+  url.searchParams.set("id",currentDefinitionId);
+  window.history.replaceState({},"",url);
+  saveLocalDraft();
+  setServerStatus(`Borrador guardado · revisión ${currentRevision}. Todavía no está publicado y no crea tareas.`,"success");
+  saveButton.disabled=false;
+  saveButton.textContent="Guardar borrador";
+}
+
+form.addEventListener("input",saveLocalDraft);
+form.addEventListener("change",()=>{updateTriggerFields();saveLocalDraft();if(currentStep===panels.length-1)renderSummary()});
 triggerType.addEventListener("change",updateTriggerFields);
 backButton.addEventListener("click",()=>showStep(currentStep-1,true));
 nextButton.addEventListener("click",()=>{if(validateCurrentStep())showStep(currentStep+1,true)});
 stepButtons.forEach((button,index)=>button.addEventListener("click",()=>{if(index<=currentStep||validateCurrentStep())showStep(index,true)}));
+saveButton.addEventListener("click",saveServerDraft);
 clearButton.addEventListener("click",()=>{
-  if(!window.confirm("¿Borrar el borrador local de este flujo?"))return;
+  const message=currentDefinitionId
+    ?"¿Borrar los cambios locales? El borrador guardado en el servidor no se eliminará."
+    :"¿Borrar el borrador local de este flujo?";
+  if(!window.confirm(message))return;
   try{sessionStorage.removeItem(DRAFT_KEY)}catch{}
   form.reset();currentStep=0;updateTriggerFields();showStep(0,true);
+  setServerStatus(currentDefinitionId
+    ?`Cambios locales descartados. El borrador guardado (revisión ${currentRevision}) sigue existiendo.`
+    :"Borrador local eliminado. Aún no existe ningún borrador guardado en el servidor.");
 });
 
-restoreDraft();
-updateTriggerFields();
-showStep(currentStep);
+(async()=>{
+  if(currentDefinitionId){
+    await loadServerDraft();
+  }else{
+    restoreLocalDraft();
+    updateTriggerFields();
+    showStep(currentStep);
+    setServerStatus("Aún no guardado en el servidor. Puedes seguir editando localmente o guardar el borrador cuando quieras.");
+  }
+})();

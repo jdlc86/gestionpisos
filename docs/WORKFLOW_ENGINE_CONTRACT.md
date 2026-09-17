@@ -255,7 +255,17 @@ El Creador es una interfaz de autoría, no el motor. Debe guiar por:
 6. cierre/revisión;
 7. revisión final y publicación.
 
-Durante la fase previa al backend puede existir un **borrador local explícitamente etiquetado** para validar UX. No puede presentarse como guardado en servidor ni como flujo publicado.
+El Creador puede persistir **borradores parciales**. Guardar exige únicamente una identidad mínima suficiente para recuperar el borrador; no convierte opciones por defecto del formulario en decisiones de negocio.
+
+Reglas de autoría:
+
+- ninguna selección de tipo, ámbito, activación, asignación, pasos o cierre se presupone;
+- un apartado solo se considera configurado cuando existe una decisión explícita del usuario;
+- el servidor conserva un indicador derivado de completitud de autoría; el cliente no puede autoatribuirse ese estado;
+- un borrador incompleto puede guardarse y retomarse;
+- un borrador creado antes del contrato de decisiones explícitas se trata como incompleto hasta ser revisado;
+- **configuración completa no equivale todavía a publicable**: publicar además debe validar ámbito real, recursos y cualquier condición server-side del contrato;
+- ningún borrador, completo o incompleto, puede presentarse como flujo publicado ni ejecutable.
 
 ## 18. Condiciones antes del primer DDL
 

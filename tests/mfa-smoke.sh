@@ -55,10 +55,30 @@ grep -Fq 'lost_all_available_authenticators' docs/mfa-challenge.js
 ! grep -Fq 'recover-privileged-mfa' docs/mfa-challenge.js
 
 grep -Fq 'privilegedMfaRoute(supabase, session, { requireEnrollment: true })' docs/auth-guard.js
-grep -Fq 'Seguridad MFA' docs/auth-guard.js
+grep -Fq '🛡️ MFA' docs/auth-guard.js
+! grep -Fq 'Seguridad MFA' docs/auth-guard.js
+grep -Fq 'button.setAttribute("aria-label", "Configurar MFA")' docs/auth-guard.js
 grep -Fq 'authFlowUrl(mfa.route' docs/auth-guard.js
 grep -Fq 'privilegedMfaRoute(supabase, session, { requireEnrollment: true })' docs/login.js
 grep -Fq 'mfa_check_timeout' docs/login.js
+
+# The privileged MFA header action is centralized in auth-guard.js. Every protected
+# screen that exposes the application shell must consume that same implementation.
+for protected_screen in \
+  docs/index.html \
+  docs/portfolio.html \
+  docs/operations.html \
+  docs/cleaning.html \
+  docs/incidents.html \
+  docs/permissions.html \
+  docs/configuration-resources.html \
+  docs/photo-verifications.html \
+  docs/photo-patterns.html \
+  docs/photo-pattern-editor.html \
+  docs/photo-camera.html
+do
+  grep -Fq './auth-guard.js' "$protected_screen"
+done
 
 grep -Fq 'aal2_required' supabase/functions/rename-mfa-factor/index.ts
 grep -Fq 'privileged_role_required' supabase/functions/rename-mfa-factor/index.ts

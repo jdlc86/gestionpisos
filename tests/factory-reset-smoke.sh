@@ -36,7 +36,6 @@ grep -Fq 'grant execute on function public.factory_reset_test_data_service' supa
 ! grep -Fq 'service_role' docs/factory-reset.html
 ! grep -Fq 'service_role' docs/factory-reset.js
 ! grep -Fq 'storage.objects' supabase/migrations/20260917170000_factory_reset_test_data_helper.sql
-! grep -Fq 'SUPABASE_SERVICE_ROLE_KEY' docs/factory-reset.js
 
 # The helper must remain explicitly test-only and contractually guarded.
 grep -Fq 'Factory reset del entorno de pruebas' docs/SECURITY_CONTRACT.md

@@ -68,6 +68,7 @@ for protected_screen in \
   docs/index.html \
   docs/portfolio.html \
   docs/operations.html \
+  docs/workflows.html \
   docs/cleaning.html \
   docs/incidents.html \
   docs/permissions.html \

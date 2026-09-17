@@ -10,7 +10,11 @@ ROOT es un rol protegido. RLS es obligatoria en datos sensibles. La autorizació
 - Antes de retirar los factores, el proceso debe revocar las sesiones activas. La contraseña anterior debe quedar invalidada y el usuario debe completar recuperación de contraseña antes de volver a operar.
 - Tras retirar los factores, ROOT/ADMIN queda obligado a enrolar MFA de nuevo antes del acceso operativo.
 - Solicitud, ejecución, resultado, operador y evidencia resumida de verificación deben quedar auditados. Los estados parciales no se ocultan ni se corrigen borrando histórico.
-- El procedimiento operativo completo está en `docs/MFA_RECOVERY_RUNBOOK.md`.
+- ROOT puede designar, desactivar y limitar operadores de emergencia desde GestionPisos únicamente con una sesión `aal2`; la autorización se ejecuta en backend y nunca mediante acceso directo del navegador a `platform_operators`.
+- Una identidad de operador de emergencia debe ser independiente de la cuenta ROOT a recuperar y no debe reutilizar un rol operativo ROOT/ADMIN/EMPLOYEE/OWNER/TENANT.
+- La consola técnica de operador no puede crear operadores, concederse `can_recover_root` ni elevar sus propios privilegios. Solo consume autorizaciones previamente otorgadas por ROOT.
+- Si no queda ningún operador activo con `can_recover_root=true`, la aplicación debe advertir a ROOT del riesgo de bloqueo, sin ocultar ni falsificar un mecanismo de recuperación inexistente.
+- El procedimiento operativo completo está en `docs/MFA_RECOVERY_RUNBOOK.md` y la separación de la consola en `docs/PLATFORM_OPERATOR_CONSOLE.md`.
 
 ## Privacidad del inquilino
 
@@ -18,4 +22,3 @@ ROOT es un rol protegido. RLS es obligatoria en datos sensibles. La autorizació
 - **Baja · pendiente de eliminación** revoca acceso e inicia el proceso de salida, pero no garantiza borrado inmediato.
 - La purga definitiva debe inventariar referencias, respetar retenciones aplicables, eliminar datos eliminables en Storage/BD/Auth y verificar el resultado.
 - Nunca comunicar «no conservamos ningún dato» sin verificación posterior.
-- Los documentos de identidad viven exclusivamente en Storage privado y solo se visualizan mediante acceso autorizado temporal.

@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="es" data-auth-pending="1">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#ffffff"><link rel="stylesheet" href="./app.css?v=202609154"><link rel="stylesheet" href="./permissions.css?v=202609154"><link rel="stylesheet" href="./permissions-responsibility-flow.css?v=2026091601"><title>Allaiso · Gestión de Permisos</title></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#ffffff"><link rel="stylesheet" href="./app.css?v=202609154"><link rel="stylesheet" href="./permissions.css?v=202609171"><link rel="stylesheet" href="./permissions-responsibility-flow.css?v=2026091601"><title>Allaiso · Gestión de Permisos</title></head>
 <body><main class="shell">
 <header class="topbar"><div><p class="eyebrow">ALLAISO</p><h1>Gestión de Permisos</h1></div><div class="global-actions"><button class="global-icon" data-theme-toggle aria-label="Cambiar tema"><span data-theme-icon>☾</span></button><a class="global-icon" href="./" aria-label="Inicio" title="Inicio">⌂</a></div></header>
 <section class="hero"><span class="badge">Seguridad</span><h2>Roles, responsabilidad y control administrativo</h2><p>Consulta el estado efectivo de acceso. Las operaciones críticas se validan siempre en Supabase.</p></section>
@@ -11,6 +11,7 @@
 <section class="permission-panel"><p class="eyebrow">PERSONAS</p><h3>Empleados</h3><div id="employeesList" class="permission-list"></div></section>
 <section class="permission-panel wide"><p class="eyebrow">RESPONSABILIDAD</p><h3>Viviendas asignadas</h3><div id="propertiesList" class="permission-list"></div></section>
 <section class="permission-panel wide"><p class="eyebrow">CAPACIDADES</p><h3>Control administrativo</h3><div id="capabilitiesList" class="permission-list"></div><div id="writeControlActions" class="permission-actions"></div></section>
+<section id="emergencyOperatorsPanel" class="permission-panel wide emergency-operators-panel" hidden><p class="eyebrow">SEGURIDAD ROOT</p><h3>Operadores de emergencia</h3><p class="permission-note">ROOT decide quién puede operar la consola independiente de recuperación. Estas cuentas no reciben ningún rol operativo de GestionPisos y deben usar una identidad Auth separada.</p><div id="emergencyOperatorsWarning" class="emergency-operator-warning" hidden></div><form id="emergencyOperatorForm" class="permission-actions emergency-operator-form"><input id="emergencyOperatorName" required maxlength="120" placeholder="Nombre visible del operador"><input id="emergencyOperatorEmail" required type="email" maxlength="254" placeholder="Email de la cuenta técnica"><label class="emergency-root-capability"><input id="emergencyOperatorCanRecoverRoot" type="checkbox" checked> Puede recuperar ROOT</label><button id="emergencyOperatorAddButton" class="primary" type="submit">Autorizar operador</button></form><div id="emergencyOperatorsList" class="permission-list emergency-operators-list"></div><span id="emergencyOperatorsStatus" class="permission-note"></span></section>
 </div></section>
 <section class="status"><span class="dot"></span><span id="permissionStatus"><strong>Conectando…</strong> Cargando contexto autorizado.</span></section>
 </main>
@@ -32,4 +33,4 @@ import("./permissions-onboarding.js?v=2026091601").then(()=>import("./permission
  if(error){error.hidden=false;error.textContent="No se pudo iniciar Gestión de Permisos. Diagnóstico: MODULE_IMPORT_FAILED · "+detail;}
  if(status)status.innerHTML="<strong>Carga detenida.</strong> Falló la carga del módulo o una de sus dependencias.";
 });
-</script><script type="module" src="./permissions-responsibility-flow.js?v=2026091601"></script><script type="module" src="./auth-guard.js"></script></body></html>
+</script><script type="module" src="./permissions-responsibility-flow.js?v=2026091601"></script><script type="module" src="./emergency-operators.js?v=202609171"></script><script type="module" src="./auth-guard.js"></script></body></html>

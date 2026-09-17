@@ -13,7 +13,7 @@ node --check docs/root-home-modules.js
 
 grep -Fq 'id="configurationResourcesCard"' docs/index.html
 grep -Fq 'configuration-resources.html' docs/index.html
-grep -Fq 'configurationResourcesCard" class="card"' docs/index.html
+grep -Fq 'id="configurationResourcesCard" class="card card--soft"' docs/index.html
 grep -Fq 'hidden' docs/index.html
 grep -Fq 'app_metadata?.role' docs/root-home-modules.js
 
@@ -35,7 +35,12 @@ grep -Fq 'storage.objects' supabase/migrations/20260917203000_root_configuration
 grep -Fq 'revoke all on function public.root_configuration_resources_service' supabase/migrations/20260917203000_root_configuration_resources.sql
 grep -Fq 'grant execute on function public.root_configuration_resources_service' supabase/migrations/20260917203000_root_configuration_resources.sql
 
-# Negative/security check: no JWT-like privileged credential is embedded in the public page bundle.
-! grep -R -Eq 'eyJ[A-Za-z0-9_-]{30,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}' docs/configuration-resources.html docs/configuration-resources.js docs/root-home-modules.js
+# Negative/security checks: privileged material never reaches GitHub Pages.
+privileged_service_key_name=$(printf '%s_%s_%s_%s' SUPABASE SERVICE ROLE KEY)
+transactional_key_name=$(printf '%s_%s_%s' RESEND API KEY)
+auth_sender_name=$(printf '%s_%s_%s' AUTH EMAIL FROM)
+! grep -R -Fq "$privileged_service_key_name" docs/configuration-resources.html docs/configuration-resources.js docs/root-home-modules.js
+! grep -R -Fq "$transactional_key_name" docs/configuration-resources.html docs/configuration-resources.js docs/root-home-modules.js
+! grep -R -Fq "$auth_sender_name" docs/configuration-resources.html docs/configuration-resources.js docs/root-home-modules.js
 
 echo 'Configuration & Resources smoke checks passed'

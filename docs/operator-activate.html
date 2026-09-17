@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <link rel="stylesheet" href="./app.css">
+  <link rel="stylesheet" href="./auth.css?v=2026091706">
+  <title>Allaiso · Activar operador</title>
+</head>
+<body>
+  <main class="auth-shell">
+    <section class="auth-card">
+      <p class="eyebrow">ALLAISO · PLATAFORMA</p>
+      <h1>Activa tu acceso de operador</h1>
+      <p class="auth-lead">Crea tu propia contraseña. Después registrarás MFA en la consola técnica independiente.</p>
+      <form id="operatorActivationForm" class="auth-form">
+        <label>Nueva contraseña
+          <input id="operatorNewPassword" type="password" autocomplete="new-password" minlength="12" aria-describedby="operatorPasswordChecklist" required disabled>
+        </label>
+        <label>Repite la nueva contraseña
+          <input id="operatorConfirmPassword" type="password" autocomplete="new-password" minlength="12" aria-describedby="operatorPasswordChecklist" required disabled>
+        </label>
+        <div id="operatorPasswordChecklist" class="password-checklist">
+          <p class="password-checklist-title">La contraseña debe incluir:</p>
+          <ul>
+            <li data-password-rule="length">12 caracteres como mínimo</li>
+            <li data-password-rule="lowercase">Una letra minúscula</li>
+            <li data-password-rule="uppercase">Una letra mayúscula</li>
+            <li data-password-rule="digit">Un número</li>
+            <li data-password-rule="symbol">Un símbolo</li>
+            <li data-password-rule="match">Las contraseñas coinciden</li>
+          </ul>
+        </div>
+        <button id="operatorActivationButton" class="primary auth-primary" type="submit" disabled>Guardar contraseña y continuar</button>
+      </form>
+      <p id="operatorActivationMessage" class="auth-message" role="status" aria-live="polite">Validando invitación…</p>
+    </section>
+  </main>
+  <script>
+    (() => {
+      const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+      const query = new URLSearchParams(window.location.search);
+      if (hash.get("type") === "recovery" || query.get("type") === "recovery" || query.get("operator") === "1") {
+        sessionStorage.setItem("allaiso-platform-operator-activation", "1");
+      }
+    })();
+  </script>
+  <script type="module" src="./operator-activate.js?v=2026091701"></script>
+</body>
+</html>

@@ -34,25 +34,36 @@ function messageFor(error) {
   const messages = {
     root_required: "Solo ROOT puede gestionar operadores de emergencia.",
     aal2_required: "Confirma primero tu MFA de ROOT para modificar esta configuración.",
-    auth_user_not_found: "No existe una cuenta Auth con ese correo. Créala o actívala antes de designarla como operador.",
+    auth_user_not_found: "No existe una cuenta Auth con ese correo.",
+    operator_auth_identity_prepare_failed: "No se pudo preparar la identidad técnica del operador. Inténtalo de nuevo.",
     operator_email_not_confirmed: "La cuenta todavía no tiene el correo confirmado.",
     self_operator_forbidden: "La cuenta ROOT actual no puede designarse a sí misma como operador de emergencia.",
     dedicated_platform_identity_required: "Esa cuenta ya tiene un rol operativo en GestionPisos. Usa una identidad técnica independiente.",
     display_name_required: "Indica un nombre para identificar al operador.",
     valid_email_required: "Introduce un correo válido.",
     audit_failed: "El cambio no se confirmó porque no pudo registrarse correctamente en auditoría.",
+    operator_mutation_failed: "No se pudo guardar la autorización del operador. La configuración anterior se mantiene.",
   };
   return messages[code] || "No se pudo guardar el cambio. La configuración anterior se mantiene.";
+}
+
+async function errorDetail(error, data) {
+  if (data?.error) return String(data.error);
+  const context = error?.context;
+  if (context && typeof context.clone === "function") {
+    try {
+      const payload = await context.clone().json();
+      if (payload?.error) return String(payload.error);
+    } catch {}
+  }
+  return String(error?.message || "operator_management_failed");
 }
 
 async function invoke(action, extra = {}) {
   const { data, error } = await supabase.functions.invoke("manage-platform-operators", {
     body: { action, ...extra },
   });
-  if (error) {
-    const detail = data?.error || error?.context?.body?.error || error.message || "operator_management_failed";
-    throw new Error(String(detail));
-  }
+  if (error) throw new Error(await errorDetail(error, data));
   if (data?.error) throw new Error(String(data.error));
   return data;
 }
@@ -62,7 +73,13 @@ function operatorCard(operator) {
   article.className = "permission-item emergency-operator-item";
   const state = operator.active ? "Activo" : "Inactivo";
   const rootCapability = operator.can_recover_root ? "Puede recuperar ROOT" : "Sin permiso ROOT";
-  const mfa = operator.mfa_ready === true ? "MFA listo" : operator.mfa_ready === false ? "MFA pendiente" : "MFA sin confirmar";
+  const mfa = operator.mfa_ready === true
+    ? "MFA listo"
+    : operator.invitation_pending === true
+      ? "Activación pendiente"
+      : operator.mfa_ready === false
+        ? "MFA pendiente"
+        : "MFA sin confirmar";
 
   article.innerHTML = `
     <div class="emergency-operator-main">
@@ -119,11 +136,11 @@ function render(data) {
     warning.hidden = count > 0;
     warning.textContent = count > 0
       ? ""
-      : "No existe ningún operador activo con permiso para recuperar ROOT. Si pierdes todos tus autenticadores antes de configurar uno, la recuperación normal desde la aplicación no estará disponible.";
+      : "Todavía no existe ningún operador activo con MFA listo y permiso para recuperar ROOT. La protección quedará completa cuando al menos uno termine su activación y registre MFA.";
   }
   setStatus(count > 0
-    ? `${count} operador${count === 1 ? "" : "es"} activo${count === 1 ? "" : "s"} puede${count === 1 ? "" : "n"} recuperar ROOT.`
-    : "Configura al menos un operador independiente y verifica su MFA.");
+    ? `${count} operador${count === 1 ? "" : "es"} activo${count === 1 ? "" : "s"} y con MFA puede${count === 1 ? "" : "n"} recuperar ROOT.`
+    : "Configura al menos un operador independiente y completa su activación MFA.");
 }
 
 async function loadOperators() {
@@ -145,13 +162,10 @@ async function updateOperator(operator, patch) {
   busy = true;
   setStatus("Guardando configuración de seguridad…");
   try {
-    const result = await invoke("update", {
+    await invoke("update", {
       target_user_id: operator.user_id,
       ...patch,
     });
-    if (result?.warning === "no_active_root_recovery_operator") {
-      setStatus("Cambio guardado. Atención: ahora no existe ningún operador activo capaz de recuperar ROOT.", true);
-    }
     const data = await invoke("list");
     render(data);
   } catch (error) {
@@ -177,7 +191,7 @@ form?.addEventListener("submit", async event => {
   if (addButton) addButton.disabled = true;
   setStatus("Autorizando operador…");
   try {
-    await invoke("add", {
+    const result = await invoke("add", {
       email,
       display_name: displayName,
       can_recover_root: canRecoverRoot,
@@ -186,6 +200,15 @@ form?.addEventListener("submit", async event => {
     if (rootCapabilityInput) rootCapabilityInput.checked = true;
     const data = await invoke("list");
     render(data);
+    if (result?.invitation_status === "sent") {
+      setStatus("Operador configurado. Se ha enviado un correo para crear su contraseña; después deberá registrar MFA.");
+    } else if (result?.invitation_status === "failed") {
+      setStatus("Operador configurado, pero el correo de activación no pudo enviarse. Vuelve a designar el mismo correo para reintentar el envío.", true);
+    } else if (result?.invitation_status === "not_configured") {
+      setStatus("Operador configurado, pero el servicio profesional de correo no está disponible. No se considera listo para recuperación.", true);
+    } else {
+      setStatus("Operador configurado. Debe entrar en la consola independiente y completar MFA antes de quedar listo.");
+    }
   } catch (error) {
     setStatus(messageFor(error), true);
   } finally {

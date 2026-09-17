@@ -25,8 +25,8 @@ grep -Fq 'event => event.preventDefault()' docs/login.html
 grep -Fq 'allaiso-login-module-recovery-v2' docs/login.html
 grep -Fq 'navigator.serviceWorker.getRegistrations()' docs/login.html
 grep -Fq 'key.startsWith("gestionpisos-shell-")' docs/login.html
-grep -Fq 'auth_refresh", "2026091701"' docs/login.html
-grep -Fq 'import("./login.js?v=2026091701")' docs/login.html
+grep -Fq 'auth_refresh", "2026091702"' docs/login.html
+grep -Fq 'import("./login.js?v=2026091702")' docs/login.html
 grep -Fq 'No se pudo cargar el módulo de acceso.' docs/login.html
 
 grep -Fq 'supabase-client.js?v=2026091603' docs/login.js
@@ -35,7 +35,7 @@ grep -Fq 'window.__loginModuleReady = true' docs/login.js
 grep -Fq 'form.addEventListener("submit"' docs/login.js
 grep -Fq 'withTimeout(getCurrentSession(), 4000' docs/login.js
 grep -Fq 'signInWithPassword' docs/login.js
-grep -Fq 'privilegedMfaRoute' docs/login.js
+grep -Fq 'privilegedMfaRoute(supabase, session, { requireEnrollment: true })' docs/login.js
 grep -Fq '"login_timeout"' docs/login.js
 grep -Fq '"mfa_check_timeout"' docs/login.js
 grep -Fq 'login_request_failed' docs/login.js
@@ -58,8 +58,7 @@ grep -Fq 'factor.status === "verified"' docs/mfa-challenge.js
 grep -Fq 'currentLevel !== "aal2"' docs/mfa-challenge.js
 grep -Fq 'autocomplete="one-time-code"' docs/mfa-challenge.html
 
-grep -Fq 'privilegedMfaRoute(supabase, session)' docs/auth-guard.js
-grep -Fq 'Configurar MFA' docs/auth-guard.js
+grep -Fq 'privilegedMfaRoute(supabase, session, { requireEnrollment: true })' docs/auth-guard.js
 grep -Fq 'authFlowUrl(mfa.route' docs/auth-guard.js
 
 grep -Fq 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/+esm' docs/supabase-client.js

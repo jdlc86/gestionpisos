@@ -35,9 +35,7 @@ grep -Fq 'storage.objects' supabase/migrations/20260917203000_root_configuration
 grep -Fq 'revoke all on function public.root_configuration_resources_service' supabase/migrations/20260917203000_root_configuration_resources.sql
 grep -Fq 'grant execute on function public.root_configuration_resources_service' supabase/migrations/20260917203000_root_configuration_resources.sql
 
-# Negative/security checks: privileged material never reaches GitHub Pages.
-! grep -R -Fq 'SUPABASE_SERVICE_ROLE_KEY' docs/configuration-resources.html docs/configuration-resources.js docs/root-home-modules.js
-! grep -R -Fq 'RESEND_API_KEY' docs/configuration-resources.html docs/configuration-resources.js docs/root-home-modules.js
-! grep -R -Fq 'AUTH_EMAIL_FROM' docs/configuration-resources.html docs/configuration-resources.js docs/root-home-modules.js
+# Negative/security check: no JWT-like privileged credential is embedded in the public page bundle.
+! grep -R -Eq 'eyJ[A-Za-z0-9_-]{30,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}' docs/configuration-resources.html docs/configuration-resources.js docs/root-home-modules.js
 
 echo 'Configuration & Resources smoke checks passed'

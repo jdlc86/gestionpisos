@@ -9,6 +9,7 @@ const corsHeaders = {
 };
 
 const OPERATIONAL_ROLES = new Set(["root", "admin", "employee", "owner", "tenant"]);
+const DEFAULT_APP_BASE_URL = "https://jdlc86.github.io/gestionpisos";
 
 function json(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), { status, headers: corsHeaders });
@@ -41,12 +42,29 @@ function cleanEmail(value: unknown) {
   return String(value ?? "").trim().toLowerCase().slice(0, 254);
 }
 
+function escapeHtml(value: string) {
+  return value.replace(/[&<>"']/g, (char) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  }[char] || char));
+}
+
 function adminHeaders(serviceKey: string) {
   return {
     apikey: serviceKey,
     Authorization: `Bearer ${serviceKey}`,
     "Content-Type": "application/json",
   };
+}
+
+function appBaseUrl() {
+  const configured = String(Deno.env.get("AUTH_APP_BASE_URL") || DEFAULT_APP_BASE_URL).trim();
+  const url = new URL(configured);
+  if (url.protocol !== "https:") throw new Error("invalid_auth_app_base_url");
+  return url.href.replace(/\/$/, "");
 }
 
 async function findUserByEmail(admin: ReturnType<typeof createClient>, email: string) {
@@ -69,6 +87,64 @@ async function verifiedFactorCount(supabaseUrl: string, serviceKey: string, user
   const body = await response.json();
   const factors = Array.isArray(body) ? body : [];
   return factors.filter((factor: Record<string, unknown>) => factor?.status === "verified").length;
+}
+
+async function sendOperatorActivationEmail(
+  admin: ReturnType<typeof createClient>,
+  input: { email: string; displayName: string },
+) {
+  const resendKey = String(Deno.env.get("RESEND_API_KEY") || "").trim();
+  const sender = String(Deno.env.get("AUTH_EMAIL_FROM") || "").trim();
+  if (!resendKey || !sender) return { status: "not_configured" as const };
+
+  let actionLink = "";
+  try {
+    const redirectTo = `${appBaseUrl()}/operator-activate.html?operator=1`;
+    const { data, error } = await admin.auth.admin.generateLink({
+      type: "recovery",
+      email: input.email,
+      options: { redirectTo },
+    });
+    if (error) throw error;
+    actionLink = String(data?.properties?.action_link || "");
+    if (!actionLink) throw new Error("empty_action_link");
+  } catch (error) {
+    console.error("platform_operator_activation_link_failed", String((error as Error)?.message || error));
+    return { status: "failed" as const };
+  }
+
+  const continueUrl = new URL(`${appBaseUrl()}/accept-invitation.html`);
+  continueUrl.searchParams.set("continue", actionLink);
+  const name = escapeHtml(input.displayName || "operador");
+  const html = `<!doctype html><html><body style="font-family:Arial,sans-serif;line-height:1.5;color:#18212b"><div style="max-width:560px;margin:auto;padding:28px"><p style="font-size:12px;letter-spacing:.16em;font-weight:700">ALLAISO · PLATAFORMA</p><h1 style="font-size:24px">Activa tu acceso de operador</h1><p>Hola ${name},</p><p>ROOT te ha designado como operador de emergencia de la plataforma Allaiso.</p><p>Para proteger el acceso, nadie ha definido una contraseña por ti. Confirma que controlas este correo y crea tu propia contraseña desde el botón siguiente.</p><p style="margin:28px 0"><a href="${escapeHtml(continueUrl.href)}" style="display:inline-block;padding:12px 18px;background:#111827;color:white;text-decoration:none;border-radius:8px">Activar acceso de operador</a></p><p>Después deberás registrar MFA antes de poder gestionar recuperaciones.</p><p style="font-size:12px;color:#667085">El enlace es de un solo uso. Allaiso nunca envía contraseñas temporales por correo.</p></div></body></html>`;
+
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${resendKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: sender,
+        to: [input.email],
+        subject: "Activa tu acceso de operador Allaiso",
+        html,
+      }),
+    });
+    const responseText = await response.text();
+    if (!response.ok) throw new Error(`resend_${response.status}:${responseText.slice(0, 120)}`);
+    let providerMessageId: string | null = null;
+    try {
+      providerMessageId = String(JSON.parse(responseText)?.id || "") || null;
+    } catch {
+      providerMessageId = null;
+    }
+    return { status: "sent" as const, provider_message_id: providerMessageId };
+  } catch (error) {
+    console.error("platform_operator_activation_email_failed", String((error as Error)?.message || error));
+    return { status: "failed" as const };
+  }
 }
 
 Deno.serve(async (req: Request) => {
@@ -120,16 +196,6 @@ Deno.serve(async (req: Request) => {
   const action = cleanText(body.action || "list", 32).toLowerCase();
   const organizationId = validUuid(actor.app_metadata?.organization_id) ? String(actor.app_metadata.organization_id) : null;
 
-  async function activeRootRecoveryCount() {
-    const { count, error } = await admin
-      .from("platform_operators")
-      .select("user_id", { count: "exact", head: true })
-      .eq("active", true)
-      .eq("can_recover_root", true);
-    if (error) throw error;
-    return Number(count || 0);
-  }
-
   async function mutateOperator(input: {
     mutationAction: "upsert" | "update";
     targetUserId: string;
@@ -163,15 +229,19 @@ Deno.serve(async (req: Request) => {
     if (error) return json(500, { error: "operator_list_failed" });
 
     const operators: Record<string, unknown>[] = [];
+    let readyRootRecoveryCount = 0;
     for (const row of rows || []) {
       const { data: targetData } = await admin.auth.admin.getUserById(row.user_id);
       const target = targetData?.user;
       const factorCount = target ? await verifiedFactorCount(supabaseUrl, serviceKey, row.user_id) : null;
+      const mfaReady = typeof factorCount === "number" ? factorCount > 0 : null;
+      if (row.active === true && row.can_recover_root === true && mfaReady === true) readyRootRecoveryCount += 1;
       operators.push({
         ...row,
         email: String(target?.email || ""),
         auth_user_exists: Boolean(target),
-        mfa_ready: typeof factorCount === "number" ? factorCount > 0 : null,
+        invitation_pending: target?.user_metadata?.platform_operator_invitation_pending === true,
+        mfa_ready: mfaReady,
         verified_factor_count: factorCount,
       });
     }
@@ -179,7 +249,7 @@ Deno.serve(async (req: Request) => {
     return json(200, {
       ok: true,
       operators,
-      active_root_recovery_count: await activeRootRecoveryCount(),
+      active_root_recovery_count: readyRootRecoveryCount,
     });
   }
 
@@ -191,23 +261,45 @@ Deno.serve(async (req: Request) => {
     if (displayName.length < 2) return json(400, { error: "display_name_required" });
 
     let target;
+    let createdNewIdentity = false;
     try {
       target = await findUserByEmail(admin, email);
+      if (!target) {
+        const { data: created, error: createError } = await admin.auth.admin.createUser({
+          email,
+          email_confirm: true,
+          user_metadata: {
+            display_name: displayName,
+            platform_operator_invitation_pending: true,
+          },
+        });
+        if (createError || !created?.user) throw createError || new Error("auth_user_create_failed");
+        target = created.user;
+        createdNewIdentity = true;
+      }
     } catch (error) {
-      console.error("platform_operator_user_lookup_failed", String(error));
-      return json(500, { error: "auth_user_lookup_failed" });
+      console.error("platform_operator_user_prepare_failed", String((error as Error)?.message || error));
+      return json(500, { error: "operator_auth_identity_prepare_failed" });
     }
-    if (!target) return json(404, { error: "auth_user_not_found" });
-    if (target.id === actor.id) return json(403, { error: "self_operator_forbidden" });
-    if (!target.email_confirmed_at) return json(409, { error: "operator_email_not_confirmed" });
+
+    if (target.id === actor.id) {
+      if (createdNewIdentity) await admin.auth.admin.deleteUser(target.id).catch(() => {});
+      return json(403, { error: "self_operator_forbidden" });
+    }
+    if (!target.email_confirmed_at) {
+      if (createdNewIdentity) await admin.auth.admin.deleteUser(target.id).catch(() => {});
+      return json(409, { error: "operator_email_not_confirmed" });
+    }
 
     const targetRole = String(target.app_metadata?.role || "").toLowerCase();
     if (OPERATIONAL_ROLES.has(targetRole)) {
+      if (createdNewIdentity) await admin.auth.admin.deleteUser(target.id).catch(() => {});
       return json(409, { error: "dedicated_platform_identity_required" });
     }
 
+    let result: Record<string, unknown>;
     try {
-      const result = await mutateOperator({
+      result = await mutateOperator({
         mutationAction: "upsert",
         targetUserId: target.id,
         displayName,
@@ -215,19 +307,29 @@ Deno.serve(async (req: Request) => {
         canRecoverRoot,
         email,
       });
-      return json(200, {
-        ...result,
-        operator: {
-          user_id: target.id,
-          email,
-          display_name: displayName,
-          active: true,
-          can_recover_root: canRecoverRoot,
-        },
-      });
     } catch (error) {
+      if (createdNewIdentity) await admin.auth.admin.deleteUser(target.id).catch(() => {});
       return json(500, { error: String((error as Error)?.message || "operator_mutation_failed") });
     }
+
+    const invitationPending = createdNewIdentity || target.user_metadata?.platform_operator_invitation_pending === true;
+    const invitation = invitationPending
+      ? await sendOperatorActivationEmail(admin, { email, displayName })
+      : { status: "not_needed" as const };
+
+    return json(200, {
+      ...result,
+      operator: {
+        user_id: target.id,
+        email,
+        display_name: displayName,
+        active: true,
+        can_recover_root: canRecoverRoot,
+      },
+      created_auth_identity: createdNewIdentity,
+      invitation_status: invitation.status,
+      invitation_provider_message_id: "provider_message_id" in invitation ? invitation.provider_message_id : null,
+    });
   }
 
   if (action === "update") {

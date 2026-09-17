@@ -98,6 +98,39 @@ async function listAllUsers(admin: ReturnType<typeof createClient>) {
   return users;
 }
 
+async function resolveRootOrganization(
+  admin: ReturnType<typeof createClient>,
+  actorId: string,
+) {
+  const { data: roles, error: roleError } = await admin
+    .from("user_roles")
+    .select("organization_id,role,revoked_at")
+    .eq("user_id", actorId)
+    .is("revoked_at", null);
+
+  if (roleError) throw new Error("root_organization_lookup_failed");
+  const rootOrganizationIds = [...new Set(
+    (roles || [])
+      .filter(row => String(row.role || "").toLowerCase() === "root")
+      .map(row => String(row.organization_id || ""))
+      .filter(validUuid),
+  )];
+
+  if (rootOrganizationIds.length !== 1) throw new Error("root_organization_required");
+  const organizationId = rootOrganizationIds[0];
+
+  const { data: profile, error: profileError } = await admin
+    .from("profiles")
+    .select("organization_id,status")
+    .eq("user_id", actorId)
+    .eq("organization_id", organizationId)
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (profileError || !profile) throw new Error("root_organization_required");
+  return organizationId;
+}
+
 async function verifiedFactorCount(supabaseUrl: string, serviceKey: string, userId: string) {
   const response = await fetch(`${supabaseUrl}/auth/v1/admin/users/${userId}/factors`, {
     headers: {
@@ -189,8 +222,17 @@ Deno.serve(async (req: Request) => {
   const payload = jwtPayload(accessToken);
   if (String(payload?.aal || "") !== "aal2") return json(403, { error: "aal2_required" });
 
-  const organizationId = String(actor.app_metadata?.organization_id || "");
-  if (!validUuid(organizationId)) return json(409, { error: "root_organization_required" });
+  let organizationId = "";
+  try {
+    organizationId = await resolveRootOrganization(admin, actor.id);
+  } catch (error) {
+    return json(409, { error: String((error as Error)?.message || "root_organization_required") });
+  }
+
+  const claimedOrganizationId = String(actor.app_metadata?.organization_id || "");
+  if (claimedOrganizationId && validUuid(claimedOrganizationId) && claimedOrganizationId !== organizationId) {
+    return json(409, { error: "root_organization_claim_mismatch" });
+  }
 
   let body: { action?: string; confirmation?: string; preview_token?: string } = {};
   try {

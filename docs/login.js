@@ -1,4 +1,5 @@
 import { supabase, getCurrentSession } from "./supabase-client.js?v=2026091603";
+import { authFlowUrl, privilegedMfaRoute } from "./mfa-common.js?v=2026091701";
 
 window.__loginModuleReady = true;
 window.__loginModuleFailureHandled = false;
@@ -42,6 +43,20 @@ function withTimeout(promise, milliseconds, code) {
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timeoutId));
 }
 
+async function routeAuthenticatedSession(session) {
+  const next = targetPage();
+  const mfa = await withTimeout(
+    privilegedMfaRoute(supabase, session),
+    5000,
+    "mfa_check_timeout"
+  );
+  if (mfa.route) {
+    window.location.replace(authFlowUrl(mfa.route, next));
+    return;
+  }
+  window.location.replace(next);
+}
+
 const params = new URLSearchParams(window.location.search);
 if (params.get("password") === "updated") {
   show("Contraseña actualizada. Ya puedes iniciar sesión.");
@@ -60,7 +75,7 @@ form.addEventListener("submit", async event => {
   show("Comprobando acceso…");
 
   try {
-    const { error } = await withTimeout(
+    const { data, error } = await withTimeout(
       supabase.auth.signInWithPassword({
         email: email.value.trim().toLowerCase(),
         password: password.value
@@ -69,16 +84,19 @@ form.addEventListener("submit", async event => {
       "login_timeout"
     );
 
-    if (error) {
+    if (error || !data?.session) {
       show("No se pudo iniciar sesión. Comprueba el email y la contraseña.", true);
       return;
     }
 
-    window.location.replace(targetPage());
+    await routeAuthenticatedSession(data.session);
   } catch (error) {
     console.error("login_request_failed", error);
-    if (String(error?.message || "") === "login_timeout") {
+    const code = String(error?.message || "");
+    if (code === "login_timeout") {
       show("El servicio de acceso no respondió a tiempo. Cierra GestionPisos, vuelve a abrirlo e inténtalo otra vez.", true);
+    } else if (code === "mfa_check_timeout") {
+      show("No se pudo comprobar el segundo factor. Comprueba tu conexión e inténtalo de nuevo.", true);
     } else {
       show("No se pudo contactar con el servicio de acceso. Comprueba tu conexión e inténtalo de nuevo.", true);
     }
@@ -128,6 +146,6 @@ forgotBtn.addEventListener("click", async () => {
 // Existing-session detection is best effort and deliberately non-blocking.
 void withTimeout(getCurrentSession(), 4000, "session_check_timeout")
   .then(existing => {
-    if (existing && !loginInProgress) window.location.replace(targetPage());
+    if (existing && !loginInProgress) return routeAuthenticatedSession(existing);
   })
   .catch(error => console.warn("login_session_check_skipped", error));

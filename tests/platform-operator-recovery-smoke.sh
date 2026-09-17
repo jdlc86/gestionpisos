@@ -8,6 +8,7 @@ test -s supabase/functions/operator-mfa-recovery/index.ts
 test -s supabase/functions/recover-privileged-mfa/index.ts
 test -s supabase/functions/manage-platform-operators/index.ts
 test -s supabase/migrations/20260917123000_platform_operator_mfa_console.sql
+test -s supabase/migrations/20260917130000_root_platform_operator_management.sql
 
 node --check docs/operator-recovery.js
 node --check docs/emergency-operators.js
@@ -42,9 +43,14 @@ grep -Fq 'root_required' supabase/functions/manage-platform-operators/index.ts
 grep -Fq 'aal2_required' supabase/functions/manage-platform-operators/index.ts
 grep -Fq 'self_operator_forbidden' supabase/functions/manage-platform-operators/index.ts
 grep -Fq 'dedicated_platform_identity_required' supabase/functions/manage-platform-operators/index.ts
-grep -Fq 'platform_operator_created' supabase/functions/manage-platform-operators/index.ts
-grep -Fq 'platform_operator_updated' supabase/functions/manage-platform-operators/index.ts
-grep -Fq 'audit_log_v2' supabase/functions/manage-platform-operators/index.ts
+grep -Fq 'manage_platform_operator_service' supabase/functions/manage-platform-operators/index.ts
+
+grep -Fq 'security definer' supabase/migrations/20260917130000_root_platform_operator_management.sql
+grep -Fq 'platform_operator_created' supabase/migrations/20260917130000_root_platform_operator_management.sql
+grep -Fq 'platform_operator_updated' supabase/migrations/20260917130000_root_platform_operator_management.sql
+grep -Fq 'audit_log_v2' supabase/migrations/20260917130000_root_platform_operator_management.sql
+grep -Fq 'revoke all on function public.manage_platform_operator_service' supabase/migrations/20260917130000_root_platform_operator_management.sql
+grep -Fq 'grant execute on function public.manage_platform_operator_service' supabase/migrations/20260917130000_root_platform_operator_management.sql
 
 grep -Fq 'alter table public.platform_operators enable row level security' supabase/migrations/20260917123000_platform_operator_mfa_console.sql
 grep -Fq 'revoke all on table public.platform_operators from public, anon, authenticated' supabase/migrations/20260917123000_platform_operator_mfa_console.sql

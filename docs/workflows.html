@@ -27,13 +27,13 @@
     <section class="grid" aria-label="Módulos de Flujos de Trabajo">
       <a class="card" data-workflow-module="builder" href="./workflow-builder.html">
         <strong class="module-heading"><span class="ui-nav-icon" aria-hidden="true">➕</span>Creador de Flujos</strong>
-        <span class="module-description">Construye un borrador guiado: identidad, ámbito, activación, asignación, pasos, recursos y cierre.</span>
+        <span class="module-description">Construye y guarda borradores guiados: identidad, ámbito, activación, asignación, pasos, recursos y cierre.</span>
       </a>
 
-      <article class="card card--soft locked" data-workflow-module="definitions">
+      <a class="card card--soft" data-workflow-module="definitions" href="./workflow-definitions.html">
         <strong class="module-heading"><span class="ui-nav-icon" aria-hidden="true">🧩</span>Mis Flujos</strong>
-        <span class="module-description">Administra definiciones, versiones, estado y próximas ejecuciones. En preparación.</span>
-      </article>
+        <span class="module-description">Consulta y continúa las definiciones guardadas. La publicación se incorporará en el siguiente incremento.</span>
+      </a>
 
       <a class="card" data-workflow-module="photo-bank" href="./photo-patterns.html?from=workflows">
         <strong class="module-heading"><span class="ui-nav-icon" aria-hidden="true">📷</span>Banco Fotográfico</strong>
@@ -53,7 +53,7 @@
 
     <section class="status">
       <span class="dot"></span>
-      <span>Segunda fase de integración: Creador de Flujos disponible como borrador local y Banco Fotográfico conectado al sistema actual. La publicación permanecerá bloqueada hasta disponer del motor server-side con RLS.</span>
+      <span>Tercera fase: borradores persistentes y Mis Flujos disponibles con RLS. Publicar y ejecutar permanecen bloqueados hasta el siguiente incremento server-side.</span>
     </section>
   </main>
 

@@ -87,7 +87,7 @@ async function verifyPreviewToken(serviceKey: string, token: string) {
 }
 
 async function listAllUsers(admin: ReturnType<typeof createClient>) {
-  const users: Record<string, unknown>[] = [];
+  const users: Array<{ id?: string }> = [];
   for (let page = 1; page <= 100; page += 1) {
     const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
     if (error) throw error;
@@ -146,7 +146,6 @@ async function resolveProtectedBaseline(
     organization_id: organizationId,
     operator_user_id: operatorUserId,
     operator_email: String(operatorData.user.email || ""),
-    operator_display_name: String(operator.display_name || ""),
     operator_verified_factor_count: factorCount,
   };
 }

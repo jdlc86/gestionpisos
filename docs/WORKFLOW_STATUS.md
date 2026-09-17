@@ -63,6 +63,14 @@ La persistencia usa:
 
 `sessionStorage` sigue usándose únicamente como recuperación local de cambios mientras se edita. Ya no es la única persistencia.
 
+### Borradores parciales y decisiones explícitas
+
+El Creador permite guardar un borrador con solo un nombre y continuar más tarde. Las opciones de tipo, ámbito, activación, asignación, pasos y cierre ya no tienen decisiones de negocio preseleccionadas.
+
+`workflow_definitions_v2.authoring_complete` se calcula server-side a partir de una especificación de autoría v2. Un borrador solo pasa a **configuración completa** cuando los seis apartados requeridos contienen decisiones explícitas. Descripción y notificaciones siguen siendo opcionales.
+
+Los borradores anteriores a esta regla no se reinterpretan como completos por sus antiguos valores por defecto: permanecen incompletos hasta ser revisados en el Creador.
+
 ### Límite intencional
 
 **Guardar no significa publicar.**
@@ -170,8 +178,8 @@ Las pruebas se ejecutan también en PostgreSQL 17 desechable desde Schema Guard.
 | Módulo | Estado | Observación |
 | --- | --- | --- |
 | Flujos de Trabajo | Implementado | Hub transversal |
-| Creador de Flujos | Implementado con persistencia de borradores | Sin publicación |
-| Mis Flujos | Implementado para definiciones/borradores | Sin ejecutar/publicar |
+| Creador de Flujos | Implementado con borradores parciales y completitud explícita | Sin publicación |
+| Mis Flujos | Implementado; distingue incompletos/configurados | Sin ejecutar/publicar |
 | Banco Fotográfico | Operativo/reutilizado | Infraestructura existente |
 | Versiones publicadas | Estructura preparada | RPC de publicación pendiente |
 | Tareas | Pendiente de integración genérica | Evaluar `tenant_tasks_v2` |
@@ -199,7 +207,7 @@ Separó arquitectura, contrato, mapeo y estado fechado antes del primer DDL.
 
 Merge: `a111c2dbd71527cf32de3eda6b4de5781e16e585`.
 
-### Incremento actual — Persistencia de borradores + Mis Flujos
+### PR #198 + #199 — Persistencia de borradores + Mis Flujos + hardening
 
 Incluye:
 
@@ -212,7 +220,12 @@ Incluye:
 - concurrencia optimista;
 - Creador conectado al servidor;
 - Mis Flujos conectado a RLS;
-- pruebas negativas y regresión.
+- pruebas negativas y regresión;
+- hardening de privilegios para retirar `EXECUTE` anónimo de los RPC administrativos.
+
+### Incremento de corrección — Borradores parciales
+
+Añade la distinción entre **guardar** y **configurar**: permite persistir un borrador incompleto, elimina valores de negocio implícitos en la UI y mantiene la completitud calculada server-side mediante `authoring_complete`.
 
 ## 12. Próximo incremento técnico
 

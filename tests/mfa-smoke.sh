@@ -36,7 +36,7 @@ grep -Fq 'authFlowUrl(mfa.route' docs/auth-guard.js
 grep -Fq 'privilegedMfaRoute(supabase, session)' docs/login.js
 grep -Fq 'mfa_check_timeout' docs/login.js
 
-grep -Fq "gestionpisos-shell-v3" docs/sw.js
+grep -Fq "gestionpisos-shell-v2" docs/sw.js
 grep -Fq "'./mfa-setup.html'" docs/sw.js
 grep -Fq "'./mfa-challenge.html'" docs/sw.js
 

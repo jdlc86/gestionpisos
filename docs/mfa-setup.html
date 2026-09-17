@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex,nofollow">
+  <link rel="stylesheet" href="./app.css">
+  <link rel="stylesheet" href="./auth.css?v=2026091702">
+  <title>Allaiso · Configurar MFA</title>
+</head>
+<body>
+  <main class="auth-shell">
+    <section class="auth-card">
+      <p class="eyebrow">ALLAISO</p>
+      <h1>Protege tu cuenta</h1>
+      <p class="auth-lead">Configura un segundo factor con Google Authenticator, Microsoft Authenticator, Authy, 1Password u otra app compatible.</p>
+
+      <section id="mfaSetupPanel" class="mfa-setup-panel" hidden>
+        <ol class="mfa-steps">
+          <li>Abre tu app autenticadora.</li>
+          <li>Escanea este código QR.</li>
+          <li>Introduce abajo el código de 6 dígitos que aparezca en la app.</li>
+        </ol>
+
+        <div class="mfa-qr-wrap">
+          <img id="mfaQr" class="mfa-qr" alt="Código QR para configurar la autenticación multifactor">
+        </div>
+
+        <details class="mfa-manual">
+          <summary>No puedo escanear el QR</summary>
+          <p>Introduce esta clave manualmente en tu app autenticadora. No la compartas con nadie.</p>
+          <div class="mfa-secret-row">
+            <code id="mfaSecret" class="mfa-secret"></code>
+            <button id="copySecretBtn" class="ghost mfa-copy" type="button">Copiar</button>
+          </div>
+        </details>
+
+        <form id="mfaSetupForm" class="auth-form mfa-code-form">
+          <label>Código de 6 dígitos
+            <input id="mfaCode" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000" required>
+          </label>
+          <button id="mfaSetupBtn" class="primary auth-primary" type="submit" disabled>Activar MFA</button>
+        </form>
+      </section>
+
+      <button id="cancelMfaBtn" class="auth-link" type="button">Cancelar y cerrar sesión</button>
+      <p id="authMessage" class="auth-message" role="status" aria-live="polite">Preparando la configuración segura…</p>
+    </section>
+  </main>
+  <script type="module" src="./mfa-setup.js?v=2026091701"></script>
+</body>
+</html>

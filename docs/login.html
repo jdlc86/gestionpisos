@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#ffffff">
   <link rel="stylesheet" href="./app.css">
-  <link rel="stylesheet" href="./auth.css">
+  <link rel="stylesheet" href="./auth.css?v=2026091702">
   <title>Allaiso · Acceso</title>
 </head>
 <body>
@@ -68,7 +68,7 @@
           }
 
           const refreshed = new URL(window.location.href);
-          refreshed.searchParams.set("auth_refresh", "2026091604");
+          refreshed.searchParams.set("auth_refresh", "2026091701");
           window.location.replace(refreshed.href);
           return;
         }
@@ -85,7 +85,7 @@
     })();
   </script>
   <script type="module">
-    import("./login.js?v=2026091604").catch(error => window.__handleLoginModuleFailure?.(error));
+    import("./login.js?v=2026091701").catch(error => window.__handleLoginModuleFailure?.(error));
   </script>
 </body>
 </html>

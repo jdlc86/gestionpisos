@@ -1,5 +1,5 @@
 const CACHE='gestionpisos-shell-v2';
-const ASSETS=['./','./index.html','./app.css','./app.js','./login.html','./auth.css','./login.js','./reset-password.html','./reset-password.js','./supabase-client.js','./auth-guard.js','./manifest.webmanifest'];
+const ASSETS=['./','./index.html','./app.css','./app.js','./login.html','./auth.css','./login.js','./reset-password.html','./reset-password.js','./mfa-common.js','./mfa-setup.html','./mfa-setup.js','./mfa-challenge.html','./mfa-challenge.js','./supabase-client.js','./auth-guard.js','./manifest.webmanifest'];
 
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)));

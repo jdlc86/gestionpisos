@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="es" data-auth-pending="1">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="description" content="Flujos de Trabajo de GestionPisos">
+  <link rel="stylesheet" href="./app.css?v=2026091703">
+  <title>Allaiso · Flujos de Trabajo</title>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div><p class="eyebrow">ALLAISO</p><h1>Flujos de Trabajo</h1></div>
+      <div class="global-actions">
+        <button class="global-icon" data-theme-toggle aria-label="Cambiar tema"><span data-theme-icon>☾</span></button>
+        <a class="global-icon" href="./" aria-label="Inicio" title="Inicio">⌂</a>
+      </div>
+    </header>
+
+    <section class="hero">
+      <span class="badge">Motor transversal</span>
+      <h2>Diseña procesos y reutiliza recursos.</h2>
+      <p>Un mismo motor conectará activación, asignación, tareas, recursos, evidencias y cierre sin crear sistemas independientes para cada proceso.</p>
+    </section>
+
+    <section class="grid" aria-label="Módulos de Flujos de Trabajo">
+      <article class="card locked" data-workflow-module="builder">
+        <strong class="module-heading"><span class="ui-nav-icon" aria-hidden="true">➕</span>Creador de Flujos</strong>
+        <span class="module-description">Construye la receta: activación, asignación, pasos, recursos y cierre. En preparación.</span>
+      </article>
+
+      <article class="card card--soft locked" data-workflow-module="definitions">
+        <strong class="module-heading"><span class="ui-nav-icon" aria-hidden="true">🧩</span>Mis Flujos</strong>
+        <span class="module-description">Administra definiciones, versiones, estado y próximas ejecuciones. En preparación.</span>
+      </article>
+
+      <a class="card" data-workflow-module="photo-bank" href="./photo-patterns.html?from=workflows">
+        <strong class="module-heading"><span class="ui-nav-icon" aria-hidden="true">📷</span>Banco Fotográfico</strong>
+        <span class="module-description">Patrones reutilizables por piso, zona y elemento. Usa la infraestructura fotográfica existente.</span>
+      </a>
+
+      <article class="card card--soft locked" data-workflow-module="tasks">
+        <strong class="module-heading"><span class="ui-nav-icon" aria-hidden="true">📋</span>Tareas</strong>
+        <span class="module-description">Trabajo concreto asignado a cada persona y generado por una ejecución. En preparación.</span>
+      </article>
+
+      <article class="card locked" data-workflow-module="history">
+        <strong class="module-heading"><span class="ui-nav-icon" aria-hidden="true">🕘</span>Historial</strong>
+        <span class="module-description">Ejecuciones, evidencias, revisiones y resultados conservados de forma trazable. En preparación.</span>
+      </article>
+    </section>
+
+    <section class="status">
+      <span class="dot"></span>
+      <span>Primera fase de integración: Banco Fotográfico ya reutiliza el sistema actual. Creador, Mis Flujos, Tareas e Historial se activarán sobre el motor común, sin duplicar la infraestructura existente.</span>
+    </section>
+  </main>
+
+  <script src="./app.js?v=202609152" defer></script>
+  <script type="module" src="./auth-guard.js"></script>
+</body>
+</html>

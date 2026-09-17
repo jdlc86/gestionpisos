@@ -6,17 +6,28 @@
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="noindex,nofollow">
   <link rel="stylesheet" href="./app.css">
-  <link rel="stylesheet" href="./auth.css?v=2026091702">
-  <title>Allaiso · Configurar MFA</title>
+  <link rel="stylesheet" href="./auth.css?v=2026091703">
+  <title>Allaiso · Seguridad MFA</title>
 </head>
 <body>
   <main class="auth-shell">
     <section class="auth-card">
       <p class="eyebrow">ALLAISO</p>
-      <h1>Protege tu cuenta</h1>
-      <p class="auth-lead">Configura un segundo factor con Google Authenticator, Microsoft Authenticator, Authy, 1Password u otra app compatible.</p>
+      <h1>Seguridad MFA</h1>
+      <p class="auth-lead">Protege tu cuenta con uno o varios autenticadores. Recomendamos mantener un segundo factor de respaldo en otro dispositivo seguro.</p>
+
+      <section id="mfaManagePanel" class="mfa-manage-panel" hidden>
+        <div>
+          <h2 class="mfa-section-title">Tus autenticadores</h2>
+          <p class="mfa-section-help">Conserva al menos dos factores verificados para poder entrar si pierdes el dispositivo principal.</p>
+        </div>
+        <div id="mfaFactorList" class="mfa-factor-list" aria-live="polite"></div>
+        <button id="addBackupBtn" class="ghost mfa-wide-action" type="button">Añadir factor de respaldo</button>
+        <button id="finishMfaBtn" class="auth-link" type="button">Volver a GestionPisos</button>
+      </section>
 
       <section id="mfaSetupPanel" class="mfa-setup-panel" hidden>
+        <p id="mfaEnrollmentTitle" class="mfa-section-title">Configurar autenticador</p>
         <ol class="mfa-steps">
           <li>Abre tu app autenticadora.</li>
           <li>Escanea este código QR.</li>
@@ -40,14 +51,15 @@
           <label>Código de 6 dígitos
             <input id="mfaCode" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000" required>
           </label>
-          <button id="mfaSetupBtn" class="primary auth-primary" type="submit" disabled>Activar MFA</button>
+          <button id="mfaSetupBtn" class="primary auth-primary" type="submit" disabled>Activar autenticador</button>
         </form>
+        <button id="cancelEnrollmentBtn" class="auth-link" type="button" hidden>Cancelar este alta</button>
       </section>
 
       <button id="cancelMfaBtn" class="auth-link" type="button">Cancelar y cerrar sesión</button>
-      <p id="authMessage" class="auth-message" role="status" aria-live="polite">Preparando la configuración segura…</p>
+      <p id="authMessage" class="auth-message" role="status" aria-live="polite">Comprobando la seguridad de tu cuenta…</p>
     </section>
   </main>
-  <script type="module" src="./mfa-setup.js?v=2026091701"></script>
+  <script type="module" src="./mfa-setup.js?v=2026091702"></script>
 </body>
 </html>

@@ -8,6 +8,8 @@ import {
 } from "./mfa-common.js?v=2026091701";
 
 const form = document.getElementById("mfaChallengeForm");
+const factorField = document.getElementById("mfaFactorField");
+const factorSelect = document.getElementById("mfaFactorSelect");
 const code = document.getElementById("mfaCode");
 const submit = document.getElementById("mfaChallengeBtn");
 const cancel = document.getElementById("cancelMfaBtn");
@@ -15,6 +17,7 @@ const message = document.getElementById("authMessage");
 
 let factorId = null;
 let ready = false;
+let verifiedFactors = [];
 
 function show(text, error = false) {
   message.textContent = text;
@@ -28,7 +31,27 @@ function normalizedCode() {
 function syncCode() {
   const value = normalizedCode();
   if (code.value !== value) code.value = value;
-  submit.disabled = !ready || value.length !== 6;
+  submit.disabled = !ready || !factorId || value.length !== 6;
+}
+
+function factorFriendlyName(factor, index = 0) {
+  const value = String(factor?.friendly_name || factor?.friendlyName || "").trim();
+  if (value) return value;
+  return index === 0 ? "Autenticador principal" : `Autenticador ${index + 1}`;
+}
+
+function renderFactorChooser(factors) {
+  factorSelect.replaceChildren();
+  factors.forEach((factor, index) => {
+    const option = document.createElement("option");
+    option.value = factor.id;
+    option.textContent = factorFriendlyName(factor, index);
+    factorSelect.append(option);
+  });
+
+  factorId = factors[0]?.id || null;
+  factorSelect.value = factorId || "";
+  factorField.hidden = factors.length <= 1;
 }
 
 async function signOutToLogin() {
@@ -58,18 +81,20 @@ async function bootstrap() {
 
     const { data, error } = await supabase.auth.mfa.listFactors();
     if (error) throw error;
-    const verified = (Array.isArray(data?.totp) ? data.totp : []).filter(factor => factor.status === "verified");
+    verifiedFactors = (Array.isArray(data?.totp) ? data.totp : []).filter(factor => factor.status === "verified");
 
-    if (!verified.length) {
+    if (!verifiedFactors.length) {
       window.location.replace(authFlowUrl("mfa-setup.html", requestedNext()));
       return;
     }
 
-    factorId = verified[0].id;
-    ready = true;
-    code.disabled = false;
+    renderFactorChooser(verifiedFactors);
+    ready = Boolean(factorId);
+    code.disabled = !ready;
     syncCode();
-    show("Introduce el código actual de tu app autenticadora.");
+    show(verifiedFactors.length > 1
+      ? "Elige el autenticador que tienes disponible e introduce su código actual."
+      : "Introduce el código actual de tu app autenticadora.");
     code.focus();
   } catch (error) {
     console.error("mfa_challenge_bootstrap_failed", error);
@@ -80,6 +105,12 @@ async function bootstrap() {
   }
 }
 
+factorSelect.addEventListener("change", () => {
+  factorId = factorSelect.value || null;
+  code.value = "";
+  syncCode();
+  code.focus();
+});
 code.addEventListener("input", syncCode);
 cancel.addEventListener("click", signOutToLogin);
 
@@ -96,6 +127,7 @@ form.addEventListener("submit", async event => {
 
   submit.disabled = true;
   code.disabled = true;
+  factorSelect.disabled = true;
   show("Verificando código…");
 
   try {
@@ -117,6 +149,7 @@ form.addEventListener("submit", async event => {
   } catch (error) {
     console.error("mfa_challenge_verification_failed", error);
     code.disabled = false;
+    factorSelect.disabled = false;
     submit.disabled = false;
     show("El código no es válido o ya ha caducado. Espera al siguiente código e inténtalo de nuevo.", true);
     code.select();

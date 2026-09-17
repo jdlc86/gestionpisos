@@ -21,14 +21,14 @@ async function pendingExternalOnboarding() {
   return data?.status === "pending" ? data : null;
 }
 
-function addMfaSetupAction() {
+function addMfaSecurityAction() {
   const topbar = document.querySelector(".topbar");
   if (!topbar || document.getElementById("mfaSetupAction")) return;
   const button = document.createElement("button");
   button.id = "mfaSetupAction";
   button.type = "button";
   button.className = "ghost";
-  button.textContent = "Configurar MFA";
+  button.textContent = "Seguridad MFA";
   button.addEventListener("click", () => {
     window.location.assign(authFlowUrl("mfa-setup.html", currentPageNext()));
   });
@@ -65,7 +65,7 @@ async function requireSession() {
 
     document.documentElement.removeAttribute("data-auth-pending");
 
-    if (requiresPrivilegedMfa(session) && !mfa.enrolled) addMfaSetupAction();
+    if (requiresPrivilegedMfa(session)) addMfaSecurityAction();
 
     const topbar = document.querySelector(".topbar");
     if (topbar && !document.getElementById("logoutBtn")) {

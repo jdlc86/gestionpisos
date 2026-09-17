@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="es" data-auth-pending="1">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="description" content="Creador de Flujos de GestionPisos">
+  <link rel="stylesheet" href="./app.css?v=2026091703">
+  <link rel="stylesheet" href="./workflow-builder.css?v=2026091801">
+  <title>Allaiso · Creador de Flujos</title>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div><p class="eyebrow">ALLAISO</p><h1>Creador de Flujos</h1></div>
+      <div class="global-actions">
+        <button class="global-icon" data-theme-toggle aria-label="Cambiar tema"><span data-theme-icon>☾</span></button>
+        <a class="global-icon" href="./workflows.html" aria-label="Volver a Flujos de Trabajo" title="Flujos de Trabajo">←</a>
+        <a class="global-icon" href="./" aria-label="Inicio" title="Inicio">⌂</a>
+      </div>
+    </header>
+
+    <section class="hero">
+      <span class="badge">Borrador local</span>
+      <h2>Construye la receta paso a paso.</h2>
+      <p>Esta fase permite diseñar y revisar un flujo sin guardar todavía datos de negocio en el servidor. La publicación se activará únicamente cuando el motor backend y sus permisos estén listos.</p>
+    </section>
+
+    <section class="builder-layout">
+      <nav class="builder-steps" aria-label="Pasos del creador">
+        <button type="button" class="builder-step is-active" data-step-target="0"><span>1</span>Identidad</button>
+        <button type="button" class="builder-step" data-step-target="1"><span>2</span>Ámbito</button>
+        <button type="button" class="builder-step" data-step-target="2"><span>3</span>Activación</button>
+        <button type="button" class="builder-step" data-step-target="3"><span>4</span>Asignación</button>
+        <button type="button" class="builder-step" data-step-target="4"><span>5</span>Pasos y recursos</button>
+        <button type="button" class="builder-step" data-step-target="5"><span>6</span>Cierre</button>
+        <button type="button" class="builder-step" data-step-target="6"><span>7</span>Revisión</button>
+      </nav>
+
+      <form id="workflowBuilderForm" class="builder-card" novalidate>
+        <section class="builder-panel is-active" data-step="0">
+          <p class="eyebrow">Paso 1 de 7</p>
+          <h2>Identidad del flujo</h2>
+          <label>Nombre del flujo<input id="flowName" name="flowName" maxlength="80" placeholder="Ej. Limpieza semanal Piso A" required></label>
+          <label>Tipo<select id="flowType" name="flowType">
+            <option value="cleaning">Limpieza</option>
+            <option value="inspection">Inspección</option>
+            <option value="maintenance">Mantenimiento</option>
+            <option value="checkin">Check-in</option>
+            <option value="checkout">Check-out</option>
+            <option value="custom">Personalizado</option>
+          </select></label>
+          <label>Descripción<textarea id="flowDescription" name="flowDescription" rows="4" maxlength="400" placeholder="Qué objetivo tiene este flujo"></textarea></label>
+        </section>
+
+        <section class="builder-panel" data-step="1">
+          <p class="eyebrow">Paso 2 de 7</p>
+          <h2>Ámbito</h2>
+          <label>El flujo aplica a<select id="scopeType" name="scopeType">
+            <option value="property">Un piso</option>
+            <option value="organization">Toda la organización</option>
+            <option value="room">Una habitación</option>
+            <option value="occupancy">Una ocupación / inquilino</option>
+          </select></label>
+          <div class="builder-note">La selección de la entidad concreta se conectará al catálogo real cuando activemos el guardado server-side. No se utilizarán nombres visibles como credencial.</div>
+        </section>
+
+        <section class="builder-panel" data-step="2">
+          <p class="eyebrow">Paso 3 de 7</p>
+          <h2>Activación</h2>
+          <label>Cómo se inicia<select id="triggerType" name="triggerType">
+            <option value="manual">Manual</option>
+            <option value="recurring">Recurrente</option>
+            <option value="scheduled_once">Fecha concreta</option>
+            <option value="event">Por evento</option>
+          </select></label>
+          <label id="recurrenceRow" hidden>Frecuencia<select id="recurrence" name="recurrence">
+            <option value="weekly">Cada semana</option>
+            <option value="biweekly">Cada 2 semanas</option>
+            <option value="monthly">Cada mes</option>
+            <option value="custom">Personalizada</option>
+          </select></label>
+        </section>
+
+        <section class="builder-panel" data-step="3">
+          <p class="eyebrow">Paso 4 de 7</p>
+          <h2>Asignación</h2>
+          <label>Quién ejecuta<select id="assignmentType" name="assignmentType">
+            <option value="property_responsible">Responsable operativo del piso</option>
+            <option value="active_occupants_rotation">Ocupantes activos en rotación</option>
+            <option value="fixed_person">Persona fija</option>
+            <option value="role">Rol o capacidad</option>
+            <option value="manual">Se decide al iniciar</option>
+          </select></label>
+          <div class="builder-note">La persona final se resolverá siempre en servidor cuando se cree la ejecución; el navegador no podrá autoasignar permisos.</div>
+        </section>
+
+        <section class="builder-panel" data-step="4">
+          <p class="eyebrow">Paso 5 de 7</p>
+          <h2>Pasos y recursos</h2>
+          <fieldset>
+            <legend>Qué debe hacer la persona</legend>
+            <label class="check-row"><input type="checkbox" name="stepAccept" checked> Confirmar / aceptar tarea</label>
+            <label class="check-row"><input type="checkbox" name="stepPhoto"> Aportar evidencia fotográfica</label>
+            <label class="check-row"><input type="checkbox" name="stepChecklist"> Completar checklist o formulario</label>
+            <label class="check-row"><input type="checkbox" name="stepDocument"> Adjuntar o revisar documento</label>
+          </fieldset>
+          <a class="resource-link" href="./photo-patterns.html?from=workflow-builder">📷 Abrir Banco Fotográfico</a>
+          <div class="builder-note">Los patrones se referenciarán por versión; no se copiarán dentro del flujo.</div>
+        </section>
+
+        <section class="builder-panel" data-step="5">
+          <p class="eyebrow">Paso 6 de 7</p>
+          <h2>Cierre y revisión</h2>
+          <label>Cómo termina<select id="closeType" name="closeType">
+            <option value="auto">Automáticamente al completar pasos</option>
+            <option value="human_review">Tras revisión humana</option>
+            <option value="domain_adapter">Según regla especializada del flujo</option>
+          </select></label>
+          <label class="check-row"><input type="checkbox" id="notifyOnCreate" name="notifyOnCreate" checked> Notificar al asignado al crear la tarea</label>
+          <label class="check-row"><input type="checkbox" id="notifyOnClose" name="notifyOnClose"> Notificar al cerrar el flujo</label>
+        </section>
+
+        <section class="builder-panel" data-step="6">
+          <p class="eyebrow">Paso 7 de 7</p>
+          <h2>Revisión del borrador</h2>
+          <div id="workflowSummary" class="builder-summary"></div>
+          <div class="builder-warning"><strong>Aún no publicado.</strong> Este borrador solo vive en este navegador. No crea tareas, no programa ejecuciones y no modifica la base de datos.</div>
+        </section>
+
+        <div class="builder-actions">
+          <button id="builderBack" type="button" class="secondary" disabled>Atrás</button>
+          <button id="builderClear" type="button" class="secondary">Borrar borrador</button>
+          <button id="builderNext" type="button" class="primary">Continuar</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="status"><span class="dot"></span><span>Fase de autoría local. El siguiente incremento conectará borradores versionados al motor server-side con RLS y publicación controlada.</span></section>
+  </main>
+
+  <script src="./app.js?v=202609152" defer></script>
+  <script type="module" src="./workflow-builder.js?v=2026091801"></script>
+  <script type="module" src="./auth-guard.js"></script>
+</body>
+</html>

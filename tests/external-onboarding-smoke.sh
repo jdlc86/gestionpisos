@@ -12,6 +12,16 @@ node --check docs/activate-external-account.js
 node --check docs/portfolio-onboarding.js
 
 grep -Fq 'minlength="12"' docs/activate-external-account.html
+grep -Fq 'id="passwordChecklist"' docs/activate-external-account.html
+grep -Fq '12 caracteres como mínimo' docs/activate-external-account.html
+grep -Fq 'Una letra minúscula' docs/activate-external-account.html
+grep -Fq 'Una letra mayúscula' docs/activate-external-account.html
+grep -Fq 'Un número' docs/activate-external-account.html
+grep -Fq 'Un símbolo' docs/activate-external-account.html
+grep -Fq 'Las contraseñas coinciden' docs/activate-external-account.html
+grep -Fq 'activate-external-account.js?v=2026091701' docs/activate-external-account.html
+grep -Fq 'passwordPolicyValid()' docs/activate-external-account.js
+grep -Fq 'symbolPattern.test(value)' docs/activate-external-account.js
 grep -Fq 'complete-external-onboarding' docs/activate-external-account.js
 grep -Fq 'auth_metadata_synced' docs/activate-external-account.js
 grep -Fq 'get_my_external_account_onboarding' docs/auth-guard.js

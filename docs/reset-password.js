@@ -6,6 +6,8 @@ const confirmPassword = document.getElementById("confirmPassword");
 const button = document.getElementById("resetBtn");
 const backToLogin = document.getElementById("backToLogin");
 const message = document.getElementById("authMessage");
+const passwordChecklist = document.getElementById("passwordChecklist");
+const symbolPattern = /[!@#$%^&*()_+\-=\[\]{};'\\:"|<>?,.\/`~]/;
 
 const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
 const queryParams = new URLSearchParams(window.location.search);
@@ -21,11 +23,38 @@ function show(text, error = false) {
   message.classList.toggle("is-error", error);
 }
 
+function passwordPolicyState() {
+  const value = password.value;
+  return {
+    length: value.length >= 12,
+    lowercase: /[a-z]/.test(value),
+    uppercase: /[A-Z]/.test(value),
+    digit: /[0-9]/.test(value),
+    symbol: symbolPattern.test(value),
+    match: confirmPassword.value.length > 0 && value === confirmPassword.value,
+  };
+}
+
+function passwordPolicyValid() {
+  return Object.values(passwordPolicyState()).every(Boolean);
+}
+
+function updatePasswordChecklist() {
+  const state = passwordPolicyState();
+  Object.entries(state).forEach(([rule, valid]) => {
+    const item = passwordChecklist?.querySelector(`[data-password-rule="${rule}"]`);
+    if (!item) return;
+    item.classList.toggle("is-valid", valid);
+    item.classList.toggle("is-invalid", rule === "match" && confirmPassword.value.length > 0 && !valid);
+  });
+  button.disabled = !recoveryReady || !passwordPolicyValid();
+}
+
 function enableRecoveryForm() {
   recoveryReady = true;
   password.disabled = false;
   confirmPassword.disabled = false;
-  button.disabled = false;
+  updatePasswordChecklist();
   show("Enlace verificado. Introduce tu nueva contraseña.");
   password.focus();
 }
@@ -38,6 +67,9 @@ function invalidateRecovery(text = "El enlace de recuperación no es válido o h
   sessionStorage.removeItem("allaiso-password-recovery");
   show(text, true);
 }
+
+password.addEventListener("input", updatePasswordChecklist);
+confirmPassword.addEventListener("input", updatePasswordChecklist);
 
 const authError = hashParams.get("error_description") || queryParams.get("error_description");
 if (authError) {
@@ -82,9 +114,17 @@ form.addEventListener("submit", async event => {
     return;
   }
 
-  if (password.value !== confirmPassword.value) {
+  const policy = passwordPolicyState();
+  if (!policy.match) {
     show("Las dos contraseñas no coinciden.", true);
     confirmPassword.focus();
+    updatePasswordChecklist();
+    return;
+  }
+  if (!passwordPolicyValid()) {
+    show("La contraseña debe cumplir todos los requisitos indicados.", true);
+    password.focus();
+    updatePasswordChecklist();
     return;
   }
 
@@ -96,10 +136,10 @@ form.addEventListener("submit", async event => {
   const { error } = await supabase.auth.updateUser({ password: password.value });
 
   if (error) {
-    button.disabled = false;
     password.disabled = false;
     confirmPassword.disabled = false;
-    show("No se pudo actualizar la contraseña. Abre de nuevo el enlace de recuperación o solicita uno nuevo.", true);
+    updatePasswordChecklist();
+    show("No se pudo actualizar la contraseña. Comprueba que cumpla todos los requisitos o solicita un enlace nuevo.", true);
     return;
   }
 

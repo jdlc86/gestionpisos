@@ -11,9 +11,18 @@ node --check docs/activate-account.js
 node --check docs/permissions-onboarding.js
 
 grep -Fq 'minlength="12"' docs/activate-account.html
+grep -Fq 'id="passwordChecklist"' docs/activate-account.html
+grep -Fq '12 caracteres como mínimo' docs/activate-account.html
+grep -Fq 'Una letra minúscula' docs/activate-account.html
+grep -Fq 'Una letra mayúscula' docs/activate-account.html
+grep -Fq 'Un número' docs/activate-account.html
+grep -Fq 'Un símbolo' docs/activate-account.html
+grep -Fq 'Las contraseñas coinciden' docs/activate-account.html
 grep -Fq 'complete-staff-onboarding' docs/activate-account.js
 grep -Fq 'auth_metadata_synced' docs/activate-account.js
-grep -Fq 'activate-account.js?v=2026091602' docs/activate-account.html
+grep -Fq 'activate-account.js?v=2026091701' docs/activate-account.html
+grep -Fq 'passwordPolicyValid()' docs/activate-account.js
+grep -Fq 'symbolPattern.test(value)' docs/activate-account.js
 grep -Fq 'updateUser({ password: password.value })' docs/activate-account.js
 grep -Fq 'Cuenta activada. Ya puedes iniciar sesión.' docs/login.js
 grep -Fq 'get_my_internal_staff_onboarding' docs/auth-guard.js

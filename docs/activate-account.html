@@ -6,7 +6,7 @@
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="noindex,nofollow">
   <link rel="stylesheet" href="./app.css">
-  <link rel="stylesheet" href="./auth.css">
+  <link rel="stylesheet" href="./auth.css?v=2026091701">
   <title>Allaiso · Crear contraseña</title>
 </head>
 <body>
@@ -17,11 +17,22 @@
       <p class="auth-lead">Esta contraseña será solo tuya. El administrador no puede verla ni definirla por ti.</p>
       <form id="activationForm" class="auth-form">
         <label>Nueva contraseña
-          <input id="newPassword" type="password" autocomplete="new-password" minlength="12" required disabled>
+          <input id="newPassword" type="password" autocomplete="new-password" minlength="12" aria-describedby="passwordChecklist" required disabled>
         </label>
         <label>Repite la nueva contraseña
-          <input id="confirmPassword" type="password" autocomplete="new-password" minlength="12" required disabled>
+          <input id="confirmPassword" type="password" autocomplete="new-password" minlength="12" aria-describedby="passwordChecklist" required disabled>
         </label>
+        <div id="passwordChecklist" class="password-checklist">
+          <p class="password-checklist-title">La contraseña debe incluir:</p>
+          <ul>
+            <li data-password-rule="length">12 caracteres como mínimo</li>
+            <li data-password-rule="lowercase">Una letra minúscula</li>
+            <li data-password-rule="uppercase">Una letra mayúscula</li>
+            <li data-password-rule="digit">Un número</li>
+            <li data-password-rule="symbol">Un símbolo</li>
+            <li data-password-rule="match">Las contraseñas coinciden</li>
+          </ul>
+        </div>
         <button id="activationBtn" class="primary auth-primary" type="submit" disabled>Activar cuenta</button>
       </form>
       <button id="backToLogin" class="auth-link" type="button">Volver al acceso</button>
@@ -37,6 +48,6 @@
       }
     })();
   </script>
-  <script type="module" src="./activate-account.js?v=2026091602"></script>
+  <script type="module" src="./activate-account.js?v=2026091701"></script>
 </body>
 </html>

@@ -6,6 +6,8 @@ const confirmPassword = document.getElementById("confirmPassword");
 const button = document.getElementById("activationBtn");
 const backToLogin = document.getElementById("backToLogin");
 const message = document.getElementById("authMessage");
+const passwordChecklist = document.getElementById("passwordChecklist");
+const symbolPattern = /[!@#$%^&*()_+\-=\[\]{};'\\:"|<>?,.\/`~]/;
 let activationReady = false;
 let passwordUpdated = false;
 
@@ -14,11 +16,49 @@ function show(text, error = false) {
   message.classList.toggle("is-error", error);
 }
 
+function passwordPolicyState() {
+  const value = password.value;
+  return {
+    length: value.length >= 12,
+    lowercase: /[a-z]/.test(value),
+    uppercase: /[A-Z]/.test(value),
+    digit: /[0-9]/.test(value),
+    symbol: symbolPattern.test(value),
+    match: confirmPassword.value.length > 0 && value === confirmPassword.value,
+  };
+}
+
+function passwordPolicyValid() {
+  return Object.values(passwordPolicyState()).every(Boolean);
+}
+
+function updatePasswordChecklist() {
+  const state = passwordPolicyState();
+  Object.entries(state).forEach(([rule, valid]) => {
+    const item = passwordChecklist?.querySelector(`[data-password-rule="${rule}"]`);
+    if (!item) return;
+    item.classList.toggle("is-valid", valid);
+    item.classList.toggle("is-invalid", rule === "match" && confirmPassword.value.length > 0 && !valid);
+  });
+  if (!passwordUpdated) button.disabled = !activationReady || password.disabled || !passwordPolicyValid();
+}
+
 function setFormEnabled(enabled) {
   password.disabled = !enabled;
   confirmPassword.disabled = !enabled;
-  button.disabled = !enabled;
+  if (!enabled) button.disabled = true;
+  else updatePasswordChecklist();
 }
+
+function showCompletionMode() {
+  passwordChecklist.hidden = true;
+  password.disabled = true;
+  confirmPassword.disabled = true;
+  button.disabled = false;
+}
+
+password.addEventListener("input", updatePasswordChecklist);
+confirmPassword.addEventListener("input", updatePasswordChecklist);
 
 async function onboardingState() {
   const { data, error } = await supabase.rpc("get_my_internal_staff_onboarding");
@@ -51,22 +91,19 @@ async function validateActivationSession() {
       return;
     }
     if (state.status === "active") {
-      // An earlier attempt may have activated the database role but failed while
-      // synchronizing Auth claims. Keep the retry path available; the backend is
-      // idempotent and will only publish claims after the DB role is authoritative.
       activationReady = true;
       passwordUpdated = true;
-      password.disabled = true;
-      confirmPassword.disabled = true;
-      button.disabled = false;
+      showCompletionMode();
       button.textContent = "Completar activación";
       show("La cuenta está preparada. Pulsa Completar activación para sincronizar el acceso y terminar.");
       return;
     }
 
     activationReady = true;
+    passwordUpdated = false;
+    passwordChecklist.hidden = false;
     setFormEnabled(true);
-    show(`Identidad verificada. Crea una contraseña de al menos 12 caracteres para activar tu cuenta de ${state.intended_role === "admin" ? "administrador" : "empleado"}.`);
+    show(`Identidad verificada. Crea una contraseña segura para activar tu cuenta de ${state.intended_role === "admin" ? "administrador" : "empleado"}.`);
     password.focus();
   } catch {
     activationReady = false;
@@ -93,14 +130,17 @@ form.addEventListener("submit", async (event) => {
   if (!activationReady) return;
 
   if (!passwordUpdated) {
-    if (password.value !== confirmPassword.value) {
+    const policy = passwordPolicyState();
+    if (!policy.match) {
       show("Las dos contraseñas no coinciden.", true);
       confirmPassword.focus();
+      updatePasswordChecklist();
       return;
     }
-    if (password.value.length < 12) {
-      show("La contraseña debe tener al menos 12 caracteres.", true);
+    if (!passwordPolicyValid()) {
+      show("La contraseña debe cumplir todos los requisitos indicados.", true);
       password.focus();
+      updatePasswordChecklist();
       return;
     }
   }
@@ -128,14 +168,14 @@ form.addEventListener("submit", async (event) => {
     setTimeout(() => window.location.replace("./login.html?activated=1"), 900);
   } catch (error) {
     activationReady = true;
-    button.disabled = false;
     if (!passwordUpdated) {
       password.disabled = false;
       confirmPassword.disabled = false;
-      show("No se pudo guardar la contraseña. Revisa los datos e inténtalo de nuevo.", true);
+      passwordChecklist.hidden = false;
+      updatePasswordChecklist();
+      show("No se pudo guardar la contraseña. Comprueba que cumpla todos los requisitos e inténtalo de nuevo.", true);
     } else {
-      password.disabled = true;
-      confirmPassword.disabled = true;
+      showCompletionMode();
       button.textContent = "Reintentar activación";
       show("La contraseña ya quedó guardada, pero falta completar la activación. Pulsa Reintentar activación; no cierres esta pantalla.", true);
     }

@@ -46,7 +46,7 @@ function withTimeout(promise, milliseconds, code) {
 async function routeAuthenticatedSession(session) {
   const next = targetPage();
   const mfa = await withTimeout(
-    privilegedMfaRoute(supabase, session),
+    privilegedMfaRoute(supabase, session, { requireEnrollment: true }),
     5000,
     "mfa_check_timeout"
   );

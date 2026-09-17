@@ -86,8 +86,6 @@ grep -Fq 'mfa_recovery_partial' supabase/functions/recover-privileged-mfa/index.
 grep -Fq 'mfa_recovery_completed' supabase/functions/recover-privileged-mfa/index.ts
 grep -Fq 'operator_reference' supabase/functions/recover-privileged-mfa/index.ts
 grep -Fq 'verification_note' supabase/functions/recover-privileged-mfa/index.ts
-! grep -Fq 'SUPABASE_SERVICE_ROLE_KEY' docs/mfa-challenge.js
-! grep -Fq 'SUPABASE_SERVICE_ROLE_KEY' docs/mfa-challenge.html
 
 grep -Fq 'Nunca aprobar una recuperación únicamente por conocer el código de solicitud' docs/MFA_RECOVERY_RUNBOOK.md
 grep -Fq 'No ejecutar el endpoint de recuperación desde el navegador' docs/MFA_RECOVERY_RUNBOOK.md

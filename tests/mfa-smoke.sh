@@ -30,10 +30,9 @@ grep -Fq 'factor.status === "verified"' docs/mfa-challenge.js
 grep -Fq 'currentLevel !== "aal2"' docs/mfa-challenge.js
 grep -Fq 'autocomplete="one-time-code"' docs/mfa-challenge.html
 
-grep -Fq 'privilegedMfaRoute(supabase, session)' docs/auth-guard.js
-grep -Fq 'Configurar MFA' docs/auth-guard.js
+grep -Fq 'privilegedMfaRoute(supabase, session, { requireEnrollment: true })' docs/auth-guard.js
 grep -Fq 'authFlowUrl(mfa.route' docs/auth-guard.js
-grep -Fq 'privilegedMfaRoute(supabase, session)' docs/login.js
+grep -Fq 'privilegedMfaRoute(supabase, session, { requireEnrollment: true })' docs/login.js
 grep -Fq 'mfa_check_timeout' docs/login.js
 
 grep -Fq "gestionpisos-shell-v2" docs/sw.js

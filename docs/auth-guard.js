@@ -57,7 +57,7 @@ async function requireSession() {
       return;
     }
 
-    const mfa = await privilegedMfaRoute(supabase, session);
+    const mfa = await privilegedMfaRoute(supabase, session, { requireEnrollment: true });
     if (mfa.route) {
       window.location.replace(authFlowUrl(mfa.route, currentPageNext()));
       return;

@@ -42,6 +42,16 @@ El futuro/autoservicio mediante QR conserva estas reglas: el QR solo inicia iden
 - Al completar recuperación/cambio se invalidan todas las demás sesiones.
 - ROOT/ADMIN deben completar MFA según política.
 
+### Recuperación de emergencia MFA de ROOT/ADMIN
+
+- Perder todos los autenticadores no autoriza a omitir MFA. La interfaz solo permite crear una solicitud de recuperación pendiente y auditable.
+- La solicitud requiere una sesión válida de la cuenta privilegiada en `aal1`, que el usuario siga teniendo rol ROOT/ADMIN y que existan factores MFA verificados. Si ya alcanzó `aal2`, no procede una recuperación de emergencia.
+- El `request_id` es únicamente un correlador de auditoría: no es secreto y nunca basta para aprobar el proceso.
+- La ejecución se realiza exclusivamente desde backend/plataforma tras verificación humana independiente de la identidad. Nunca se expone una credencial administrativa en frontend.
+- El proceso revoca sesiones, invalida la contraseña anterior, elimina los factores perdidos y dispara recuperación de contraseña. Después, el siguiente acceso obliga a enrolar MFA nuevamente antes de permitir uso operativo.
+- Cualquier resultado parcial debe quedar auditado y ser reanudable sin borrar el histórico.
+- El procedimiento detallado está en `docs/MFA_RECOVERY_RUNBOOK.md`.
+
 ## Entrega profesional de correos de autenticación
 
 El envío de correos críticos de autenticación en producción **no puede depender del SMTP incorporado de Supabase**.

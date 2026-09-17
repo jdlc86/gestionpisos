@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="es" data-auth-pending="1">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <link rel="stylesheet" href="./app.css?v=202609154">
+  <link rel="stylesheet" href="./configuration-resources.css?v=2026091701">
+  <title>Allaiso · Configuración y Recursos</title>
+</head>
+<body>
+<main class="shell">
+  <header class="topbar">
+    <div><p class="eyebrow">CONFIGURACIÓN GLOBAL · ROOT</p><h1>Configuración y Recursos</h1></div>
+    <div class="global-actions"><button class="global-icon" data-theme-toggle aria-label="Cambiar tema"><span data-theme-icon>☾</span></button><a class="global-icon" href="./" aria-label="Inicio" title="Inicio">⌂</a></div>
+  </header>
+
+  <section class="hero"><span class="badge">ROOT</span><h2>Estado técnico y configuración global de GestionPisos.</h2><p>Centraliza recursos, seguridad, accesos, inventario de la aplicación y mantenimiento excepcional sin mezclarlo con la gestión diaria de viviendas.</p></section>
+
+  <div class="configuration-toolbar"><div><strong id="organizationName">—</strong><div class="configuration-note">Organización activa · <span id="organizationStatus">—</span></div></div><button id="refreshResources" type="button">↻ Actualizar</button></div>
+
+  <section class="configuration-grid" aria-label="Recursos del proyecto">
+    <article class="configuration-card"><h3>Base de datos</h3><div id="databaseMetric" class="resource-metric">—</div><div class="resource-detail">Tamaño total del proyecto Supabase dedicado a GestionPisos.</div></article>
+    <article class="configuration-card"><h3>Storage</h3><div id="storageMetric" class="resource-metric">—</div><div id="storageDetail" class="resource-detail">—</div></article>
+    <article class="configuration-card"><h3>Usuarios Auth</h3><div id="authMetric" class="resource-metric">—</div><div class="resource-detail">Identidades de acceso existentes actualmente en Authentication.</div></article>
+    <article class="configuration-card"><h3>Recuperación ROOT</h3><div id="recoveryMetric" class="resource-metric">—</div><div id="recoveryDetail" class="resource-detail">—</div></article>
+  </section>
+
+  <section class="configuration-section">
+    <p class="eyebrow">GESTIONPISOS</p><h3>Inventario de la aplicación</h3><div class="configuration-note">Resumen operativo de los datos pertenecientes a la organización activa.</div>
+    <div class="inventory-grid">
+      <div class="inventory-item"><strong id="inventoryProperties">—</strong><span>Pisos</span></div>
+      <div class="inventory-item"><strong id="inventoryRooms">—</strong><span>Habitaciones</span></div>
+      <div class="inventory-item"><strong id="inventoryOwners">—</strong><span>Propietarios</span></div>
+      <div class="inventory-item"><strong id="inventoryTenants">—</strong><span>Inquilinos</span></div>
+      <div class="inventory-item"><strong id="inventoryOccupancies">—</strong><span>Ocupaciones</span></div>
+      <div class="inventory-item"><strong id="inventoryIncidents">—</strong><span>Incidencias</span></div>
+      <div class="inventory-item"><strong id="inventoryCleaning">—</strong><span>Tareas de limpieza</span></div>
+      <div class="inventory-item"><strong id="inventoryPhotoRuns">—</strong><span>Fotoverificaciones</span></div>
+      <div class="inventory-item"><strong id="inventoryDocuments">—</strong><span>Documentos de inquilinos</span></div>
+      <div class="inventory-item"><strong id="inventoryNotifications">—</strong><span>Notificaciones</span></div>
+    </div>
+  </section>
+
+  <section class="configuration-section">
+    <p class="eyebrow">SEGURIDAD Y ACCESO</p><h3>Configuración global</h3>
+    <div class="configuration-links">
+      <a class="configuration-link" href="./permissions.html"><strong>🔐 Gestión de Permisos</strong><span>Administradores, empleados, viviendas asignadas, control administrativo y operadores de emergencia.</span></a>
+      <a class="configuration-link" href="./mfa-setup.html?next=configuration-resources.html"><strong>🛡️ Seguridad MFA</strong><span>Gestiona los autenticadores de la cuenta ROOT. Las operaciones privilegiadas exigen AAL2.</span></a>
+      <a class="configuration-link" href="./permissions.html#emergencyOperatorsPanel"><strong>🧰 Operadores de emergencia</strong><span>Autoriza y revisa las identidades técnicas capaces de ejecutar recuperación privilegiada.</span></a>
+      <div class="configuration-link"><strong>✉️ Correo de autenticación</strong><span>Entrega transaccional externa para invitaciones y recuperación de contraseña.</span><span id="emailDeliveryStatus" class="status-pill">—</span></div>
+    </div>
+    <div class="configuration-note" style="margin-top:12px">Sesión ROOT actual: <span id="mfaStatus" class="status-pill">—</span></div>
+  </section>
+
+  <section class="configuration-section">
+    <p class="eyebrow">MANTENIMIENTO</p><h3>Estado de restablecimiento</h3><div class="configuration-note">Último Factory Reset completado: <strong id="lastReset">—</strong></div><div id="generatedAt" class="configuration-note"></div>
+  </section>
+
+  <section class="configuration-section danger-zone">
+    <p class="eyebrow">ZONA DE PRUEBAS</p><h3>Restablecer entorno de pruebas</h3><div class="configuration-note">Elimina datos operativos, usuarios no protegidos, auditoría histórica de pruebas y Storage. Conserva ROOT, el operador técnico de recuperación, la organización activa y la configuración estructural protegida.</div><a class="danger-action" href="./factory-reset.html">Abrir Factory Reset</a>
+  </section>
+
+  <div id="configurationResourcesState" class="configuration-state">Consultando estado técnico de GestionPisos…</div>
+</main>
+<script src="./app.js?v=202609152" defer></script>
+<script type="module" src="./configuration-resources.js?v=2026091701"></script>
+<script type="module" src="./auth-guard.js"></script>
+</body>
+</html>

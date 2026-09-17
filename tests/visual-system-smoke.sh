@@ -6,12 +6,19 @@ test -s docs/app.css
 
 grep -Fq -- '--ui-hero:#111214' docs/app.css
 grep -Fq -- '--ui-surface:#ffffff' docs/app.css
-grep -Fq 'module-icon--portfolio' docs/index.html
-grep -Fq 'module-icon--settings' docs/index.html
-grep -Fq '<svg viewBox="0 0 24 24">' docs/index.html
+grep -Fq 'class="ui-nav-icon"' docs/index.html
+grep -Fq 'class="ui-nav-icon"' docs/configuration-resources.html
+grep -Fq '>🔐</span>Gestión de Permisos' docs/index.html
+grep -Fq '>🔐</span>Gestión de Permisos' docs/configuration-resources.html
+grep -Fq '>⚙️</span>Configuración y Recursos' docs/index.html
 
-if grep -Fq 'module-emoji' docs/index.html; then
-  echo 'Dashboard principal no debe volver a emojis como iconografía de módulos.'
+if grep -Fq '<svg viewBox="0 0 24 24">' docs/index.html; then
+  echo 'El dashboard principal no debe usar una segunda familia SVG para iconos de módulos.'
+  exit 1
+fi
+
+if grep -Fq 'module-icon--' docs/index.html docs/app.css; then
+  echo 'No deben quedar variantes antiguas module-icon--* en el sistema principal.'
   exit 1
 fi
 

@@ -6,7 +6,7 @@
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="noindex,nofollow">
   <link rel="stylesheet" href="./app.css">
-  <link rel="stylesheet" href="./auth.css?v=2026091703">
+  <link rel="stylesheet" href="./auth.css?v=2026091704">
   <title>Allaiso · Seguridad MFA</title>
 </head>
 <body>
@@ -19,7 +19,7 @@
       <section id="mfaManagePanel" class="mfa-manage-panel" hidden>
         <div>
           <h2 class="mfa-section-title">Tus autenticadores</h2>
-          <p class="mfa-section-help">Conserva al menos dos factores verificados para poder entrar si pierdes el dispositivo principal.</p>
+          <p class="mfa-section-help">Conserva al menos dos factores verificados. Puedes ponerles nombres como “Móvil personal” o “Tablet oficina” para reconocerlos fácilmente.</p>
         </div>
         <div id="mfaFactorList" class="mfa-factor-list" aria-live="polite"></div>
         <button id="addBackupBtn" class="ghost mfa-wide-action" type="button">Añadir factor de respaldo</button>
@@ -35,7 +35,8 @@
         </ol>
 
         <div class="mfa-qr-wrap">
-          <img id="mfaQr" class="mfa-qr" alt="Código QR para configurar la autenticación multifactor">
+          <div id="mfaQrLoading" class="mfa-qr-loading">Generando código QR…</div>
+          <img id="mfaQr" class="mfa-qr" alt="Código QR para configurar la autenticación multifactor" hidden>
         </div>
 
         <details class="mfa-manual">
@@ -60,6 +61,6 @@
       <p id="authMessage" class="auth-message" role="status" aria-live="polite">Comprobando la seguridad de tu cuenta…</p>
     </section>
   </main>
-  <script type="module" src="./mfa-setup.js?v=2026091702"></script>
+  <script type="module" src="./mfa-setup.js?v=2026091703"></script>
 </body>
 </html>

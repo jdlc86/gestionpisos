@@ -3,6 +3,21 @@
 
 begin;
 
+-- Los RPC administrativos no se exponen al rol API anónimo.
+do $$
+begin
+  if has_function_privilege('anon','public.save_workflow_definition_draft_v1(jsonb,uuid,bigint)','EXECUTE') then
+    raise exception 'anon can execute workflow draft RPC';
+  end if;
+  if has_function_privilege('anon','public.workflow_can_read_definitions_v1(uuid)','EXECUTE') then
+    raise exception 'anon can execute workflow read helper';
+  end if;
+  if not has_function_privilege('authenticated','public.save_workflow_definition_draft_v1(jsonb,uuid,bigint)','EXECUTE') then
+    raise exception 'authenticated cannot execute workflow draft RPC';
+  end if;
+end;
+$$;
+
 select set_config('gestionpisos.workflow_org_1','11111111-1111-4111-8111-111111111111',true);
 select set_config('gestionpisos.workflow_org_2','33333333-3333-4333-8333-333333333333',true);
 select set_config('gestionpisos.workflow_root','22222222-2222-4222-8222-222222222222',true);

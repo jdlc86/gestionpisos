@@ -19,7 +19,10 @@ grep -Fq 'app_metadata?.role' docs/root-home-modules.js
 
 grep -Fq 'Configuración y Recursos' docs/configuration-resources.html
 grep -Fq 'Gestión de Permisos' docs/configuration-resources.html
-grep -Fq 'Seguridad MFA' docs/configuration-resources.html
+grep -Fq 'class="mfa-title"' docs/configuration-resources.html
+grep -Fq '🔑' docs/configuration-resources.html
+grep -Fq '>MFA</strong>' docs/configuration-resources.html
+grep -Fq '.configuration-link .mfa-title{color:var(--ui-success)}' docs/configuration-resources.css
 grep -Fq 'Operadores de emergencia' docs/configuration-resources.html
 grep -Fq 'factory-reset.html' docs/configuration-resources.html
 

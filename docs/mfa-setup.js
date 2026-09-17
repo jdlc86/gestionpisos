@@ -14,6 +14,7 @@ const finishMfaBtn = document.getElementById("finishMfaBtn");
 const panel = document.getElementById("mfaSetupPanel");
 const enrollmentTitle = document.getElementById("mfaEnrollmentTitle");
 const qr = document.getElementById("mfaQr");
+const qrLoading = document.getElementById("mfaQrLoading");
 const secret = document.getElementById("mfaSecret");
 const copySecretBtn = document.getElementById("copySecretBtn");
 const form = document.getElementById("mfaSetupForm");
@@ -49,8 +50,12 @@ function qrDataUrl(svg) {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
+function normalizeFactorName(value) {
+  return String(value || "").trim().replace(/\s+/g, " ").slice(0, 50);
+}
+
 function factorFriendlyName(factor, index = 0) {
-  const value = String(factor?.friendly_name || factor?.friendlyName || "").trim();
+  const value = normalizeFactorName(factor?.friendly_name || factor?.friendlyName || "");
   if (value) return value;
   return index === 0 ? "Autenticador principal" : `Autenticador ${index + 1}`;
 }
@@ -60,6 +65,11 @@ function nextBackupName(factors) {
   let number = 1;
   while (used.has(`respaldo ${number}`)) number += 1;
   return `Respaldo ${number}`;
+}
+
+function factorNameInUse(name, exceptId = null) {
+  const wanted = normalizeFactorName(name).toLowerCase();
+  return verifiedFactors.some(factor => factor.id !== exceptId && factorFriendlyName(factor).toLowerCase() === wanted);
 }
 
 async function listTotpFactors() {
@@ -76,13 +86,22 @@ async function removeUnverifiedFactors(factors) {
   }
 }
 
+function resetQrState() {
+  qr.onload = null;
+  qr.onerror = null;
+  qr.hidden = true;
+  qr.removeAttribute("src");
+  qrLoading.hidden = false;
+  qrLoading.textContent = "Generando código QR…";
+}
+
 function resetEnrollmentPanel() {
   factorId = null;
   setupReady = false;
   code.value = "";
   code.disabled = false;
   submit.disabled = true;
-  qr.removeAttribute("src");
+  resetQrState();
   secret.textContent = "";
   panel.hidden = true;
   cancelEnrollmentBtn.hidden = true;
@@ -104,6 +123,15 @@ function renderManagement(factors) {
     status.textContent = "Verificado";
     info.append(name, status);
 
+    const actions = document.createElement("div");
+    actions.className = "mfa-factor-actions";
+
+    const rename = document.createElement("button");
+    rename.type = "button";
+    rename.className = "ghost mfa-rename-factor";
+    rename.textContent = "Renombrar";
+    rename.addEventListener("click", () => void renameVerifiedFactor(factor, rename));
+
     const remove = document.createElement("button");
     remove.type = "button";
     remove.className = "ghost mfa-remove-factor";
@@ -114,7 +142,8 @@ function renderManagement(factors) {
       : "Eliminar este autenticador";
     remove.addEventListener("click", () => void removeVerifiedFactor(factor, remove));
 
-    row.append(info, remove);
+    actions.append(rename, remove);
+    row.append(info, actions);
     factorList.append(row);
   });
 
@@ -142,21 +171,85 @@ async function signOutToLogin() {
   window.location.replace("./login.html");
 }
 
+async function renameVerifiedFactor(factor, button) {
+  const currentName = factorFriendlyName(factor, verifiedFactors.indexOf(factor));
+  const entered = window.prompt("Nombre para reconocer este autenticador en GestionPisos:", currentName);
+  if (entered === null) return;
+
+  const friendlyName = normalizeFactorName(entered);
+  if (!friendlyName) {
+    show("Escribe un nombre para el autenticador.", true);
+    return;
+  }
+  if (friendlyName === currentName) return;
+  if (factorNameInUse(friendlyName, factor.id)) {
+    show("Ya existe otro autenticador con ese nombre.", true);
+    return;
+  }
+
+  button.disabled = true;
+  show("Actualizando nombre…");
+  try {
+    const assurance = await getMfaAssurance(supabase);
+    if (assurance?.currentLevel !== "aal2") {
+      window.location.replace(authFlowUrl("mfa-challenge.html", "mfa-setup.html"));
+      return;
+    }
+
+    const { data, error } = await supabase.functions.invoke("rename-mfa-factor", {
+      body: { factor_id: factor.id, friendly_name: friendlyName }
+    });
+    if (error || data?.ok !== true) throw error || new Error(String(data?.error || "rename_failed"));
+
+    await loadAndShowManagement("Nombre actualizado correctamente.");
+  } catch (error) {
+    console.error("mfa_factor_rename_failed", error);
+    show("No se pudo cambiar el nombre. Comprueba que no esté repetido e inténtalo de nuevo.", true);
+    button.disabled = false;
+  }
+}
+
 async function startEnrollment(mode) {
   enrollmentMode = mode;
   setupReady = false;
   submit.disabled = true;
   code.value = "";
-  managePanel.hidden = true;
-  panel.hidden = true;
 
   try {
     let factors = await listTotpFactors();
     await removeUnverifiedFactors(factors);
     factors = await listTotpFactors();
     const verified = factors.filter(factor => factor.status === "verified");
+    verifiedFactors = verified;
 
-    const friendlyName = mode === "initial" ? "Principal" : nextBackupName(verified);
+    let friendlyName = mode === "initial" ? "Principal" : nextBackupName(verified);
+    if (mode === "backup") {
+      const entered = window.prompt(
+        "Pon un nombre para reconocer este autenticador, por ejemplo “Móvil personal” o “Tablet oficina”:",
+        friendlyName
+      );
+      if (entered === null) {
+        await loadAndShowManagement("Alta cancelada. Tus factores verificados no han cambiado.");
+        return;
+      }
+      friendlyName = normalizeFactorName(entered);
+      if (!friendlyName) {
+        await loadAndShowManagement();
+        show("Escribe un nombre para el nuevo autenticador.", true);
+        return;
+      }
+      if (factorNameInUse(friendlyName)) {
+        await loadAndShowManagement();
+        show("Ya existe otro autenticador con ese nombre.", true);
+        return;
+      }
+    }
+
+    managePanel.hidden = true;
+    panel.hidden = true;
+    resetQrState();
+    show("Preparando el nuevo autenticador…");
+
     const { data, error } = await supabase.auth.mfa.enroll({
       factorType: "totp",
       friendlyName
@@ -170,7 +263,17 @@ async function startEnrollment(mode) {
 
     enrollmentTitle.textContent = mode === "initial"
       ? "Configurar autenticador principal"
-      : "Configurar factor de respaldo";
+      : `Configurar “${friendlyName}”`;
+
+    qr.onload = () => {
+      qr.hidden = false;
+      qrLoading.hidden = true;
+    };
+    qr.onerror = () => {
+      qr.hidden = true;
+      qrLoading.hidden = false;
+      qrLoading.textContent = "No se pudo mostrar el QR. Usa la clave manual de abajo.";
+    };
     qr.src = qrDataUrl(qrCode);
     secret.textContent = sharedSecret;
     panel.hidden = false;
@@ -180,7 +283,7 @@ async function startEnrollment(mode) {
     syncCode();
     show(mode === "initial"
       ? "Escanea el QR e introduce el código de 6 dígitos para activar MFA."
-      : "Escanea el QR con tu dispositivo de respaldo y confirma el código de 6 dígitos.");
+      : `Escanea el QR de “${friendlyName}” y confirma el código de 6 dígitos.`);
     code.focus();
   } catch (error) {
     console.error("mfa_enrollment_start_failed", error);
@@ -337,4 +440,5 @@ form.addEventListener("submit", async event => {
   }
 });
 
+resetQrState();
 bootstrap();

@@ -6,6 +6,7 @@ test -s docs/factory-reset.js
 test -s docs/FACTORY_RESET_RUNBOOK.md
 test -s supabase/functions/factory-reset-test-data/index.ts
 test -s supabase/migrations/20260917170000_factory_reset_test_data_helper.sql
+test -s supabase/migrations/20260917194500_factory_reset_global_root_baseline.sql
 
 node --check docs/factory-reset.js
 
@@ -21,6 +22,8 @@ grep -Fq 'aal2_required' supabase/functions/factory-reset-test-data/index.ts
 grep -Fq 'resolveRootOrganization' supabase/functions/factory-reset-test-data/index.ts
 grep -Fq '.from("user_roles")' supabase/functions/factory-reset-test-data/index.ts
 grep -Fq '.from("profiles")' supabase/functions/factory-reset-test-data/index.ts
+grep -Fq '.from("organizations")' supabase/functions/factory-reset-test-data/index.ts
+grep -Fq 'hasActiveRoot' supabase/functions/factory-reset-test-data/index.ts
 grep -Fq 'root_organization_claim_mismatch' supabase/functions/factory-reset-test-data/index.ts
 grep -Fq 'factory_reset_requires_one_root_recovery_operator' supabase/functions/factory-reset-test-data/index.ts
 grep -Fq 'factory_reset_operator_mfa_required' supabase/functions/factory-reset-test-data/index.ts
@@ -37,10 +40,17 @@ grep -Fq 'tenant_task_workflow_templates_v2' docs/FACTORY_RESET_RUNBOOK.md
 grep -Fq 'revoke all on function public.factory_reset_test_data_service' supabase/migrations/20260917170000_factory_reset_test_data_helper.sql
 grep -Fq 'grant execute on function public.factory_reset_test_data_service' supabase/migrations/20260917170000_factory_reset_test_data_helper.sql
 
+grep -Fq 'ROOT is intentionally allowed to be global' supabase/migrations/20260917194500_factory_reset_global_root_baseline.sql
+grep -Fq 'v_active_organization_count <> 1' supabase/migrations/20260917194500_factory_reset_global_root_baseline.sql
+grep -Fq 'factory_reset_root_organization_ambiguous' supabase/migrations/20260917194500_factory_reset_global_root_baseline.sql
+grep -Fq 'revoke all on function public.factory_reset_test_data_service' supabase/migrations/20260917194500_factory_reset_global_root_baseline.sql
+grep -Fq 'grant execute on function public.factory_reset_test_data_service' supabase/migrations/20260917194500_factory_reset_global_root_baseline.sql
+
 # Never expose privileged credentials or implement Storage cleanup through SQL metadata deletion.
 ! grep -Fq 'service_role' docs/factory-reset.html
 ! grep -Fq 'service_role' docs/factory-reset.js
 ! grep -Fq 'storage.objects' supabase/migrations/20260917170000_factory_reset_test_data_helper.sql
+! grep -Fq 'storage.objects' supabase/migrations/20260917194500_factory_reset_global_root_baseline.sql
 
 # The helper must remain explicitly test-only and contractually guarded.
 grep -Fq 'Factory reset del entorno de pruebas' docs/SECURITY_CONTRACT.md

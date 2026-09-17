@@ -7,6 +7,9 @@ test -s docs/mfa-setup.js
 test -s docs/mfa-challenge.html
 test -s docs/mfa-challenge.js
 test -s supabase/functions/rename-mfa-factor/index.ts
+test -s supabase/functions/request-mfa-recovery/index.ts
+test -s supabase/functions/recover-privileged-mfa/index.ts
+test -s docs/MFA_RECOVERY_RUNBOOK.md
 
 node --check docs/mfa-common.js
 node --check docs/mfa-setup.js
@@ -44,7 +47,12 @@ grep -Fq 'factor.status === "verified"' docs/mfa-challenge.js
 grep -Fq 'factorSelect.addEventListener("change"' docs/mfa-challenge.js
 grep -Fq 'id="mfaFactorSelect"' docs/mfa-challenge.html
 grep -Fq 'autocomplete="one-time-code"' docs/mfa-challenge.html
-grep -Fq 'mfa-challenge.js?v=2026091702' docs/mfa-challenge.html
+grep -Fq 'No tengo acceso a mis autenticadores' docs/mfa-challenge.html
+grep -Fq 'id="mfaRecoveryRequestId"' docs/mfa-challenge.html
+grep -Fq 'mfa-challenge.js?v=2026091703' docs/mfa-challenge.html
+grep -Fq 'supabase.functions.invoke("request-mfa-recovery"' docs/mfa-challenge.js
+grep -Fq 'lost_all_available_authenticators' docs/mfa-challenge.js
+! grep -Fq 'recover-privileged-mfa' docs/mfa-challenge.js
 
 grep -Fq 'privilegedMfaRoute(supabase, session, { requireEnrollment: true })' docs/auth-guard.js
 grep -Fq 'Seguridad MFA' docs/auth-guard.js
@@ -52,11 +60,35 @@ grep -Fq 'authFlowUrl(mfa.route' docs/auth-guard.js
 grep -Fq 'privilegedMfaRoute(supabase, session, { requireEnrollment: true })' docs/login.js
 grep -Fq 'mfa_check_timeout' docs/login.js
 
-grep -Fq 'verify_jwt' supabase/config.toml || true
 grep -Fq 'aal2_required' supabase/functions/rename-mfa-factor/index.ts
 grep -Fq 'privileged_role_required' supabase/functions/rename-mfa-factor/index.ts
 grep -Fq '/auth/v1/admin/users/${actor.id}/factors' supabase/functions/rename-mfa-factor/index.ts
 grep -Fq 'friendly_name_conflict' supabase/functions/rename-mfa-factor/index.ts
+
+# Recovery request is user-authenticated but never destructive.
+grep -Fq 'privileged_role_required' supabase/functions/request-mfa-recovery/index.ts
+grep -Fq 'mfa_recovery_not_needed' supabase/functions/request-mfa-recovery/index.ts
+grep -Fq 'no_verified_factor_to_recover' supabase/functions/request-mfa-recovery/index.ts
+grep -Fq 'mfa_recovery_requested' supabase/functions/request-mfa-recovery/index.ts
+grep -Fq 'expires_in_minutes: 60' supabase/functions/request-mfa-recovery/index.ts
+! grep -Fq 'deleteFactor' supabase/functions/request-mfa-recovery/index.ts
+! grep -Fq 'updateUserById' supabase/functions/request-mfa-recovery/index.ts
+
+# Break-glass executor is backend-only and closes every escape hatch before clearing MFA.
+grep -Fq 'callerToken !== serviceKey' supabase/functions/recover-privileged-mfa/index.ts
+grep -Fq 'platform_operator_required' supabase/functions/recover-privileged-mfa/index.ts
+grep -Fq 'recovery_request_expired' supabase/functions/recover-privileged-mfa/index.ts
+grep -Fq 'target_not_privileged' supabase/functions/recover-privileged-mfa/index.ts
+grep -Fq 'admin.auth.admin.mfa.deleteFactor' supabase/functions/recover-privileged-mfa/index.ts
+grep -Fq 'password: emergencyPassword()' supabase/functions/recover-privileged-mfa/index.ts
+grep -Fq 'resetPasswordForEmail' supabase/functions/recover-privileged-mfa/index.ts
+grep -Fq 'mfa_recovery_partial' supabase/functions/recover-privileged-mfa/index.ts
+grep -Fq 'mfa_recovery_completed' supabase/functions/recover-privileged-mfa/index.ts
+grep -Fq 'operator_reference' supabase/functions/recover-privileged-mfa/index.ts
+grep -Fq 'verification_note' supabase/functions/recover-privileged-mfa/index.ts
+
+grep -Fq 'Nunca aprobar una recuperación únicamente por conocer el código de solicitud' docs/MFA_RECOVERY_RUNBOOK.md
+grep -Fq 'No ejecutar el endpoint de recuperación desde el navegador' docs/MFA_RECOVERY_RUNBOOK.md
 
 grep -Fq "gestionpisos-shell-v2" docs/sw.js
 grep -Fq "'./mfa-setup.html'" docs/sw.js

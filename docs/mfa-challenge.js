@@ -12,12 +12,17 @@ const factorField = document.getElementById("mfaFactorField");
 const factorSelect = document.getElementById("mfaFactorSelect");
 const code = document.getElementById("mfaCode");
 const submit = document.getElementById("mfaChallengeBtn");
+const recoveryBtn = document.getElementById("mfaRecoveryBtn");
+const recoveryBox = document.getElementById("mfaRecoveryBox");
+const recoveryRequestId = document.getElementById("mfaRecoveryRequestId");
+const copyRecoveryRequestBtn = document.getElementById("copyRecoveryRequestBtn");
 const cancel = document.getElementById("cancelMfaBtn");
 const message = document.getElementById("authMessage");
 
 let factorId = null;
 let ready = false;
 let verifiedFactors = [];
+let recoveryPending = false;
 
 function show(text, error = false) {
   message.textContent = text;
@@ -60,6 +65,37 @@ async function signOutToLogin() {
   window.location.replace("./login.html");
 }
 
+async function requestEmergencyRecovery() {
+  if (recoveryPending) return;
+  const confirmed = window.confirm(
+    "¿Has perdido el acceso a todos tus autenticadores? La recuperación no elimina nada automáticamente: un operador técnico deberá verificar tu identidad antes de continuar."
+  );
+  if (!confirmed) return;
+
+  recoveryPending = true;
+  recoveryBtn.disabled = true;
+  show("Registrando solicitud de recuperación…");
+
+  try {
+    const { data, error } = await supabase.functions.invoke("request-mfa-recovery", {
+      body: { reason: "lost_all_available_authenticators" }
+    });
+    if (error || !data?.request_id) throw error || new Error("recovery_request_missing_id");
+
+    recoveryRequestId.textContent = String(data.request_id);
+    recoveryBox.hidden = false;
+    recoveryBtn.hidden = true;
+    show(data.reused
+      ? "Ya había una solicitud de recuperación pendiente. Conserva este código para la verificación con soporte."
+      : "Solicitud registrada. Tus factores MFA siguen intactos hasta que un operador verifique tu identidad.");
+  } catch (error) {
+    console.error("mfa_recovery_request_failed", error);
+    recoveryPending = false;
+    recoveryBtn.disabled = false;
+    show("No se pudo registrar la recuperación de emergencia. Tus autenticadores no se han modificado. Inténtalo de nuevo o contacta con soporte.", true);
+  }
+}
+
 async function bootstrap() {
   try {
     const session = await getCurrentSession();
@@ -91,6 +127,7 @@ async function bootstrap() {
     renderFactorChooser(verifiedFactors);
     ready = Boolean(factorId);
     code.disabled = !ready;
+    recoveryBtn.disabled = false;
     syncCode();
     show(verifiedFactors.length > 1
       ? "Elige el autenticador que tienes disponible e introduce su código actual."
@@ -101,6 +138,7 @@ async function bootstrap() {
     ready = false;
     code.disabled = true;
     submit.disabled = true;
+    recoveryBtn.disabled = true;
     show("No se pudo preparar la verificación MFA. Cierra sesión y vuelve a intentarlo.", true);
   }
 }
@@ -112,6 +150,18 @@ factorSelect.addEventListener("change", () => {
   code.focus();
 });
 code.addEventListener("input", syncCode);
+recoveryBtn.addEventListener("click", () => void requestEmergencyRecovery());
+copyRecoveryRequestBtn.addEventListener("click", async () => {
+  const value = recoveryRequestId.textContent.trim();
+  if (!value) return;
+  try {
+    await navigator.clipboard.writeText(value);
+    copyRecoveryRequestBtn.textContent = "Copiado";
+    setTimeout(() => { copyRecoveryRequestBtn.textContent = "Copiar"; }, 1400);
+  } catch {
+    show("No se pudo copiar automáticamente. Mantén pulsado el código para copiarlo.", true);
+  }
+});
 cancel.addEventListener("click", signOutToLogin);
 
 form.addEventListener("submit", async event => {
@@ -128,6 +178,7 @@ form.addEventListener("submit", async event => {
   submit.disabled = true;
   code.disabled = true;
   factorSelect.disabled = true;
+  recoveryBtn.disabled = true;
   show("Verificando código…");
 
   try {
@@ -151,6 +202,7 @@ form.addEventListener("submit", async event => {
     code.disabled = false;
     factorSelect.disabled = false;
     submit.disabled = false;
+    recoveryBtn.disabled = recoveryPending;
     show("El código no es válido o ya ha caducado. Espera al siguiente código e inténtalo de nuevo.", true);
     code.select();
   }

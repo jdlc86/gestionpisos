@@ -215,7 +215,7 @@ select set_config(
   true
 );
 
-do $
+do $$
 declare
   v_complete boolean;
   v_flow_type text;
@@ -233,7 +233,7 @@ begin
     raise exception 'partial workflow received implicit business defaults';
   end if;
 end;
-$;
+$$;
 
 -- Al completar explícitamente todos los apartados, el servidor marca la autoría como completa.
 select * from public.save_workflow_definition_draft_v1(
@@ -254,7 +254,7 @@ select * from public.save_workflow_definition_draft_v1(
   1
 );
 
-do $
+do $$
 declare v_complete boolean;
 begin
   select authoring_complete into v_complete
@@ -264,7 +264,7 @@ begin
     raise exception 'explicitly configured workflow not marked complete';
   end if;
 end;
-$;
+$$;
 
 -- Un borrador creado por un cliente antiguo no se considera completo aunque sus defaults parezcan válidos.
 select set_config(

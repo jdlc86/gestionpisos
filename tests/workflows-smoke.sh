@@ -40,19 +40,32 @@ grep -Fq 'data-theme-toggle' docs/workflow-builder.html
 grep -Fq 'data-theme-toggle' docs/workflow-definitions.html
 grep -Fq 'class="ui-nav-icon"' docs/workflows.html
 
-grep -Fq 'Borrador persistente' docs/workflow-builder.html
+grep -Fq 'Borrador incompleto' docs/workflow-builder.html
 grep -Fq 'Paso 1 de 7' docs/workflow-builder.html
 grep -Fq 'Paso 7 de 7' docs/workflow-builder.html
 grep -Fq 'sessionStorage.setItem(DRAFT_KEY' docs/workflow-builder.js
 grep -Fq 'save_workflow_definition_draft_v1' docs/workflow-builder.js
 grep -Fq 'workflow_definitions_v2' docs/workflow-builder.js
 grep -Fq 'Guardar borrador' docs/workflow-builder.html
-grep -Fq 'Guardado no significa publicado.' docs/workflow-builder.html
+grep -Fq 'Guardar no significa publicar.' docs/workflow-builder.html
+grep -Fq 'Pendiente · selecciona un tipo' docs/workflow-builder.html
+grep -Fq 'Pendiente · selecciona un ámbito' docs/workflow-builder.html
+grep -Fq 'Pendiente · selecciona una activación' docs/workflow-builder.html
+grep -Fq 'Pendiente · selecciona una asignación' docs/workflow-builder.html
+grep -Fq 'Pendiente · selecciona cómo termina' docs/workflow-builder.html
+! grep -Fq 'name="stepAccept" checked' docs/workflow-builder.html
+! grep -Fq 'name="notifyOnCreate" checked' docs/workflow-builder.html
+grep -Fq 'const AUTHORING_VERSION=2' docs/workflow-builder.js
+grep -Fq 'authoringVersion:AUTHORING_VERSION' docs/workflow-builder.js
+grep -Fq 'legacyDraftNeedsReview' docs/workflow-builder.js
+grep -Fq 'authoring_complete' docs/workflow-builder.js
 grep -Fq 'photo-patterns.html?from=workflow-builder' docs/workflow-builder.html
 
 grep -Fq 'workflow_definitions_v2' docs/workflow-definitions.js
-grep -Fq 'Editar borrador' docs/workflow-definitions.js
-grep -Fq 'Borrador guardado todavía no está publicado' docs/workflow-definitions.html || grep -Fq 'borrador guardado todavía no está publicado' docs/workflow-definitions.html
+grep -Fq 'Borrador incompleto' docs/workflow-definitions.js
+grep -Fq 'authoring_complete' docs/workflow-definitions.js
+grep -Fq 'Completar borrador' docs/workflow-definitions.js
+grep -Fq 'borradores incompletos y configurados' docs/workflow-definitions.html
 
 grep -Fq 'Definición → Versión publicada → Disparador → Ejecución' docs/WORKFLOW_ENGINE_CONTRACT.md
 grep -Fq 'idempotency_key' docs/WORKFLOW_ENGINE_CONTRACT.md

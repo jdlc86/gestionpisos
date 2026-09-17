@@ -120,26 +120,6 @@ Deno.serve(async (req: Request) => {
   const action = cleanText(body.action || "list", 32).toLowerCase();
   const organizationId = validUuid(actor.app_metadata?.organization_id) ? String(actor.app_metadata.organization_id) : null;
 
-  async function audit(eventAction: string, targetUserId: string, details: Record<string, unknown>) {
-    const { error } = await admin.from("audit_log_v2").insert({
-      organization_id: organizationId,
-      actor_user_id: actor.id,
-      action: eventAction,
-      entity_type: "platform_operator",
-      entity_id: targetUserId,
-      result: "success",
-      details: {
-        ...details,
-        actor_role: "root",
-        changed_at: new Date().toISOString(),
-      },
-    });
-    if (error) {
-      console.error("platform_operator_audit_failed", eventAction, error.message);
-      throw new Error("audit_failed");
-    }
-  }
-
   async function activeRootRecoveryCount() {
     const { count, error } = await admin
       .from("platform_operators")
@@ -148,6 +128,31 @@ Deno.serve(async (req: Request) => {
       .eq("can_recover_root", true);
     if (error) throw error;
     return Number(count || 0);
+  }
+
+  async function mutateOperator(input: {
+    mutationAction: "upsert" | "update";
+    targetUserId: string;
+    displayName: string;
+    active: boolean;
+    canRecoverRoot: boolean;
+    email: string;
+  }) {
+    const { data, error } = await admin.rpc("manage_platform_operator_service", {
+      p_action: input.mutationAction,
+      p_target_user_id: input.targetUserId,
+      p_display_name: input.displayName,
+      p_active: input.active,
+      p_can_recover_root: input.canRecoverRoot,
+      p_actor_user_id: actor.id,
+      p_organization_id: organizationId,
+      p_email: input.email,
+    });
+    if (error) {
+      console.error("platform_operator_atomic_mutation_failed", error.message);
+      throw new Error("operator_mutation_failed");
+    }
+    return data as Record<string, unknown>;
   }
 
   if (action === "list") {
@@ -201,51 +206,28 @@ Deno.serve(async (req: Request) => {
       return json(409, { error: "dedicated_platform_identity_required" });
     }
 
-    const { data: existing, error: existingError } = await admin
-      .from("platform_operators")
-      .select("user_id,display_name,active,can_recover_root")
-      .eq("user_id", target.id)
-      .maybeSingle();
-    if (existingError) return json(500, { error: "operator_lookup_failed" });
-
-    if (existing) {
-      const next = { display_name: displayName, active: true, can_recover_root: canRecoverRoot, updated_at: new Date().toISOString() };
-      const { error: updateError } = await admin.from("platform_operators").update(next).eq("user_id", target.id);
-      if (updateError) return json(500, { error: "operator_update_failed" });
-      try {
-        await audit("platform_operator_reactivated", target.id, { email, previous: existing, next });
-      } catch {
-        return json(500, { error: "audit_failed" });
-      }
-    } else {
-      const next = {
-        user_id: target.id,
-        display_name: displayName,
+    try {
+      const result = await mutateOperator({
+        mutationAction: "upsert",
+        targetUserId: target.id,
+        displayName,
         active: true,
-        can_recover_root: canRecoverRoot,
-        created_by: actor.id,
-        updated_at: new Date().toISOString(),
-      };
-      const { error: insertError } = await admin.from("platform_operators").insert(next);
-      if (insertError) return json(500, { error: "operator_create_failed" });
-      try {
-        await audit("platform_operator_created", target.id, { email, next: { display_name: displayName, active: true, can_recover_root: canRecoverRoot } });
-      } catch {
-        return json(500, { error: "audit_failed" });
-      }
-    }
-
-    return json(200, {
-      ok: true,
-      operator: {
-        user_id: target.id,
+        canRecoverRoot,
         email,
-        display_name: displayName,
-        active: true,
-        can_recover_root: canRecoverRoot,
-      },
-      active_root_recovery_count: await activeRootRecoveryCount(),
-    });
+      });
+      return json(200, {
+        ...result,
+        operator: {
+          user_id: target.id,
+          email,
+          display_name: displayName,
+          active: true,
+          can_recover_root: canRecoverRoot,
+        },
+      });
+    } catch (error) {
+      return json(500, { error: String((error as Error)?.message || "operator_mutation_failed") });
+    }
   }
 
   if (action === "update") {
@@ -265,33 +247,27 @@ Deno.serve(async (req: Request) => {
     if (String(displayName).trim().length < 2) return json(400, { error: "display_name_required" });
     const active = typeof body.active === "boolean" ? body.active : existing.active;
     const canRecoverRoot = typeof body.can_recover_root === "boolean" ? body.can_recover_root : existing.can_recover_root;
-    const next = {
-      display_name: displayName,
-      active,
-      can_recover_root: canRecoverRoot,
-      updated_at: new Date().toISOString(),
-    };
-
-    const { error: updateError } = await admin.from("platform_operators").update(next).eq("user_id", targetUserId);
-    if (updateError) return json(500, { error: "operator_update_failed" });
-
     const { data: targetData } = await admin.auth.admin.getUserById(targetUserId);
-    try {
-      await audit("platform_operator_updated", targetUserId, {
-        email: String(targetData?.user?.email || ""),
-        previous: existing,
-        next,
-      });
-    } catch {
-      return json(500, { error: "audit_failed" });
+    const target = targetData?.user;
+    if (!target) return json(404, { error: "auth_user_not_found" });
+    const targetRole = String(target.app_metadata?.role || "").toLowerCase();
+    if (OPERATIONAL_ROLES.has(targetRole)) {
+      return json(409, { error: "dedicated_platform_identity_required" });
     }
 
-    const rootRecoveryCount = await activeRootRecoveryCount();
-    return json(200, {
-      ok: true,
-      active_root_recovery_count: rootRecoveryCount,
-      warning: rootRecoveryCount === 0 ? "no_active_root_recovery_operator" : null,
-    });
+    try {
+      const result = await mutateOperator({
+        mutationAction: "update",
+        targetUserId,
+        displayName,
+        active,
+        canRecoverRoot,
+        email: String(target.email || ""),
+      });
+      return json(200, result);
+    } catch (error) {
+      return json(500, { error: String((error as Error)?.message || "operator_mutation_failed") });
+    }
   }
 
   return json(400, { error: "unsupported_action" });

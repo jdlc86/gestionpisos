@@ -24,6 +24,8 @@ jobs:
         run: bash tests/mfa-smoke.sh
       - name: Run platform operator recovery smoke
         run: bash tests/platform-operator-recovery-smoke.sh
+      - name: Run factory reset helper smoke
+        run: bash tests/factory-reset-smoke.sh
       - name: Run staff onboarding smoke
         run: bash tests/staff-onboarding-smoke.sh
       - name: Verify staff onboarding auth claim ordering

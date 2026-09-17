@@ -6,11 +6,23 @@ const confirmPassword=document.getElementById("confirmPassword");
 const button=document.getElementById("activationBtn");
 const backToLogin=document.getElementById("backToLogin");
 const message=document.getElementById("authMessage");
+const passwordChecklist=document.getElementById("passwordChecklist");
+const symbolPattern=/[!@#$%^&*()_+\-=\[\]{};'\\:"|<>?,.\/`~]/;
 let activationReady=false;
 let passwordUpdated=false;
 
 function show(text,error=false){message.textContent=text;message.classList.toggle("is-error",error);}
-function setFormEnabled(enabled){password.disabled=!enabled;confirmPassword.disabled=!enabled;button.disabled=!enabled;}
+function passwordPolicyState(){const value=password.value;return{length:value.length>=12,lowercase:/[a-z]/.test(value),uppercase:/[A-Z]/.test(value),digit:/[0-9]/.test(value),symbol:symbolPattern.test(value),match:confirmPassword.value.length>0&&value===confirmPassword.value};}
+function passwordPolicyValid(){return Object.values(passwordPolicyState()).every(Boolean);}
+function updatePasswordChecklist(){
+  const state=passwordPolicyState();
+  Object.entries(state).forEach(([rule,valid])=>{const item=passwordChecklist?.querySelector(`[data-password-rule="${rule}"]`);if(!item)return;item.classList.toggle("is-valid",valid);item.classList.toggle("is-invalid",rule==="match"&&confirmPassword.value.length>0&&!valid);});
+  if(!passwordUpdated)button.disabled=!activationReady||password.disabled||!passwordPolicyValid();
+}
+function setFormEnabled(enabled){password.disabled=!enabled;confirmPassword.disabled=!enabled;if(!enabled)button.disabled=true;else updatePasswordChecklist();}
+function showCompletionMode(){passwordChecklist.hidden=true;password.disabled=true;confirmPassword.disabled=true;button.disabled=false;}
+password.addEventListener("input",updatePasswordChecklist);
+confirmPassword.addEventListener("input",updatePasswordChecklist);
 async function onboardingState(){const {data,error}=await supabase.rpc("get_my_external_account_onboarding");if(error)throw error;return data;}
 
 async function validateActivationSession(){
@@ -21,12 +33,12 @@ async function validateActivationSession(){
     const state=await onboardingState();
     if(!state){activationReady=false;setFormEnabled(false);show("Esta cuenta no tiene una activación pendiente.",true);return;}
     if(state.status==="active"){
-      activationReady=true;passwordUpdated=true;password.disabled=true;confirmPassword.disabled=true;button.disabled=false;button.textContent="Completar activación";
+      activationReady=true;passwordUpdated=true;showCompletionMode();button.textContent="Completar activación";
       show("Tu cuenta está preparada. Pulsa Completar activación para terminar de sincronizar el acceso.");return;
     }
-    activationReady=true;setFormEnabled(true);
+    activationReady=true;passwordUpdated=false;passwordChecklist.hidden=false;setFormEnabled(true);
     const roleLabel=state.intended_role==="owner"?"propietario":"inquilino";
-    show(`Identidad verificada. Crea una contraseña de al menos 12 caracteres para activar tu acceso como ${roleLabel}.`);
+    show(`Identidad verificada. Crea una contraseña segura para activar tu acceso como ${roleLabel}.`);
     password.focus();
   }catch{activationReady=false;setFormEnabled(false);show("No se pudo validar la activación. Comprueba tu conexión o solicita una invitación nueva.",true);}
 }
@@ -44,8 +56,9 @@ backToLogin.addEventListener("click",async()=>{
 form.addEventListener("submit",async event=>{
   event.preventDefault();if(!activationReady)return;
   if(!passwordUpdated){
-    if(password.value!==confirmPassword.value){show("Las dos contraseñas no coinciden.",true);confirmPassword.focus();return;}
-    if(password.value.length<12){show("La contraseña debe tener al menos 12 caracteres.",true);password.focus();return;}
+    const policy=passwordPolicyState();
+    if(!policy.match){show("Las dos contraseñas no coinciden.",true);confirmPassword.focus();updatePasswordChecklist();return;}
+    if(!passwordPolicyValid()){show("La contraseña debe cumplir todos los requisitos indicados.",true);password.focus();updatePasswordChecklist();return;}
   }
   setFormEnabled(false);show(passwordUpdated?"Completando activación…":"Guardando contraseña y activando cuenta…");
   try{
@@ -59,9 +72,9 @@ form.addEventListener("submit",async event=>{
     show("Cuenta activada correctamente. Redirigiendo al acceso…");
     setTimeout(()=>window.location.replace("./login.html?activated=1"),900);
   }catch(error){
-    activationReady=true;button.disabled=false;
-    if(!passwordUpdated){password.disabled=false;confirmPassword.disabled=false;show("No se pudo guardar la contraseña. Revisa los datos e inténtalo de nuevo.",true);}
-    else{password.disabled=true;confirmPassword.disabled=true;button.textContent="Reintentar activación";show("La contraseña ya quedó guardada, pero falta completar la activación. Pulsa Reintentar activación.",true);}
+    activationReady=true;
+    if(!passwordUpdated){password.disabled=false;confirmPassword.disabled=false;passwordChecklist.hidden=false;updatePasswordChecklist();show("No se pudo guardar la contraseña. Comprueba que cumpla todos los requisitos e inténtalo de nuevo.",true);}
+    else{showCompletionMode();button.textContent="Reintentar activación";show("La contraseña ya quedó guardada, pero falta completar la activación. Pulsa Reintentar activación.",true);}
     console.error("external_onboarding_activation_failed",error);
   }
 });

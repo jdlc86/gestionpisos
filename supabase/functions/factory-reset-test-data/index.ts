@@ -109,25 +109,45 @@ async function resolveRootOrganization(
     .is("revoked_at", null);
 
   if (roleError) throw new Error("root_organization_lookup_failed");
-  const rootOrganizationIds = [...new Set(
-    (roles || [])
-      .filter(row => String(row.role || "").toLowerCase() === "root")
-      .map(row => String(row.organization_id || ""))
-      .filter(validUuid),
-  )];
-
-  if (rootOrganizationIds.length !== 1) throw new Error("root_organization_required");
-  const organizationId = rootOrganizationIds[0];
+  const hasActiveRoot = (roles || []).some(
+    row => String(row.role || "").toLowerCase() === "root",
+  );
+  if (!hasActiveRoot) throw new Error("root_required");
 
   const { data: profile, error: profileError } = await admin
     .from("profiles")
     .select("organization_id,status")
     .eq("user_id", actorId)
-    .eq("organization_id", organizationId)
     .eq("status", "active")
     .maybeSingle();
 
-  if (profileError || !profile) throw new Error("root_organization_required");
+  if (profileError) throw new Error("root_organization_lookup_failed");
+  const profileOrganizationId = String(profile?.organization_id || "");
+  if (validUuid(profileOrganizationId)) {
+    const { data: organization, error: organizationError } = await admin
+      .from("organizations")
+      .select("id,status")
+      .eq("id", profileOrganizationId)
+      .eq("status", "active")
+      .maybeSingle();
+    if (organizationError) throw new Error("root_organization_lookup_failed");
+    if (!organization) throw new Error("root_organization_required");
+    return profileOrganizationId;
+  }
+
+  const { data: organizations, error: organizationError } = await admin
+    .from("organizations")
+    .select("id,status")
+    .eq("status", "active")
+    .limit(2);
+
+  if (organizationError) throw new Error("root_organization_lookup_failed");
+  if (!Array.isArray(organizations) || organizations.length !== 1) {
+    throw new Error("root_organization_required");
+  }
+
+  const organizationId = String(organizations[0]?.id || "");
+  if (!validUuid(organizationId)) throw new Error("root_organization_required");
   return organizationId;
 }
 

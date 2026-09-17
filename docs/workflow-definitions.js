@@ -11,7 +11,7 @@ const labels={
   status:{draft:"Borrador",published:"Publicado",paused:"Pausado",archived:"Archivado"}
 };
 
-function text(group,key){return labels[group]?.[key]||key||"—"}
+function text(group,key){return labels[group]?.[key]||key||"Pendiente"}
 function setStatus(message,error=false){
   const span=status?.querySelector("span:last-child");
   if(span)span.textContent=message;
@@ -24,18 +24,26 @@ function dateTime(value){
 function meta(label,value){
   const box=document.createElement("div");box.className="definition-meta-item";
   const strong=document.createElement("strong");strong.textContent=label;
-  const span=document.createElement("span");span.textContent=value||"—";
+  const span=document.createElement("span");span.textContent=value||"Pendiente";
   box.append(strong,span);return box;
 }
 function card(row){
   const article=document.createElement("article");article.className="definition-card";
   const head=document.createElement("div");head.className="definition-card-head";
   const title=document.createElement("h3");title.textContent=row.name;
-  const badge=document.createElement("span");badge.className="definition-badge";badge.textContent=text("status",row.status);
+  const badge=document.createElement("span");badge.className="definition-badge";
+  if(row.status==="draft"){
+    badge.textContent=row.authoring_complete?"Borrador configurado":"Borrador incompleto";
+    badge.classList.toggle("definition-badge--complete",Boolean(row.authoring_complete));
+    badge.classList.toggle("definition-badge--incomplete",!row.authoring_complete);
+  }else{
+    badge.textContent=text("status",row.status);
+  }
   head.append(title,badge);
 
   const details=document.createElement("div");details.className="definition-meta";
   details.append(
+    meta("Configuración",row.authoring_complete?"Completa":"Pendiente"),
     meta("Tipo",text("flowType",row.flow_type)),
     meta("Ámbito",text("scopeType",row.scope_type)),
     meta("Activación",text("triggerType",row.trigger_type)),
@@ -48,8 +56,8 @@ function card(row){
   if(row.status==="draft"){
     const edit=document.createElement("a");
     edit.className="secondary";
-    edit.href=`./workflow-builder.html?id=${encodeURIComponent(row.id)}`;
-    edit.textContent="Editar borrador";
+    edit.href="./workflow-builder.html?id="+encodeURIComponent(row.id);
+    edit.textContent=row.authoring_complete?"Revisar borrador":"Completar borrador";
     actions.append(edit);
   }
   article.append(head,details,actions);
@@ -84,7 +92,7 @@ async function load(){
 
   const {data,error}=await supabase
     .from("workflow_definitions_v2")
-    .select("id,name,flow_type,scope_type,trigger_type,assignment_type,status,revision,updated_at")
+    .select("id,name,flow_type,scope_type,trigger_type,assignment_type,status,revision,authoring_complete,updated_at")
     .neq("status","archived")
     .order("updated_at",{ascending:false});
 
@@ -105,7 +113,11 @@ async function load(){
     return;
   }
   data.forEach(row=>list.append(card(row)));
-  setStatus(`${data.length} definición${data.length===1?"":"es"} visible${data.length===1?"":"s"} en tu ámbito.`);
+  const incomplete=data.filter(row=>row.status==="draft"&&!row.authoring_complete).length;
+  setStatus(
+    data.length+" definición"+(data.length===1?"":"es")+" visible"+(data.length===1?"":"s")+" en tu ámbito"
+    +(incomplete?" · "+incomplete+" borrador"+(incomplete===1?"":"es")+" incompleto"+(incomplete===1?"":"s")+".":".")
+  );
 }
 
 load();

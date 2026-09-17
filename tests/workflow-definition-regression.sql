@@ -195,5 +195,118 @@ begin
 end;
 $$;
 
+-- Los borradores parciales son válidos: solo el nombre es obligatorio para persistir.
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object('sub',current_setting('gestionpisos.workflow_admin_1'),'role','authenticated')::text,
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_partial_id',
+  (select definition_id::text
+   from public.save_workflow_definition_draft_v1(
+     jsonb_build_object(
+       'authoringVersion',2,
+       'flowName','Borrador parcial'
+     )
+   )
+   limit 1),
+  true
+);
+
+do $$
+declare
+  v_complete boolean;
+  v_flow_type text;
+  v_scope_type text;
+begin
+  select authoring_complete, flow_type, scope_type
+  into v_complete, v_flow_type, v_scope_type
+  from public.workflow_definitions_v2
+  where id=current_setting('gestionpisos.workflow_partial_id')::uuid;
+
+  if v_complete then
+    raise exception 'partial workflow unexpectedly marked complete';
+  end if;
+  if v_flow_type is not null or v_scope_type is not null then
+    raise exception 'partial workflow received implicit business defaults';
+  end if;
+end;
+$$;
+
+-- Al completar explícitamente todos los apartados, el servidor marca la autoría como completa.
+select * from public.save_workflow_definition_draft_v1(
+  jsonb_build_object(
+    'authoringVersion',2,
+    'flowName','Borrador parcial',
+    'flowType','inspection',
+    'flowDescription','',
+    'scopeType','organization',
+    'triggerType','manual',
+    'recurrence','',
+    'assignmentType','manual',
+    'steps',jsonb_build_object('accept',true,'photo',false,'checklist',false,'document',false),
+    'closeType','auto',
+    'notifications',jsonb_build_object('onCreate',false,'onClose',false)
+  ),
+  current_setting('gestionpisos.workflow_partial_id')::uuid,
+  1
+);
+
+do $$
+declare v_complete boolean;
+begin
+  select authoring_complete into v_complete
+  from public.workflow_definitions_v2
+  where id=current_setting('gestionpisos.workflow_partial_id')::uuid;
+  if not v_complete then
+    raise exception 'explicitly configured workflow not marked complete';
+  end if;
+end;
+$$;
+
+-- Un borrador creado por un cliente antiguo no se considera completo aunque sus defaults parezcan válidos.
+select set_config(
+  'gestionpisos.workflow_legacy_id',
+  (select definition_id::text
+   from public.save_workflow_definition_draft_v1(
+     jsonb_build_object(
+       'flowName','Borrador legacy',
+       'flowType','cleaning',
+       'flowDescription','',
+       'scopeType','property',
+       'triggerType','manual',
+       'recurrence','',
+       'assignmentType','property_responsible',
+       'steps',jsonb_build_object('accept',true,'photo',false,'checklist',false,'document',false),
+       'closeType','auto',
+       'notifications',jsonb_build_object('onCreate',true,'onClose',false)
+     )
+   )
+   limit 1),
+  true
+);
+
+do $$
+declare
+  v_complete boolean;
+  v_flow_type text;
+  v_scope_type text;
+begin
+  select authoring_complete, flow_type, scope_type
+  into v_complete, v_flow_type, v_scope_type
+  from public.workflow_definitions_v2
+  where id=current_setting('gestionpisos.workflow_legacy_id')::uuid;
+
+  if v_complete then
+    raise exception 'legacy implicit-default workflow unexpectedly marked complete';
+  end if;
+  if v_flow_type is not null or v_scope_type is not null then
+    raise exception 'legacy implicit defaults leaked into workflow metadata';
+  end if;
+end;
+$$;
+
 reset role;
 rollback;

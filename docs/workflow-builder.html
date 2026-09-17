@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#ffffff">
   <meta name="description" content="Creador de Flujos de GestionPisos">
   <link rel="stylesheet" href="./app.css?v=2026091703">
-  <link rel="stylesheet" href="./workflow-builder.css?v=2026091802">
+  <link rel="stylesheet" href="./workflow-builder.css?v=2026091803">
   <title>Allaiso · Creador de Flujos</title>
 </head>
 <body>
@@ -21,9 +21,9 @@
     </header>
 
     <section class="hero">
-      <span class="badge">Borrador persistente</span>
+      <span id="builderBadge" class="badge">Borrador incompleto</span>
       <h2>Construye la receta paso a paso.</h2>
-      <p>Puedes guardar la definición como borrador en GestionPisos y continuar después desde Mis Flujos. Guardar no publica, no programa ejecuciones y no crea tareas.</p>
+      <p>Puedes guardar un borrador aunque falten apartados. GestionPisos ya no presupone ninguna decisión de negocio: cada tipo, ámbito, activación, asignación, paso y cierre debe elegirse de forma explícita.</p>
     </section>
 
     <section class="builder-layout">
@@ -43,6 +43,7 @@
           <h2>Identidad del flujo</h2>
           <label>Nombre del flujo<input id="flowName" name="flowName" maxlength="80" placeholder="Ej. Limpieza semanal Piso A" required></label>
           <label>Tipo<select id="flowType" name="flowType">
+            <option value="">Pendiente · selecciona un tipo</option>
             <option value="cleaning">Limpieza</option>
             <option value="inspection">Inspección</option>
             <option value="maintenance">Mantenimiento</option>
@@ -51,12 +52,14 @@
             <option value="custom">Personalizado</option>
           </select></label>
           <label>Descripción<textarea id="flowDescription" name="flowDescription" rows="4" maxlength="400" placeholder="Qué objetivo tiene este flujo"></textarea></label>
+          <div class="builder-note">El nombre permite guardar el borrador. El tipo sigue pendiente hasta que lo selecciones tú.</div>
         </section>
 
         <section class="builder-panel" data-step="1">
           <p class="eyebrow">Paso 2 de 7</p>
           <h2>Ámbito</h2>
           <label>El flujo aplica a<select id="scopeType" name="scopeType">
+            <option value="">Pendiente · selecciona un ámbito</option>
             <option value="property">Un piso</option>
             <option value="organization">Toda la organización</option>
             <option value="room">Una habitación</option>
@@ -69,12 +72,14 @@
           <p class="eyebrow">Paso 3 de 7</p>
           <h2>Activación</h2>
           <label>Cómo se inicia<select id="triggerType" name="triggerType">
+            <option value="">Pendiente · selecciona una activación</option>
             <option value="manual">Manual</option>
             <option value="recurring">Recurrente</option>
             <option value="scheduled_once">Fecha concreta</option>
             <option value="event">Por evento</option>
           </select></label>
           <label id="recurrenceRow" hidden>Frecuencia<select id="recurrence" name="recurrence">
+            <option value="">Pendiente · selecciona una frecuencia</option>
             <option value="weekly">Cada semana</option>
             <option value="biweekly">Cada 2 semanas</option>
             <option value="monthly">Cada mes</option>
@@ -86,6 +91,7 @@
           <p class="eyebrow">Paso 4 de 7</p>
           <h2>Asignación</h2>
           <label>Quién ejecuta<select id="assignmentType" name="assignmentType">
+            <option value="">Pendiente · selecciona una asignación</option>
             <option value="property_responsible">Responsable operativo del piso</option>
             <option value="active_occupants_rotation">Ocupantes activos en rotación</option>
             <option value="fixed_person">Persona fija</option>
@@ -100,32 +106,34 @@
           <h2>Pasos y recursos</h2>
           <fieldset>
             <legend>Qué debe hacer la persona</legend>
-            <label class="check-row"><input type="checkbox" name="stepAccept" checked> Confirmar / aceptar tarea</label>
+            <label class="check-row"><input type="checkbox" name="stepAccept"> Confirmar / aceptar tarea</label>
             <label class="check-row"><input type="checkbox" name="stepPhoto"> Aportar evidencia fotográfica</label>
             <label class="check-row"><input type="checkbox" name="stepChecklist"> Completar checklist o formulario</label>
             <label class="check-row"><input type="checkbox" name="stepDocument"> Adjuntar o revisar documento</label>
           </fieldset>
           <a class="resource-link" href="./photo-patterns.html?from=workflow-builder">📷 Abrir Banco Fotográfico</a>
-          <div class="builder-note">Los patrones se referenciarán por versión; no se copiarán dentro del flujo.</div>
+          <div class="builder-note">Selecciona al menos un paso para considerar configurado este apartado. Los patrones se referenciarán por versión; no se copiarán dentro del flujo.</div>
         </section>
 
         <section class="builder-panel" data-step="5">
           <p class="eyebrow">Paso 6 de 7</p>
           <h2>Cierre y revisión</h2>
           <label>Cómo termina<select id="closeType" name="closeType">
+            <option value="">Pendiente · selecciona cómo termina</option>
             <option value="auto">Automáticamente al completar pasos</option>
             <option value="human_review">Tras revisión humana</option>
             <option value="domain_adapter">Según regla especializada del flujo</option>
           </select></label>
-          <label class="check-row"><input type="checkbox" id="notifyOnCreate" name="notifyOnCreate" checked> Notificar al asignado al crear la tarea</label>
+          <label class="check-row"><input type="checkbox" id="notifyOnCreate" name="notifyOnCreate"> Notificar al asignado al crear la tarea</label>
           <label class="check-row"><input type="checkbox" id="notifyOnClose" name="notifyOnClose"> Notificar al cerrar el flujo</label>
+          <div class="builder-note">Las notificaciones son opcionales. La decisión de cierre sí debe elegirse explícitamente.</div>
         </section>
 
         <section class="builder-panel" data-step="6">
           <p class="eyebrow">Paso 7 de 7</p>
           <h2>Revisión del borrador</h2>
           <div id="workflowSummary" class="builder-summary"></div>
-          <div class="builder-warning"><strong>Guardado no significa publicado.</strong> El borrador puede persistirse en el servidor, pero todavía no crea tareas, no programa ejecuciones y no activa reglas operativas.</div>
+          <div class="builder-warning"><strong>Guardar no significa publicar.</strong> Un borrador incompleto puede guardarse y retomarse después. La publicación permanecerá bloqueada hasta que la configuración requerida esté completa y el backend valide el ámbito real.</div>
         </section>
 
         <div id="builderServerStatus" class="builder-note builder-server-status" role="status" aria-live="polite">Comprobando estado del borrador…</div>
@@ -139,11 +147,11 @@
       </form>
     </section>
 
-    <section class="status"><span class="dot"></span><span>Persistencia de borradores activa. La publicación y la creación de ejecuciones siguen bloqueadas hasta el siguiente incremento del motor.</span></section>
+    <section class="status"><span class="dot"></span><span>Los borradores parciales están permitidos. El estado «configuración completa» solo se obtiene con decisiones explícitas; publicar y ejecutar siguen bloqueados.</span></section>
   </main>
 
   <script src="./app.js?v=202609152" defer></script>
-  <script type="module" src="./workflow-builder.js?v=2026091802"></script>
+  <script type="module" src="./workflow-builder.js?v=2026091803"></script>
   <script type="module" src="./auth-guard.js"></script>
 </body>
 </html>

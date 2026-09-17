@@ -167,7 +167,7 @@ Tablas introducidas de forma aditiva:
 
 Responsabilidad actual:
 
-- `workflow_definitions_v2` conserva identidad estable, metadatos resumidos, estado `draft`, especificación saneada y `revision` de concurrencia;
+- `workflow_definitions_v2` conserva identidad estable, metadatos resumidos, estado `draft`, especificación saneada, `revision` de concurrencia y `authoring_complete` derivado server-side;
 - `workflow_definition_versions_v2` reserva la representación inmutable de versiones publicadas, pero en esta fase no existe RPC de publicación ni permiso de escritura cliente.
 
 Seguridad:
@@ -178,7 +178,9 @@ Seguridad:
 - la escritura del borrador pasa por `save_workflow_definition_draft_v1`;
 - organización y rol del autor se resuelven server-side desde `auth.uid()` + `user_roles`;
 - crear/editar deja eventos de auditoría;
-- `revision` evita sobrescribir silenciosamente un borrador modificado en otra sesión.
+- `revision` evita sobrescribir silenciosamente un borrador modificado en otra sesión;
+- los campos de configuración pueden permanecer nulos mientras el borrador está incompleto;
+- ninguna selección de negocio se introduce por defecto y los borradores anteriores a `authoringVersion=2` no se consideran completos hasta revisión.
 
 ## 2. Edge Functions y servicios actuales reutilizables
 
@@ -233,6 +235,8 @@ Es el hub transversal y expone los cinco módulos acordados. No debe contener l�
 Estado: **operativo con borrador persistente**.
 
 - asistente de siete pasos;
+- todos los apartados de negocio parten como **Pendiente** y requieren elección explícita;
+- permite guardar un borrador incompleto con identidad mínima;
 - `sessionStorage` conserva cambios locales mientras se edita;
 - “Guardar borrador” persiste la definición mediante RPC server-side;
 - un borrador guardado puede reabrirse por `id` y continuar editándose;
@@ -246,7 +250,7 @@ Destino: incorporar publicación controlada y selección concreta de ámbito/rec
 Estado: **operativo para Mis Flujos**.
 
 - lista definiciones visibles por RLS;
-- muestra estado, tipo, ámbito, activación, asignación, revisión y fecha de cambio;
+- muestra estado, completitud de autoría, tipo, ámbito, activación, asignación, revisión y fecha de cambio;
 - permite reabrir borradores para edición;
 - no ofrece publicar, ejecutar, archivar ni borrar todavía.
 
@@ -398,6 +402,15 @@ Implementado en esta fase:
 - Creador conectado al servidor sin cambiar la semántica de “borrador”;
 - **Mis Flujos** conectado a las definiciones visibles por RLS;
 - pruebas negativas para TENANT, acceso cruzado y escritura directa.
+
+### Incremento D — Borradores parciales y decisiones explícitas
+
+- elimina defaults de negocio del Creador;
+- permite persistir campos todavía pendientes sin fabricar decisiones;
+- añade `authoring_complete` calculado en servidor;
+- marca en **Mis Flujos** «Borrador incompleto» o «Borrador configurado»;
+- obliga a revisar borradores legacy antes de tratarlos como configurados;
+- mantiene publicación y ejecución bloqueadas.
 
 ## 8. Próximo incremento técnico
 

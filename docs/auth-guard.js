@@ -28,7 +28,9 @@ function addMfaSecurityAction() {
   button.id = "mfaSetupAction";
   button.type = "button";
   button.className = "ghost";
-  button.textContent = "Seguridad MFA";
+  button.textContent = "🛡️ MFA";
+  button.setAttribute("aria-label", "Configurar MFA");
+  button.title = "Configurar MFA";
   button.addEventListener("click", () => {
     window.location.assign(authFlowUrl("mfa-setup.html", currentPageNext()));
   });

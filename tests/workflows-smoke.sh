@@ -113,7 +113,7 @@ grep -Fq 'occupancies_v2' docs/workflow-applications.js
 grep -Fq '.application-card [hidden]{display:none!important}' docs/workflow-applications.css
 grep -Fq './workflow-applications.css?v=2026091803' docs/workflow-applications.html
 grep -Fq './workflow-applications.js?v=2026091803' docs/workflow-applications.html
-grep -Fq 'podrás crear una ejecución manual pendiente' docs/workflow-applications.html
+grep -Fq 'crear una ejecución manual y su tarea asociada' docs/workflow-applications.html
 grep -Fq 'Definición → Versión publicada → Aplicación concreta' docs/WORKFLOW_APPLICATIONS_CONTRACT.md
 grep -Fq 'workflow_applications_v2' docs/WORKFLOW_APPLICATIONS_CONTRACT.md
 grep -Fq 'execute_workflow_application_now_v1' docs/workflow-applications.js

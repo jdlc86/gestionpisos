@@ -2,6 +2,16 @@
 
 ROOT es un rol protegido. RLS es obligatoria en datos sensibles. La autorización se valida en backend y base de datos. QR no concede acceso. MFA es obligatorio para ROOT y ADMIN. Los cambios de contraseña invalidan las demás sesiones. Las acciones críticas se auditan. La IA no toma decisiones de seguridad.
 
+## Invariante de identidad e invitaciones
+
+- Toda invitación de acceso queda ligada a un usuario/identidad y a un email canónico concretos.
+- Cambiar el email no transfiere automáticamente la invitación ni los privilegios asociados.
+- OWNER/TENANT con invitación pendiente requieren revocar la identidad/invitación anterior antes de guardar el nuevo correo y crear una bienvenida nueva.
+- ADMIN/EMPLOYEE requieren coincidencia entre `internal_staff_onboarding.invitation_email`, `profiles.email` y `auth.users.email`; cualquier deriva bloquea reenvío y activación.
+- Los operadores de emergencia requieren coincidencia entre `platform_operators.identity_email` y el email Auth; una deriva bloquea la consola y las capacidades hasta reprovisión.
+- Las comprobaciones anteriores deben existir en backend/base de datos. Una tarjeta o botón correcto en frontend no constituye por sí solo una garantía de seguridad.
+- Una cuenta ya activada no cambia de email mediante una edición ordinaria de ficha; debe existir un flujo explícito de cambio de identidad/cuenta.
+
 ## Recuperación de emergencia MFA
 
 - La interfaz normal nunca permite que ROOT/ADMIN elimine su último factor MFA verificado.

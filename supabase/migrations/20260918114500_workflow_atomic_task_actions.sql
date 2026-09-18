@@ -127,15 +127,19 @@ create or replace function public.apply_tenant_task_action_v2(
 )
 returns public.tenant_tasks_v2
 language plpgsql
-security invoker
-set search_path=public
-as $$
+security definer
+set search_path=public,pg_temp
+as $
 declare
+  v_actor uuid:=auth.uid();
   v_task public.tenant_tasks_v2;
   v_action public.tenant_task_actions_v2;
-  v_role text;
   v_tenant_user uuid;
+  v_agency_allowed boolean:=false;
 begin
+  if v_actor is null then
+    raise exception 'not_authenticated' using errcode='42501';
+  end if;
   select * into v_task
   from public.tenant_tasks_v2
   where id=p_task_id
@@ -160,18 +164,28 @@ begin
     raise exception 'task_action_not_allowed' using errcode='22023';
   end if;
 
-  v_role:=coalesce(auth.jwt()->'app_metadata'->>'role','');
   select user_id into v_tenant_user
   from public.tenants_v2
   where id=v_task.tenant_id;
 
-  if v_action.actor='agency' and v_role not in ('admin','root') then
+  select exists(
+    select 1
+    from public.user_roles ur
+    where ur.user_id=v_actor
+      and ur.revoked_at is null
+      and (
+        ur.role='root'
+        or (ur.role='admin' and ur.organization_id=v_task.organization_id)
+      )
+  ) into v_agency_allowed;
+
+  if v_action.actor='agency' and not v_agency_allowed then
     raise exception 'task_action_actor_forbidden' using errcode='42501';
   end if;
-  if v_action.actor='tenant' and auth.uid() is distinct from v_tenant_user then
+  if v_action.actor='tenant' and v_actor is distinct from v_tenant_user then
     raise exception 'task_action_actor_forbidden' using errcode='42501';
   end if;
-  if v_action.actor='assignee' and auth.uid() is distinct from v_task.assigned_user_id then
+  if v_action.actor='assignee' and v_actor is distinct from v_task.assigned_user_id then
     raise exception 'task_action_actor_forbidden' using errcode='42501';
   end if;
   if v_action.actor='system' then
@@ -190,7 +204,7 @@ begin
     task_id,action_key,action_label,from_status,to_status,note,actor_user_id
   ) values (
     p_task_id,v_action.action_key,v_action.label,v_action.from_status,
-    v_action.to_status,nullif(btrim(p_note),''),auth.uid()
+    v_action.to_status,nullif(btrim(p_note),''),v_actor
   );
 
   return v_task;

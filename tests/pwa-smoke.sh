@@ -40,7 +40,7 @@ grep -q 'app.css' docs/index.html
 grep -q 'app.js' docs/index.html
 grep -q 'serviceWorker' docs/app.js
 grep -q 'GestionPisos' docs/manifest.webmanifest
-grep -q 'gestionpisos-shell-v7' docs/sw.js
+grep -q 'gestionpisos-shell-v8' docs/sw.js
 grep -q 'operations.html' docs/index.html
 grep -q 'Notificaciones' docs/operations.html
 grep -q 'Pagos' docs/operations.html
@@ -156,13 +156,14 @@ grep -q 'active: true' docs/photo-pattern-persistence.js
 test -s docs/photo-camera.html
 test -s docs/photo-camera.css
 test -s docs/photo-camera.js
-grep -q 'photo-camera.css?v=2026091501' docs/photo-camera.html
+grep -q 'photo-camera.css?v=2026091802' docs/photo-camera.html
 grep -q 'photo-reference-guide.js?v=2026091801' docs/photo-camera.html
 grep -q 'photo-alignment.js?v=2026091503' docs/photo-camera.js
 grep -q 'photo-camera.js' docs/photo-camera.html
 grep -q 'id="closeCamera"' docs/photo-camera.html
 grep -q 'id="flashCamera"' docs/photo-camera.html
 grep -q 'id="captureCamera"' docs/photo-camera.html
+grep -Fq '.capture-preview[hidden]{display:none!important}' docs/photo-camera.css
 grep -q '<svg' docs/photo-camera.html
 
 test -s docs/login.html

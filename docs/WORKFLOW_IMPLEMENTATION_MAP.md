@@ -12,7 +12,7 @@ Regla de esta fase:
 
 La arquitectura objetivo sigue siendo:
 
-`Flujo → Disparador → Ejecución → Asignación → Tareas → Recursos → Evidencias → Revisión/Cierre → Historial`
+`Flujo → Versión publicada → Aplicación concreta → Disparador → Ejecución → Asignación → Tareas → Recursos → Evidencias → Revisión/Cierre → Historial`
 
 ## Estado de implementación — 2026-09-18
 
@@ -24,7 +24,8 @@ Ya están completados o implementados en el incremento actual:
 - el contrato `WORKFLOW_ENGINE_CONTRACT.md`;
 - la UI del **Creador de Flujos** como asistente de siete pasos;
 - persistencia segura de borradores mediante `workflow_definitions_v2` y RPC server-side;
-- tabla `workflow_definition_versions_v2` preparada para futuras versiones publicadas, sin escritura cliente;
+- publicación controlada en `workflow_definition_versions_v2`, sin escritura cliente;
+- `workflow_applications_v2` para vincular versiones publicadas con entidades reales;
 - **Mis Flujos** como inventario de borradores visibles según RLS;
 - control de concurrencia optimista mediante `revision` y rechazo de ediciones obsoletas;
 - auditoría de creación/edición de borradores;
@@ -36,7 +37,7 @@ Cambios integrados previamente:
 - PR #196 → contrato del motor + Creador de Flujos local;
 - PR #197 → actualización documental del estado previo a persistencia.
 
-El incremento actual añade persistencia de definiciones, pero **todavía no publica versiones ni crea ejecuciones/tareas genéricas**.
+El incremento actual publica versiones inmutables y permite aplicaciones concretas, pero **todavía no crea ejecuciones/tareas genéricas**.
 
 ## 1. Inventario funcional existente
 
@@ -163,12 +164,14 @@ Decisión:
 Tablas introducidas de forma aditiva:
 
 - `workflow_definitions_v2`;
-- `workflow_definition_versions_v2`.
+- `workflow_definition_versions_v2`;
+- `workflow_applications_v2`.
 
 Responsabilidad actual:
 
 - `workflow_definitions_v2` conserva identidad estable, metadatos resumidos, estado `draft`, especificación saneada, `revision` de concurrencia y `authoring_complete` derivado server-side;
-- `workflow_definition_versions_v2` reserva la representación inmutable de versiones publicadas, pero en esta fase no existe RPC de publicación ni permiso de escritura cliente.
+- `workflow_definition_versions_v2` contiene versiones publicadas inmutables mediante RPC protegido;
+- `workflow_applications_v2` contiene el vínculo entre una versión y organización/piso/habitación/ocupación real, sin activar todavía ejecución.
 
 Seguridad:
 
@@ -243,7 +246,7 @@ Estado: **operativo con borrador persistente**.
 - el guardado no publica ni crea tareas/ejecuciones/notificaciones;
 - enlaza con Banco Fotográfico como recurso reutilizable.
 
-Destino: incorporar publicación controlada y selección concreta de ámbito/recursos en el siguiente incremento.
+Destino: mantener aquí solo la receta lógica. Los UUID concretos se gestionan en la capa de Aplicaciones.
 
 ### `workflow-definitions.html`
 
@@ -252,7 +255,9 @@ Estado: **operativo para Mis Flujos**.
 - lista definiciones visibles por RLS;
 - muestra estado, completitud de autoría, tipo, ámbito, activación, asignación, revisión y fecha de cambio;
 - permite reabrir borradores para edición;
-- no ofrece publicar, ejecutar, archivar ni borrar todavía.
+- permite publicar un borrador configurado;
+- una definición publicada enlaza con su pantalla de Aplicaciones;
+- todavía no ejecuta tareas ni recurrencias.
 
 ### `photo-patterns.html`
 
@@ -302,12 +307,10 @@ Estado actual:
 
 ## 4. Qué falta realmente
 
-Ya existe persistencia genérica para **identidad estable de definición y borrador editable**. También existe la tabla reservada para versiones publicadas, todavía sin endpoint de publicación.
+Ya existe persistencia genérica para **identidad estable de definición y borrador editable**, publicación inmutable y aplicación concreta del ámbito.
 
 Falta implementar:
 
-- publicación inmutable de una versión;
-- selección y validación concreta de ámbito;
 - referencias persistentes/versionadas a recursos;
 - disparadores genéricos ejecutables;
 - reglas de asignación resueltas server-side;
@@ -336,7 +339,8 @@ Ese es el **siguiente incremento del motor mínimo**.
 | Notificaciones | `notifications_v2` | Reutilizar |
 | Auditoría sensible | `audit_log_v2` | Reutilizar |
 | Definición de flujo | `workflow_definitions_v2` | Implementado para borradores persistentes |
-| Versión de flujo | `workflow_definition_versions_v2` | Tabla preparada; publicación pendiente |
+| Versión de flujo | `workflow_definition_versions_v2` | Publicación inmutable implementada |
+| Aplicación concreta | `workflow_applications_v2` | Vinculación real implementada; sin ejecución |
 | Disparador genérico | No existe ejecución | Implementar con idempotencia |
 | Regla de asignación genérica | No existe ejecución | Resolver server-side |
 | Ejecución genérica | No existe | Implementar con snapshot/versiones |
@@ -414,14 +418,11 @@ Implementado en esta fase:
 
 ## 8. Próximo incremento técnico
 
-El siguiente trabajo debe ser **publicación inmutable + ejecución manual idempotente**, no otra capa de UI aislada.
+El siguiente trabajo debe ser **ejecución manual idempotente sobre una aplicación configurada**, no otra capa de UI aislada.
 
 Debe cubrir:
 
-- seleccionar/validar el ámbito concreto antes de publicar;
-- congelar una versión en `workflow_definition_versions_v2`;
-- impedir mutación de una versión ya publicada;
-- crear la entidad mínima de ejecución;
+- crear la entidad mínima de ejecución referenciando `workflow_applications_v2` y su versión;
 - activación manual inicial;
 - `idempotency_key` de ejecución;
 - resolución server-side de asignaciones;

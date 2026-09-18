@@ -106,3 +106,19 @@ La comparación temporal es evidencia visual. No debe afirmar automáticamente d
 ### Compatibilidad
 
 No reinterpretar verificaciones históricas existentes como limpiezas si no existe evidencia explícita de ese propósito. La introducción de nuevos tipos debe ser aditiva y versionada.
+
+
+## Integración con Flujos de Trabajo — 2026-09-18
+
+La infraestructura fotográfica sigue siendo única. El motor transversal no crea una segunda cámara ni un segundo bucket.
+
+Cuando una receta publicada contiene `steps.photo=true`:
+
+- la definición solo declara el paso lógico;
+- la Aplicación selecciona patrones reales del piso mediante `workflow_application_photo_resources_v2`;
+- cada ejecución congela versión y `contour_data` en `workflow_execution_photo_resources_v2`;
+- la cámara usa ese snapshot para reproducir la guía histórica;
+- el run se crea con `source_type='workflow_execution'` únicamente mediante RPC del motor;
+- el envío valida el JPEG privado y actualiza recurso, tarea y ejecución de forma transaccional.
+
+Contrato detallado: `WORKFLOW_PHOTO_EVIDENCE_CONTRACT.md`.

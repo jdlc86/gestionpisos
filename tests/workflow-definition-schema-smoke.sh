@@ -12,6 +12,7 @@ materialization='supabase/migrations/20260918110819_workflow_task_materializatio
 workflow_reset='supabase/migrations/20260918110824_factory_reset_workflow_data.sql'
 actions='supabase/migrations/20260918114500_workflow_atomic_task_actions.sql'
 photo_evidence='supabase/migrations/20260918133000_workflow_photo_evidence.sql'
+decisions='supabase/migrations/20260918193000_workflow_accept_reject_decision.sql'
 
 test -s "$migration"
 test -s "$hardening"
@@ -24,6 +25,7 @@ test -s "$materialization"
 test -s "$workflow_reset"
 test -s "$actions"
 test -s "$photo_evidence"
+test -s "$decisions"
 test -s tests/workflow-definition-regression.sql
 
 grep -Fq 'create table if not exists public.workflow_definitions_v2' "$migration"
@@ -174,5 +176,11 @@ grep -Fq 'public.workflow_application_photo_resources_v2' "$photo_evidence"
 grep -Fq 'create or replace function public.factory_reset_test_data_service' "$photo_evidence"
 grep -Fq 'revoke execute on function public.start_workflow_photo_verification_v1(uuid) from anon' "$photo_evidence"
 grep -Fq 'revoke execute on function public.submit_workflow_photo_verification_v1(uuid,uuid,text) from anon' "$photo_evidence"
+grep -Fq "check (status in ('pending','active','waiting_review','completed','cancelled','failed','rejected'))" "$decisions"
+grep -Fq "v_task.id,'reject','Rechazar','pending','rejected',true,20,true,'assignee'" "$decisions"
+grep -Fq "p_action_key not in ('accept','reject')" "$decisions"
+grep -Fq "if p_action_key='reject' then" "$decisions"
+grep -Fq "status='cancelled'" "$decisions"
+grep -Fq "Rechazar exige motivo" "$decisions"
 
 echo 'Workflow definition schema smoke checks passed'

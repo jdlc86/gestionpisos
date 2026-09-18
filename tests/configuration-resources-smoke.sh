@@ -6,7 +6,7 @@ test -s docs/configuration-resources.css
 test -s docs/configuration-resources.js
 test -s docs/root-home-modules.js
 test -s supabase/functions/root-configuration-resources/index.ts
-test -s supabase/migrations/20260917203000_root_configuration_resources.sql
+test -s supabase/migrations/20260917180622_root_configuration_resources.sql
 
 node --check docs/configuration-resources.js
 node --check docs/root-home-modules.js
@@ -32,11 +32,11 @@ grep -Fq 'aal2_required' supabase/functions/root-configuration-resources/index.t
 grep -Fq 'root_configuration_resources_service' supabase/functions/root-configuration-resources/index.ts
 grep -Fq 'transactional_provider_configured' supabase/functions/root-configuration-resources/index.ts
 
-grep -Fq 'security definer' supabase/migrations/20260917203000_root_configuration_resources.sql
-grep -Fq 'pg_database_size(current_database())' supabase/migrations/20260917203000_root_configuration_resources.sql
-grep -Fq 'storage.objects' supabase/migrations/20260917203000_root_configuration_resources.sql
-grep -Fq 'revoke all on function public.root_configuration_resources_service' supabase/migrations/20260917203000_root_configuration_resources.sql
-grep -Fq 'grant execute on function public.root_configuration_resources_service' supabase/migrations/20260917203000_root_configuration_resources.sql
+grep -Fq 'security definer' supabase/migrations/20260917180622_root_configuration_resources.sql
+grep -Fq 'pg_database_size(current_database())' supabase/migrations/20260917180622_root_configuration_resources.sql
+grep -Fq 'storage.objects' supabase/migrations/20260917180622_root_configuration_resources.sql
+grep -Fq 'revoke all on function public.root_configuration_resources_service' supabase/migrations/20260917180622_root_configuration_resources.sql
+grep -Fq 'grant execute on function public.root_configuration_resources_service' supabase/migrations/20260917180622_root_configuration_resources.sql
 
 # Negative/security checks: privileged material never reaches GitHub Pages.
 privileged_service_key_name=$(printf '%s_%s_%s_%s' SUPABASE SERVICE ROLE KEY)

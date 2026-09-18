@@ -131,6 +131,10 @@ document.addEventListener("submit",async event=>{
     if(subject.currentEmail===newEmail){resumeEditorSubmit();return;}
     const onboarding=await currentOnboardingForSubject(subject);
     if(!onboarding){resumeEditorSubmit();return;}
+    if(typeof onboarding.email!=="string"){
+      showEditorEmailError("La protección del cambio de email todavía no está disponible en esta sesión. Actualiza la aplicación y vuelve a intentarlo.");
+      return;
+    }
     const onboardingEmail=normalizeEmail(onboarding.email);
     if(newEmail===onboardingEmail){resumeEditorSubmit();return;}
     if(onboarding.status==="active"){
@@ -230,7 +234,7 @@ document.addEventListener("click",event=>{
 function onboardingBadge(row,currentEmail){
   if(!row)return {label:"Sin invitación",button:"Enviar bienvenida"};
   if(row.status==="pending"){
-    if(normalizeEmail(row.email)!==normalizeEmail(currentEmail)){
+    if(typeof row.email==="string"&&normalizeEmail(row.email)!==normalizeEmail(currentEmail)){
       return {label:"Email cambiado · nueva invitación necesaria",button:"Enviar nueva bienvenida"};
     }
     const delivery=row.last_delivery_status;

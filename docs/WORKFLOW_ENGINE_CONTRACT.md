@@ -65,6 +65,14 @@ Tipos mínimos:
 - `recurring`;
 - `event`.
 
+Reglas de autoría de activación:
+
+- `manual` no usa frecuencia ni fecha programada;
+- `scheduled_once` exige una fecha/hora concreta antes de considerarse configurado;
+- `recurring` exige frecuencia; si es personalizada, además exige intervalo entero y unidad (`día`, `semana` o `mes`);
+- los campos que no corresponden al tipo seleccionado se eliminan server-side para impedir estado residual;
+- `event` no usa frecuencia temporal; la fuente concreta del evento deberá validarse antes de publicación cuando se habilite esa capacidad.
+
 Todo disparador automático debe producir una `idempotency_key` determinista para impedir duplicados ante reintentos.
 
 Ejemplos conceptuales:

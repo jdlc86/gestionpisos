@@ -11,6 +11,8 @@ const clearButton=document.getElementById("builderClear");
 const saveButton=document.getElementById("builderSave");
 const triggerType=document.getElementById("triggerType");
 const recurrenceRow=document.getElementById("recurrenceRow");
+const customRecurrenceRow=document.getElementById("customRecurrenceRow");
+const scheduledAtRow=document.getElementById("scheduledAtRow");
 const summary=document.getElementById("workflowSummary");
 const serverStatus=document.getElementById("builderServerStatus");
 const builderBadge=document.getElementById("builderBadge");
@@ -25,6 +27,7 @@ const labels={
   scopeType:{property:"Un piso",organization:"Toda la organización",room:"Una habitación",occupancy:"Una ocupación / inquilino"},
   triggerType:{manual:"Manual",recurring:"Recurrente",scheduled_once:"Fecha concreta",event:"Por evento"},
   recurrence:{weekly:"Cada semana",biweekly:"Cada 2 semanas",monthly:"Cada mes",custom:"Personalizada"},
+  customUnit:{day:"día(s)",week:"semana(s)",month:"mes(es)"},
   assignmentType:{property_responsible:"Responsable operativo del piso",active_occupants_rotation:"Ocupantes activos en rotación",fixed_person:"Persona fija",role:"Rol o capacidad",manual:"Se decide al iniciar"},
   closeType:{auto:"Automáticamente al completar pasos",human_review:"Tras revisión humana",domain_adapter:"Según regla especializada del flujo"}
 };
@@ -44,6 +47,9 @@ function draft(){
     scopeType:value("scopeType"),
     triggerType:value("triggerType"),
     recurrence:value("recurrence"),
+    scheduledAt:value("scheduledAt"),
+    customEvery:value("customEvery"),
+    customUnit:value("customUnit"),
     assignmentType:value("assignmentType"),
     steps:{accept:checked("stepAccept"),photo:checked("stepPhoto"),checklist:checked("stepChecklist"),document:checked("stepDocument")},
     closeType:value("closeType"),
@@ -62,13 +68,26 @@ function completion(data=draft()){
   const sections=[
     {key:"identity",label:"Identidad",complete:data.flowName.trim().length>=3&&Boolean(data.flowType)},
     {key:"scope",label:"Ámbito",complete:Boolean(data.scopeType)},
-    {key:"trigger",label:"Activación",complete:Boolean(data.triggerType)&&(data.triggerType!=="recurring"||Boolean(data.recurrence))},
+    {key:"trigger",label:"Activación",complete:triggerComplete(data)},
     {key:"assignment",label:"Asignación",complete:Boolean(data.assignmentType)},
     {key:"steps",label:"Pasos y recursos",complete:Object.values(data.steps||{}).some(Boolean)},
     {key:"close",label:"Cierre",complete:Boolean(data.closeType)}
   ];
   const completed=sections.filter(section=>section.complete).length;
   return {sections,completed,total:sections.length,complete:completed===sections.length};
+}
+
+function triggerComplete(data){
+  if(!data.triggerType)return false;
+  if(data.triggerType==="manual"||data.triggerType==="event")return true;
+  if(data.triggerType==="scheduled_once")return Boolean(data.scheduledAt);
+  if(data.triggerType==="recurring"){
+    if(!data.recurrence)return false;
+    if(data.recurrence!=="custom")return true;
+    const every=Number(data.customEvery);
+    return Number.isInteger(every)&&every>=1&&every<=365&&["day","week","month"].includes(data.customUnit);
+  }
+  return false;
 }
 
 function saveLocalDraft(){
@@ -78,7 +97,7 @@ function saveLocalDraft(){
 
 function applyDraft(saved,{restoreStep=true}={}){
   if(!saved||typeof saved!=="object")return;
-  for(const name of ["flowName","flowType","flowDescription","scopeType","triggerType","recurrence","assignmentType","closeType"]){
+  for(const name of ["flowName","flowType","flowDescription","scopeType","triggerType","recurrence","scheduledAt","customEvery","customUnit","assignmentType","closeType"]){
     const node=field(name);
     if(node&&typeof saved[name]==="string")node.value=saved[name];
   }
@@ -124,12 +143,33 @@ function errorMessage(error){
   return "No se pudo guardar el borrador en el servidor. No se ha publicado ni creado ninguna tarea.";
 }
 
+function toggleDependentRow(row,enabled){
+  if(!row)return;
+  row.hidden=!enabled;
+  row.querySelectorAll("input,select,textarea").forEach(control=>{control.disabled=!enabled});
+}
+
 function updateTriggerFields({clearHidden=false}={}){
-  const recurring=triggerType.value==="recurring";
-  recurrenceRow.hidden=!recurring;
-  if(clearHidden&&!recurring){
-    const recurrence=field("recurrence");
-    if(recurrence)recurrence.value="";
+  const type=value("triggerType");
+  const recurrence=field("recurrence");
+  const scheduledAt=field("scheduledAt");
+  const customEvery=field("customEvery");
+  const customUnit=field("customUnit");
+  const recurring=type==="recurring";
+  const scheduled=type==="scheduled_once";
+  const custom=recurring&&value("recurrence")==="custom";
+
+  toggleDependentRow(recurrenceRow,recurring);
+  toggleDependentRow(customRecurrenceRow,custom);
+  toggleDependentRow(scheduledAtRow,scheduled);
+
+  if(clearHidden){
+    if(!recurring&&recurrence)recurrence.value="";
+    if(!custom){
+      if(customEvery)customEvery.value="";
+      if(customUnit)customUnit.value="";
+    }
+    if(!scheduled&&scheduledAt)scheduledAt.value="";
   }
 }
 
@@ -216,6 +256,23 @@ function summaryRow(title,text){
   row.append(strong,span);return row;
 }
 
+function activationSummary(data){
+  if(data.triggerType==="recurring"){
+    if(data.recurrence==="custom"){
+      const every=data.customEvery||"—";
+      return "Recurrente · Cada "+every+" "+label("customUnit",data.customUnit);
+    }
+    return label("triggerType",data.triggerType)+" · "+label("recurrence",data.recurrence);
+  }
+  if(data.triggerType==="scheduled_once"){
+    if(!data.scheduledAt)return "Fecha concreta · Pendiente";
+    const parsed=new Date(data.scheduledAt);
+    const shown=Number.isNaN(parsed.getTime())?data.scheduledAt:new Intl.DateTimeFormat("es-ES",{dateStyle:"medium",timeStyle:"short"}).format(parsed);
+    return "Fecha concreta · "+shown;
+  }
+  return label("triggerType",data.triggerType);
+}
+
 function renderSummary(){
   if(!summary)return;
   const data=draft();
@@ -235,7 +292,7 @@ function renderSummary(){
     summaryRow("Nombre",data.flowName||"Sin nombre"),
     summaryRow("Tipo",label("flowType",data.flowType)),
     summaryRow("Ámbito",label("scopeType",data.scopeType)),
-    summaryRow("Activación",data.triggerType==="recurring"?label("triggerType",data.triggerType)+" · "+label("recurrence",data.recurrence):label("triggerType",data.triggerType)),
+    summaryRow("Activación",activationSummary(data)),
     summaryRow("Asignación",label("assignmentType",data.assignmentType)),
     summaryRow("Pasos",stepNames.length?stepNames.join(" → "):"Pendiente"),
     summaryRow("Cierre",label("closeType",data.closeType)),
@@ -327,7 +384,7 @@ async function saveServerDraft(){
 
 form.addEventListener("input",()=>{saveLocalDraft();updateCompletionUI();if(currentStep===panels.length-1)renderSummary()});
 form.addEventListener("change",event=>{
-  if(event.target===triggerType)updateTriggerFields({clearHidden:true});
+  if(event.target===triggerType||event.target===field("recurrence"))updateTriggerFields({clearHidden:true});
   saveLocalDraft();
   updateCompletionUI();
   if(currentStep===panels.length-1)renderSummary();

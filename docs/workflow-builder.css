@@ -33,3 +33,7 @@
 .builder-step.is-complete:not(.is-active) span{background:var(--ui-success-soft);color:var(--ui-success)}
 .builder-step.is-pending:not(.is-active){border-style:dashed}
 .builder-server-status[data-tone="warning"]{border-color:var(--ui-warning);background:var(--ui-warning-soft);color:var(--ui-text)}
+
+.builder-dependent-grid{display:grid;grid-template-columns:minmax(100px,.7fr) minmax(160px,1.3fr);gap:10px}
+.builder-dependent-grid[hidden]{display:none!important}
+@media(max-width:560px){.builder-dependent-grid{grid-template-columns:1fr}}

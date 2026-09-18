@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#ffffff">
   <meta name="description" content="Creador de Flujos de GestionPisos">
   <link rel="stylesheet" href="./app.css?v=2026091703">
-  <link rel="stylesheet" href="./workflow-builder.css?v=2026091803">
+  <link rel="stylesheet" href="./workflow-builder.css?v=2026091804">
   <title>Allaiso · Creador de Flujos</title>
 </head>
 <body>
@@ -78,13 +78,32 @@
             <option value="scheduled_once">Fecha concreta</option>
             <option value="event">Por evento</option>
           </select></label>
-          <label id="recurrenceRow" hidden>Frecuencia<select id="recurrence" name="recurrence">
+          <label id="recurrenceRow" hidden>Frecuencia<select id="recurrence" name="recurrence" disabled>
             <option value="">Pendiente · selecciona una frecuencia</option>
             <option value="weekly">Cada semana</option>
             <option value="biweekly">Cada 2 semanas</option>
             <option value="monthly">Cada mes</option>
             <option value="custom">Personalizada</option>
           </select></label>
+
+          <div id="customRecurrenceRow" class="builder-dependent-grid" hidden>
+            <label>Cada
+              <input id="customEvery" name="customEvery" type="number" inputmode="numeric" min="1" max="365" step="1" placeholder="Ej. 3" disabled>
+            </label>
+            <label>Unidad
+              <select id="customUnit" name="customUnit" disabled>
+                <option value="">Pendiente · selecciona unidad</option>
+                <option value="day">Día(s)</option>
+                <option value="week">Semana(s)</option>
+                <option value="month">Mes(es)</option>
+              </select>
+            </label>
+          </div>
+
+          <label id="scheduledAtRow" hidden>Fecha y hora
+            <input id="scheduledAt" name="scheduledAt" type="datetime-local" disabled>
+          </label>
+          <div class="builder-note">Manual y Por evento no usan frecuencia. Recurrente muestra frecuencia; Personalizada permite indicar cada cuántos días, semanas o meses. Fecha concreta muestra calendario y hora.</div>
         </section>
 
         <section class="builder-panel" data-step="3">
@@ -151,7 +170,7 @@
   </main>
 
   <script src="./app.js?v=202609152" defer></script>
-  <script type="module" src="./workflow-builder.js?v=2026091804"></script>
+  <script type="module" src="./workflow-builder.js?v=2026091805"></script>
   <script type="module" src="./auth-guard.js"></script>
 </body>
 </html>

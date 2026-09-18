@@ -295,3 +295,10 @@ Antes de crear tablas del motor:
 - no se deben duplicar tareas, cámara, Storage, notificaciones ni históricos existentes.
 
 El primer DDL será aditivo, reversible por migración posterior y preservará íntegramente los datos históricos actuales.
+
+
+## Evidencia fotográfica operativa
+
+El primer recurso transversal ejecutable es Fotografía. La definición declara `steps.photo=true`; la Aplicación vincula patrones reales del piso y cada ejecución congela versión + silueta en `workflow_execution_photo_resources_v2`.
+
+La cámara y persistencia siguen siendo las existentes. El envío de workflow se finaliza con `submit_workflow_photo_verification_v1`, que verifica el objeto privado y mantiene recurso, tarea y ejecución coherentes en una transacción. Véase `WORKFLOW_PHOTO_EVIDENCE_CONTRACT.md`.

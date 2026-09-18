@@ -11,8 +11,8 @@ drop policy if exists tenant_task_actions_v2_workflow_actor_gate
   on public.tenant_task_actions_v2;
 
 create policy tenant_task_actions_v2_workflow_actor_gate
-as restrictive
 on public.tenant_task_actions_v2
+as restrictive
 for select
 to authenticated
 using (

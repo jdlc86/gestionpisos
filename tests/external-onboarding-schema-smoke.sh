@@ -34,4 +34,21 @@ grep -Fq 'tenant_documents_v2_tenant_self_read' "$MIGRATION"
 grep -Fq 'revoke all on function public.complete_external_account_onboarding(uuid) from public,anon,authenticated' "$MIGRATION"
 grep -Fq 'grant execute on function public.complete_external_account_onboarding(uuid) to service_role' "$MIGRATION"
 
+
+EMAIL_MIGRATION='supabase/migrations/20260918210000_external_onboarding_email_change_guard.sql'
+test -s "$EMAIL_MIGRATION"
+
+grep -Fq 'create or replace function public.revoke_external_account_onboarding_v1' "$EMAIL_MIGRATION"
+grep -Fq "p_reason <> 'email_changed'" "$EMAIL_MIGRATION"
+grep -Fq 'external_auth_identity_not_disabled' "$EMAIL_MIGRATION"
+grep -Fq "set status='revoked'" "$EMAIL_MIGRATION"
+grep -Fq "'revoke_external_account_invitation'" "$EMAIL_MIGRATION"
+grep -Fq 'create or replace function private.guard_external_subject_email_change_v1()' "$EMAIL_MIGRATION"
+grep -Fq 'external_onboarding_email_change_requires_revocation' "$EMAIL_MIGRATION"
+grep -Fq 'external_active_account_email_change_requires_account_flow' "$EMAIL_MIGRATION"
+grep -Fq 'owners_external_onboarding_email_guard' "$EMAIL_MIGRATION"
+grep -Fq 'tenants_external_onboarding_email_guard' "$EMAIL_MIGRATION"
+grep -Fq "'email',o.email" "$EMAIL_MIGRATION"
+grep -Fq 'grant execute on function public.revoke_external_account_onboarding_v1(uuid,uuid,text,text)' "$EMAIL_MIGRATION"
+
 echo 'External owner/tenant onboarding schema smoke checks passed'

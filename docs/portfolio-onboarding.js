@@ -5,6 +5,21 @@ let ownerSubmitDecision=null;
 let refreshTimer=null;
 let refreshRunning=false;
 let lastOrganizationId=null;
+let editingExternalContext=null;
+let externalEmailChangeBypass=false;
+
+function normalizeEmail(value){return String(value||"").trim().toLowerCase();}
+function showEditorEmailError(message){
+  const error=$("editorError");
+  if(error){error.textContent=message;error.hidden=false;}
+  setPortfolioStatus(message,"Cambio de email bloqueado.");
+}
+function resumeEditorSubmit(){
+  const form=$("editorForm");if(!form)return;
+  externalEmailChangeBypass=true;
+  form.requestSubmit();
+  queueMicrotask(()=>{externalEmailChangeBypass=false;});
+}
 
 function activeView(){return document.querySelector(".segment.is-active")?.dataset.view||"owners";}
 async function effectiveOrganizationId(){
@@ -57,6 +72,89 @@ document.addEventListener("submit",event=>{
   dialog.showModal();
 },true);
 
+document.addEventListener("click",event=>{
+  const target=event.target.closest("button");
+  if(!target)return;
+  if(target.id==="newItemBtn"){editingExternalContext=null;return;}
+  if(target.dataset.action!=="edit")return;
+  const view=activeView();
+  if(view==="owners")editingExternalContext={subjectType:"owner",recordId:target.dataset.id};
+  else if(view==="occupancies")editingExternalContext={subjectType:"tenant",occupancyId:target.dataset.id};
+  else editingExternalContext=null;
+},true);
+
+async function resolveEditingExternalSubject(){
+  const context=editingExternalContext;
+  if(!context)return null;
+  if(context.subjectType==="owner"){
+    const {data,error}=await supabase.from("owners").select("id,organization_id,email,status,archived_at").eq("id",context.recordId).maybeSingle();
+    if(error)throw error;
+    if(!data)return null;
+    return {subjectType:"owner",subjectId:String(data.id),organizationId:String(data.organization_id),currentEmail:normalizeEmail(data.email)};
+  }
+  const {data:occupancy,error:occupancyError}=await supabase.from("occupancies_v2").select("tenant_id,organization_id").eq("id",context.occupancyId).maybeSingle();
+  if(occupancyError)throw occupancyError;
+  if(!occupancy?.tenant_id)return null;
+  const {data:tenant,error:tenantError}=await supabase.from("tenants_v2").select("id,organization_id,email,status,archived_at").eq("id",occupancy.tenant_id).maybeSingle();
+  if(tenantError)throw tenantError;
+  if(!tenant)return null;
+  return {subjectType:"tenant",subjectId:String(tenant.id),organizationId:String(tenant.organization_id||occupancy.organization_id),currentEmail:normalizeEmail(tenant.email)};
+}
+
+async function currentOnboardingForSubject(subject){
+  const {data,error}=await supabase.rpc("get_external_onboarding_statuses",{p_organization_id:subject.organizationId});
+  if(error)throw error;
+  const rows=Array.isArray(data)?data:[];
+  return rows.find(row=>row.subject_type===subject.subjectType&&String(row.subject_id)===subject.subjectId)||null;
+}
+
+async function revokeInvitationForEmailChange(subject,newEmail){
+  const {data,error}=await supabase.functions.invoke("revoke-external-welcome",{body:{subject_type:subject.subjectType,subject_id:subject.subjectId,new_email:newEmail}});
+  if(error)throw error;
+  if(data?.ok!==true)throw new Error("external_onboarding_revoke_failed");
+  return data;
+}
+
+document.addEventListener("submit",async event=>{
+  if(event.target!==$("editorForm"))return;
+  if(externalEmailChangeBypass||!editingExternalContext)return;
+  if(!$("editorTitle")?.textContent?.startsWith("Editar"))return;
+  const view=activeView();
+  if(!["owners","occupancies"].includes(view))return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  const form=event.target;
+  const newEmail=normalizeEmail(form.elements.namedItem("email")?.value);
+  try{
+    const subject=await resolveEditingExternalSubject();
+    if(!subject){showEditorEmailError("No se pudo comprobar la identidad asociada antes de guardar.");return;}
+    if(subject.currentEmail===newEmail){resumeEditorSubmit();return;}
+    const onboarding=await currentOnboardingForSubject(subject);
+    if(!onboarding){resumeEditorSubmit();return;}
+    if(typeof onboarding.email!=="string"){
+      showEditorEmailError("La protección del cambio de email todavía no está disponible en esta sesión. Actualiza la aplicación y vuelve a intentarlo.");
+      return;
+    }
+    const onboardingEmail=normalizeEmail(onboarding.email);
+    if(newEmail===onboardingEmail){resumeEditorSubmit();return;}
+    if(onboarding.status==="active"){
+      showEditorEmailError("Este acceso ya está activado. Para cambiar su email hace falta un flujo específico de cambio de cuenta; no se modificó la ficha.");
+      return;
+    }
+    if(onboarding.status!=="pending"){resumeEditorSubmit();return;}
+    const destination=newEmail||"sin email";
+    const confirmed=window.confirm("Cambiar el email invalidará la invitación enviada a "+onboardingEmail+". El enlace anterior dejará de ser válido y "+destination+" quedará sin invitación hasta que envíes una nueva bienvenida. ¿Continuar?");
+    if(!confirmed)return;
+    await revokeInvitationForEmailChange(subject,newEmail);
+    setPortfolioStatus("La invitación anterior quedó revocada. Guardando el nuevo email; después podrás enviar una nueva bienvenida.","Invitación invalidada.");
+    resumeEditorSubmit();
+  }catch(error){
+    const code=await functionErrorCode(error);
+    console.error("external_email_change_guard_failed",error);
+    showEditorEmailError(friendlyWelcomeError(code||"external_onboarding_revoke_failed"));
+  }
+},true);
+
 async function functionErrorCode(error){
   try{if(error?.context instanceof Response){const body=await error.context.clone().json();return String(body?.error||"");}}catch{}
   return String(error?.message||"");
@@ -70,6 +168,8 @@ function friendlyWelcomeError(code){
   if(code.includes("tenant_not_active"))return "El inquilino debe estar en estado Alta antes de enviar la bienvenida.";
   if(code.includes("invitation_cooldown"))return "La invitación se acaba de solicitar. Espera aproximadamente un minuto antes de reenviarla.";
   if(code.includes("external_welcome_permission_required"))return "Tu usuario no tiene permiso para enviar esta bienvenida.";
+  if(code.includes("external_active_account_email_change_requires_account_flow"))return "Ese acceso ya está activado. El email de acceso no puede cambiarse desde la ficha; necesita un flujo específico de cambio de cuenta.";
+  if(code.includes("external_onboarding_revoke_failed")||code.includes("external_stale_onboarding_revoke_failed"))return "No se pudo invalidar de forma segura la invitación anterior. El email no se ha cambiado.";
   return "No se pudo enviar la bienvenida. La ficha no se ha cruzado con ninguna otra identidad.";
 }
 
@@ -131,9 +231,12 @@ document.addEventListener("click",event=>{
   if(action){event.preventDefault();event.stopPropagation();sendWelcome(target.dataset.subjectType,target.dataset.subjectId,target).catch(()=>{});}
 },true);
 
-function onboardingBadge(row){
+function onboardingBadge(row,currentEmail){
   if(!row)return {label:"Sin invitación",button:"Enviar bienvenida"};
   if(row.status==="pending"){
+    if(typeof row.email==="string"&&normalizeEmail(row.email)!==normalizeEmail(currentEmail)){
+      return {label:"Email cambiado · nueva invitación necesaria",button:"Enviar nueva bienvenida"};
+    }
     const delivery=row.last_delivery_status;
     return {
       label:delivery==="sent"?"Pendiente de activación":delivery==="not_configured"?"Correo pendiente":delivery==="failed"?"Envío no confirmado":"Invitación pendiente",
@@ -142,12 +245,12 @@ function onboardingBadge(row){
   }
   return {label:"Acceso activado",button:null};
 }
-function decorateCard(card,subjectType,subjectId,row,canSend=true){
-  if(card.querySelector("[data-external-onboarding-ui]"))return;
+function decorateCard(card,subjectType,subjectId,row,currentEmail,canSend=true){
+  card.querySelectorAll("[data-external-onboarding-ui]").forEach(element=>element.remove());
   const meta=card.querySelector(".record-meta");
   const actions=card.querySelector(".record-actions");
   if(!meta||!actions)return;
-  const state=onboardingBadge(row);
+  const state=onboardingBadge(row,currentEmail);
   const badge=document.createElement("span");badge.className="relation-chip";badge.dataset.externalOnboardingUi="1";badge.textContent=`Acceso: ${state.label}`;meta.appendChild(badge);
   if(state.button&&canSend){const button=document.createElement("button");button.type="button";button.className="secondary";button.dataset.externalOnboardingUi="1";button.dataset.externalWelcome="1";button.dataset.subjectType=subjectType;button.dataset.subjectId=subjectId;button.textContent=state.button;actions.appendChild(button);}
 }
@@ -163,13 +266,13 @@ async function refreshExternalOnboarding(){
     const statusByKey=new Map(rows.map(row=>[`${row.subject_type}:${row.subject_id}`,row]));
     const cards=[...document.querySelectorAll("#records .record-card")];
     if(view==="owners"){
-      for(const card of cards){const id=card.querySelector('button[data-action="edit"]')?.dataset.id;if(!id)continue;const email=card.querySelector("p")?.textContent||"";decorateCard(card,"owner",id,statusByKey.get(`owner:${id}`),email.includes("@"));}
+      for(const card of cards){const id=card.querySelector('button[data-action="edit"]')?.dataset.id;if(!id)continue;const text=card.querySelector("p")?.textContent||"";const email=text.split(" · ")[0].trim();decorateCard(card,"owner",id,statusByKey.get(`owner:${id}`),email,email.includes("@"));}
     }else{
       const occupancyIds=cards.map(card=>card.querySelector('button[data-action="edit"]')?.dataset.id).filter(Boolean);
       if(!occupancyIds.length)return;
       const {data:occupancies}=await supabase.from("occupancies_v2").select("id,tenant_id,status").in("id",occupancyIds);
       const byOccupancy=new Map((occupancies||[]).map(row=>[row.id,row]));
-      for(const card of cards){const id=card.querySelector('button[data-action="edit"]')?.dataset.id;const oc=byOccupancy.get(id);if(!oc?.tenant_id)continue;decorateCard(card,"tenant",oc.tenant_id,statusByKey.get(`tenant:${oc.tenant_id}`),oc.status==="active");}
+      for(const card of cards){const id=card.querySelector('button[data-action="edit"]')?.dataset.id;const oc=byOccupancy.get(id);if(!oc?.tenant_id)continue;const text=card.querySelector("p")?.textContent||"";const email=text.split(" · ")[0].trim();decorateCard(card,"tenant",oc.tenant_id,statusByKey.get(`tenant:${oc.tenant_id}`),email,oc.status==="active");}
     }
   }finally{refreshRunning=false;}
 }

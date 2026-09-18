@@ -313,11 +313,12 @@ Ya existe persistencia genérica para **identidad estable de definición y borra
 
 Falta implementar:
 
-- revisión/cierre posterior a evidencia cuando la receta lo requiera;
 - checklist/documento;
 - congelación explícita de otros recursos/versiones concretos;
-- transiciones posteriores de ejecución;
-- historial transversal que una definición, ejecución, tarea, evidencia y cierre.
+- notificaciones operativas genéricas de cierre/rechazo;
+- historial transversal presentado como una vista única que una definición, ejecución, tarea, evidencia, revisión y cierre.
+
+La revisión/cierre `human_review` ya está implementada para los pasos actualmente operativos.
 
 Ya existe el servicio server-side que crea de forma idempotente una ejecución manual, congela su asignación y materializa una tarea compartida sin fabricar `tenant_id`. El primer RPC de acciones sincroniza tarea + ejecución y protege la ruta legacy.
 
@@ -334,7 +335,7 @@ El primer paso de evidencia/recurso ya está implementado para Fotografía. El *
 | Histórico de tarea | `tenant_task_history_v2` | Reutilizar |
 | Plantillas de transición | `tenant_task_workflow_templates_v2` | Reutilizar como subcomponente, no como flujo completo |
 | Limpieza | tablas `cleaning_*` | Adaptador de dominio; preservar |
-| Revisión fotográfica | `review-photo-verification` | Reutilizar para evidencia fotográfica |
+| Revisión fotográfica | `review-photo-verification` + `apply_workflow_photo_review_v1` | Reutilizada; decide el run y sincroniza el cierre `human_review` del workflow |
 | Notificaciones | `notifications_v2` | Reutilizar |
 | Auditoría sensible | `audit_log_v2` | Reutilizar |
 | Definición de flujo | `workflow_definitions_v2` | Implementado para borradores persistentes |
@@ -344,10 +345,10 @@ El primer paso de evidencia/recurso ya está implementado para Fotografía. El *
 | Regla de asignación inicial | Snapshot en `workflow_executions_v2` | Manual y responsable de piso soportados; otras bloqueadas explícitamente |
 | Ejecución genérica | `workflow_executions_v2` | Fase inicial `pending` implementada |
 | Tarea materializada | `tenant_tasks_v2` + `source_kind/source_id` | Implementada e idempotente |
-| Acción atómica | `tenant_task_actions_v2` + `apply_workflow_task_action_v1` | Decisión `accept/reject` implementada; rechazo exige motivo y mantiene tarea/ejecución sincronizadas |
+| Acción atómica | `tenant_task_actions_v2` + `apply_workflow_task_action_v1` | `accept/reject` y revisión `agency` sin Foto; mantiene tarea/ejecución sincronizadas |
 | Binding aplicación→foto | `workflow_application_photo_resources_v2` | Implementado con patrones reales del piso |
 | Snapshot ejecución→foto | `workflow_execution_photo_resources_v2` | Implementado; congela versión y silueta |
-| Eventos transversales de ejecución | `workflow_execution_events_v2` | Evento inicial `created`; ciclo completo pendiente |
+| Eventos transversales de ejecución | `workflow_execution_events_v2` | Creación, materialización, acciones, evidencia y cierre de revisión registrados; presentación histórica transversal pendiente |
 
 ## 6. Compatibilidad y transición
 
@@ -420,18 +421,16 @@ Implementado en esta fase:
 
 ## 8. Próximo incremento técnico
 
-La evidencia fotográfica ya está vinculada a la aplicación/ejecución y reutiliza la cámara, Storage privado y runs/items existentes.
+La evidencia fotográfica y la revisión/cierre `human_review` ya están conectadas a las piezas existentes.
 
-El siguiente trabajo debe ser **revisión/cierre y tipos de paso restantes**.
+El siguiente trabajo debe cubrir:
 
-Debe cubrir:
-
-- revisión humana del workflow cuando la política de cierre lo requiera;
-- relación explícita entre decisión fotográfica y decisión del workflow;
+- validación E2E real de aprobación y rechazo de revisión humana;
 - checklist/documento sin motores paralelos;
-- Historial transversal suficiente para reconstruir evidencia y cierre;
-- permisos/RLS y pruebas negativas;
-- no habilitar recurrencia hasta probar el recorrido extremo a extremo.
+- Historial transversal visible suficiente para reconstruir evidencia, reviewer y cierre;
+- notificaciones operativas específicas de cierre/rechazo;
+- permisos/RLS y pruebas negativas de los nuevos tipos de paso;
+- no habilitar recurrencia hasta probar estos recorridos extremo a extremo.
 
 La recurrencia automática se incorpora después de esa validación.
 

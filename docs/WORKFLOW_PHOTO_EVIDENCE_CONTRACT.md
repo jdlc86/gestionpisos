@@ -163,7 +163,23 @@ Un reintento no puede:
 
 El estado `submitted` del recurso y el evento único constituyen barreras adicionales.
 
-## 10. Cierre después de fotografías
+## 10. Revisión humana del workflow
+
+Cuando la receta usa `closeType=human_review`, enviar todas las fotos deja tarea + ejecución en `waiting_review`; **no** marca el workflow como completado.
+
+La decisión se realiza en la pantalla existente de Fotoverificaciones:
+
+- el reviewer ve la captura mediante URL firmada;
+- `review-photo-verification` detecta `source_type='workflow_execution'`;
+- el backend llama a `apply_workflow_photo_review_v1`;
+- esa función reutiliza la revisión fotográfica existente y sincroniza el estado final del workflow;
+- una ejecución con varias fotos solo sale de `waiting_review` cuando todas han sido revisadas;
+- todas aprobadas → `completed`;
+- alguna rechazada → `rejected`.
+
+No existe un botón de aprobación fotográfica genérico en Tareas: la imagen debe revisarse en Fotoverificaciones.
+
+## 11. Cierre después de fotografías
 
 Cuando se han enviado todas las fotografías:
 
@@ -174,7 +190,7 @@ Cuando se han enviado todas las fotografías:
 
 No se completa un flujo ignorando pasos pendientes.
 
-## 11. Tareas
+## 12. Tareas
 
 `workflow-tasks.html` consulta los snapshots visibles por RLS.
 
@@ -187,7 +203,7 @@ Para cada foto muestra:
 
 No se crea una acción artificial `complete`.
 
-## 12. Seguridad
+## 13. Seguridad
 
 - RLS en tablas de bindings/snapshots.
 - Sin INSERT/UPDATE/DELETE directo para authenticated.
@@ -197,12 +213,10 @@ No se crea una acción artificial `complete`.
 - `source_type=workflow_execution` no es insertable directamente por cliente.
 - Organización, piso, patrón, run y recurso se derivan/validan server-side.
 
-## 13. Fuera de este incremento
+## 14. Fuera de este incremento
 
 Todavía no se implementa:
 
-- revisión humana del workflow;
-- reacción del workflow a aprobar/rechazar una foto;
 - IA de estado;
 - checklist;
 - documento;

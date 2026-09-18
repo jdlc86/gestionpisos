@@ -159,7 +159,8 @@ Estados mínimos previstos:
 - `waiting_review`;
 - `completed`;
 - `cancelled`;
-- `failed` cuando exista fallo técnico no equivalente a cancelación de negocio.
+- `failed` cuando exista fallo técnico no equivalente a cancelación de negocio;
+- `rejected` cuando una decisión de negocio/aceptación/revisión rechaza explícitamente la ejecución.
 
 Las transiciones se validan en servidor.
 
@@ -197,6 +198,8 @@ El cierre puede ser:
 La IA puede asistir, pero no es barrera única de seguridad ni puede otorgar permisos.
 
 Una revisión ya decidida no se reinterpreta por cambiar después la receta o el recurso.
+
+Para `closeType=human_review`, los pasos implementados pasan a `waiting_review`. La revisión administrativa reutiliza `tenant_task_actions_v2` cuando no existe Foto y la revisión de `photo_verification_runs_v2` cuando existe evidencia fotográfica. No se crea una segunda cola de revisión.
 
 ## 12. Historial y auditoría
 

@@ -65,7 +65,7 @@ Deno.serve(async (req: Request) => {
 
   const { data:run, error:runError } = await admin
     .from("photo_verification_runs_v2")
-    .select("id,organization_id,status")
+    .select("id,organization_id,status,source_type,source_id")
     .eq("id", runId)
     .maybeSingle();
 
@@ -74,8 +74,36 @@ Deno.serve(async (req: Request) => {
   if (role === "admin" && run.organization_id !== organizationId) {
     return json(404, { error: "run_not_found" });
   }
-  if (!["submitted","manual_review","ai_review"].includes(run.status)) {
+  const reviewableStatuses = ["submitted","manual_review","ai_review"];
+  if (run.source_type === "workflow_execution") {
+    if (!reviewableStatuses.includes(run.status) && run.status !== decision) {
+      return json(409, { error: "run_not_reviewable" });
+    }
+  } else if (!reviewableStatuses.includes(run.status)) {
     return json(409, { error: "run_not_reviewable" });
+  }
+
+  if (run.source_type === "workflow_execution") {
+    const { data, error } = await admin.rpc("apply_workflow_photo_review_v1", {
+      p_run_id: runId,
+      p_actor_user_id: user.id,
+      p_decision: decision,
+      p_rejection_reason: decision === "rejected" ? rejectionReason : null,
+    });
+
+    if (error) {
+      console.error(error);
+      const message = String(error.message || "");
+      if (message.includes("workflow_review_actor_forbidden")) {
+        return json(403, { error: "review_not_allowed" });
+      }
+      if (message.includes("workflow_photo_review_conflict") || message.includes("workflow_not_waiting_review")) {
+        return json(409, { error: "workflow_review_state_conflict" });
+      }
+      return json(500, { error: "workflow_review_apply_failed" });
+    }
+
+    return json(200, { ok: true, run: { id: runId, status: decision }, workflow: data });
   }
 
   const { data, error } = await admin.rpc("apply_photo_verification_review_v2", {

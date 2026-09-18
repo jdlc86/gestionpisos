@@ -63,6 +63,9 @@ function errorText(error){
   if(message.includes("workflow_task_execution_state_mismatch"))return "Tarea y ejecución no están sincronizadas. No se ha aplicado ningún cambio.";
   if(message.includes("workflow_action_request_key_conflict"))return "El identificador de reintento pertenece a otra acción. Recarga la pantalla.";
   if(message.includes("workflow_action_note_required"))return "Esta acción requiere una nota.";
+  if(message.includes("workflow_review_actor_forbidden"))return "Solo un gestor autorizado puede revisar este workflow.";
+  if(message.includes("workflow_photo_review_requires_photo_review_flow"))return "Este workflow debe revisarse desde Fotoverificaciones.";
+  if(message.includes("workflow_review_action_not_supported"))return "La revisión ya no está disponible para el estado actual.";
   if(message.includes("workflow_action_not_supported")||message.includes("workflow_action_close_rule_not_supported"))return "Esta transición todavía no está habilitada para esta receta.";
   return "No se pudo aplicar la acción. No se ha confirmado ningún cambio.";
 }
@@ -77,7 +80,7 @@ function requestKey(task,action){
 }
 function actionNote(task){
   if(task.status==="completed")return "Tarea y ejecución completadas de forma sincronizada.";
-  if(task.status==="waiting_review")return "La tarea está esperando la revisión definida por la receta.";
+  if(task.status==="waiting_review")return "La ejecución está esperando una decisión de revisión humana.";
   if(task.status==="active")return "La tarea está activa. Quedan pasos de la receta que todavía deben completarse.";
   if(task.status==="rejected")return "La persona asignada rechazó la tarea. El motivo queda registrado en el histórico.";
   return "No hay una acción operativa habilitada para esta receta en el estado actual.";
@@ -85,6 +88,21 @@ function actionNote(task){
 function photoResourceLabel(resource){
   const snapshot=resource.pattern_snapshot||{};
   return snapshot.name||snapshot.target_key||"Fotografía";
+}
+function workflowPhotoReviewUrl(task){
+  const url=new URL("./photo-verifications.html",window.location.href);
+  url.searchParams.set("workflow_execution_id",task.source_id);
+  if(task.property_id)url.searchParams.set("property_id",task.property_id);
+  url.searchParams.set("status","submitted");
+  return url.href;
+}
+function currentRole(){
+  return String(currentUser?.app_metadata?.role||"").toLowerCase();
+}
+function canRenderWorkflowAction(task,action){
+  if(action.actor==="assignee")return task.assigned_user_id===currentUser?.id;
+  if(action.actor==="agency")return ["root","admin"].includes(currentRole());
+  return false;
 }
 function workflowPhotoUrl(task,resource){
   const url=new URL("./photo-camera.html",window.location.href);
@@ -144,6 +162,14 @@ function renderPhotoResources(task,article){
     box.append(row);
   });
 
+  if(task.status==="waiting_review"&&["root","admin"].includes(currentRole())){
+    const reviewLink=document.createElement("a");
+    reviewLink.className="primary task-photo-button";
+    reviewLink.href=workflowPhotoReviewUrl(task);
+    reviewLink.textContent="Revisar evidencias";
+    box.append(reviewLink);
+  }
+
   article.append(box);
 }
 
@@ -151,7 +177,7 @@ function renderActions(task,article){
   if(task.source_kind!=="workflow_execution")return;
 
   const available=(actionsByTask.get(task.id)||[])
-    .filter(action=>action.active&&action.from_status===task.status)
+    .filter(action=>action.active&&action.from_status===task.status&&canRenderWorkflowAction(task,action))
     .sort((a,b)=>(a.sort_order||0)-(b.sort_order||0));
 
   if(!available.length){
@@ -168,12 +194,20 @@ function renderActions(task,article){
   available.forEach(action=>{
     const button=document.createElement("button");
     button.type="button";
-    button.className=action.action_key==="reject"?"secondary task-action--reject":"primary";
+    button.className=["reject","review_reject"].includes(action.action_key)?"secondary task-action--reject":"primary";
     button.textContent=action.label;
     button.addEventListener("click",()=>applyWorkflowAction(task,action,button));
     box.append(button);
 
-    if(action.to_status==="completed"){
+    if(action.action_key==="review_approve"){
+      const note=document.createElement("span");note.className="task-action-note";
+      note.textContent="Aprobar cerrará la tarea y la ejecución.";
+      box.append(note);
+    }else if(action.action_key==="review_reject"){
+      const note=document.createElement("span");note.className="task-action-note";
+      note.textContent="Rechazar requiere un motivo y deja el workflow en estado Rechazado.";
+      box.append(note);
+    }else if(action.to_status==="completed"){
       const note=document.createElement("span");note.className="task-action-note";
       note.textContent="Esta es la única etapa pendiente; al aceptar se cerrarán tarea y ejecución.";
       box.append(note);
@@ -236,7 +270,7 @@ function render(){
 async function applyWorkflowAction(task,action,button){
   let note=null;
   if(action.requires_note){
-    note=window.prompt(action.action_key==="reject"?"Indica el motivo del rechazo:":"Añade la nota obligatoria para esta acción:");
+    note=window.prompt(["reject","review_reject"].includes(action.action_key)?"Indica el motivo del rechazo:":"Añade la nota obligatoria para esta acción:");
     if(note===null)return;
     if(!note.trim()){
       setStatus("Esta acción requiere una nota.",true);
@@ -273,6 +307,10 @@ async function applyWorkflowAction(task,action,button){
 
   if(result?.applied_new===false){
     setStatus("El reintento recuperó la transición ya aplicada; no se duplicó el histórico.");
+  }else if(action.action_key==="review_approve"){
+    setStatus("Revisión aprobada. Tarea y ejecución completadas.");
+  }else if(action.action_key==="review_reject"){
+    setStatus("Revisión rechazada. El motivo quedó registrado.");
   }else{
     setStatus("Tarea y ejecución actualizadas juntas: "+label+".");
   }

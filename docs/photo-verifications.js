@@ -16,6 +16,12 @@ const rejectBtn = document.getElementById("rejectBtn");
 const closeDialogBtn = document.getElementById("closeDialogBtn");
 const dialogTitle = document.getElementById("dialogTitle");
 const toast = document.getElementById("reviewToast");
+const backLink = document.getElementById("reviewBackLink");
+const initialParams = new URLSearchParams(window.location.search);
+if (backLink && initialParams.get("workflow_execution_id")) {
+  backLink.href = "./workflow-tasks.html";
+  backLink.textContent = "Volver a Tareas";
+}
 
 let currentRun = null;
 let currentItem = null;
@@ -89,19 +95,27 @@ async function load(options = {}) {
 
     let query = supabase
       .from("photo_verification_runs_v2")
-      .select("id,property_id,status,started_at,submitted_at,reviewed_at,reviewed_by,rejection_reason")
+      .select("id,property_id,source_type,source_id,status,started_at,submitted_at,reviewed_at,reviewed_by,rejection_reason")
       .order("started_at", { ascending:false })
       .limit(100);
+
+    const params = new URLSearchParams(window.location.search);
+    const workflowExecutionId = params.get("workflow_execution_id") || "";
+    const requestedStatus = params.get("status") || "";
+    if (requestedStatus && !filter.value) filter.value = requestedStatus;
 
     const wanted = filter.value;
     if (wanted) query = query.eq("status", wanted);
     if (selectedProperty) query = query.eq("property_id", selectedProperty);
+    if (workflowExecutionId) {
+      query = query.eq("source_type","workflow_execution").eq("source_id",workflowExecutionId);
+    }
 
     const { data:runs, error:runError } = await query;
     if (runError) throw runError;
     if (!runs?.length) {
       message.textContent = "";
-      list.innerHTML = '<div class="review-empty">No hay fotoverificaciones con este estado.</div>';
+      list.innerHTML = '<div class="review-empty">No hay fotoverificaciones pendientes con este filtro.</div>';
       return;
     }
 
@@ -271,9 +285,18 @@ async function decide(decision) {
     if (error) throw error;
     if (!data?.ok) throw new Error(data?.error || "review_failed");
     dialog.close();
-    const successMessage = decision === "approved"
+    let successMessage = decision === "approved"
       ? "Fotoverificación aprobada correctamente."
       : "Fotoverificación rechazada correctamente.";
+
+    if (data?.workflow?.execution_status === "completed") {
+      successMessage += " Workflow completado.";
+    } else if (data?.workflow?.execution_status === "rejected") {
+      successMessage += " Workflow rechazado.";
+    } else if (data?.workflow?.execution_status === "waiting_review") {
+      successMessage += " Quedan evidencias del workflow por revisar.";
+    }
+
     showToast("✓ " + successMessage);
     message.textContent = successMessage;
     await load();

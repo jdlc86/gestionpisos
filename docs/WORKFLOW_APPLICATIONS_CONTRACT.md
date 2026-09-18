@@ -170,3 +170,14 @@ Siguen fuera de Aplicaciones:
 - ciclo de vida completo de ejecución.
 
 El UUID del destino permanece exclusivamente en la aplicación/ejecución concreta; no vuelve a la definición lógica.
+
+
+## 11. Recursos fotográficos concretos
+
+Cuando la versión publicada contiene `steps.photo=true`, la definición sigue siendo lógica y no almacena UUIDs de patrones.
+
+La creación de la aplicación usa `create_workflow_application_v2` y exige seleccionar explícitamente uno o varios patrones reales del piso. Los vínculos viven en `workflow_application_photo_resources_v2`.
+
+El RPC anterior `create_workflow_application_v1` permanece para versiones sin Fotografía y rechaza versiones fotográficas con `workflow_photo_application_requires_v2`. Esto impide crear una aplicación fotográfica aparentemente configurada pero sin recursos.
+
+Una vez que existe una ejecución, los recursos de la aplicación quedan bloqueados para evitar reinterpretar el histórico. Cada ejecución congela su propia versión del patrón conforme a `WORKFLOW_PHOTO_EVIDENCE_CONTRACT.md`.

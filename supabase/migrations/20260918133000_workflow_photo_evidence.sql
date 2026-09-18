@@ -105,7 +105,7 @@ returns table(
 language plpgsql
 security definer
 set search_path=public,pg_temp
-as $
+as $workflow_core$
 declare
   v_actor uuid:=auth.uid();
   v_definition_id uuid;
@@ -255,8 +255,7 @@ begin
 
   return query select v_application_id,'configured'::text,v_created_at;
 end;
-$;
-
+$workflow_core$;
 
 revoke all on function public.workflow_create_application_core_v1(uuid,uuid,uuid,uuid)
   from public,anon,authenticated;
@@ -275,7 +274,7 @@ returns table(
 language plpgsql
 security definer
 set search_path=public,pg_temp
-as $
+as $workflow_v1$
 declare
   v_photo_required boolean:=false;
 begin
@@ -294,7 +293,7 @@ begin
     p_definition_version_id,p_property_id,p_room_id,p_occupancy_id
   ) a;
 end;
-$;
+$workflow_v1$;
 
 revoke all on function public.create_workflow_application_v1(uuid,uuid,uuid,uuid) from public;
 revoke execute on function public.create_workflow_application_v1(uuid,uuid,uuid,uuid) from anon;

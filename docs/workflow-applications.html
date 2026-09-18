@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#ffffff">
   <meta name="description" content="Aplicaciones concretas de Flujos de Trabajo de GestionPisos">
   <link rel="stylesheet" href="./app.css?v=2026091703">
-  <link rel="stylesheet" href="./workflow-applications.css?v=2026091803">
+  <link rel="stylesheet" href="./workflow-applications.css?v=2026091804">
   <title>Allaiso · Aplicaciones del flujo</title>
 </head>
 <body>
@@ -59,6 +59,13 @@
           <select id="applicationOccupancy"></select>
         </label>
 
+        <fieldset id="applicationPhotoRow" class="application-photo-fieldset" hidden>
+          <legend>Fotografías requeridas</legend>
+          <p id="applicationPhotoNote" class="application-note">Selecciona uno o varios patrones del Banco Fotográfico.</p>
+          <div id="applicationPhotoPatterns" class="application-photo-patterns"></div>
+          <a class="ghost application-photo-bank" href="./photo-patterns.html">Abrir Banco Fotográfico</a>
+        </fieldset>
+
         <div id="applicationTargetNote" class="application-note"></div>
         <button id="applicationCreate" class="primary" type="submit">Crear aplicación</button>
       </form>
@@ -80,7 +87,7 @@
   </main>
 
   <script src="./app.js?v=202609152" defer></script>
-  <script type="module" src="./workflow-applications.js?v=2026091804"></script>
+  <script type="module" src="./workflow-applications.js?v=2026091805"></script>
   <script type="module" src="./auth-guard.js"></script>
 </body>
 </html>

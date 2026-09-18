@@ -71,7 +71,7 @@ Deno.serve(async (req: Request) => {
 
   const { data: operator, error: operatorError } = await admin
     .from("platform_operators")
-    .select("user_id,display_name,active,can_recover_root")
+    .select("user_id,display_name,active,can_recover_root,identity_email")
     .eq("user_id", actor.id)
     .eq("active", true)
     .maybeSingle();
@@ -81,6 +81,12 @@ Deno.serve(async (req: Request) => {
     return json(500, { error: "operator_lookup_failed" });
   }
   if (!operator) return json(403, { error: "platform_operator_required" });
+
+  const actorEmail = String(actor.email || "").trim().toLowerCase();
+  const identityEmail = String(operator.identity_email || "").trim().toLowerCase();
+  if (!actorEmail || !identityEmail || actorEmail !== identityEmail) {
+    return json(403, { error: "platform_operator_identity_email_mismatch" });
+  }
 
   let body: { action?: string; request_id?: string; verification_note?: string; rejection_note?: string } = {};
   try {

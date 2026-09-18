@@ -91,10 +91,6 @@ to authenticated
 using (
   assigned_user_id=auth.uid()
   or public.workflow_can_read_definitions_v1(organization_id)
-  or (
-    property_id is not null
-    and public.can_operate_property_v3(property_id,false)
-  )
 );
 
 create policy workflow_execution_events_v2_read_authorized
@@ -144,7 +140,6 @@ declare
   v_key text:=nullif(btrim(p_idempotency_key),'');
   v_is_root boolean:=false;
   v_is_admin boolean:=false;
-  v_can_launch boolean:=false;
 begin
   if v_actor is null then
     raise exception 'not_authenticated' using errcode='42501';
@@ -205,13 +200,7 @@ begin
       and ur.revoked_at is null
   ) into v_is_admin;
 
-  v_can_launch:=v_is_root or v_is_admin;
-
-  if not v_can_launch and v_property_id is not null then
-    v_can_launch:=public.can_operate_property_v3(v_property_id,true);
-  end if;
-
-  if not v_can_launch then
+  if not (v_is_root or v_is_admin) then
     raise exception 'workflow_execution_not_authorized' using errcode='42501';
   end if;
 

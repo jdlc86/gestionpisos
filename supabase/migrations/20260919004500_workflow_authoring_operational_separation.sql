@@ -231,9 +231,9 @@ begin
     raise exception 'not_authenticated' using errcode='42501';
   end if;
 
-  select * into v_definition
-  from public.workflow_definitions_v2
-  where id=p_definition_id
+  select wd.* into v_definition
+  from public.workflow_definitions_v2 wd
+  where wd.id=p_definition_id
   for update;
 
   if v_definition.id is null then
@@ -248,9 +248,9 @@ begin
     raise exception 'workflow_revision_requires_published_definition' using errcode='55000';
   end if;
 
-  select * into v_existing
-  from public.workflow_definition_revision_drafts_v2
-  where definition_id=p_definition_id;
+  select rd.* into v_existing
+  from public.workflow_definition_revision_drafts_v2 rd
+  where rd.definition_id=p_definition_id;
 
   if v_existing.definition_id is not null and v_existing.published_at is null then
     return query
@@ -260,15 +260,15 @@ begin
   end if;
 
   if v_existing.definition_id is not null and v_existing.published_at is not null then
-    delete from public.workflow_definition_revision_drafts_v2
-    where definition_id=p_definition_id;
+    delete from public.workflow_definition_revision_drafts_v2 rd
+    where rd.definition_id=p_definition_id;
   end if;
 
-  select * into v_version
-  from public.workflow_definition_versions_v2
-  where definition_id=p_definition_id
-    and organization_id=v_definition.organization_id
-  order by version desc
+  select wv.* into v_version
+  from public.workflow_definition_versions_v2 wv
+  where wv.definition_id=p_definition_id
+    and wv.organization_id=v_definition.organization_id
+  order by wv.version desc
   limit 1;
 
   if v_version.id is null then
@@ -334,9 +334,9 @@ begin
     raise exception 'not_authenticated' using errcode='42501';
   end if;
 
-  select * into v_definition
-  from public.workflow_definitions_v2
-  where id=p_definition_id;
+  select wd.* into v_definition
+  from public.workflow_definitions_v2 wd
+  where wd.id=p_definition_id;
 
   if v_definition.id is null then
     raise exception 'workflow_definition_not_found' using errcode='P0002';
@@ -350,10 +350,10 @@ begin
     raise exception 'workflow_revision_requires_published_definition' using errcode='55000';
   end if;
 
-  select * into v_draft
-  from public.workflow_definition_revision_drafts_v2
-  where definition_id=p_definition_id
-    and published_at is null
+  select rd.* into v_draft
+  from public.workflow_definition_revision_drafts_v2 rd
+  where rd.definition_id=p_definition_id
+    and rd.published_at is null
   for update;
 
   if v_draft.definition_id is null then
@@ -456,9 +456,9 @@ begin
     raise exception 'workflow_revision_requires_published_definition' using errcode='55000';
   end if;
 
-  select * into v_draft
-  from public.workflow_definition_revision_drafts_v2
-  where definition_id=p_definition_id
+  select rd.* into v_draft
+  from public.workflow_definition_revision_drafts_v2 rd
+  where rd.definition_id=p_definition_id
   for update;
 
   if v_draft.definition_id is null then
@@ -530,12 +530,12 @@ begin
       updated_at=now()
   where wd.id=p_definition_id;
 
-  update public.workflow_definition_revision_drafts_v2
+  update public.workflow_definition_revision_drafts_v2 rd
   set published_version_id=v_version_id,
       published_at=v_published_at,
       updated_by=v_actor,
       updated_at=now()
-  where definition_id=p_definition_id;
+  where rd.definition_id=p_definition_id;
 
   insert into public.audit_log_v2(
     organization_id,actor_user_id,action,entity_type,entity_id,result,details

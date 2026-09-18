@@ -97,6 +97,8 @@ puede tener aplicaciones independientes en:
 
 No se duplican tres definiciones.
 
+La aplicación conserva para siempre su `definition_version_id` original. Si después se publica `Limpieza semanal v2`, las aplicaciones existentes de v1 **no se migran automáticamente**. Adoptar v2 en un destino debe ser una acción futura y explícita, preservando historial y trazabilidad.
+
 Para una misma definición y un mismo destino solo puede existir una aplicación `configured` a la vez. Archivar permite crear posteriormente otra aplicación explícita sin destruir la anterior.
 
 ## 5. Recursos concretos

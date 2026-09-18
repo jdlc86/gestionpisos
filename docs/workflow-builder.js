@@ -10,6 +10,8 @@ const backButton=document.getElementById("builderBack");
 const nextButton=document.getElementById("builderNext");
 const clearButton=document.getElementById("builderClear");
 const saveButton=document.getElementById("builderSave");
+const publishButton=document.getElementById("builderPublish");
+const draftsList=document.getElementById("builderDrafts");
 const triggerType=document.getElementById("triggerType");
 const recurrenceRow=document.getElementById("recurrenceRow");
 const customRecurrenceRow=document.getElementById("customRecurrenceRow");
@@ -18,9 +20,12 @@ const photoBankLink=document.getElementById("photoBankLink");
 const summary=document.getElementById("workflowSummary");
 const serverStatus=document.getElementById("builderServerStatus");
 const builderBadge=document.getElementById("builderBadge");
+const initialParams=new URLSearchParams(window.location.search);
 let currentStep=0;
-let currentDefinitionId=new URLSearchParams(window.location.search).get("id")||null;
+let currentDefinitionId=initialParams.get("id")||null;
+let revisionMode=initialParams.get("revision")==="1";
 let currentRevision=null;
+let currentBaseVersion=null;
 let loadingServerDraft=false;
 let legacyDraftNeedsReview=false;
 
@@ -139,8 +144,12 @@ function setServerStatus(message,tone="neutral"){
 function errorMessage(error){
   const text=String(error?.message||error?.details||"");
   if(text.includes("workflow_draft_conflict"))return "Este borrador cambió en otra sesión. Recarga antes de volver a guardar para no sobrescribir cambios.";
+  if(text.includes("aal2_required"))return "Para publicar debes completar MFA (sesión AAL2). El borrador permanece guardado.";
   if(text.includes("workflow_author_role_required"))return "Solo ROOT o ADMIN pueden guardar definiciones de flujo.";
   if(text.includes("workflow_definition_not_editable"))return "Este flujo ya no es un borrador editable.";
+  if(text.includes("workflow_revision_draft_not_found"))return "No existe el borrador de la nueva versión. Vuelve a iniciarlo desde Mis Flujos.";
+  if(text.includes("workflow_revision_base_version_conflict"))return "La versión publicada cambió mientras editabas. Vuelve a Mis Flujos y crea una nueva revisión.";
+  if(text.includes("workflow_revision_requires_published_definition"))return "Solo una receta publicada puede generar una nueva versión.";
   if(text.includes("workflow_definition_not_found"))return "No se encontró este borrador o ya no pertenece a tu ámbito.";
   if(text.includes("workflow_name_invalid"))return "El borrador necesita un nombre de al menos 3 caracteres para poder guardarse.";
   if(text.includes("not_authenticated"))return "La sesión ya no es válida. Vuelve a iniciar sesión.";
@@ -192,7 +201,12 @@ function updateCompletionUI(){
     if(section)button.title=section.complete?section.label+": configurado":section.label+": pendiente";
   });
   if(builderBadge){
-    builderBadge.textContent=state.complete?"Configuración completa":"Borrador incompleto";
+    builderBadge.textContent=state.complete
+      ?(revisionMode&&currentBaseVersion?"Nueva v"+(currentBaseVersion+1)+" preparada":"Configuración completa")
+      :"Borrador incompleto";
+  }
+  if(publishButton){
+    publishButton.disabled=!state.complete||!currentDefinitionId;
   }
   return state;
 }
@@ -200,27 +214,39 @@ function updateCompletionUI(){
 async function loadServerDraft(){
   if(!currentDefinitionId)return;
   loadingServerDraft=true;
-  setServerStatus("Cargando borrador guardado…");
-  const {data,error}=await supabase
-    .from("workflow_definitions_v2")
-    .select("id,status,revision,draft_spec,authoring_complete,updated_at")
-    .eq("id",currentDefinitionId)
-    .maybeSingle();
+  setServerStatus(revisionMode?"Cargando borrador de nueva versión…":"Cargando borrador guardado…");
+
+  const query=revisionMode
+    ? supabase
+        .from("workflow_definition_revision_drafts_v2")
+        .select("definition_id,base_version,revision,draft_spec,authoring_complete,updated_at,published_at")
+        .eq("definition_id",currentDefinitionId)
+        .is("published_at",null)
+    : supabase
+        .from("workflow_definitions_v2")
+        .select("id,status,revision,draft_spec,authoring_complete,updated_at")
+        .eq("id",currentDefinitionId);
+
+  const {data,error}=await query.maybeSingle();
 
   if(error||!data){
     loadingServerDraft=false;
     setServerStatus(error?errorMessage(error):"No se encontró este borrador o no tienes permiso para verlo.","error");
     saveButton.disabled=true;
+    publishButton.disabled=true;
     return;
   }
-  if(data.status!=="draft"){
+
+  if(!revisionMode&&data.status!=="draft"){
     loadingServerDraft=false;
-    setServerStatus("Este flujo ya no está en estado borrador y no puede editarse desde esta pantalla.","error");
+    setServerStatus("Esta receta ya está publicada. Las nuevas ediciones se crean desde Mis Flujos → Crear nueva versión.","error");
     saveButton.disabled=true;
+    publishButton.disabled=true;
     return;
   }
 
   currentRevision=Number(data.revision);
+  currentBaseVersion=revisionMode?Number(data.base_version):null;
   const savedVersion=Number(data.draft_spec?.authoringVersion||1);
   if(savedVersion<AUTHORING_VERSION){
     legacyDraftNeedsReview=true;
@@ -234,13 +260,16 @@ async function loadServerDraft(){
   updateTriggerFields();
   showStep(0,false);
   if(legacyDraftNeedsReview){
-    setServerStatus("Borrador guardado · revisión "+currentRevision+". Se creó antes del control de decisiones explícitas: conservamos nombre y descripción, pero debes configurar los demás apartados antes de considerarlo completo.","warning");
+    setServerStatus("Borrador guardado · revisión "+currentRevision+". Debes revisar sus decisiones explícitas antes de publicarlo.","warning");
   }else{
     const state=completion();
+    const prefix=revisionMode
+      ?"Nueva versión basada en v"+currentBaseVersion+" · borrador revisión "+currentRevision
+      :"Borrador · revisión "+currentRevision;
     setServerStatus(
       state.complete
-        ?"Borrador guardado · revisión "+currentRevision+" · configuración completa. Aún no está publicado."
-        :"Borrador guardado · revisión "+currentRevision+" · incompleto ("+state.completed+"/"+state.total+" apartados).",
+        ?prefix+" · configuración completa. Aún no está publicado."
+        :prefix+" · incompleto ("+state.completed+"/"+state.total+" apartados).",
       state.complete?"success":"neutral"
     );
   }
@@ -341,7 +370,7 @@ function showStep(next,shouldScroll=false){
 }
 
 async function saveServerDraft(){
-  if(!validateBeforeSave())return;
+  if(!validateBeforeSave())return false;
   const originalText=saveButton.textContent;
   saveButton.disabled=true;
   saveButton.textContent="Guardando…";
@@ -349,34 +378,44 @@ async function saveServerDraft(){
 
   const wasExisting=Boolean(currentDefinitionId);
   const previousRevision=currentRevision;
-  const args={p_spec:serverDraft()};
-  if(currentDefinitionId)args.p_definition_id=currentDefinitionId;
-  if(currentDefinitionId&&Number.isFinite(currentRevision))args.p_expected_revision=currentRevision;
+  const args=revisionMode
+    ? {
+        p_definition_id:currentDefinitionId,
+        p_spec:serverDraft(),
+        p_expected_revision:Number.isFinite(currentRevision)?currentRevision:null
+      }
+    : {p_spec:serverDraft()};
+  if(!revisionMode&&currentDefinitionId)args.p_definition_id=currentDefinitionId;
+  if(!revisionMode&&currentDefinitionId&&Number.isFinite(currentRevision))args.p_expected_revision=currentRevision;
 
-  const {data,error}=await supabase.rpc("save_workflow_definition_draft_v1",args);
+  const rpc=revisionMode
+    ?"save_workflow_definition_revision_draft_v1"
+    :"save_workflow_definition_draft_v1";
+  const {data,error}=await supabase.rpc(rpc,args);
   if(error||!Array.isArray(data)||!data[0]){
     setServerStatus(errorMessage(error),"error");
     saveButton.disabled=false;
     saveButton.textContent=originalText;
-    return;
+    return false;
   }
 
   currentDefinitionId=data[0].definition_id;
   currentRevision=Number(data[0].revision);
+  if(revisionMode)currentBaseVersion=Number(data[0].base_version);
   legacyDraftNeedsReview=false;
   const url=new URL(window.location.href);
   url.searchParams.set("id",currentDefinitionId);
+  if(revisionMode)url.searchParams.set("revision","1");else url.searchParams.delete("revision");
   window.history.replaceState({},"",url);
   try{
     sessionStorage.removeItem(DRAFT_KEY);
     sessionStorage.removeItem(LEGACY_DRAFT_KEY);
   }catch{}
 
-  const {data:persisted}=await supabase
-    .from("workflow_definitions_v2")
-    .select("authoring_complete")
-    .eq("id",currentDefinitionId)
-    .maybeSingle();
+  const persistedQuery=revisionMode
+    ? supabase.from("workflow_definition_revision_drafts_v2").select("authoring_complete").eq("definition_id",currentDefinitionId).is("published_at",null)
+    : supabase.from("workflow_definitions_v2").select("authoring_complete").eq("id",currentDefinitionId);
+  const {data:persisted}=await persistedQuery.maybeSingle();
 
   const state=completion();
   const serverComplete=Boolean(persisted?.authoring_complete);
@@ -386,14 +425,153 @@ async function saveServerDraft(){
       ?"Sin cambios · revisión "+currentRevision+". No se creó una revisión nueva."
       :serverComplete
         ?"Borrador guardado · revisión "+currentRevision+" · configuración completa. Todavía no está publicado."
-        :"Borrador guardado · revisión "+currentRevision+" · incompleto ("+state.completed+"/"+state.total+" apartados). Puedes continuar después desde Mis Flujos.",
+        :"Borrador guardado · revisión "+currentRevision+" · incompleto ("+state.completed+"/"+state.total+" apartados). Puedes retomarlo aquí en el Creador.",
     noChanges||serverComplete?"success":"neutral"
   );
   saveButton.disabled=false;
   saveButton.textContent="Guardar borrador";
   updateCompletionUI();
   if(currentStep===panels.length-1)renderSummary();
+  await loadDraftWorkspace();
+  return true;
 }
+
+
+function draftDate(value){
+  if(!value)return "—";
+  try{return new Intl.DateTimeFormat("es-ES",{dateStyle:"medium",timeStyle:"short"}).format(new Date(value))}catch{return value}
+}
+
+async function publishDefinition(definitionId,revision,{isRevision=false,button=null}={}){
+  if(!window.confirm(isRevision
+    ?"¿Publicar esta nueva versión? La versión actualmente operativa y sus aplicaciones conservarán su historial."
+    :"¿Publicar esta receta? Se creará su primera versión inmutable y pasará a Mis Flujos."))return false;
+  const original=button?.textContent;
+  if(button){button.disabled=true;button.textContent="Publicando…"}
+  setServerStatus("Validando y publicando la receta…");
+  const rpc=isRevision
+    ?"publish_workflow_definition_revision_v1"
+    :"publish_workflow_definition_v1";
+  const {data,error}=await supabase.rpc(rpc,{
+    p_definition_id:definitionId,
+    p_expected_revision:revision
+  });
+  if(error){
+    if(button){button.disabled=false;button.textContent=original}
+    setServerStatus(errorMessage(error),"error");
+    return false;
+  }
+  const published=Array.isArray(data)?data[0]:null;
+  window.location.href="./workflow-definitions.html?published="+encodeURIComponent(definitionId)+"&version="+encodeURIComponent(published?.version||"");
+  return true;
+}
+
+async function publishCurrentDraft(){
+  const state=completion();
+  if(!state.complete){
+    setServerStatus("Completa todos los apartados antes de publicar.","warning");
+    return;
+  }
+  const saved=await saveServerDraft();
+  if(!saved)return;
+  await publishDefinition(currentDefinitionId,currentRevision,{isRevision:revisionMode,button:publishButton});
+}
+
+function draftWorkspaceCard(item){
+  const article=document.createElement("article");
+  article.className="builder-draft-card";
+  const isCurrent=item.definition_id===currentDefinitionId&&Boolean(item.is_revision)===revisionMode;
+  if(isCurrent)article.classList.add("is-current");
+
+  const head=document.createElement("div");head.className="builder-draft-head";
+  const title=document.createElement("h3");title.textContent=item.name||"Borrador";
+  const badge=document.createElement("span");badge.className="builder-draft-badge "+(item.authoring_complete?"is-complete":"is-pending");
+  badge.textContent=item.authoring_complete?"Configurado":"Incompleto";
+  head.append(title,badge);
+
+  const meta=document.createElement("div");meta.className="builder-draft-meta";
+  const versionText=item.is_revision
+    ?"Nueva v"+(Number(item.base_version)+1)+" · basada en v"+item.base_version
+    :"Primera publicación";
+  meta.textContent=versionText+" · revisión "+item.revision+" · "+draftDate(item.updated_at);
+
+  const actions=document.createElement("div");actions.className="builder-draft-actions";
+  const edit=document.createElement("a");edit.className="secondary";
+  edit.href="./workflow-builder.html?id="+encodeURIComponent(item.definition_id)+(item.is_revision?"&revision=1":"");
+  edit.textContent=isCurrent?"Editando":"Editar";
+  actions.append(edit);
+
+  if(item.authoring_complete){
+    const publish=document.createElement("button");publish.type="button";publish.className="primary";
+    publish.textContent=item.is_revision?"Publicar v"+(Number(item.base_version)+1):"Publicar";
+    publish.addEventListener("click",()=>{
+      if(isCurrent){
+        publishCurrentDraft();
+      }else{
+        publishDefinition(item.definition_id,Number(item.revision),{isRevision:item.is_revision,button:publish});
+      }
+    });
+    actions.append(publish);
+  }
+
+  article.append(head,meta,actions);
+  return article;
+}
+
+async function loadDraftWorkspace(){
+  if(!draftsList)return;
+  const [initialResult,revisionResult]=await Promise.all([
+    supabase
+      .from("workflow_definitions_v2")
+      .select("id,name,revision,authoring_complete,updated_at")
+      .eq("status","draft")
+      .order("updated_at",{ascending:false}),
+    supabase
+      .from("workflow_definition_revision_drafts_v2")
+      .select("definition_id,base_version,revision,draft_spec,authoring_complete,updated_at,published_at")
+      .is("published_at",null)
+      .order("updated_at",{ascending:false})
+  ]);
+
+  if(initialResult.error||revisionResult.error){
+    draftsList.replaceChildren();
+    const error=document.createElement("article");error.className="builder-draft-card";
+    error.textContent="No se pudieron cargar los borradores autorizados.";
+    draftsList.append(error);
+    return;
+  }
+
+  const items=[
+    ...(initialResult.data||[]).map(row=>({
+      definition_id:row.id,
+      name:row.name,
+      revision:row.revision,
+      authoring_complete:row.authoring_complete,
+      updated_at:row.updated_at,
+      is_revision:false
+    })),
+    ...(revisionResult.data||[]).map(row=>({
+      definition_id:row.definition_id,
+      name:String(row.draft_spec?.flowName||"Nueva versión"),
+      base_version:row.base_version,
+      revision:row.revision,
+      authoring_complete:row.authoring_complete,
+      updated_at:row.updated_at,
+      is_revision:true
+    }))
+  ].sort((a,b)=>new Date(b.updated_at)-new Date(a.updated_at));
+
+  draftsList.replaceChildren();
+  if(!items.length){
+    const empty=document.createElement("article");empty.className="builder-draft-card";
+    empty.textContent="No hay borradores guardados. Puedes crear uno nuevo.";
+    draftsList.append(empty);
+    return;
+  }
+  items.forEach(item=>draftsList.append(draftWorkspaceCard(item)));
+}
+
+publishButton?.addEventListener("click",publishCurrentDraft);
 
 form.addEventListener("input",()=>{saveLocalDraft();updateCompletionUI();if(currentStep===panels.length-1)renderSummary()});
 form.addEventListener("change",event=>{
@@ -421,11 +599,12 @@ clearButton.addEventListener("click",()=>{
   updateTriggerFields();
   showStep(0,true);
   setServerStatus(currentDefinitionId
-    ?"Cambios locales descartados. El borrador guardado (revisión "+currentRevision+") sigue existiendo; recarga o vuelve desde Mis Flujos para recuperarlo."
+    ?"Cambios locales descartados. El borrador guardado (revisión "+currentRevision+") sigue existiendo; recarga o selecciónalo de nuevo en Borradores."
     :"Borrador local eliminado. Aún no existe ningún borrador guardado en el servidor.");
 });
 
 (async()=>{
+  await loadDraftWorkspace();
   if(currentDefinitionId){
     await loadServerDraft();
   }else{

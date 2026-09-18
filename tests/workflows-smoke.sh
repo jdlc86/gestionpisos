@@ -59,11 +59,18 @@ grep -Fq 'data-theme-toggle' docs/workflow-tasks.html
 grep -Fq 'class="ui-nav-icon"' docs/workflows.html
 
 grep -Fq 'Borrador incompleto' docs/workflow-builder.html
+grep -Fq 'id="builderDrafts"' docs/workflow-builder.html
+grep -Fq 'id="builderPublish"' docs/workflow-builder.html
+grep -Fq '➕ Nuevo borrador' docs/workflow-builder.html
 grep -Fq 'Paso 1 de 7' docs/workflow-builder.html
 grep -Fq 'Paso 7 de 7' docs/workflow-builder.html
 grep -Fq 'sessionStorage.setItem(DRAFT_KEY' docs/workflow-builder.js
 grep -Fq 'save_workflow_definition_draft_v1' docs/workflow-builder.js
-grep -Fq 'workflow_definitions_v2' docs/workflow-builder.js
+grep -Fq 'save_workflow_definition_revision_draft_v1' docs/workflow-builder.js
+grep -Fq 'publish_workflow_definition_v1' docs/workflow-builder.js
+grep -Fq 'publish_workflow_definition_revision_v1' docs/workflow-builder.js
+grep -Fq 'workflow_definition_revision_drafts_v2' docs/workflow-builder.js
+grep -Fq 'loadDraftWorkspace' docs/workflow-builder.js
 grep -Fq 'Guardar borrador' docs/workflow-builder.html
 grep -Fq 'Guardar no significa publicar.' docs/workflow-builder.html
 grep -Fq 'Pendiente · selecciona un tipo' docs/workflow-builder.html
@@ -82,7 +89,7 @@ grep -Fq 'Decisión Aceptar / Rechazar' docs/workflow-builder.js
 grep -Fq 'id="scheduledAt"' docs/workflow-builder.html
 grep -Fq 'id="customRecurrenceRow"' docs/workflow-builder.html
 grep -Fq '.builder-panel [hidden]{display:none!important}' docs/workflow-builder.css
-grep -Fq './workflow-builder.css?v=2026091805' docs/workflow-builder.html
+grep -Fq './workflow-builder.css?v=2026091901' docs/workflow-builder.html
 grep -Fq 'name="customEvery"' docs/workflow-builder.html
 grep -Fq 'name="customUnit"' docs/workflow-builder.html
 grep -Fq 'toggleDependentRow' docs/workflow-builder.js
@@ -97,20 +104,21 @@ grep -Fq 'id="photoBankLink"' docs/workflow-builder.html
 grep -Fq 'href="./photo-patterns.html?from=workflow-builder" hidden' docs/workflow-builder.html
 grep -Fq 'function updatePhotoResource()' docs/workflow-builder.js
 grep -Fq 'photoBankLink.hidden=!checked("stepPhoto")' docs/workflow-builder.js
-grep -Fq './workflow-builder.js?v=2026091807' docs/workflow-builder.html
+grep -Fq './workflow-builder.js?v=2026091901' docs/workflow-builder.html
 
 grep -Fq 'workflow_definitions_v2' docs/workflow-definitions.js
-grep -Fq 'Borrador incompleto' docs/workflow-definitions.js
-grep -Fq 'authoring_complete' docs/workflow-definitions.js
-grep -Fq 'Completar borrador' docs/workflow-definitions.js
-grep -Fq 'function activationText(row)' docs/workflow-definitions.js
-grep -Fq 'meta("Activación",activationText(row))' docs/workflow-definitions.js
-grep -Fq 'updated_at,draft_spec' docs/workflow-definitions.js
-grep -Fq './workflow-definitions.js?v=2026091804' docs/workflow-definitions.html
-grep -Fq 'puede publicarse como versión inmutable' docs/workflow-definitions.html
-grep -Fq 'publish_workflow_definition_v1' docs/workflow-definitions.js
+grep -Fq '.eq("status","published")' docs/workflow-definitions.js
+grep -Fq 'workflow_definition_revision_drafts_v2' docs/workflow-definitions.js
+grep -Fq 'start_workflow_definition_revision_v1' docs/workflow-definitions.js
+grep -Fq 'Crear nueva versión' docs/workflow-definitions.js
+grep -Fq 'Continuar nueva versión' docs/workflow-definitions.js
 grep -Fq 'workflow-applications.html?definition=' docs/workflow-definitions.js
-grep -Fq 'Publicar versión' docs/workflow-definitions.js
+grep -Fq './workflow-definitions.js?v=2026091901' docs/workflow-definitions.html
+grep -Fq './workflow-definitions.css?v=2026091901' docs/workflow-definitions.html
+grep -Fq 'Mis Flujos muestra únicamente recetas con una versión publicada' docs/workflow-definitions.html
+! grep -Fq 'Completar borrador' docs/workflow-definitions.js
+! grep -Fq 'Publicar versión' docs/workflow-definitions.js
+! grep -Fq 'publish_workflow_definition_v1' docs/workflow-definitions.js
 grep -Fq 'create_workflow_application_v2' docs/workflow-applications.js
 grep -Fq 'archive_workflow_application_v1' docs/workflow-applications.js
 grep -Fq 'properties_v2' docs/workflow-applications.js

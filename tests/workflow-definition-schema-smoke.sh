@@ -16,6 +16,7 @@ decisions='supabase/migrations/20260918193000_workflow_accept_reject_decision.sq
 human_review='supabase/migrations/20260918233000_workflow_human_review.sql'
 review_access='supabase/migrations/20260918234500_workflow_review_actor_visibility_hardening.sql'
 photo_review_hardening='supabase/migrations/20260919001000_photo_review_read_authorization_hardening.sql'
+authoring_separation='supabase/migrations/20260919004500_workflow_authoring_operational_separation.sql'
 
 test -s "$migration"
 test -s "$hardening"
@@ -32,7 +33,9 @@ test -s "$decisions"
 test -s "$human_review"
 test -s "$review_access"
 test -s "$photo_review_hardening"
+test -s "$authoring_separation"
 test -s tests/workflow-definition-regression.sql
+test -s tests/workflow-authoring-separation-regression.sql
 
 grep -Fq 'create table if not exists public.workflow_definitions_v2' "$migration"
 grep -Fq 'create table if not exists public.workflow_definition_versions_v2' "$migration"
@@ -213,6 +216,22 @@ grep -Fq "drop policy if exists photo_verification_storage_read" "$photo_review_
 grep -Fq "public.photo_verification_can_review_v1(split_part(name,'/',1))" "$photo_review_hardening"
 grep -Fq "v_run_applied_new boolean:=false" "$photo_review_hardening"
 grep -Fq "'applied_new',v_run_applied_new" "$photo_review_hardening"
+grep -Fq 'create table if not exists public.workflow_definition_revision_drafts_v2' "$authoring_separation"
+grep -Fq 'alter table public.workflow_definition_revision_drafts_v2 enable row level security' "$authoring_separation"
+grep -Fq 'create or replace function public.start_workflow_definition_revision_v1' "$authoring_separation"
+grep -Fq 'create or replace function public.save_workflow_definition_revision_draft_v1' "$authoring_separation"
+grep -Fq 'create or replace function public.publish_workflow_definition_revision_v1' "$authoring_separation"
+grep -Fq 'workflow_revision_base_version_conflict' "$authoring_separation"
+grep -Fq 'published_version_id uuid' "$authoring_separation"
+grep -Fq 'published_at timestamptz' "$authoring_separation"
+grep -Fq 'if v_draft.published_at is not null then' "$authoring_separation"
+grep -Fq 'workflow_revision_publication_receipt_invalid' "$authoring_separation"
+grep -Fq 'set published_version_id=v_version_id' "$authoring_separation"
+grep -Fq "v_definition.status<>'published'" "$authoring_separation"
+grep -Fq "delete from public.workflow_definition_revision_drafts_v2" "$authoring_separation"
+grep -Fq "'workflow_definition_revision_published'" "$authoring_separation"
+grep -Fq 'grant execute on function public.start_workflow_definition_revision_v1(uuid) to authenticated' "$authoring_separation"
+grep -Fq 'grant execute on function public.publish_workflow_definition_revision_v1(uuid,bigint)' "$authoring_separation"
 grep -Fq "revoke all on function public.apply_workflow_photo_review_v1(uuid,uuid,text,text)" "$human_review"
 grep -Fq "tenant_task_actions_v2_workflow_manager_read" "$human_review"
 grep -Fq "public.workflow_can_manage_v1(t.organization_id)" "$human_review"

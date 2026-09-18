@@ -314,14 +314,14 @@ Ya existe persistencia genérica para **identidad estable de definición y borra
 Falta implementar:
 
 - referencias persistentes/versionadas a recursos;
-- acciones de tarea sincronizadas atómicamente con ejecución;
+- pasos de evidencia/recurso posteriores a la aceptación;
 - congelación explícita de recursos/versiones concretos;
 - transiciones posteriores de ejecución;
 - historial transversal que una definición, ejecución, tarea, evidencia y cierre.
 
-Ya existe el servicio server-side que crea de forma idempotente una ejecución manual y congela su asignación. No crea tareas porque `tenant_tasks_v2` exige actualmente un `tenant_id` y no se fabricará uno para flujos de piso.
+Ya existe el servicio server-side que crea de forma idempotente una ejecución manual, congela su asignación y materializa una tarea compartida sin fabricar `tenant_id`. El primer RPC de acciones sincroniza tarea + ejecución y protege la ruta legacy.
 
-La generalización/adaptación de la capa de tareas es el **siguiente incremento del motor mínimo**.
+El **siguiente incremento del motor mínimo** son los pasos de evidencia/recurso.
 
 ## 5. Mapa objetivo de reutilización
 
@@ -343,7 +343,8 @@ La generalización/adaptación de la capa de tareas es el **siguiente incremento
 | Disparador manual explícito | `execute_workflow_application_now_v1` | Implementado con idempotencia |
 | Regla de asignación inicial | Snapshot en `workflow_executions_v2` | Manual y responsable de piso soportados; otras bloqueadas explícitamente |
 | Ejecución genérica | `workflow_executions_v2` | Fase inicial `pending` implementada |
-| Tarea materializada | `tenant_tasks_v2` + `source_kind/source_id` | Implementada e idempotente; acciones aún bloqueadas |
+| Tarea materializada | `tenant_tasks_v2` + `source_kind/source_id` | Implementada e idempotente |
+| Acción atómica | `tenant_task_actions_v2` + `apply_workflow_task_action_v1` | `accept` implementado; tarea y ejecución cambian juntas |
 | Enlace genérico flujo→recurso | No existe persistente | Implementar sin copiar recursos |
 | Eventos transversales de ejecución | `workflow_execution_events_v2` | Evento inicial `created`; ciclo completo pendiente |
 
@@ -418,16 +419,16 @@ Implementado en esta fase:
 
 ## 8. Próximo incremento técnico
 
-El siguiente trabajo debe ser **acciones de tarea sincronizadas con `workflow_executions_v2`**.
+El siguiente trabajo debe ser **evidencia fotográfica vinculada a una ejecución activa**.
 
 Debe cubrir:
 
-- derivar acciones desde los pasos de la versión;
-- actualizar tarea + ejecución de forma atómica;
-- reutilizar `tenant_task_history_v2` y eventos de ejecución;
-- incorporar snapshot/binding de recursos cuando el paso lo necesite;
+- resolver el patrón/recurso concreto sin copiarlo dentro de la receta;
+- reutilizar `photo_verification_runs_v2` y `photo_verification_items_v2`;
+- congelar la versión efectiva del recurso;
+- mantener tarea + ejecución sincronizadas al terminar el paso;
 - mantener permisos/RLS y pruebas negativas;
-- no habilitar cierre antes de satisfacer pasos obligatorios.
+- impedir cierre antes de satisfacer evidencia obligatoria.
 
 La recurrencia automática se incorpora después de demostrar un recorrido manual extremo a extremo.
 

@@ -265,7 +265,8 @@ begin
 
   select count(*) into v_drafts
   from public.workflow_definition_revision_drafts_v2
-  where definition_id=current_setting('gestionpisos.authoring_definition')::uuid;
+  where definition_id=current_setting('gestionpisos.authoring_definition')::uuid
+    and published_at is null;
 
   select name into v_canonical_name
   from public.workflow_definitions_v2
@@ -281,13 +282,48 @@ begin
     raise exception 'publishing v2 silently migrated existing v1 application';
   end if;
   if v_drafts<>0 then
-    raise exception 'published v2 draft was not consumed';
+    raise exception 'published v2 still appears as active authoring draft';
+  end if;
+  if not exists(
+    select 1
+    from public.workflow_definition_revision_drafts_v2
+    where definition_id=current_setting('gestionpisos.authoring_definition')::uuid
+      and published_version_id=current_setting('gestionpisos.authoring_v2')::uuid
+      and published_at is not null
+  ) then
+    raise exception 'published v2 receipt is missing';
   end if;
   if v_canonical_name<>'Flujo autoría v2' then
     raise exception 'definition metadata was not advanced to published v2';
   end if;
 end;
 $published_v2_preserves_v1_application$;
+
+do $workflow_revision_publish_retry$
+declare
+  v_version_id uuid;
+  v_version integer;
+  v_versions integer;
+begin
+  select version_id,version
+  into v_version_id,v_version
+  from public.publish_workflow_definition_revision_v1(
+    current_setting('gestionpisos.authoring_definition')::uuid,
+    current_setting('gestionpisos.authoring_draft_revision')::bigint
+  )
+  limit 1;
+
+  select count(*) into v_versions
+  from public.workflow_definition_versions_v2
+  where definition_id=current_setting('gestionpisos.authoring_definition')::uuid;
+
+  if v_version_id<>current_setting('gestionpisos.authoring_v2')::uuid
+    or v_version<>2
+    or v_versions<>2 then
+    raise exception 'workflow revision publication retry was not idempotent';
+  end if;
+end;
+$workflow_revision_publish_retry$;
 
 do $audit_exists$
 declare

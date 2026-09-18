@@ -1785,14 +1785,10 @@ select set_config(
   true
 );
 
-do $$
+do $
 declare
   v_run_id uuid;
   v_created_new boolean;
-  v_source_type text;
-  v_source_id uuid;
-  v_actor uuid;
-  v_resource_status text;
 begin
   select run_id,created_new
   into v_run_id,v_created_new
@@ -1801,6 +1797,22 @@ begin
   )
   limit 1;
 
+  if v_run_id<>current_setting('gestionpisos.workflow_photo_run_id')::uuid
+    or v_created_new then
+    raise exception 'workflow photo start retry was not idempotent';
+  end if;
+end;
+$;
+
+reset role;
+
+do $
+declare
+  v_source_type text;
+  v_source_id uuid;
+  v_actor uuid;
+  v_resource_status text;
+begin
   select source_type,source_id,actor_user_id
   into v_source_type,v_source_id,v_actor
   from public.photo_verification_runs_v2
@@ -1810,16 +1822,16 @@ begin
   from public.workflow_execution_photo_resources_v2
   where id=current_setting('gestionpisos.workflow_photo_resource_id')::uuid;
 
-  if v_run_id<>current_setting('gestionpisos.workflow_photo_run_id')::uuid
-    or v_created_new
-    or v_source_type<>'workflow_execution'
+  if v_source_type<>'workflow_execution'
     or v_source_id<>current_setting('gestionpisos.workflow_photo_execution_id')::uuid
     or v_actor<>current_setting('gestionpisos.workflow_root')::uuid
     or v_resource_status<>'capturing' then
-    raise exception 'workflow photo start/retry is not idempotent or correctly linked';
+    raise exception 'workflow photo start did not create the expected linked run/resource state';
   end if;
 end;
-$$;
+$;
+
+set local role authenticated;
 
 -- El navegador no puede inventar un run workflow_execution directamente.
 do $$

@@ -315,12 +315,12 @@ begin
     raise exception 'workflow_task_execution_state_mismatch' using errcode='55000';
   end if;
 
-  select * into v_action
-  from public.tenant_task_actions_v2
-  where task_id=v_task.id
-    and action_key=p_action_key
-    and from_status=v_task.status
-    and active=true;
+  select a.* into v_action
+  from public.tenant_task_actions_v2 a
+  where a.task_id=v_task.id
+    and a.action_key=p_action_key
+    and a.from_status=v_task.status
+    and a.active=true;
 
   if v_action.id is null then
     raise exception 'workflow_action_not_allowed' using errcode='22023';

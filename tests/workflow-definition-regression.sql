@@ -1917,9 +1917,11 @@ begin
     raise exception 'workflow photo submit did not complete resource/task/execution atomically';
   end if;
 end;
-$$;
+$;
 
-do $$
+reset role;
+
+do $photo_final_state$
 declare
   v_run_status text;
   v_resource_status text;
@@ -1968,14 +1970,23 @@ begin
     raise exception 'workflow photo final state/history is inconsistent';
   end if;
 end;
-$$;
+$photo_final_state$;
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub',current_setting('gestionpisos.workflow_root'),
+    'role','authenticated',
+    'aal','aal2'
+  )::text,
+  true
+);
 
 -- Reintentar el submit no duplica histórico ni evento.
-do $$
+do $photo_submit_retry$
 declare
   v_applied_new boolean;
-  v_history integer;
-  v_events integer;
 begin
   select applied_new
   into v_applied_new
@@ -1989,7 +2000,16 @@ begin
   if v_applied_new then
     raise exception 'workflow photo submit retry claimed a new transition';
   end if;
+end;
+$photo_submit_retry$;
 
+reset role;
+
+do $photo_retry_counts$
+declare
+  v_history integer;
+  v_events integer;
+begin
   select count(*) into v_history
   from public.tenant_task_history_v2
   where task_id=current_setting('gestionpisos.workflow_photo_task_id')::uuid
@@ -2005,7 +2025,18 @@ begin
     raise exception 'workflow photo retry duplicated history/event';
   end if;
 end;
-$$;
+$photo_retry_counts$;
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub',current_setting('gestionpisos.workflow_root'),
+    'role','authenticated',
+    'aal','aal2'
+  )::text,
+  true
+);
 
 -- Foto sin paso Aceptar: iniciar la captura activa tarea + ejecución.
 select set_config(

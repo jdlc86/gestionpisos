@@ -217,8 +217,6 @@ No se crea una acción artificial `complete`.
 
 Todavía no se implementa:
 
-- revisión humana del workflow;
-- reacción del workflow a aprobar/rechazar una foto;
 - IA de estado;
 - checklist;
 - documento;

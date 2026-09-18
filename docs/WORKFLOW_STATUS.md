@@ -140,7 +140,7 @@ La infraestructura reutilizable sigue siendo:
 - `photo_verification_items_v2`;
 - revisión humana protegida.
 
-Cuando exista una ejecución real, el motor deberá congelar la versión exacta del patrón/recurso utilizado.
+En cada ejecución que usa fotografía, el motor congela la versión exacta del patrón/recurso y su snapshot. Este comportamiento ya fue validado E2E con una versión publicada y una aplicación real.
 
 ## 7. Tareas
 
@@ -169,7 +169,7 @@ Se conservan:
 - solicitudes fotográficas;
 - `cleaning.html`.
 
-Limpieza será el primer adaptador de dominio cuando el motor pueda publicar y ejecutar una definición real.
+El motor ya puede publicar y ejecutar definiciones manuales reales. Limpieza sigue siendo el primer adaptador de dominio previsto, pero su migración debe esperar a que revisión humana, checklist/documento e historial transversal estén suficientemente cerrados para no degradar el flujo legacy.
 
 ## 9. Seguridad y pruebas de la persistencia
 
@@ -199,7 +199,7 @@ Las pruebas se ejecutan también en PostgreSQL 17 desechable desde Schema Guard.
 | Versiones publicadas | Implementado | Publicación RPC inmutable e idempotente |
 | Tareas | Materialización + decisión atómica implementadas | `tenant_tasks_v2` reutilizada; `accept/reject` sincronizan tarea + ejecución y rechazo exige motivo |
 | Historial | Parcial | registra creación, materialización, acciones y evidencia fotográfica; ciclo completo pendiente |
-| Ejecución genérica | Implementada en fase inicial | `manual_now`, idempotente, estado `pending` |
+| Ejecución genérica | Implementada y validada E2E para recorrido manual con Foto | `manual_now`, snapshot de recursos, tarea materializada y cierre automático para pasos implementados |
 | Adaptador Limpieza | Pendiente | Legacy preservado |
 
 ## 11. Incrementos
@@ -256,6 +256,37 @@ Las pruebas reales del recorrido fotográfico detectaron y corrigen tres puntos:
 - la vista previa vacía de la cámara permanece realmente oculta hasta existir una captura.
 
 
+### Validación E2E real — 18/09/2026
+
+Se cerraron dos recorridos manuales completos sobre el motor persistente:
+
+1. **Aceptar + Foto**
+   - definición publicada;
+   - aplicación a un piso real de prueba;
+   - patrón fotográfico congelado por ejecución;
+   - tarea `pending` → `active` mediante `accept`;
+   - captura fotográfica;
+   - recurso `submitted`;
+   - tarea + ejecución `completed`;
+   - histórico/evento de aceptación y evidencia sin duplicados;
+   - objeto JPEG único en Storage.
+
+2. **Foto sin Aceptar**
+   - receta con `steps.accept=false`;
+   - tarea `pending` permite Foto directamente;
+   - no existe acción/evento/histórico `accept`;
+   - una captura válida completa recurso + tarea + ejecución;
+   - un único run/ítem/objeto de Storage.
+
+Estas pruebas demuestran que el primer flujo manual con evidencia fotográfica **sí es operativo dentro del alcance implementado**. No implican que checklist, documento, revisión humana genérica o recurrencias estén completos.
+
+### PR #216 + #217 — Evidencia fotográfica y decisión del asignado
+
+- PR #216 integró binding de patrones, snapshot por ejecución y cierre transaccional de evidencia fotográfica.
+- PR #217 completó la semántica **Aceptar / Rechazar**, corrigió el borrador local obsoleto del Creador y la vista previa vacía de cámara.
+- `reject` exige motivo, mantiene tarea + ejecución en `rejected` y cancela recursos fotográficos pendientes.
+
+
 ## 12. Próximo incremento técnico
 
 El paso **Fotografía** ya dispone de binding en Aplicaciones, snapshot reproducible por ejecución, cámara reutilizada y cierre transaccional mediante la infraestructura de fotoverificación existente.
@@ -271,7 +302,7 @@ Orden recomendado:
 5. probar reintentos y permisos negativos;
 6. después habilitar recurrencias automáticas.
 
-La recurrencia automática se mantiene posterior a un recorrido manual extremo a extremo con evidencia.
+El recorrido manual extremo a extremo con evidencia ya está validado. La recurrencia automática sigue posterior a cerrar revisión humana y los restantes tipos de paso, para no automatizar un ciclo funcional todavía incompleto.
 
 ## 13. Reglas de no regresión
 
@@ -287,18 +318,21 @@ La recurrencia automática se mantiene posterior a un recorrido manual extremo a
 - no permitir que editar una definición cambie ejecuciones ya creadas;
 - no permitir publicación directa por INSERT cliente.
 
-## 14. Criterio para declarar el primer flujo real
+## 14. Criterio del primer flujo real — cumplido para Foto/manual
 
-Un flujo será operativo solo cuando exista evidencia de que:
+El criterio inicial quedó demostrado el 18/09/2026 para el recorrido manual con evidencia fotográfica:
 
 - definición persistida;
 - versión publicada inmutable;
-- RLS bloquea accesos cruzados;
-- activación crea una única ejecución;
-- asignación se resuelve server-side;
+- aplicación concreta;
+- ejecución única;
+- asignación server-side;
 - tarea trazada a ejecución;
-- recursos congelados/versionados;
-- cierre con histórico reproducible;
-- reintentos no duplican trabajo.
+- recurso/patrón congelado por versión;
+- evidencia almacenada una sola vez;
+- cierre sincronizado tarea + ejecución;
+- histórico/eventos sin duplicados en los recorridos probados.
 
-Hasta entonces, las definiciones visibles en **Mis Flujos** siguen siendo **borradores de autoría**, no procesos operativos activos.
+Por tanto, **una definición publicada y aplicada ya puede representar un proceso operativo real dentro de los pasos implementados**.
+
+Esto no debe generalizarse a capacidades aún pendientes. Un flujo que incluya checklist, documento, revisión humana genérica o recurrencia automática no puede considerarse completo hasta que esos componentes tengan contrato, implementación y E2E propios.

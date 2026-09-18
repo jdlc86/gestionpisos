@@ -325,6 +325,10 @@ begin
 end;
 $workflow_revision_publish_retry$;
 
+-- La auditoría es append-only y no se expone directamente a authenticated.
+-- La comprobación estructural del test se realiza fuera del rol API.
+reset role;
+
 do $audit_exists$
 declare
   v_started integer;

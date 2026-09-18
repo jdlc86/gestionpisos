@@ -1539,7 +1539,7 @@ select set_config(
 );
 
 -- La ruta v1 ya no puede crear una aplicación de una receta con Foto sin recursos.
-do $$
+do $workflow_photo_case_1$
 begin
   begin
     perform * from public.create_workflow_application_v1(
@@ -1550,10 +1550,10 @@ begin
   exception when feature_not_supported then null;
   end;
 end;
-$$;
+$workflow_photo_case_1$;
 
 -- La ruta foto-aware exige al menos un patrón real.
-do $$
+do $workflow_photo_case_2$
 begin
   begin
     perform * from public.create_workflow_application_v2(
@@ -1567,7 +1567,7 @@ begin
   exception when invalid_parameter_value then null;
   end;
 end;
-$$;
+$workflow_photo_case_2$;
 
 select set_config(
   'gestionpisos.workflow_photo_application_id',
@@ -1585,7 +1585,7 @@ select set_config(
   true
 );
 
-do $$
+do $workflow_photo_case_3$
 declare
   v_count integer;
   v_pattern uuid;
@@ -1602,7 +1602,7 @@ begin
     raise exception 'workflow application photo binding was not persisted correctly';
   end if;
 end;
-$$;
+$workflow_photo_case_3$;
 
 select set_config(
   'gestionpisos.workflow_photo_execution_id',
@@ -1642,7 +1642,7 @@ select set_config(
   true
 );
 
-do $$
+do $workflow_photo_case_4$
 declare
   v_resource public.workflow_execution_photo_resources_v2;
   v_task_status text;
@@ -1671,7 +1671,7 @@ begin
     raise exception 'workflow photo execution snapshot/state is invalid';
   end if;
 end;
-$$;
+$workflow_photo_case_4$;
 
 -- El snapshot no cambia si el recurso original se versiona después.
 reset role;
@@ -1691,7 +1691,7 @@ set version=2,
     )
 where id=current_setting('gestionpisos.workflow_photo_pattern_1')::uuid;
 
-do $$
+do $workflow_photo_case_5$
 declare
   v_version integer;
   v_kind text;
@@ -1705,7 +1705,7 @@ begin
     raise exception 'workflow photo snapshot changed after pattern edit';
   end if;
 end;
-$$;
+$workflow_photo_case_5$;
 
 set local role authenticated;
 select set_config(
@@ -1719,7 +1719,7 @@ select set_config(
 );
 
 -- Accept no completa el flujo: queda active porque la fotografía sigue pendiente.
-do $$
+do $workflow_photo_case_6$
 declare
   v_task_status text;
   v_execution_status text;
@@ -1738,7 +1738,7 @@ begin
     raise exception 'photo workflow accept did not stop at active';
   end if;
 end;
-$$;
+$workflow_photo_case_6$;
 
 -- Un usuario no asignado no puede iniciar la captura.
 select set_config(
@@ -1751,7 +1751,7 @@ select set_config(
   true
 );
 
-do $$
+do $workflow_photo_case_7$
 begin
   begin
     perform * from public.start_workflow_photo_verification_v1(
@@ -1761,7 +1761,7 @@ begin
   exception when insufficient_privilege then null;
   end;
 end;
-$$;
+$workflow_photo_case_7$;
 
 select set_config(
   'request.jwt.claims',
@@ -1834,7 +1834,7 @@ $photo_inspect$;
 set local role authenticated;
 
 -- El navegador no puede inventar un run workflow_execution directamente.
-do $$
+do $workflow_photo_case_8$
 begin
   begin
     insert into public.photo_verification_runs_v2(
@@ -1853,7 +1853,7 @@ begin
   exception when insufficient_privilege then null;
   end;
 end;
-$$;
+$workflow_photo_case_8$;
 
 -- Simular el item + JPEG privado ya subido por la infraestructura de cámara.
 reset role;
@@ -1892,7 +1892,7 @@ select set_config(
   true
 );
 
-do $$
+do $workflow_photo_case_9$
 declare
   v_resource_status text;
   v_all_complete boolean;
@@ -1917,7 +1917,7 @@ begin
     raise exception 'workflow photo submit did not complete resource/task/execution atomically';
   end if;
 end;
-$;
+$workflow_photo_case_9$;
 
 reset role;
 
@@ -2121,7 +2121,7 @@ select * from public.start_workflow_photo_verification_v1(
   current_setting('gestionpisos.workflow_photo_no_accept_resource_id')::uuid
 );
 
-do $$
+do $workflow_photo_case_10$
 declare
   v_task_status text;
   v_execution_status text;
@@ -2157,7 +2157,7 @@ begin
     raise exception 'photo-only workflow did not activate atomically on capture start';
   end if;
 end;
-$$;
+$workflow_photo_case_10$;
 
 -- El cliente authenticated tampoco puede fabricar tareas saltándose el materializador.
 do $$

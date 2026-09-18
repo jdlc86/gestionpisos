@@ -1676,7 +1676,7 @@ select set_config(
         'flowName','Inspección fotográfica workflow',
         'flowType','inspection',
         'flowDescription','Regresión foto workflow',
-        'scopeType','property',
+        'scopeType','organization',
         'triggerType','manual',
         'recurrence','',
         'assignmentType','manual',
@@ -2460,8 +2460,7 @@ select set_config(
   (
     select application_id::text
     from public.create_workflow_application_v1(
-      current_setting('gestionpisos.workflow_review_version_id')::uuid,
-      current_setting('gestionpisos.workflow_property_1')::uuid
+      current_setting('gestionpisos.workflow_review_version_id')::uuid
     )
     limit 1
   ),

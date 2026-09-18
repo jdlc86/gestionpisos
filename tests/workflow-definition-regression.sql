@@ -69,6 +69,12 @@ begin
   if has_function_privilege('authenticated','public.workflow_snapshot_photo_resources_internal_v1(uuid)','EXECUTE') then
     raise exception 'authenticated can execute internal workflow photo snapshot helper';
   end if;
+  if has_function_privilege('anon','public.photo_verification_can_review_v1(text)','EXECUTE') then
+    raise exception 'anon can execute photo review authorization helper';
+  end if;
+  if not has_function_privilege('authenticated','public.photo_verification_can_review_v1(text)','EXECUTE') then
+    raise exception 'authenticated cannot execute photo review authorization helper';
+  end if;
 end;
 $$;
 
@@ -3045,6 +3051,55 @@ begin
   end if;
 end;
 $photo_review_stale_claims_cannot_read$;
+
+-- El rol activo por sí solo no basta: la revisión administrativa exige AAL2.
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub',current_setting('gestionpisos.workflow_admin_1'),
+    'role','authenticated',
+    'aal','aal1'
+  )::text,
+  true
+);
+
+do $photo_review_admin_aal1_cannot_read$
+declare
+  v_runs integer;
+  v_items integer;
+  v_objects integer;
+begin
+  select count(*) into v_runs
+  from public.photo_verification_runs_v2
+  where id in (
+    current_setting('gestionpisos.workflow_photo_review_run_1')::uuid,
+    current_setting('gestionpisos.workflow_photo_review_run_2')::uuid
+  );
+
+  select count(*) into v_items
+  from public.photo_verification_items_v2
+  where id in (
+    current_setting('gestionpisos.workflow_photo_review_item_1')::uuid,
+    current_setting('gestionpisos.workflow_photo_review_item_2')::uuid
+  );
+
+  select count(*) into v_objects
+  from storage.objects
+  where bucket_id='photo-verification'
+    and name in (
+      current_setting('gestionpisos.workflow_org_1')||'/'||
+        current_setting('gestionpisos.workflow_photo_review_run_1')||'/'||
+        current_setting('gestionpisos.workflow_photo_review_item_1')||'.jpg',
+      current_setting('gestionpisos.workflow_org_1')||'/'||
+        current_setting('gestionpisos.workflow_photo_review_run_2')||'/'||
+        current_setting('gestionpisos.workflow_photo_review_item_2')||'.jpg'
+    );
+
+  if v_runs<>0 or v_items<>0 or v_objects<>0 then
+    raise exception 'AAL1 admin can read privileged photo review evidence';
+  end if;
+end;
+$photo_review_admin_aal1_cannot_read$;
 
 -- Un ADMIN activo sí puede leer sin depender de app_metadata.role.
 select set_config(

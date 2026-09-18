@@ -59,6 +59,7 @@ grep -Fq 'const AUTHORING_VERSION=2' docs/workflow-builder.js
 grep -Fq 'authoringVersion:AUTHORING_VERSION' docs/workflow-builder.js
 grep -Fq 'legacyDraftNeedsReview' docs/workflow-builder.js
 grep -Fq 'authoring_complete' docs/workflow-builder.js
+grep -Fq 'No se creó una revisión nueva.' docs/workflow-builder.js
 grep -Fq 'photo-patterns.html?from=workflow-builder' docs/workflow-builder.html
 
 grep -Fq 'workflow_definitions_v2' docs/workflow-definitions.js

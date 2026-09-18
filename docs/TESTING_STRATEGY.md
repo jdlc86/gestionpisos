@@ -26,6 +26,10 @@ Debe permanecer automatizado cuando exista frontend funcional.
 - URL de Storage caducada no accede;
 - cliente no puede elevar rol;
 - acceso directo por API no evade permisos.
+- invitación OWNER/TENANT pendiente no puede conservar estado válido tras cambiar el email sin revocación;
+- ADMIN/EMPLOYEE no puede reenviar ni activar si `invitation_email`, perfil y Auth difieren;
+- operador de emergencia no puede usar la consola si `identity_email` y Auth difieren;
+- una deriva de email de operador debe permitir contención/desactivación, pero no reactivación o elevación de capacidades.
 
 ## Regla de regresión
 

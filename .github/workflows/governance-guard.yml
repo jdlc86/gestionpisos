@@ -26,6 +26,9 @@ jobs:
             "docs/PERMISSIONS_CONTRACT.md"
             "docs/DATA_CONTRACT.md"
             "docs/AUTH_CONTRACT.md"
+            "docs/EXTERNAL_ONBOARDING_CONTRACT.md"
+            "docs/PLATFORM_OPERATOR_CONSOLE.md"
+            "docs/DOCUMENTATION_INDEX.md"
             "docs/PHOTO_VERIFICATION_CONTRACT.md"
             "docs/NOTIFICATION_CONTRACT.md"
             "docs/TESTING_STRATEGY.md"
@@ -35,6 +38,9 @@ jobs:
           for f in "${required[@]}"; do
             test -s "$f" || { echo "::error::Missing or empty required file: $f"; exit 1; }
           done
+
+      - name: Verify documentation consistency
+        run: bash tests/documentation-smoke.sh
 
       - name: Reject obvious backend secrets in tracked files
         shell: bash

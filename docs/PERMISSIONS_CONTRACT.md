@@ -19,6 +19,15 @@ Esta matriz es el mínimo de seguridad. Las implementaciones pueden restringir m
 | Revisar fotoverificación | Sí | Sí | Según permiso | Sí si asignado | Sí si delegado | Consulta propia autorizada | Ver resultado propio |
 | Broadcast institucional | Sí | Sí autorizado | Según permiso | No por defecto | No por defecto | No | No |
 
+## Reglas de invitación y cambio de email
+
+- La capacidad de invitar no incluye la capacidad de trasladar una identidad a otro email.
+- ROOT/ADMIN autorizados pueden enviar o reenviar invitaciones solo para el email canónico que el backend valida para esa identidad.
+- En OWNER/TENANT, cambiar el email con onboarding pendiente exige confirmación + revocación del onboarding/identidad anterior antes de crear una nueva invitación.
+- En ADMIN/EMPLOYEE, un email diferente implica reprovisionar la identidad pendiente o usar un flujo explícito de cambio de cuenta si ya está activa.
+- En operadores de emergencia, ROOT puede desactivar una identidad con deriva de email, pero no reactivarla ni modificar sus capacidades hasta reprovisionarla.
+- Ningún EMPLOYEE obtiene por estas reglas capacidad adicional para gestionar identidades fuera de su ámbito autorizado.
+
 ## Reglas adicionales
 
 - Un piso tiene un responsable operativo principal de escritura.

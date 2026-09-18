@@ -26,9 +26,10 @@ Aplica a cualquier desarrollador, agente IA o sesión que modifique GestionPisos
 21. La ficha de OWNER/TENANT y su identidad Auth son independientes hasta completar un onboarding explícito. Guardar una ficha nunca concede acceso por sí solo.
 22. Mientras el modelo Auth sea de un único rol/organización principal, un email ya vinculado a otro rol o identidad no se fusiona ni reutiliza silenciosamente. El conflicto debe bloquear la activación y preservar ambas relaciones de negocio sin cruzarlas.
 23. En cualquier onboarding, la autorización/vinculación se activa primero en base de datos y los claims privilegiados de Auth solo se sincronizan después del éxito DB.
+24. Toda invitación pertenece a una identidad concreta y a un email canónico concreto. Nunca se traslada silenciosamente a otro correo: un cambio de email exige revocación/reprovisión o un flujo específico de cambio de cuenta, con validación server-side.
 
 ## Antes de modificar autorización, datos o seguridad
-Leer: `docs/SECURITY_CONTRACT.md`, `docs/PERMISSIONS_CONTRACT.md`, `docs/DATA_CONTRACT.md`, `docs/MIGRATION_HISTORY_CONTRACT.md`, `docs/AUTH_CONTRACT.md`, `docs/AUTH_EMAIL_DELIVERY_MIGRATION.md` y `docs/EXTERNAL_ONBOARDING_CONTRACT.md` cuando aplique.
+Leer: `docs/SECURITY_CONTRACT.md`, `docs/PERMISSIONS_CONTRACT.md`, `docs/DATA_CONTRACT.md`, `docs/MIGRATION_HISTORY_CONTRACT.md`, `docs/AUTH_CONTRACT.md`, `docs/AUTH_EMAIL_DELIVERY_MIGRATION.md`, `docs/EXTERNAL_ONBOARDING_CONTRACT.md` y `docs/PLATFORM_OPERATOR_CONSOLE.md` cuando aplique. Usar `docs/DOCUMENTATION_INDEX.md` como índice general.
 
 Si implementación y contrato discrepan, manda el contrato hasta que una decisión explícita lo cambie.
 

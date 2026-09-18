@@ -76,7 +76,7 @@ using (
   bucket_id='photo-verification'
   and (
     owner_id=auth.uid()::text
-    or public.photo_verification_can_review_v1((storage.foldername(name))[1])
+    or public.photo_verification_can_review_v1(split_part(name,'/',1))
   )
 );
 

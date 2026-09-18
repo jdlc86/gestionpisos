@@ -43,6 +43,8 @@ function messageFor(error) {
     valid_email_required: "Introduce un correo válido.",
     audit_failed: "El cambio no se confirmó porque no pudo registrarse correctamente en auditoría.",
     operator_mutation_failed: "No se pudo guardar la autorización del operador. La configuración anterior se mantiene.",
+    platform_operator_identity_email_mismatch: "El correo Auth ya no coincide con la identidad canónica del operador. Reprovisiona una identidad nueva.",
+    platform_operator_email_change_requires_reprovision: "El correo de un operador no puede trasladarse a otra dirección. Desactiva esta identidad y reprovisiona una nueva.",
   };
   return messages[code] || "No se pudo guardar el cambio. La configuración anterior se mantiene.";
 }
@@ -80,6 +82,8 @@ function operatorCard(operator) {
       : operator.mfa_ready === false
         ? "MFA pendiente"
         : "MFA sin confirmar";
+  const emailConsistent = operator.email_consistent !== false;
+  const emailState = emailConsistent ? "" : "Email no coincide · reprovisionar";
 
   article.innerHTML = `
     <div class="emergency-operator-main">
@@ -89,6 +93,7 @@ function operatorCard(operator) {
         <em>${esc(state)}</em>
         <em>${esc(rootCapability)}</em>
         <em>${esc(mfa)}</em>
+        ${emailState ? `<em>${esc(emailState)}</em>` : ""}
       </div>
     </div>
     <div class="staff-card-actions emergency-operator-actions">
@@ -97,7 +102,14 @@ function operatorCard(operator) {
     </div>
   `;
 
-  article.querySelector(".emergency-toggle-active")?.addEventListener("click", async () => {
+  const activeButton = article.querySelector(".emergency-toggle-active");
+  const rootButton = article.querySelector(".emergency-toggle-root");
+  if (!emailConsistent) {
+    if (activeButton) activeButton.disabled = operator.active !== true;
+    if (rootButton) rootButton.disabled = true;
+  }
+
+  activeButton?.addEventListener("click", async () => {
     const nextActive = !operator.active;
     const prompt = nextActive
       ? `¿Activar a ${operator.display_name} como operador de emergencia?`
@@ -106,7 +118,7 @@ function operatorCard(operator) {
     await updateOperator(operator, { active: nextActive });
   });
 
-  article.querySelector(".emergency-toggle-root")?.addEventListener("click", async () => {
+  rootButton?.addEventListener("click", async () => {
     const nextCapability = !operator.can_recover_root;
     const prompt = nextCapability
       ? `¿Permitir que ${operator.display_name} pueda aprobar recuperaciones de ROOT?`

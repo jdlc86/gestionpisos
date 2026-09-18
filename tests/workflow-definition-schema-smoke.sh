@@ -191,5 +191,9 @@ grep -Fq "create or replace function public.apply_workflow_photo_review_v1" "$hu
 grep -Fq "workflow_review_actor_forbidden" "$human_review"
 grep -Fq "workflow_review_applied" "$human_review"
 grep -Fq "grant execute on function public.apply_workflow_photo_review_v1(uuid,uuid,text,text)" "$human_review"
+grep -Fq "revoke all on function public.apply_workflow_photo_review_v1(uuid,uuid,text,text)" "$human_review"
+grep -Fq "drop policy if exists tenant_task_actions_v2_read_scope" "$human_review"
+grep -Fq "public.workflow_can_manage_v1(t.organization_id)" "$human_review"
+grep -Fq "t.task_type='workflow'" "$human_review"
 
 echo 'Workflow definition schema smoke checks passed'

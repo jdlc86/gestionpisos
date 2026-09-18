@@ -2324,6 +2324,86 @@ begin
 end;
 $workflow_photo_case_10$;
 
+-- Rechazar una receta con Foto cancela sus recursos congelados antes de cualquier captura.
+select set_config(
+  'gestionpisos.workflow_photo_reject_execution_id',
+  (
+    select execution_id::text
+    from public.execute_workflow_application_now_v1(
+      current_setting('gestionpisos.workflow_photo_application_id')::uuid,
+      'workflow-photo-reject-001',
+      current_setting('gestionpisos.workflow_root')::uuid
+    )
+    limit 1
+  ),
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_photo_reject_task_id',
+  (
+    select id::text
+    from public.tenant_tasks_v2
+    where source_kind='workflow_execution'
+      and source_id=current_setting('gestionpisos.workflow_photo_reject_execution_id')::uuid
+    limit 1
+  ),
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_photo_reject_resource_id',
+  (
+    select id::text
+    from public.workflow_execution_photo_resources_v2
+    where execution_id=current_setting('gestionpisos.workflow_photo_reject_execution_id')::uuid
+    limit 1
+  ),
+  true
+);
+
+select * from public.apply_workflow_task_action_v1(
+  current_setting('gestionpisos.workflow_photo_reject_task_id')::uuid,
+  'reject',
+  'workflow-photo-reject-action-001',
+  'No puedo realizar esta inspección'
+);
+
+do $workflow_photo_reject_state$
+declare
+  v_task_status text;
+  v_execution_status text;
+  v_resource_status text;
+  v_run_id uuid;
+  v_runs integer;
+begin
+  select status into v_task_status
+  from public.tenant_tasks_v2
+  where id=current_setting('gestionpisos.workflow_photo_reject_task_id')::uuid;
+
+  select status into v_execution_status
+  from public.workflow_executions_v2
+  where id=current_setting('gestionpisos.workflow_photo_reject_execution_id')::uuid;
+
+  select status,photo_run_id into v_resource_status,v_run_id
+  from public.workflow_execution_photo_resources_v2
+  where id=current_setting('gestionpisos.workflow_photo_reject_resource_id')::uuid;
+
+  select count(*) into v_runs
+  from public.photo_verification_runs_v2
+  where source_type='workflow_execution'
+    and source_id=current_setting('gestionpisos.workflow_photo_reject_execution_id')::uuid;
+
+  if v_task_status<>'rejected'
+    or v_execution_status<>'rejected'
+    or v_resource_status<>'cancelled'
+    or v_run_id is not null
+    or v_runs<>0 then
+    raise exception 'workflow photo rejection did not cancel resources cleanly';
+  end if;
+end;
+$workflow_photo_reject_state$;
+
 -- El cliente authenticated tampoco puede fabricar tareas saltándose el materializador.
 do $$
 begin

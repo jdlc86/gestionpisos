@@ -7,6 +7,8 @@ const labels={
   flowType:{cleaning:"Limpieza",inspection:"Inspección",maintenance:"Mantenimiento",checkin:"Check-in",checkout:"Check-out",custom:"Personalizado"},
   scopeType:{property:"Un piso",organization:"Toda la organización",room:"Una habitación",occupancy:"Una ocupación / inquilino"},
   triggerType:{manual:"Manual",recurring:"Recurrente",scheduled_once:"Fecha concreta",event:"Por evento"},
+  recurrence:{weekly:"Cada semana",biweekly:"Cada 2 semanas",monthly:"Cada mes",custom:"Personalizada"},
+  customUnit:{day:"día(s)",week:"semana(s)",month:"mes(es)"},
   assignmentType:{property_responsible:"Responsable operativo del piso",active_occupants_rotation:"Ocupantes activos en rotación",fixed_person:"Persona fija",role:"Rol o capacidad",manual:"Se decide al iniciar"},
   status:{draft:"Borrador",published:"Publicado",paused:"Pausado",archived:"Archivado"}
 };
@@ -21,6 +23,27 @@ function dateTime(value){
   if(!value)return "—";
   try{return new Intl.DateTimeFormat("es-ES",{dateStyle:"medium",timeStyle:"short"}).format(new Date(value))}catch{return value}
 }
+function activationText(row){
+  const base=text("triggerType",row.trigger_type);
+  if(row.status!=="draft")return base;
+  const spec=row.draft_spec&&typeof row.draft_spec==="object"?row.draft_spec:{};
+  if(row.trigger_type==="recurring"){
+    const recurrence=String(spec.recurrence||"");
+    if(!recurrence)return base;
+    if(recurrence==="custom"){
+      const every=String(spec.customEvery||"").trim();
+      const unit=String(spec.customUnit||"");
+      return every&&unit?base+" · Cada "+every+" "+text("customUnit",unit):base+" · "+text("recurrence",recurrence);
+    }
+    return base+" · "+text("recurrence",recurrence);
+  }
+  if(row.trigger_type==="scheduled_once"){
+    const scheduledAt=String(spec.scheduledAt||"").trim();
+    return scheduledAt?base+" · "+dateTime(scheduledAt):base;
+  }
+  return base;
+}
+
 function meta(label,value){
   const box=document.createElement("div");box.className="definition-meta-item";
   const strong=document.createElement("strong");strong.textContent=label;
@@ -46,7 +69,7 @@ function card(row){
     meta("Configuración",row.authoring_complete?"Completa":"Pendiente"),
     meta("Tipo",text("flowType",row.flow_type)),
     meta("Ámbito",text("scopeType",row.scope_type)),
-    meta("Activación",text("triggerType",row.trigger_type)),
+    meta("Activación",activationText(row)),
     meta("Asignación",text("assignmentType",row.assignment_type)),
     meta("Revisión",String(row.revision||1)),
     meta("Último cambio",dateTime(row.updated_at))
@@ -92,7 +115,7 @@ async function load(){
 
   const {data,error}=await supabase
     .from("workflow_definitions_v2")
-    .select("id,name,flow_type,scope_type,trigger_type,assignment_type,status,revision,authoring_complete,updated_at")
+    .select("id,name,flow_type,scope_type,trigger_type,assignment_type,status,revision,authoring_complete,updated_at,draft_spec")
     .neq("status","archived")
     .order("updated_at",{ascending:false});
 

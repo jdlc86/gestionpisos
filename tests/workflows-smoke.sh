@@ -70,11 +70,20 @@ grep -Fq 'legacyDraftNeedsReview' docs/workflow-builder.js
 grep -Fq 'authoring_complete' docs/workflow-builder.js
 grep -Fq 'No se creó una revisión nueva.' docs/workflow-builder.js
 grep -Fq 'photo-patterns.html?from=workflow-builder' docs/workflow-builder.html
+grep -Fq 'id="photoBankLink"' docs/workflow-builder.html
+grep -Fq 'href="./photo-patterns.html?from=workflow-builder" hidden' docs/workflow-builder.html
+grep -Fq 'function updatePhotoResource()' docs/workflow-builder.js
+grep -Fq 'photoBankLink.hidden=!checked("stepPhoto")' docs/workflow-builder.js
+grep -Fq './workflow-builder.js?v=2026091806' docs/workflow-builder.html
 
 grep -Fq 'workflow_definitions_v2' docs/workflow-definitions.js
 grep -Fq 'Borrador incompleto' docs/workflow-definitions.js
 grep -Fq 'authoring_complete' docs/workflow-definitions.js
 grep -Fq 'Completar borrador' docs/workflow-definitions.js
+grep -Fq 'function activationText(row)' docs/workflow-definitions.js
+grep -Fq 'meta("Activación",activationText(row))' docs/workflow-definitions.js
+grep -Fq 'updated_at,draft_spec' docs/workflow-definitions.js
+grep -Fq './workflow-definitions.js?v=2026091803' docs/workflow-definitions.html
 grep -Fq 'borradores incompletos y configurados' docs/workflow-definitions.html
 
 grep -Fq 'Definición → Versión publicada → Disparador → Ejecución' docs/WORKFLOW_ENGINE_CONTRACT.md

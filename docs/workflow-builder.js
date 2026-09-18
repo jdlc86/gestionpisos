@@ -13,6 +13,7 @@ const triggerType=document.getElementById("triggerType");
 const recurrenceRow=document.getElementById("recurrenceRow");
 const customRecurrenceRow=document.getElementById("customRecurrenceRow");
 const scheduledAtRow=document.getElementById("scheduledAtRow");
+const photoBankLink=document.getElementById("photoBankLink");
 const summary=document.getElementById("workflowSummary");
 const serverStatus=document.getElementById("builderServerStatus");
 const builderBadge=document.getElementById("builderBadge");
@@ -173,7 +174,12 @@ function updateTriggerFields({clearHidden=false}={}){
   }
 }
 
+function updatePhotoResource(){
+  if(photoBankLink)photoBankLink.hidden=!checked("stepPhoto");
+}
+
 function updateCompletionUI(){
+  updatePhotoResource();
   const state=completion();
   stepButtons.forEach((button,index)=>{
     const section=state.sections[index];

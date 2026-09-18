@@ -1070,9 +1070,9 @@ begin
     raise exception 'workflow execution did not materialize exactly one task event';
   end if;
 end;
-$;
+$$;
 
-do $
+do $$
 declare
   v_task public.tenant_tasks_v2;
   v_history integer;
@@ -1112,7 +1112,7 @@ begin
     raise exception 'workflow task exposed unsynchronized actions';
   end if;
 end;
-$;
+$$;
 
 -- Reintentar la misma intención devuelve la ejecución existente y no duplica eventos.
 do $$
@@ -1171,10 +1171,10 @@ begin
     raise exception 'workflow execution idempotency duplicated execution, task or event';
   end if;
 end;
-$;
+$$;
 
 -- Materializar de nuevo explícitamente es idempotente.
-do $
+do $$
 declare
   v_task_id uuid;
   v_count integer;
@@ -1193,7 +1193,7 @@ begin
     raise exception 'explicit workflow task materialization was not idempotent';
   end if;
 end;
-$;
+$$;
 
 -- TENANT no puede forzar materialización ni leer la tarea ajena.
 select set_config(
@@ -1206,7 +1206,7 @@ select set_config(
   true
 );
 
-do $
+do $$
 declare v_visible integer;
 begin
   begin
@@ -1226,7 +1226,7 @@ begin
     raise exception 'tenant can read workflow task outside scope';
   end if;
 end;
-$;
+$$;
 
 select set_config(
   'request.jwt.claims',
@@ -1239,7 +1239,7 @@ select set_config(
 );
 
 -- El cliente authenticated tampoco puede fabricar tareas saltándose el materializador.
-do $
+do $$
 begin
   begin
     insert into public.tenant_tasks_v2(
@@ -1263,10 +1263,10 @@ begin
   exception when insufficient_privilege then null;
   end;
 end;
-$;
+$$;
 
 -- El cliente authenticated no puede fabricar ejecuciones saltándose el RPC.
-do $
+do $$
 begin
   begin
     insert into public.workflow_executions_v2(
@@ -1298,7 +1298,7 @@ $$;
 -- La relajación de tenant_id no permite tareas legacy sin inquilino.
 reset role;
 
-do $
+do $$
 begin
   begin
     insert into public.tenant_tasks_v2(
@@ -1316,7 +1316,7 @@ begin
   exception when check_violation then null;
   end;
 end;
-$;
+$$;
 
 set local role authenticated;
 select set_config(
@@ -1330,7 +1330,7 @@ select set_config(
 );
 
 -- La tabla de aplicaciones tampoco admite escritura directa desde authenticated.
-do $
+do $$
 begin
   begin
     insert into public.workflow_applications_v2(

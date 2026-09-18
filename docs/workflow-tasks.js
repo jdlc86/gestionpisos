@@ -10,6 +10,7 @@ let properties=new Map();
 let rooms=new Map();
 let profiles=new Map();
 let actionsByTask=new Map();
+let photoResourcesByExecution=new Map();
 
 const ACTION_KEY_PREFIX="workflow-task-action:";
 const statusLabels={
@@ -80,6 +81,71 @@ function actionNote(task){
   if(task.status==="active")return "La tarea está activa. Quedan pasos de la receta que todavía deben completarse.";
   return "No hay una acción operativa habilitada para esta receta en el estado actual.";
 }
+function photoResourceLabel(resource){
+  const snapshot=resource.pattern_snapshot||{};
+  return snapshot.name||snapshot.target_key||"Fotografía";
+}
+function workflowPhotoUrl(task,resource){
+  const url=new URL("./photo-camera.html",window.location.href);
+  url.searchParams.set("mode","verify");
+  url.searchParams.set("pattern_id",resource.pattern_id);
+  url.searchParams.set("workflow_resource_id",resource.id);
+  url.searchParams.set("source_type","workflow_execution");
+  url.searchParams.set("source_id",task.source_id);
+  return url.href;
+}
+function renderPhotoResources(task,article){
+  if(task.source_kind!=="workflow_execution"||!task.source_id)return;
+  const resources=(photoResourcesByExecution.get(task.source_id)||[])
+    .slice()
+    .sort((a,b)=>a.sort_order-b.sort_order);
+  if(!resources.length)return;
+
+  const box=document.createElement("div");
+  box.className="task-photo-resources";
+  const heading=document.createElement("strong");
+  heading.textContent="Evidencia fotográfica";
+  box.append(heading);
+
+  resources.forEach(resource=>{
+    const row=document.createElement("div");
+    row.className="task-photo-resource";
+    const info=document.createElement("div");
+    const title=document.createElement("span");
+    title.textContent=photoResourceLabel(resource);
+    const state=document.createElement("small");
+    state.textContent=resource.status==="submitted"
+      ?"Enviada"
+      :resource.status==="capturing"
+        ?"Captura iniciada"
+        :"Pendiente";
+    info.append(title,state);
+    row.append(info);
+
+    const canCapture=resource.status!=="submitted"&&(
+      task.status==="active"
+      || (task.status==="pending"&&!resource.requires_accept)
+    );
+
+    if(canCapture){
+      const link=document.createElement("a");
+      link.className="primary task-photo-button";
+      link.href=workflowPhotoUrl(task,resource);
+      link.textContent=resource.status==="capturing"?"Continuar foto":"Hacer foto";
+      row.append(link);
+    }else if(resource.status!=="submitted"&&resource.requires_accept&&task.status==="pending"){
+      const note=document.createElement("span");
+      note.className="task-photo-wait";
+      note.textContent="Acepta primero";
+      row.append(note);
+    }
+
+    box.append(row);
+  });
+
+  article.append(box);
+}
+
 function renderActions(task,article){
   if(task.source_kind!=="workflow_execution")return;
 
@@ -160,6 +226,7 @@ function render(){
     );
     article.append(details);
 
+    renderPhotoResources(task,article);
     renderActions(task,article);
     list.append(article);
   });
@@ -236,6 +303,28 @@ async function loadRelated(){
   }
 }
 
+async function loadPhotoResources(){
+  photoResourcesByExecution=new Map();
+  const executionIds=[...new Set(tasks
+    .filter(task=>task.source_kind==="workflow_execution"&&task.source_id)
+    .map(task=>task.source_id))];
+  if(!executionIds.length)return;
+
+  const {data,error}=await supabase
+    .from("workflow_execution_photo_resources_v2")
+    .select("id,execution_id,pattern_id,pattern_version,pattern_snapshot,sort_order,requires_accept,status,photo_run_id")
+    .in("execution_id",executionIds)
+    .order("sort_order");
+
+  if(error)throw error;
+
+  (data||[]).forEach(resource=>{
+    const bucket=photoResourcesByExecution.get(resource.execution_id)||[];
+    bucket.push(resource);
+    photoResourcesByExecution.set(resource.execution_id,bucket);
+  });
+}
+
 async function loadActions(){
   actionsByTask=new Map();
   const workflowIds=tasks
@@ -286,7 +375,7 @@ async function load(preserveStatus=false){
   tasks=data||[];
 
   try{
-    await Promise.all([loadRelated(),loadActions()]);
+    await Promise.all([loadRelated(),loadActions(),loadPhotoResources()]);
   }catch{
     list.replaceChildren();
     const empty=document.createElement("article");empty.className="task-empty";

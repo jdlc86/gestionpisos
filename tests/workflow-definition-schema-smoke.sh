@@ -35,6 +35,7 @@ test -s "$review_access"
 test -s "$photo_review_hardening"
 test -s "$authoring_separation"
 test -s tests/workflow-definition-regression.sql
+test -s tests/workflow-authoring-separation-regression.sql
 
 grep -Fq 'create table if not exists public.workflow_definitions_v2' "$migration"
 grep -Fq 'create table if not exists public.workflow_definition_versions_v2' "$migration"

@@ -58,6 +58,8 @@ grep -Fq 'Pendiente · selecciona cómo termina' docs/workflow-builder.html
 grep -Fq 'const AUTHORING_VERSION=2' docs/workflow-builder.js
 grep -Fq 'id="scheduledAt"' docs/workflow-builder.html
 grep -Fq 'id="customRecurrenceRow"' docs/workflow-builder.html
+grep -Fq '.builder-panel [hidden]{display:none!important}' docs/workflow-builder.css
+grep -Fq './workflow-builder.css?v=2026091805' docs/workflow-builder.html
 grep -Fq 'name="customEvery"' docs/workflow-builder.html
 grep -Fq 'name="customUnit"' docs/workflow-builder.html
 grep -Fq 'toggleDependentRow' docs/workflow-builder.js

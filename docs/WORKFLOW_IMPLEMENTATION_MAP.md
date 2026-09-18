@@ -37,7 +37,7 @@ Cambios integrados previamente:
 - PR #196 → contrato del motor + Creador de Flujos local;
 - PR #197 → actualización documental del estado previo a persistencia.
 
-El incremento actual publica versiones inmutables y permite aplicaciones concretas, pero **todavía no crea ejecuciones/tareas genéricas**.
+El incremento actual publica versiones inmutables, permite aplicaciones concretas y crea ejecuciones manuales idempotentes `pending`, pero **todavía no materializa tareas genéricas**.
 
 ## 1. Inventario funcional existente
 
@@ -171,7 +171,9 @@ Responsabilidad actual:
 
 - `workflow_definitions_v2` conserva identidad estable, metadatos resumidos, estado `draft`, especificación saneada, `revision` de concurrencia y `authoring_complete` derivado server-side;
 - `workflow_definition_versions_v2` contiene versiones publicadas inmutables mediante RPC protegido;
-- `workflow_applications_v2` contiene el vínculo entre una versión y organización/piso/habitación/ocupación real, sin activar todavía ejecución.
+- `workflow_applications_v2` contiene el vínculo entre una versión y organización/piso/habitación/ocupación real;
+- `workflow_executions_v2` conserva cada ejecución manual, versión, ámbito, idempotencia y asignado congelado;
+- `workflow_execution_events_v2` inicia el histórico funcional de ejecución.
 
 Seguridad:
 
@@ -312,17 +314,14 @@ Ya existe persistencia genérica para **identidad estable de definición y borra
 Falta implementar:
 
 - referencias persistentes/versionadas a recursos;
-- disparadores genéricos ejecutables;
-- reglas de asignación resueltas server-side;
-- ejecuciones inmutables;
-- congelación explícita de recursos/versiones;
-- idempotencia de ejecución;
-- enlace/adopción de tareas;
+- materialización/adopción de tareas;
+- congelación explícita de recursos/versiones concretos;
+- transiciones posteriores de ejecución;
 - historial transversal que una definición, ejecución, tarea, evidencia y cierre.
 
-Tampoco existe todavía un servicio server-side que reciba una versión publicada y cree de forma idempotente una ejecución con sus tareas.
+Ya existe el servicio server-side que crea de forma idempotente una ejecución manual y congela su asignación. No crea tareas porque `tenant_tasks_v2` exige actualmente un `tenant_id` y no se fabricará uno para flujos de piso.
 
-Ese es el **siguiente incremento del motor mínimo**.
+La generalización/adaptación de la capa de tareas es el **siguiente incremento del motor mínimo**.
 
 ## 5. Mapa objetivo de reutilización
 
@@ -340,12 +339,12 @@ Ese es el **siguiente incremento del motor mínimo**.
 | Auditoría sensible | `audit_log_v2` | Reutilizar |
 | Definición de flujo | `workflow_definitions_v2` | Implementado para borradores persistentes |
 | Versión de flujo | `workflow_definition_versions_v2` | Publicación inmutable implementada |
-| Aplicación concreta | `workflow_applications_v2` | Vinculación real implementada; sin ejecución |
-| Disparador genérico | No existe ejecución | Implementar con idempotencia |
-| Regla de asignación genérica | No existe ejecución | Resolver server-side |
-| Ejecución genérica | No existe | Implementar con snapshot/versiones |
+| Aplicación concreta | `workflow_applications_v2` | Vinculación real implementada |
+| Disparador manual explícito | `execute_workflow_application_now_v1` | Implementado con idempotencia |
+| Regla de asignación inicial | Snapshot en `workflow_executions_v2` | Manual y responsable de piso soportados; otras bloqueadas explícitamente |
+| Ejecución genérica | `workflow_executions_v2` | Fase inicial `pending` implementada |
 | Enlace genérico flujo→recurso | No existe persistente | Implementar sin copiar recursos |
-| Eventos transversales de ejecución | No existe como unidad completa | Diseñar sin duplicar históricos actuales |
+| Eventos transversales de ejecución | `workflow_execution_events_v2` | Evento inicial `created`; ciclo completo pendiente |
 
 ## 6. Compatibilidad y transición
 
@@ -418,20 +417,18 @@ Implementado en esta fase:
 
 ## 8. Próximo incremento técnico
 
-El siguiente trabajo debe ser **ejecución manual idempotente sobre una aplicación configurada**, no otra capa de UI aislada.
+El siguiente trabajo debe ser **materialización de tarea/pasos desde `workflow_executions_v2`**, no otra ejecución paralela.
 
 Debe cubrir:
 
-- crear la entidad mínima de ejecución referenciando `workflow_applications_v2` y su versión;
-- activación manual inicial;
-- `idempotency_key` de ejecución;
-- resolución server-side de asignaciones;
-- generación/adopción de tareas en `tenant_tasks_v2` cuando sea viable;
-- snapshot de recursos/versiones;
-- eventos de ciclo de vida;
+- resolver de forma aditiva la limitación `tenant_tasks_v2.tenant_id NOT NULL`;
+- enlazar la tarea resultante con la ejecución;
+- conservar idempotencia al materializar trabajo;
+- reutilizar acciones/histórico existentes cuando encajen;
+- snapshot/binding de recursos para pasos que lo necesiten;
 - permisos/RLS y pruebas negativas;
-- trazabilidad necesaria para el futuro adaptador de Limpieza.
+- trazabilidad para el futuro adaptador de Limpieza.
 
-La recurrencia automática se incorpora después de demostrar que la ejecución manual es segura, idempotente y auditable.
+La recurrencia automática se incorpora después de demostrar un recorrido manual extremo a extremo.
 
 La regla histórica del primer mapeo se mantiene como salvaguarda: **no se crean tablas nuevas de workflow de forma improvisada o paralela**; cualquier DDL nuevo debe derivarse explícitamente del contrato del motor, justificar su necesidad frente a las tablas existentes y venir acompañado de RLS y pruebas de regresión.

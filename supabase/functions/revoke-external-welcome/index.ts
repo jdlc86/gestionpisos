@@ -38,8 +38,9 @@ Deno.serve(async (req: Request) => {
 
   const subjectType = String(body.subject_type || "").trim();
   const subjectId = String(body.subject_id || "").trim();
-  const newEmail = String(body.new_email || "").trim().toLowerCase();
-  if (!(["owner", "tenant"] as string[]).includes(subjectType) || !subjectId || !newEmail || !newEmail.includes("@")) {
+  const newEmail = String(body.new_email ?? "").trim().toLowerCase();
+  const emailValid = newEmail === "" ? subjectType === "owner" : newEmail.includes("@");
+  if (!(["owner", "tenant"] as string[]).includes(subjectType) || !subjectId || !emailValid) {
     return json(400, { error: "invalid_subject_or_email" });
   }
 
@@ -116,7 +117,7 @@ Deno.serve(async (req: Request) => {
     const result = await disableAndRevokeExternalOnboarding(admin, {
       authUserId: String(onboarding.auth_user_id),
       actorUserId: actor.id,
-      replacementEmail: newEmail,
+      replacementEmail: newEmail || null,
     });
     return json(200, {
       ok: true,

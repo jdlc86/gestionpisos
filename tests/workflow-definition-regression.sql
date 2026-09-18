@@ -1137,14 +1137,17 @@ begin
   select count(*) into v_actions
   from public.tenant_task_actions_v2
   where task_id=v_task.id
-    and action_key='accept'
     and from_status='pending'
-    and to_status='completed'
     and actor='assignee'
-    and active=true;
+    and active=true
+    and (
+      (action_key='accept' and to_status='completed' and requires_note=false)
+      or
+      (action_key='reject' and to_status='rejected' and requires_note=true)
+    );
 
-  if v_actions<>1 then
-    raise exception 'workflow task did not expose the single safe accept action';
+  if v_actions<>2 then
+    raise exception 'workflow task did not expose the required accept/reject decision pair';
   end if;
 end;
 $$;
@@ -1456,6 +1459,168 @@ begin
   end;
 end;
 $$;
+
+-- La misma receta también permite rechazar antes de ejecutar; el motivo es obligatorio.
+select set_config(
+  'gestionpisos.workflow_reject_execution_id',
+  (
+    select execution_id::text
+    from public.execute_workflow_application_now_v1(
+      current_setting('gestionpisos.workflow_room_application_id')::uuid,
+      'manual-room-reject-001',
+      current_setting('gestionpisos.workflow_root')::uuid
+    )
+    limit 1
+  ),
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_reject_task_id',
+  (
+    select id::text
+    from public.tenant_tasks_v2
+    where source_kind='workflow_execution'
+      and source_id=current_setting('gestionpisos.workflow_reject_execution_id')::uuid
+    limit 1
+  ),
+  true
+);
+
+do $workflow_reject_pair$
+declare
+  v_actions integer;
+begin
+  select count(*) into v_actions
+  from public.tenant_task_actions_v2
+  where task_id=current_setting('gestionpisos.workflow_reject_task_id')::uuid
+    and from_status='pending'
+    and active=true
+    and (
+      (action_key='accept' and requires_note=false)
+      or
+      (action_key='reject' and to_status='rejected' and requires_note=true)
+    );
+
+  if v_actions<>2 then
+    raise exception 'workflow reject execution did not receive accept/reject pair';
+  end if;
+end;
+$workflow_reject_pair$;
+
+do $workflow_reject_requires_note$
+begin
+  begin
+    perform * from public.apply_workflow_task_action_v1(
+      current_setting('gestionpisos.workflow_reject_task_id')::uuid,
+      'reject',
+      'reject-room-missing-note',
+      null
+    );
+    raise exception 'workflow reject without reason unexpectedly succeeded';
+  exception when invalid_parameter_value then null;
+  end;
+end;
+$workflow_reject_requires_note$;
+
+do $workflow_reject_apply$
+declare
+  v_task_status text;
+  v_execution_status text;
+  v_applied_new boolean;
+begin
+  select task_status,execution_status,applied_new
+  into v_task_status,v_execution_status,v_applied_new
+  from public.apply_workflow_task_action_v1(
+    current_setting('gestionpisos.workflow_reject_task_id')::uuid,
+    'reject',
+    'reject-room-001',
+    'No puedo asumir esta tarea'
+  )
+  limit 1;
+
+  if v_task_status<>'rejected'
+    or v_execution_status<>'rejected'
+    or not v_applied_new then
+    raise exception 'workflow reject did not reject task and execution atomically';
+  end if;
+end;
+$workflow_reject_apply$;
+
+do $workflow_reject_state$
+declare
+  v_task_status text;
+  v_execution_status text;
+  v_completed_at timestamptz;
+  v_history integer;
+  v_events integer;
+begin
+  select status into v_task_status
+  from public.tenant_tasks_v2
+  where id=current_setting('gestionpisos.workflow_reject_task_id')::uuid;
+
+  select status,completed_at
+  into v_execution_status,v_completed_at
+  from public.workflow_executions_v2
+  where id=current_setting('gestionpisos.workflow_reject_execution_id')::uuid;
+
+  select count(*) into v_history
+  from public.tenant_task_history_v2
+  where task_id=current_setting('gestionpisos.workflow_reject_task_id')::uuid
+    and action_key='reject'
+    and from_status='pending'
+    and to_status='rejected'
+    and note='No puedo asumir esta tarea';
+
+  select count(*) into v_events
+  from public.workflow_execution_events_v2
+  where execution_id=current_setting('gestionpisos.workflow_reject_execution_id')::uuid
+    and event_type='task_action_applied'
+    and details->>'request_key'='reject-room-001'
+    and details->>'action_key'='reject';
+
+  if v_task_status<>'rejected'
+    or v_execution_status<>'rejected'
+    or v_completed_at is not null
+    or v_history<>1
+    or v_events<>1 then
+    raise exception 'workflow rejection final state/history is inconsistent';
+  end if;
+end;
+$workflow_reject_state$;
+
+do $workflow_reject_retry$
+declare
+  v_applied_new boolean;
+  v_history integer;
+  v_events integer;
+begin
+  select applied_new
+  into v_applied_new
+  from public.apply_workflow_task_action_v1(
+    current_setting('gestionpisos.workflow_reject_task_id')::uuid,
+    'reject',
+    'reject-room-001',
+    'No puedo asumir esta tarea'
+  )
+  limit 1;
+
+  select count(*) into v_history
+  from public.tenant_task_history_v2
+  where task_id=current_setting('gestionpisos.workflow_reject_task_id')::uuid
+    and action_key='reject';
+
+  select count(*) into v_events
+  from public.workflow_execution_events_v2
+  where execution_id=current_setting('gestionpisos.workflow_reject_execution_id')::uuid
+    and event_type='task_action_applied'
+    and details->>'request_key'='reject-room-001';
+
+  if v_applied_new or v_history<>1 or v_events<>1 then
+    raise exception 'workflow reject retry duplicated history/event';
+  end if;
+end;
+$workflow_reject_retry$;
 
 -- Evidencia fotográfica: patrón real, binding en Aplicación, snapshot por ejecución y cierre transaccional.
 reset role;
@@ -2158,6 +2323,99 @@ begin
   end if;
 end;
 $workflow_photo_case_10$;
+
+-- Rechazar una receta con Foto cancela sus recursos congelados antes de cualquier captura.
+select set_config(
+  'gestionpisos.workflow_photo_reject_execution_id',
+  (
+    select execution_id::text
+    from public.execute_workflow_application_now_v1(
+      current_setting('gestionpisos.workflow_photo_application_id')::uuid,
+      'workflow-photo-reject-001',
+      current_setting('gestionpisos.workflow_root')::uuid
+    )
+    limit 1
+  ),
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_photo_reject_task_id',
+  (
+    select id::text
+    from public.tenant_tasks_v2
+    where source_kind='workflow_execution'
+      and source_id=current_setting('gestionpisos.workflow_photo_reject_execution_id')::uuid
+    limit 1
+  ),
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_photo_reject_resource_id',
+  (
+    select id::text
+    from public.workflow_execution_photo_resources_v2
+    where execution_id=current_setting('gestionpisos.workflow_photo_reject_execution_id')::uuid
+    limit 1
+  ),
+  true
+);
+
+select * from public.apply_workflow_task_action_v1(
+  current_setting('gestionpisos.workflow_photo_reject_task_id')::uuid,
+  'reject',
+  'workflow-photo-reject-action-001',
+  'No puedo realizar esta inspección'
+);
+
+reset role;
+
+do $workflow_photo_reject_state$
+declare
+  v_task_status text;
+  v_execution_status text;
+  v_resource_status text;
+  v_run_id uuid;
+  v_runs integer;
+begin
+  select status into v_task_status
+  from public.tenant_tasks_v2
+  where id=current_setting('gestionpisos.workflow_photo_reject_task_id')::uuid;
+
+  select status into v_execution_status
+  from public.workflow_executions_v2
+  where id=current_setting('gestionpisos.workflow_photo_reject_execution_id')::uuid;
+
+  select status,photo_run_id into v_resource_status,v_run_id
+  from public.workflow_execution_photo_resources_v2
+  where id=current_setting('gestionpisos.workflow_photo_reject_resource_id')::uuid;
+
+  select count(*) into v_runs
+  from public.photo_verification_runs_v2
+  where source_type='workflow_execution'
+    and source_id=current_setting('gestionpisos.workflow_photo_reject_execution_id')::uuid;
+
+  if v_task_status<>'rejected'
+    or v_execution_status<>'rejected'
+    or v_resource_status<>'cancelled'
+    or v_run_id is not null
+    or v_runs<>0 then
+    raise exception 'workflow photo rejection did not cancel resources cleanly';
+  end if;
+end;
+$workflow_photo_reject_state$;
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub',current_setting('gestionpisos.workflow_root'),
+    'role','authenticated',
+    'aal','aal2'
+  )::text,
+  true
+);
 
 -- El cliente authenticated tampoco puede fabricar tareas saltándose el materializador.
 do $$

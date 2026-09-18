@@ -79,6 +79,7 @@ function actionNote(task){
   if(task.status==="completed")return "Tarea y ejecución completadas de forma sincronizada.";
   if(task.status==="waiting_review")return "La tarea está esperando la revisión definida por la receta.";
   if(task.status==="active")return "La tarea está activa. Quedan pasos de la receta que todavía deben completarse.";
+  if(task.status==="rejected")return "La persona asignada rechazó la tarea. El motivo queda registrado en el histórico.";
   return "No hay una acción operativa habilitada para esta receta en el estado actual.";
 }
 function photoResourceLabel(resource){
@@ -136,7 +137,7 @@ function renderPhotoResources(task,article){
     }else if(resource.status!=="submitted"&&resource.requires_accept&&task.status==="pending"){
       const note=document.createElement("span");
       note.className="task-photo-wait";
-      note.textContent="Acepta primero";
+      note.textContent="Acepta la tarea primero";
       row.append(note);
     }
 
@@ -167,7 +168,7 @@ function renderActions(task,article){
   available.forEach(action=>{
     const button=document.createElement("button");
     button.type="button";
-    button.className="primary";
+    button.className=action.action_key==="reject"?"secondary task-action--reject":"primary";
     button.textContent=action.label;
     button.addEventListener("click",()=>applyWorkflowAction(task,action,button));
     box.append(button);
@@ -235,7 +236,7 @@ function render(){
 async function applyWorkflowAction(task,action,button){
   let note=null;
   if(action.requires_note){
-    note=window.prompt("Añade la nota obligatoria para esta acción:");
+    note=window.prompt(action.action_key==="reject"?"Indica el motivo del rechazo:":"Añade la nota obligatoria para esta acción:");
     if(note===null)return;
     if(!note.trim()){
       setStatus("Esta acción requiere una nota.",true);

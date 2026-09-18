@@ -33,38 +33,58 @@ Una tarea con:
 - `task_type='workflow'`; o
 - `source_kind='workflow_execution'`
 
-debe ser rechazada por ese RPC con el error explícito `workflow_task_requires_atomic_action`. Así no existe una ruta alternativa capaz de cambiar solo la tarea.
+debe ser rechazada por ese RPC con `workflow_task_requires_atomic_action`.
 
 Las tareas de workflow usan:
 
 `apply_workflow_task_action_v1(task_id, action_key, request_key, note)`
 
-## 3. Fuente de acciones visibles
+## 3. Puerta de decisión Aceptar / Rechazar
 
-Se reutiliza `tenant_task_actions_v2`.
+Por compatibilidad con las versiones ya publicadas, el campo técnico sigue siendo:
 
-Las acciones de workflow no proceden de las plantillas legacy `tenant_task_workflow_templates_v2`; se derivan del `spec_snapshot` congelado de la ejecución.
+`steps.accept=true`
 
-Primer paso soportado:
+Su significado de producto es:
 
-- `steps.accept=true` → acción del asignado.
+**Requerir decisión del asignado: Aceptar / Rechazar.**
 
-La transición de `accept` se deriva así:
+Cuando está habilitado, `workflow_seed_task_actions_internal_v1` debe publicar una pareja coherente de acciones desde `pending`:
+
+- `accept`;
+- `reject`.
+
+No debe publicarse únicamente una de las dos si el servidor no puede determinar un destino seguro para Aceptar.
+
+### Aceptar
+
+La transición se deriva así:
 
 - si quedan pasos de foto/checklist/documento → `pending → active`;
 - si no quedan otros pasos y `closeType=auto` → `pending → completed`;
-- si no quedan otros pasos y `closeType=human_review` → `pending → waiting_review`;
-- si no puede determinarse un destino seguro, la acción no se publica todavía.
+- si no quedan otros pasos y `closeType=human_review` → `pending → waiting_review`.
 
 Etiquetas:
 
+- `active`: “Aceptar”;
 - `completed`: “Aceptar y completar”;
-- `waiting_review`: “Aceptar y enviar a revisión”;
-- `active`: “Aceptar”.
+- `waiting_review`: “Aceptar y enviar a revisión”.
+
+### Rechazar
+
+`reject` siempre exige un **motivo obligatorio** y, en este incremento, realiza:
+
+`pending → rejected`
+
+en tarea y ejecución dentro de la misma transacción.
+
+Si la ejecución había congelado recursos fotográficos todavía pendientes, esos recursos pasan a `cancelled`. Un rechazo no genera un run fotográfico ni marca la ejecución como completada.
+
+El histórico conserva el motivo, actor, estado de origen y estado final.
 
 ## 4. Autorización
 
-En este incremento la acción `accept` pertenece al actor `assignee`.
+Las acciones `accept` y `reject` pertenecen al actor `assignee`.
 
 El servidor exige:
 
@@ -82,28 +102,18 @@ ROOT o ADMIN no pueden saltarse la asignación salvo que sean la persona asignad
 
 Cada intención cliente incluye `request_key`.
 
-El cliente conserva esa clave mientras no tenga una respuesta concluyente.
-
-La ejecución registra el evento:
-
-`task_action_applied`
-
-con:
+La ejecución registra `task_action_applied` con:
 
 - `task_id`;
 - `action_key`;
 - `request_key`.
 
-Existe una restricción única por:
-
-`execution_id + request_key`
-
-para eventos de acción.
+Existe una restricción única por `execution_id + request_key` para eventos de acción.
 
 Repetir la misma solicitud:
 
 - devuelve el estado ya alcanzado;
-- no repite el histórico de tarea;
+- no repite el histórico;
 - no repite el evento;
 - no vuelve a aplicar la transición.
 
@@ -111,71 +121,74 @@ Reutilizar la misma clave para otra acción se rechaza como conflicto.
 
 ## 6. Estados sincronizados
 
-En esta fase las tareas de workflow usan los mismos estados de alto nivel que la ejecución:
+Las tareas de workflow y la ejecución comparten los estados de alto nivel:
 
 - `pending`;
 - `active`;
 - `waiting_review`;
 - `completed`;
 - `cancelled`;
-- `failed`.
+- `failed`;
+- `rejected`.
 
 Antes de aplicar una acción el servidor exige:
 
 `task.status = execution.status`
 
-Si no coincide, se rechaza con un error de integridad operacional; no se intenta “arreglar” silenciosamente.
+Un rechazo queda explícitamente en `rejected`; no se disfraza como `completed`.
 
 ## 7. Cierre automático
 
-Si la receta contiene únicamente el paso `accept` y `closeType=auto`, aceptar satisface todos los pasos configurados.
-
-Por tanto, la transición válida es:
+Si la receta contiene únicamente la puerta de decisión y `closeType=auto`, Aceptar satisface todos los pasos configurados:
 
 `pending → completed`
 
-y se fija `workflow_executions_v2.completed_at`.
+y fija `workflow_executions_v2.completed_at`.
 
-No se añade una acción “Completar” artificial que no exista en la receta.
+Rechazar no fija `completed_at`.
 
-## 8. Recetas con pasos todavía no implementados
+## 8. Recetas con otros pasos
 
-Si después de aceptar quedan:
+Si después de Aceptar quedan fotografía, checklist o documento, la ejecución pasa a `active`.
 
-- fotografía;
-- checklist;
-- documento;
+La evidencia fotográfica ya puede completar su propio paso conforme a `WORKFLOW_PHOTO_EVIDENCE_CONTRACT.md`.
 
-la ejecución pasa a `active`.
-
-No se publica una acción de cierre hasta que esos pasos tengan persistencia y validación propias.
-
-Esto impide completar una ejecución ignorando requisitos de la receta.
+Checklist y documento siguen sin poder simularse mediante una transición genérica.
 
 ## 9. Interfaz
 
-La pantalla `Flujos de Trabajo → Tareas`:
+`Flujos de Trabajo → Tareas`:
 
-- consulta las acciones activas visibles para cada tarea;
-- muestra solo acciones cuyo `from_status` coincide con el estado actual;
-- utiliza el RPC atómico para tareas de workflow;
-- conserva la clave de reintento durante errores de red/resultado incierto;
-- elimina la clave después de una respuesta concluyente;
-- recarga la tarea tras aplicar la acción.
+- muestra las acciones activas cuyo `from_status` coincide con el estado actual;
+- presenta Aceptar y Rechazar como una decisión del asignado;
+- solicita el motivo al pulsar Rechazar;
+- usa el RPC atómico;
+- conserva la clave de reintento durante errores de resultado incierto;
+- recarga la tarea tras una respuesta concluyente;
+- no habilita Foto antes de Aceptar cuando la receta exige esta decisión.
 
-Cuando una acción implica cierre automático, la etiqueta debe hacerlo explícito.
+El Creador presenta el paso como:
 
-## 10. Fuera de este incremento
+**Requerir decisión del asignado: Aceptar / Rechazar**
+
+aunque el contrato persistente mantenga la clave histórica `steps.accept`.
+
+## 10. Reasignación y notificaciones
+
+El estado `rejected` deja la ejecución cerrada como rechazo y conserva la Aplicación, por lo que administración puede iniciar una nueva ejecución y asignarla de nuevo sin alterar el histórico rechazado.
+
+La notificación automática al responsable y un asistente específico de reasignación deben reutilizar `notifications_v2` y la infraestructura común cuando se implementen; no se crea un sistema paralelo dentro de esta migración.
+
+## 11. Fuera de este incremento
 
 Siguen pendientes:
 
-- captura/evidencia fotográfica;
+- asistente automático de reasignación tras rechazo;
+- notificación operativa específica de rechazo;
 - checklist;
 - documento;
-- revisión humana;
-- cancelación operativa;
-- notificaciones;
+- revisión humana universal del workflow;
 - recurrencia automática;
 - adaptadores de dominio.
 
-Ninguno de esos pasos puede simularse mediante una transición genérica para hacer avanzar una tarea.
+Ninguna de esas capacidades puede simularse cambiando estados sin contrato.

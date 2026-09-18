@@ -242,7 +242,7 @@ Estado: **operativo con borrador persistente**.
 - asistente de siete pasos;
 - todos los apartados de negocio parten como **Pendiente** y requieren elección explícita;
 - permite guardar un borrador incompleto con identidad mínima;
-- `sessionStorage` conserva cambios locales mientras se edita;
+- `sessionStorage` conserva únicamente un borrador local todavía no ligado a una definición guardada; un flujo ya persistido no se restaura como si fuera uno nuevo;
 - “Guardar borrador” persiste la definición mediante RPC server-side;
 - un borrador guardado puede reabrirse por `id` y continuar editándose;
 - el guardado no publica ni crea tareas/ejecuciones/notificaciones;
@@ -344,7 +344,7 @@ El primer paso de evidencia/recurso ya está implementado para Fotografía. El *
 | Regla de asignación inicial | Snapshot en `workflow_executions_v2` | Manual y responsable de piso soportados; otras bloqueadas explícitamente |
 | Ejecución genérica | `workflow_executions_v2` | Fase inicial `pending` implementada |
 | Tarea materializada | `tenant_tasks_v2` + `source_kind/source_id` | Implementada e idempotente |
-| Acción atómica | `tenant_task_actions_v2` + `apply_workflow_task_action_v1` | `accept` implementado; tarea y ejecución cambian juntas |
+| Acción atómica | `tenant_task_actions_v2` + `apply_workflow_task_action_v1` | Decisión `accept/reject` implementada; rechazo exige motivo y mantiene tarea/ejecución sincronizadas |
 | Binding aplicación→foto | `workflow_application_photo_resources_v2` | Implementado con patrones reales del piso |
 | Snapshot ejecución→foto | `workflow_execution_photo_resources_v2` | Implementado; congela versión y silueta |
 | Eventos transversales de ejecución | `workflow_execution_events_v2` | Evento inicial `created`; ciclo completo pendiente |

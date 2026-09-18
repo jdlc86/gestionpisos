@@ -1,5 +1,5 @@
 .camera-launch{width:100%;border:0;border-radius:18px;padding:16px 18px;background:#111214;color:#fff;font:inherit;font-weight:750}
-.capture-preview{display:block;width:100%;margin-top:18px;border-radius:22px;max-height:66vh;object-fit:contain;background:#000}
+.capture-preview{display:block;width:100%;margin-top:18px;border-radius:22px;max-height:66vh;object-fit:contain;background:#000}.capture-preview[hidden]{display:none!important}
 .camera-message{min-height:22px;margin:12px 2px;color:#73767c;font-size:13px}
 .photo-camera[hidden]{display:none}
 .photo-camera{position:fixed;inset:0;z-index:10000;background:#000;overflow:hidden;touch-action:none}

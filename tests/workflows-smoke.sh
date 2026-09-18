@@ -74,6 +74,11 @@ grep -Fq 'Pendiente · selecciona cómo termina' docs/workflow-builder.html
 ! grep -Fq 'name="stepAccept" checked' docs/workflow-builder.html
 ! grep -Fq 'name="notifyOnCreate" checked' docs/workflow-builder.html
 grep -Fq 'const AUTHORING_VERSION=2' docs/workflow-builder.js
+grep -Fq 'gestionpisos.workflow-builder.draft.v3' docs/workflow-builder.js
+grep -Fq 'LEGACY_DRAFT_KEY' docs/workflow-builder.js
+grep -Fq 'if(loadingServerDraft||currentDefinitionId)return' docs/workflow-builder.js
+grep -Fq 'Requerir decisión del asignado: Aceptar / Rechazar' docs/workflow-builder.html
+grep -Fq 'Decisión Aceptar / Rechazar' docs/workflow-builder.js
 grep -Fq 'id="scheduledAt"' docs/workflow-builder.html
 grep -Fq 'id="customRecurrenceRow"' docs/workflow-builder.html
 grep -Fq '.builder-panel [hidden]{display:none!important}' docs/workflow-builder.css
@@ -92,7 +97,7 @@ grep -Fq 'id="photoBankLink"' docs/workflow-builder.html
 grep -Fq 'href="./photo-patterns.html?from=workflow-builder" hidden' docs/workflow-builder.html
 grep -Fq 'function updatePhotoResource()' docs/workflow-builder.js
 grep -Fq 'photoBankLink.hidden=!checked("stepPhoto")' docs/workflow-builder.js
-grep -Fq './workflow-builder.js?v=2026091806' docs/workflow-builder.html
+grep -Fq './workflow-builder.js?v=2026091807' docs/workflow-builder.html
 
 grep -Fq 'workflow_definitions_v2' docs/workflow-definitions.js
 grep -Fq 'Borrador incompleto' docs/workflow-definitions.js
@@ -140,9 +145,14 @@ grep -Fq 'apply_workflow_task_action_v1' docs/workflow-tasks.js
 grep -Fq 'ACTION_KEY_PREFIX' docs/workflow-tasks.js
 grep -Fq 'Aceptar y completar' docs/WORKFLOW_ACTIONS_CONTRACT.md
 grep -Fq 'Tarea y ejecución actualizadas juntas' docs/workflow-tasks.js
+grep -Fq 'Indica el motivo del rechazo:' docs/workflow-tasks.js
+grep -Fq 'task-action--reject' docs/workflow-tasks.js
+grep -Fq 'task-action--reject' docs/workflow-tasks.css
+grep -Fq 'Rechazar' docs/WORKFLOW_ACTIONS_CONTRACT.md
+grep -Fq 'motivo obligatorio' docs/WORKFLOW_ACTIONS_CONTRACT.md
 grep -Fq 'task-actions' docs/workflow-tasks.css
-grep -Fq './workflow-tasks.css?v=2026091803' docs/workflow-tasks.html
-grep -Fq './workflow-tasks.js?v=2026091803' docs/workflow-tasks.html
+grep -Fq './workflow-tasks.css?v=2026091804' docs/workflow-tasks.html
+grep -Fq './workflow-tasks.js?v=2026091804' docs/workflow-tasks.html
 grep -Fq 'cambian tarea y ejecución juntas' docs/workflow-tasks.html
 
 grep -Fq 'workflow_execution_photo_resources_v2' docs/workflow-tasks.js

@@ -83,7 +83,7 @@ No se reutiliza `generic` porque sus plantillas actuales pertenecen al actor `te
 
 Las acciones específicas de workflow se derivan del `spec_snapshot` congelado de la ejecución.
 
-El primer incremento de acciones soporta `steps.accept=true` conforme a `WORKFLOW_ACTIONS_CONTRACT.md`. Ninguna acción de workflow puede usar el RPC legacy si eso permite cambiar solo la tarea.
+Cuando `steps.accept=true`, la tarea exige la decisión del asignado **Aceptar / Rechazar** conforme a `WORKFLOW_ACTIONS_CONTRACT.md`. La clave técnica se conserva por compatibilidad con versiones publicadas. Ninguna acción de workflow puede usar el RPC legacy si eso permite cambiar solo la tarea.
 
 ## 6. RLS y privilegios
 

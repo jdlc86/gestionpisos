@@ -963,7 +963,7 @@ select set_config(
   true
 );
 
-do $
+do $$
 begin
   begin
     perform * from public.execute_workflow_application_now_v1(
@@ -975,7 +975,7 @@ begin
   exception when insufficient_privilege then null;
   end;
 end;
-$;
+$$;
 
 -- ROOT vuelve a lanzar el caso manual exacto y se asigna explícitamente.
 select set_config(
@@ -988,7 +988,7 @@ select set_config(
   true
 );
 
-do $
+do $$
 begin
   begin
     perform * from public.execute_workflow_application_now_v1(
@@ -1000,7 +1000,7 @@ begin
   exception when invalid_parameter_value then null;
   end;
 end;
-$;
+$$;
 
 select set_config(
   'gestionpisos.workflow_execution_id',
@@ -1016,7 +1016,7 @@ select set_config(
   true
 );
 
-do $
+do $$
 declare
   v_execution public.workflow_executions_v2;
   v_events integer;
@@ -1056,10 +1056,10 @@ begin
     raise exception 'workflow execution did not create exactly one initial event';
   end if;
 end;
-$;
+$$;
 
 -- Reintentar la misma intención devuelve la ejecución existente y no duplica eventos.
-do $
+do $$
 declare
   v_execution_id uuid;
   v_created_new boolean;
@@ -1095,10 +1095,10 @@ begin
     raise exception 'workflow execution idempotency duplicated execution or event';
   end if;
 end;
-$;
+$$;
 
 -- El cliente authenticated no puede fabricar ejecuciones saltándose el RPC.
-do $
+do $$
 begin
   begin
     insert into public.workflow_executions_v2(
@@ -1125,10 +1125,10 @@ begin
   exception when insufficient_privilege then null;
   end;
 end;
-$;
+$$;
 
 -- La tabla de aplicaciones tampoco admite escritura directa desde authenticated.
-do $
+do $$
 begin
   begin
     insert into public.workflow_applications_v2(
@@ -1152,7 +1152,7 @@ select public.archive_workflow_application_v1(
   current_setting('gestionpisos.workflow_property_application_id')::uuid
 );
 
-do $
+do $$
 declare v_status text;
 begin
   select status into v_status
@@ -1162,9 +1162,9 @@ begin
     raise exception 'workflow application archive failed';
   end if;
 end;
-$;
+$$;
 
-do $
+do $$
 begin
   begin
     perform * from public.execute_workflow_application_now_v1(
@@ -1176,7 +1176,7 @@ begin
   exception when object_not_in_prerequisite_state then null;
   end;
 end;
-$;
+$$;
 
 select * from public.create_workflow_application_v1(
   current_setting('gestionpisos.workflow_property_version_id')::uuid,

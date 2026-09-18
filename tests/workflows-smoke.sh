@@ -139,6 +139,7 @@ grep -Fq 'tenant_tasks_v2' docs/WORKFLOW_TASKS_CONTRACT.md
 grep -Fq "source_kind='workflow_execution'" docs/WORKFLOW_TASKS_CONTRACT.md
 grep -Fq 'materialize_workflow_execution_task_v1' docs/WORKFLOW_TASKS_CONTRACT.md
 grep -Fq 'workflow_tasks' docs/WORKFLOW_TASKS_CONTRACT.md
+node --check docs/workflow-tasks.js
 grep -Fq 'tenant_tasks_v2' docs/workflow-tasks.js
 grep -Fq 'source_kind' docs/workflow-tasks.js
 grep -Fq 'apply_workflow_task_action_v1' docs/workflow-tasks.js

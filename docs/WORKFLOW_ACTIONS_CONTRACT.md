@@ -173,13 +173,56 @@ El Creador presenta el paso como:
 
 aunque el contrato persistente mantenga la clave histórica `steps.accept`.
 
-## 10. Reasignación y notificaciones
+## 10. Revisión humana
+
+Cuando `closeType=human_review`, completar los pasos operativos no cierra automáticamente el workflow. Tarea + ejecución pasan juntas a:
+
+`waiting_review`
+
+La revisión reutiliza infraestructura existente y distingue dos casos.
+
+### Sin evidencia fotográfica
+
+Para recetas que llegan a `waiting_review` sin recursos Foto, `tenant_task_actions_v2` publica acciones de actor `agency`:
+
+- `review_approve`: **Aprobar revisión** → `waiting_review → completed`;
+- `review_reject`: **Rechazar revisión** → `waiting_review → rejected`, con motivo obligatorio.
+
+En este primer incremento, `agency` significa ROOT activo o ADMIN activo de la organización, validado server-side mediante el contrato de gestión de workflows.
+
+El asignado normal puede ver que su tarea espera revisión, pero no adquiere capacidad de aprobarse a sí mismo por ser el asignado.
+
+### Con evidencia fotográfica
+
+Si la ejecución contiene recursos Foto, **no se publican acciones agency genéricas en la tarea**. La decisión se realiza desde la revisión de Fotoverificaciones para que el revisor vea la evidencia real.
+
+`apply_workflow_photo_review_v1` reutiliza `apply_photo_verification_review_v2` y mantiene la transición del workflow en la misma transacción lógica:
+
+- cada run queda `approved` o `rejected`;
+- el workflow permanece `waiting_review` mientras exista alguna foto sin decisión;
+- cuando todas están revisadas, si todas están aprobadas → tarea + ejecución `completed`;
+- cuando todas están revisadas y al menos una está rechazada → tarea + ejecución `rejected`;
+- el rechazo conserva los motivos de las evidencias;
+- los reintentos de la misma decisión no duplican histórico.
+
+La UI de Tareas enlaza a Fotoverificaciones filtrada por `workflow_execution_id`; no ofrece aprobación “a ciegas” sin mostrar la imagen.
+
+### Historial
+
+El cierre de revisión registra:
+
+- `tenant_task_history_v2` con `review_approve` o `review_reject`;
+- `workflow_execution_events_v2`;
+- `audit_log_v2`;
+- revisor y decisión de cada `photo_verification_run_v2` cuando existe Foto.
+
+## 11. Reasignación y notificaciones
 
 El estado `rejected` deja la ejecución cerrada como rechazo y conserva la Aplicación, por lo que administración puede iniciar una nueva ejecución y asignarla de nuevo sin alterar el histórico rechazado.
 
 La notificación automática al responsable y un asistente específico de reasignación deben reutilizar `notifications_v2` y la infraestructura común cuando se implementen; no se crea un sistema paralelo dentro de esta migración.
 
-## 11. Fuera de este incremento
+## 12. Fuera de este incremento
 
 Siguen pendientes:
 
@@ -187,7 +230,6 @@ Siguen pendientes:
 - notificación operativa específica de rechazo;
 - checklist;
 - documento;
-- revisión humana universal del workflow;
 - recurrencia automática;
 - adaptadores de dominio.
 

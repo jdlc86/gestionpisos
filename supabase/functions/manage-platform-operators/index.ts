@@ -224,7 +224,7 @@ Deno.serve(async (req: Request) => {
   if (action === "list") {
     const { data: rows, error } = await admin
       .from("platform_operators")
-      .select("user_id,display_name,active,can_recover_root,created_at,updated_at")
+      .select("user_id,display_name,active,can_recover_root,identity_email,created_at,updated_at")
       .order("created_at", { ascending: true });
     if (error) return json(500, { error: "operator_list_failed" });
 
@@ -236,9 +236,13 @@ Deno.serve(async (req: Request) => {
       const factorCount = target ? await verifiedFactorCount(supabaseUrl, serviceKey, row.user_id) : null;
       const mfaReady = typeof factorCount === "number" ? factorCount > 0 : null;
       if (row.active === true && row.can_recover_root === true && mfaReady === true) readyRootRecoveryCount += 1;
+      const authEmail = String(target?.email || "").trim().toLowerCase();
+      const identityEmail = String(row.identity_email || "").trim().toLowerCase();
       operators.push({
         ...row,
-        email: String(target?.email || ""),
+        email: authEmail,
+        identity_email: identityEmail,
+        email_consistent: Boolean(authEmail && identityEmail && authEmail === identityEmail),
         auth_user_exists: Boolean(target),
         invitation_pending: target?.user_metadata?.platform_operator_invitation_pending === true,
         mfa_ready: mfaReady,

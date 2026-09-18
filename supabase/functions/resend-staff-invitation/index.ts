@@ -103,6 +103,10 @@ Deno.serve(async (req: Request) => {
     });
   } catch (error) {
     console.error(error);
+    const message = String((error as Error)?.message || "");
+    if (message.includes("internal_staff_invitation_email_mismatch")) {
+      return json(409, { error: "internal_staff_invitation_email_mismatch" });
+    }
     return json(500, { error: "invitation_send_failed" });
   }
 });

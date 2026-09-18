@@ -20,12 +20,14 @@ grep -Fq 'Un símbolo' docs/activate-account.html
 grep -Fq 'Las contraseñas coinciden' docs/activate-account.html
 grep -Fq 'complete-staff-onboarding' docs/activate-account.js
 grep -Fq 'auth_metadata_synced' docs/activate-account.js
-grep -Fq 'activate-account.js?v=2026091701' docs/activate-account.html
+grep -Fq 'activate-account.js?v=2026091801' docs/activate-account.html
 grep -Fq 'passwordPolicyValid()' docs/activate-account.js
 grep -Fq 'symbolPattern.test(value)' docs/activate-account.js
 grep -Fq 'updateUser({ password: password.value })' docs/activate-account.js
 grep -Fq 'Cuenta activada. Ya puedes iniciar sesión.' docs/login.js
 grep -Fq 'get_my_internal_staff_onboarding' docs/auth-guard.js
+grep -Fq 'state.email_consistent !== true' docs/activate-account.js
+grep -Fq 'revoque el alta y cree una nueva identidad' docs/activate-account.js
 
 grep -Fq 'qsxtmmkftsohkqqmytbb.supabase.co' docs/accept-invitation.js
 grep -Fq 'url.pathname !== "/auth/v1/verify"' docs/accept-invitation.js
@@ -46,6 +48,13 @@ grep -Fq 'https://api.resend.com/emails' supabase/functions/_shared/staff-onboar
 grep -Fq 'RESEND_API_KEY' supabase/functions/_shared/staff-onboarding-email.ts
 grep -Fq 'AUTH_EMAIL_FROM' supabase/functions/_shared/staff-onboarding-email.ts
 grep -Fq 'accept-invitation.html' supabase/functions/_shared/staff-onboarding-email.ts
+grep -Fq 'assertStaffInvitationEmailInvariant' supabase/functions/_shared/staff-onboarding-email.ts
+grep -Fq '.select("invitation_email,status")' supabase/functions/_shared/staff-onboarding-email.ts
+grep -Fq 'admin.auth.admin.getUserById(input.userId)' supabase/functions/_shared/staff-onboarding-email.ts
+grep -Fq 'internal_staff_invitation_email_mismatch' supabase/functions/_shared/staff-onboarding-email.ts
+grep -Fq 'email: invitationEmail' supabase/functions/_shared/staff-onboarding-email.ts
+grep -Fq 'to: [invitationEmail]' supabase/functions/_shared/staff-onboarding-email.ts
+grep -Fq 'internal_staff_invitation_email_mismatch' supabase/functions/resend-staff-invitation/index.ts
 ! grep -Fq 'action_link:' supabase/functions/create-organization-user/index.ts
 
 grep -Fq 'complete_internal_staff_onboarding' supabase/functions/complete-staff-onboarding/index.ts

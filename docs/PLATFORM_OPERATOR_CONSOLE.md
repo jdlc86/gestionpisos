@@ -12,6 +12,17 @@ La consola de recuperación MFA es una herramienta técnica separada de GestionP
 - La sesión de la consola usa una clave de almacenamiento distinta de la sesión normal de GestionPisos.
 - Un operador nunca recibe ni visualiza la credencial de servicio del proyecto.
 
+## Identidad y email canónico
+
+Cada operador técnico queda ligado a un `identity_email` canónico almacenado junto a su autorización de plataforma.
+
+- `identity_email` se toma del email Auth al crear la identidad y después es inmutable.
+- Cambiar el email Auth fuera del flujo esperado no transfiere la autorización al nuevo correo.
+- Si Auth y `identity_email` dejan de coincidir, `operator-mfa-recovery` rechaza incluso la comprobación `status`; por tanto la identidad no puede listar, aprobar ni rechazar recuperaciones.
+- ROOT puede seguir desactivando una identidad con deriva de email para contener el incidente.
+- Reactivar, modificar capacidades o reutilizar esa identidad queda bloqueado hasta reprovisionar una identidad técnica nueva.
+- La activación inicial valida la coincidencia antes de permitir establecer la contraseña.
+
 ## Capacidades
 
 `operator-mfa-recovery` expone solo las acciones controladas `status`, `list`, `approve` y `reject`.

@@ -33,6 +33,20 @@ El modelo actual es de una identidad/rol principal por cuenta. Si un email ya co
 
 El futuro/autoservicio mediante QR conserva estas reglas: el QR solo inicia identificación/solicitud, nunca concede acceso. La ocupación debe coincidir con la solicitud, el acceso requiere aprobación cuando proceda y la activación termina con contraseña personal y vínculo Auth verificable.
 
+## Invariante global de email de invitación
+
+Toda invitación de acceso queda ligada a **una identidad concreta y a un email canónico concreto**.
+
+- Una invitación nunca se traslada silenciosamente a otro correo.
+- Si cambia el correo antes de activar una cuenta externa (OWNER/TENANT), la invitación anterior debe revocarse y la identidad pendiente anterior debe quedar inutilizada antes de crear una nueva.
+- El onboarding de ADMIN/EMPLOYEE conserva `invitation_email`; mientras esté `pending` o `active`, ese valor debe coincidir con el email del perfil y con el email de Auth.
+- Reenviar o completar una activación interna debe fallar si existe cualquier deriva entre esos tres valores.
+- El email de una identidad interna ya activada no se modifica desde una edición ordinaria: requiere un flujo específico de cambio de cuenta.
+- Los operadores de emergencia conservan `identity_email` como vínculo inmutable de su identidad técnica. Cambiar el correo exige desactivar/reprovisionar otra identidad; la consola de recuperación rechaza identidades cuyo email Auth ya no coincide.
+- Los controles anteriores se validan en backend/base de datos además de en interfaz. No dependen de que el cliente se comporte correctamente.
+
+Esta regla se aplica a todo nuevo flujo de invitación que se añada al producto.
+
 ## Recuperación
 
 - “Olvidé mi contraseña” → email → enlace de un solo uso → nueva contraseña.

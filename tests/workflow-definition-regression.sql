@@ -48,6 +48,27 @@ begin
   if has_function_privilege('authenticated','public.workflow_seed_task_actions_internal_v1(uuid)','EXECUTE') then
     raise exception 'authenticated can execute internal workflow action seed helper';
   end if;
+  if has_function_privilege('anon','public.create_workflow_application_v2(uuid,uuid,uuid,uuid,uuid[])','EXECUTE') then
+    raise exception 'anon can execute photo-aware workflow application RPC';
+  end if;
+  if not has_function_privilege('authenticated','public.create_workflow_application_v2(uuid,uuid,uuid,uuid,uuid[])','EXECUTE') then
+    raise exception 'authenticated cannot execute photo-aware workflow application RPC';
+  end if;
+  if has_function_privilege('anon','public.start_workflow_photo_verification_v1(uuid)','EXECUTE') then
+    raise exception 'anon can start workflow photo verification';
+  end if;
+  if not has_function_privilege('authenticated','public.start_workflow_photo_verification_v1(uuid)','EXECUTE') then
+    raise exception 'authenticated cannot start workflow photo verification';
+  end if;
+  if has_function_privilege('anon','public.submit_workflow_photo_verification_v1(uuid,uuid,text)','EXECUTE') then
+    raise exception 'anon can submit workflow photo verification';
+  end if;
+  if not has_function_privilege('authenticated','public.submit_workflow_photo_verification_v1(uuid,uuid,text)','EXECUTE') then
+    raise exception 'authenticated cannot submit workflow photo verification';
+  end if;
+  if has_function_privilege('authenticated','public.workflow_snapshot_photo_resources_internal_v1(uuid)','EXECUTE') then
+    raise exception 'authenticated can execute internal workflow photo snapshot helper';
+  end if;
 end;
 $$;
 
@@ -1433,6 +1454,665 @@ begin
     raise exception 'workflow action request key conflict unexpectedly succeeded';
   exception when object_not_in_prerequisite_state then null;
   end;
+end;
+$$;
+
+-- Evidencia fotográfica: patrón real, binding en Aplicación, snapshot por ejecución y cierre transaccional.
+reset role;
+
+select set_config('gestionpisos.workflow_photo_pattern_1','dddddddd-dddd-4ddd-8ddd-dddddddddddd',true);
+
+insert into public.photo_patterns_v2(
+  id,organization_id,property_id,name,target_type,target_key,
+  reference_storage_path,contour_data,version,active,created_by
+) values (
+  current_setting('gestionpisos.workflow_photo_pattern_1')::uuid,
+  current_setting('gestionpisos.workflow_org_1')::uuid,
+  current_setting('gestionpisos.workflow_property_1')::uuid,
+  'Patrón workflow cocina',
+  'zone',
+  'Cocina',
+  current_setting('gestionpisos.workflow_org_1')||'/patterns/workflow-photo/reference.jpg',
+  jsonb_build_object(
+    'image',jsonb_build_object('width',1200,'height',900),
+    'strokes',jsonb_build_array(
+      jsonb_build_object(
+        'kind','rect',
+        'raw_points',jsonb_build_array(
+          jsonb_build_array(0.10,0.10),
+          jsonb_build_array(0.70,0.70)
+        )
+      )
+    )
+  ),
+  1,
+  true,
+  current_setting('gestionpisos.workflow_root')::uuid
+);
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub',current_setting('gestionpisos.workflow_root'),
+    'role','authenticated',
+    'aal','aal2'
+  )::text,
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_photo_definition_id',
+  (
+    select definition_id::text
+    from public.save_workflow_definition_draft_v1(
+      jsonb_build_object(
+        'authoringVersion',2,
+        'flowName','Inspección fotográfica workflow',
+        'flowType','inspection',
+        'flowDescription','Regresión foto workflow',
+        'scopeType','property',
+        'triggerType','manual',
+        'recurrence','',
+        'assignmentType','manual',
+        'steps',jsonb_build_object('accept',true,'photo',true,'checklist',false,'document',false),
+        'closeType','auto',
+        'notifications',jsonb_build_object('onCreate',false,'onClose',false)
+      )
+    )
+    limit 1
+  ),
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_photo_version_id',
+  (
+    select version_id::text
+    from public.publish_workflow_definition_v1(
+      current_setting('gestionpisos.workflow_photo_definition_id')::uuid,
+      1
+    )
+    limit 1
+  ),
+  true
+);
+
+-- La ruta v1 ya no puede crear una aplicación de una receta con Foto sin recursos.
+do $$
+begin
+  begin
+    perform * from public.create_workflow_application_v1(
+      current_setting('gestionpisos.workflow_photo_version_id')::uuid,
+      current_setting('gestionpisos.workflow_property_1')::uuid
+    );
+    raise exception 'legacy application RPC unexpectedly accepted a photo workflow';
+  exception when feature_not_supported then null;
+  end;
+end;
+$$;
+
+-- La ruta foto-aware exige al menos un patrón real.
+do $$
+begin
+  begin
+    perform * from public.create_workflow_application_v2(
+      current_setting('gestionpisos.workflow_photo_version_id')::uuid,
+      current_setting('gestionpisos.workflow_property_1')::uuid,
+      null,
+      null,
+      '{}'::uuid[]
+    );
+    raise exception 'photo workflow application without patterns unexpectedly succeeded';
+  exception when invalid_parameter_value then null;
+  end;
+end;
+$$;
+
+select set_config(
+  'gestionpisos.workflow_photo_application_id',
+  (
+    select application_id::text
+    from public.create_workflow_application_v2(
+      current_setting('gestionpisos.workflow_photo_version_id')::uuid,
+      current_setting('gestionpisos.workflow_property_1')::uuid,
+      null,
+      null,
+      array[current_setting('gestionpisos.workflow_photo_pattern_1')::uuid]
+    )
+    limit 1
+  ),
+  true
+);
+
+do $$
+declare
+  v_count integer;
+  v_pattern uuid;
+  v_order integer;
+begin
+  select count(*),min(pattern_id),min(sort_order)
+  into v_count,v_pattern,v_order
+  from public.workflow_application_photo_resources_v2
+  where application_id=current_setting('gestionpisos.workflow_photo_application_id')::uuid;
+
+  if v_count<>1
+    or v_pattern<>current_setting('gestionpisos.workflow_photo_pattern_1')::uuid
+    or v_order<>1 then
+    raise exception 'workflow application photo binding was not persisted correctly';
+  end if;
+end;
+$$;
+
+select set_config(
+  'gestionpisos.workflow_photo_execution_id',
+  (
+    select execution_id::text
+    from public.execute_workflow_application_now_v1(
+      current_setting('gestionpisos.workflow_photo_application_id')::uuid,
+      'workflow-photo-execution-001',
+      current_setting('gestionpisos.workflow_root')::uuid
+    )
+    limit 1
+  ),
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_photo_task_id',
+  (
+    select id::text
+    from public.tenant_tasks_v2
+    where source_kind='workflow_execution'
+      and source_id=current_setting('gestionpisos.workflow_photo_execution_id')::uuid
+    limit 1
+  ),
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_photo_resource_id',
+  (
+    select id::text
+    from public.workflow_execution_photo_resources_v2
+    where execution_id=current_setting('gestionpisos.workflow_photo_execution_id')::uuid
+    order by sort_order
+    limit 1
+  ),
+  true
+);
+
+do $$
+declare
+  v_resource public.workflow_execution_photo_resources_v2;
+  v_task_status text;
+  v_execution_status text;
+begin
+  select * into v_resource
+  from public.workflow_execution_photo_resources_v2
+  where id=current_setting('gestionpisos.workflow_photo_resource_id')::uuid;
+
+  select status into v_task_status
+  from public.tenant_tasks_v2
+  where id=current_setting('gestionpisos.workflow_photo_task_id')::uuid;
+
+  select status into v_execution_status
+  from public.workflow_executions_v2
+  where id=current_setting('gestionpisos.workflow_photo_execution_id')::uuid;
+
+  if v_resource.id is null
+    or v_resource.pattern_id<>current_setting('gestionpisos.workflow_photo_pattern_1')::uuid
+    or v_resource.pattern_version<>1
+    or not v_resource.requires_accept
+    or v_resource.status<>'pending'
+    or jsonb_array_length(v_resource.pattern_snapshot->'contour_data'->'strokes')<>1
+    or v_task_status<>'pending'
+    or v_execution_status<>'pending' then
+    raise exception 'workflow photo execution snapshot/state is invalid';
+  end if;
+end;
+$$;
+
+-- El snapshot no cambia si el recurso original se versiona después.
+reset role;
+update public.photo_patterns_v2
+set version=2,
+    contour_data=jsonb_build_object(
+      'image',jsonb_build_object('width',1200,'height',900),
+      'strokes',jsonb_build_array(
+        jsonb_build_object(
+          'kind','line',
+          'raw_points',jsonb_build_array(
+            jsonb_build_array(0.20,0.20),
+            jsonb_build_array(0.80,0.80)
+          )
+        )
+      )
+    )
+where id=current_setting('gestionpisos.workflow_photo_pattern_1')::uuid;
+
+do $$
+declare
+  v_version integer;
+  v_kind text;
+begin
+  select pattern_version,pattern_snapshot->'contour_data'->'strokes'->0->>'kind'
+  into v_version,v_kind
+  from public.workflow_execution_photo_resources_v2
+  where id=current_setting('gestionpisos.workflow_photo_resource_id')::uuid;
+
+  if v_version<>1 or v_kind<>'rect' then
+    raise exception 'workflow photo snapshot changed after pattern edit';
+  end if;
+end;
+$$;
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub',current_setting('gestionpisos.workflow_root'),
+    'role','authenticated',
+    'aal','aal2'
+  )::text,
+  true
+);
+
+-- Accept no completa el flujo: queda active porque la fotografía sigue pendiente.
+do $$
+declare
+  v_task_status text;
+  v_execution_status text;
+begin
+  select task_status,execution_status
+  into v_task_status,v_execution_status
+  from public.apply_workflow_task_action_v1(
+    current_setting('gestionpisos.workflow_photo_task_id')::uuid,
+    'accept',
+    'workflow-photo-accept-001',
+    null
+  )
+  limit 1;
+
+  if v_task_status<>'active' or v_execution_status<>'active' then
+    raise exception 'photo workflow accept did not stop at active';
+  end if;
+end;
+$$;
+
+-- Un usuario no asignado no puede iniciar la captura.
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub',current_setting('gestionpisos.workflow_tenant'),
+    'role','authenticated',
+    'aal','aal2'
+  )::text,
+  true
+);
+
+do $$
+begin
+  begin
+    perform * from public.start_workflow_photo_verification_v1(
+      current_setting('gestionpisos.workflow_photo_resource_id')::uuid
+    );
+    raise exception 'unassigned tenant unexpectedly started workflow photo capture';
+  exception when insufficient_privilege then null;
+  end;
+end;
+$$;
+
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub',current_setting('gestionpisos.workflow_root'),
+    'role','authenticated',
+    'aal','aal2'
+  )::text,
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_photo_run_id',
+  (
+    select run_id::text
+    from public.start_workflow_photo_verification_v1(
+      current_setting('gestionpisos.workflow_photo_resource_id')::uuid
+    )
+    limit 1
+  ),
+  true
+);
+
+do $$
+declare
+  v_run_id uuid;
+  v_created_new boolean;
+  v_source_type text;
+  v_source_id uuid;
+  v_actor uuid;
+  v_resource_status text;
+begin
+  select run_id,created_new
+  into v_run_id,v_created_new
+  from public.start_workflow_photo_verification_v1(
+    current_setting('gestionpisos.workflow_photo_resource_id')::uuid
+  )
+  limit 1;
+
+  select source_type,source_id,actor_user_id
+  into v_source_type,v_source_id,v_actor
+  from public.photo_verification_runs_v2
+  where id=current_setting('gestionpisos.workflow_photo_run_id')::uuid;
+
+  select status into v_resource_status
+  from public.workflow_execution_photo_resources_v2
+  where id=current_setting('gestionpisos.workflow_photo_resource_id')::uuid;
+
+  if v_run_id<>current_setting('gestionpisos.workflow_photo_run_id')::uuid
+    or v_created_new
+    or v_source_type<>'workflow_execution'
+    or v_source_id<>current_setting('gestionpisos.workflow_photo_execution_id')::uuid
+    or v_actor<>current_setting('gestionpisos.workflow_root')::uuid
+    or v_resource_status<>'capturing' then
+    raise exception 'workflow photo start/retry is not idempotent or correctly linked';
+  end if;
+end;
+$$;
+
+-- El navegador no puede inventar un run workflow_execution directamente.
+do $$
+begin
+  begin
+    insert into public.photo_verification_runs_v2(
+      organization_id,property_id,actor_user_id,source_type,source_id,verification_mode,status,purpose
+    ) values (
+      current_setting('gestionpisos.workflow_org_1')::uuid,
+      current_setting('gestionpisos.workflow_property_1')::uuid,
+      current_setting('gestionpisos.workflow_root')::uuid,
+      'workflow_execution',
+      current_setting('gestionpisos.workflow_photo_execution_id')::uuid,
+      'manual',
+      'capturing',
+      'general'
+    );
+    raise exception 'direct workflow photo run insert unexpectedly succeeded';
+  exception when insufficient_privilege then null;
+  end;
+end;
+$$;
+
+-- Simular el item + JPEG privado ya subido por la infraestructura de cámara.
+reset role;
+select set_config('gestionpisos.workflow_photo_item_id','eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',true);
+
+insert into public.photo_verification_items_v2(
+  id,run_id,pattern_id,storage_path,alignment_score,alignment_meta
+) values (
+  current_setting('gestionpisos.workflow_photo_item_id')::uuid,
+  current_setting('gestionpisos.workflow_photo_run_id')::uuid,
+  current_setting('gestionpisos.workflow_photo_pattern_1')::uuid,
+  current_setting('gestionpisos.workflow_org_1')||'/'||
+    current_setting('gestionpisos.workflow_photo_run_id')||'/'||
+    current_setting('gestionpisos.workflow_photo_item_id')||'.jpg',
+  0.75,
+  jsonb_build_object('algorithm','local-edge-v2','zones',jsonb_build_array(0.5,0.5))
+);
+
+insert into storage.objects(bucket_id,name,owner_id)
+values (
+  'photo-verification',
+  current_setting('gestionpisos.workflow_org_1')||'/'||
+    current_setting('gestionpisos.workflow_photo_run_id')||'/'||
+    current_setting('gestionpisos.workflow_photo_item_id')||'.jpg',
+  current_setting('gestionpisos.workflow_root')
+);
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub',current_setting('gestionpisos.workflow_root'),
+    'role','authenticated',
+    'aal','aal2'
+  )::text,
+  true
+);
+
+do $$
+declare
+  v_resource_status text;
+  v_all_complete boolean;
+  v_task_status text;
+  v_execution_status text;
+  v_applied_new boolean;
+begin
+  select photo_resource_status,all_photos_complete,task_status,execution_status,applied_new
+  into v_resource_status,v_all_complete,v_task_status,v_execution_status,v_applied_new
+  from public.submit_workflow_photo_verification_v1(
+    current_setting('gestionpisos.workflow_photo_run_id')::uuid,
+    current_setting('gestionpisos.workflow_photo_item_id')::uuid,
+    'workflow-photo-submit-001'
+  )
+  limit 1;
+
+  if v_resource_status<>'submitted'
+    or not v_all_complete
+    or v_task_status<>'completed'
+    or v_execution_status<>'completed'
+    or not v_applied_new then
+    raise exception 'workflow photo submit did not complete resource/task/execution atomically';
+  end if;
+end;
+$$;
+
+do $$
+declare
+  v_run_status text;
+  v_resource_status text;
+  v_task_status text;
+  v_execution_status text;
+  v_completed_at timestamptz;
+  v_history integer;
+  v_events integer;
+begin
+  select status into v_run_status
+  from public.photo_verification_runs_v2
+  where id=current_setting('gestionpisos.workflow_photo_run_id')::uuid;
+
+  select status into v_resource_status
+  from public.workflow_execution_photo_resources_v2
+  where id=current_setting('gestionpisos.workflow_photo_resource_id')::uuid;
+
+  select status into v_task_status
+  from public.tenant_tasks_v2
+  where id=current_setting('gestionpisos.workflow_photo_task_id')::uuid;
+
+  select status,completed_at into v_execution_status,v_completed_at
+  from public.workflow_executions_v2
+  where id=current_setting('gestionpisos.workflow_photo_execution_id')::uuid;
+
+  select count(*) into v_history
+  from public.tenant_task_history_v2
+  where task_id=current_setting('gestionpisos.workflow_photo_task_id')::uuid
+    and action_key='photo_complete'
+    and from_status='active'
+    and to_status='completed';
+
+  select count(*) into v_events
+  from public.workflow_execution_events_v2
+  where execution_id=current_setting('gestionpisos.workflow_photo_execution_id')::uuid
+    and event_type='photo_evidence_submitted'
+    and details->>'request_key'='workflow-photo-submit-001';
+
+  if v_run_status<>'submitted'
+    or v_resource_status<>'submitted'
+    or v_task_status<>'completed'
+    or v_execution_status<>'completed'
+    or v_completed_at is null
+    or v_history<>1
+    or v_events<>1 then
+    raise exception 'workflow photo final state/history is inconsistent';
+  end if;
+end;
+$$;
+
+-- Reintentar el submit no duplica histórico ni evento.
+do $$
+declare
+  v_applied_new boolean;
+  v_history integer;
+  v_events integer;
+begin
+  select applied_new
+  into v_applied_new
+  from public.submit_workflow_photo_verification_v1(
+    current_setting('gestionpisos.workflow_photo_run_id')::uuid,
+    current_setting('gestionpisos.workflow_photo_item_id')::uuid,
+    'workflow-photo-submit-001'
+  )
+  limit 1;
+
+  if v_applied_new then
+    raise exception 'workflow photo submit retry claimed a new transition';
+  end if;
+
+  select count(*) into v_history
+  from public.tenant_task_history_v2
+  where task_id=current_setting('gestionpisos.workflow_photo_task_id')::uuid
+    and action_key='photo_complete';
+
+  select count(*) into v_events
+  from public.workflow_execution_events_v2
+  where execution_id=current_setting('gestionpisos.workflow_photo_execution_id')::uuid
+    and event_type='photo_evidence_submitted'
+    and details->>'request_key'='workflow-photo-submit-001';
+
+  if v_history<>1 or v_events<>1 then
+    raise exception 'workflow photo retry duplicated history/event';
+  end if;
+end;
+$$;
+
+-- Foto sin paso Aceptar: iniciar la captura activa tarea + ejecución.
+select set_config(
+  'gestionpisos.workflow_photo_no_accept_definition_id',
+  (
+    select definition_id::text
+    from public.save_workflow_definition_draft_v1(
+      jsonb_build_object(
+        'authoringVersion',2,
+        'flowName','Foto directa workflow',
+        'flowType','inspection',
+        'flowDescription','',
+        'scopeType','property',
+        'triggerType','manual',
+        'recurrence','',
+        'assignmentType','manual',
+        'steps',jsonb_build_object('accept',false,'photo',true,'checklist',false,'document',false),
+        'closeType','auto',
+        'notifications',jsonb_build_object('onCreate',false,'onClose',false)
+      )
+    )
+    limit 1
+  ),
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_photo_no_accept_version_id',
+  (
+    select version_id::text
+    from public.publish_workflow_definition_v1(
+      current_setting('gestionpisos.workflow_photo_no_accept_definition_id')::uuid,
+      1
+    )
+    limit 1
+  ),
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_photo_no_accept_application_id',
+  (
+    select application_id::text
+    from public.create_workflow_application_v2(
+      current_setting('gestionpisos.workflow_photo_no_accept_version_id')::uuid,
+      current_setting('gestionpisos.workflow_property_1')::uuid,
+      null,
+      null,
+      array[current_setting('gestionpisos.workflow_photo_pattern_1')::uuid]
+    )
+    limit 1
+  ),
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_photo_no_accept_execution_id',
+  (
+    select execution_id::text
+    from public.execute_workflow_application_now_v1(
+      current_setting('gestionpisos.workflow_photo_no_accept_application_id')::uuid,
+      'workflow-photo-no-accept-001',
+      current_setting('gestionpisos.workflow_root')::uuid
+    )
+    limit 1
+  ),
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_photo_no_accept_resource_id',
+  (
+    select id::text
+    from public.workflow_execution_photo_resources_v2
+    where execution_id=current_setting('gestionpisos.workflow_photo_no_accept_execution_id')::uuid
+    limit 1
+  ),
+  true
+);
+
+select * from public.start_workflow_photo_verification_v1(
+  current_setting('gestionpisos.workflow_photo_no_accept_resource_id')::uuid
+);
+
+do $$
+declare
+  v_task_status text;
+  v_execution_status text;
+  v_requires_accept boolean;
+  v_history integer;
+begin
+  select status into v_task_status
+  from public.tenant_tasks_v2
+  where source_kind='workflow_execution'
+    and source_id=current_setting('gestionpisos.workflow_photo_no_accept_execution_id')::uuid;
+
+  select status into v_execution_status
+  from public.workflow_executions_v2
+  where id=current_setting('gestionpisos.workflow_photo_no_accept_execution_id')::uuid;
+
+  select requires_accept into v_requires_accept
+  from public.workflow_execution_photo_resources_v2
+  where id=current_setting('gestionpisos.workflow_photo_no_accept_resource_id')::uuid;
+
+  select count(*) into v_history
+  from public.tenant_task_history_v2 h
+  join public.tenant_tasks_v2 t on t.id=h.task_id
+  where t.source_kind='workflow_execution'
+    and t.source_id=current_setting('gestionpisos.workflow_photo_no_accept_execution_id')::uuid
+    and h.action_key='start_photo'
+    and h.from_status='pending'
+    and h.to_status='active';
+
+  if v_requires_accept
+    or v_task_status<>'active'
+    or v_execution_status<>'active'
+    or v_history<>1 then
+    raise exception 'photo-only workflow did not activate atomically on capture start';
+  end if;
 end;
 $$;
 

@@ -3285,7 +3285,7 @@ begin
 end;
 $workflow_photo_review_retry$;
 
--- El mismo recorrido con una decisión fotográfica negativa termina en rejected.
+-- El mismo recorrido multi-foto termina en rejected si al menos una evidencia es rechazada.
 set local role authenticated;
 select set_config(
   'request.jwt.claims',
@@ -3324,22 +3324,48 @@ select set_config(
 );
 
 select set_config(
-  'gestionpisos.workflow_photo_review_reject_resource_id',
+  'gestionpisos.workflow_photo_review_reject_resource_1',
   (
     select id::text
     from public.workflow_execution_photo_resources_v2
     where execution_id=current_setting('gestionpisos.workflow_photo_review_reject_execution_id')::uuid
+    order by sort_order
     limit 1
   ),
   true
 );
 
 select set_config(
-  'gestionpisos.workflow_photo_review_reject_run_id',
+  'gestionpisos.workflow_photo_review_reject_resource_2',
+  (
+    select id::text
+    from public.workflow_execution_photo_resources_v2
+    where execution_id=current_setting('gestionpisos.workflow_photo_review_reject_execution_id')::uuid
+    order by sort_order
+    offset 1
+    limit 1
+  ),
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_photo_review_reject_run_1',
   (
     select run_id::text
     from public.start_workflow_photo_verification_v1(
-      current_setting('gestionpisos.workflow_photo_review_reject_resource_id')::uuid
+      current_setting('gestionpisos.workflow_photo_review_reject_resource_1')::uuid
+    )
+    limit 1
+  ),
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_photo_review_reject_run_2',
+  (
+    select run_id::text
+    from public.start_workflow_photo_verification_v1(
+      current_setting('gestionpisos.workflow_photo_review_reject_resource_2')::uuid
     )
     limit 1
   ),
@@ -3347,27 +3373,47 @@ select set_config(
 );
 
 reset role;
-select set_config('gestionpisos.workflow_photo_review_reject_item_id','cccccccc-cccc-4ccc-8ccc-cccccccccccc',true);
+select set_config('gestionpisos.workflow_photo_review_reject_item_1','cececece-cece-4ece-8ece-cececececece',true);
+select set_config('gestionpisos.workflow_photo_review_reject_item_2','dfdfdfdf-dfdf-4fdf-8fdf-dfdfdfdfdfdf',true);
 
 insert into public.photo_verification_items_v2(
   id,run_id,pattern_id,storage_path,alignment_score,alignment_meta
-) values (
-  current_setting('gestionpisos.workflow_photo_review_reject_item_id')::uuid,
-  current_setting('gestionpisos.workflow_photo_review_reject_run_id')::uuid,
+) values
+(
+  current_setting('gestionpisos.workflow_photo_review_reject_item_1')::uuid,
+  current_setting('gestionpisos.workflow_photo_review_reject_run_1')::uuid,
   current_setting('gestionpisos.workflow_photo_pattern_1')::uuid,
   current_setting('gestionpisos.workflow_org_1')||'/'||
-    current_setting('gestionpisos.workflow_photo_review_reject_run_id')||'/'||
-    current_setting('gestionpisos.workflow_photo_review_reject_item_id')||'.jpg',
+    current_setting('gestionpisos.workflow_photo_review_reject_run_1')||'/'||
+    current_setting('gestionpisos.workflow_photo_review_reject_item_1')||'.jpg',
   0.52,
   jsonb_build_object('algorithm','local-edge-v2','zones',jsonb_build_array(0.3,0.3))
+),
+(
+  current_setting('gestionpisos.workflow_photo_review_reject_item_2')::uuid,
+  current_setting('gestionpisos.workflow_photo_review_reject_run_2')::uuid,
+  current_setting('gestionpisos.workflow_photo_pattern_2')::uuid,
+  current_setting('gestionpisos.workflow_org_1')||'/'||
+    current_setting('gestionpisos.workflow_photo_review_reject_run_2')||'/'||
+    current_setting('gestionpisos.workflow_photo_review_reject_item_2')||'.jpg',
+  0.84,
+  jsonb_build_object('algorithm','local-edge-v2','zones',jsonb_build_array(0.7,0.7))
 );
 
 insert into storage.objects(bucket_id,name,owner_id)
-values (
+values
+(
   'photo-verification',
   current_setting('gestionpisos.workflow_org_1')||'/'||
-    current_setting('gestionpisos.workflow_photo_review_reject_run_id')||'/'||
-    current_setting('gestionpisos.workflow_photo_review_reject_item_id')||'.jpg',
+    current_setting('gestionpisos.workflow_photo_review_reject_run_1')||'/'||
+    current_setting('gestionpisos.workflow_photo_review_reject_item_1')||'.jpg',
+  current_setting('gestionpisos.workflow_root')
+),
+(
+  'photo-verification',
+  current_setting('gestionpisos.workflow_org_1')||'/'||
+    current_setting('gestionpisos.workflow_photo_review_reject_run_2')||'/'||
+    current_setting('gestionpisos.workflow_photo_review_reject_item_2')||'.jpg',
   current_setting('gestionpisos.workflow_root')
 );
 
@@ -3383,27 +3429,53 @@ select set_config(
 );
 
 select * from public.submit_workflow_photo_verification_v1(
-  current_setting('gestionpisos.workflow_photo_review_reject_run_id')::uuid,
-  current_setting('gestionpisos.workflow_photo_review_reject_item_id')::uuid,
+  current_setting('gestionpisos.workflow_photo_review_reject_run_1')::uuid,
+  current_setting('gestionpisos.workflow_photo_review_reject_item_1')::uuid,
   'workflow-photo-review-reject-submit-001'
+);
+
+select * from public.submit_workflow_photo_verification_v1(
+  current_setting('gestionpisos.workflow_photo_review_reject_run_2')::uuid,
+  current_setting('gestionpisos.workflow_photo_review_reject_item_2')::uuid,
+  'workflow-photo-review-reject-submit-002'
 );
 
 reset role;
 
+do $workflow_photo_review_first_rejection$
+declare
+  v_result jsonb;
+begin
+  v_result:=public.apply_workflow_photo_review_v1(
+    current_setting('gestionpisos.workflow_photo_review_reject_run_1')::uuid,
+    current_setting('gestionpisos.workflow_root')::uuid,
+    'rejected',
+    'La fotografía no demuestra el estado solicitado'
+  );
+
+  if coalesce((v_result->>'all_reviewed')::boolean,true)
+    or v_result->>'execution_status'<>'waiting_review' then
+    raise exception 'first rejected photo closed the workflow before all evidence was reviewed';
+  end if;
+end;
+$workflow_photo_review_first_rejection$;
+
 select * from public.apply_workflow_photo_review_v1(
-  current_setting('gestionpisos.workflow_photo_review_reject_run_id')::uuid,
+  current_setting('gestionpisos.workflow_photo_review_reject_run_2')::uuid,
   current_setting('gestionpisos.workflow_root')::uuid,
-  'rejected',
-  'La fotografía no demuestra el estado solicitado'
+  'approved',
+  null
 );
 
 do $workflow_photo_review_rejected_state$
 declare
   v_task_status text;
   v_execution_status text;
-  v_run_status text;
+  v_rejected integer;
+  v_approved integer;
   v_completed_at timestamptz;
   v_history integer;
+  v_note text;
 begin
   select status into v_task_status
   from public.tenant_tasks_v2
@@ -3413,11 +3485,17 @@ begin
   from public.workflow_executions_v2
   where id=current_setting('gestionpisos.workflow_photo_review_reject_execution_id')::uuid;
 
-  select status into v_run_status
+  select count(*) filter(where status='rejected'),
+         count(*) filter(where status='approved')
+  into v_rejected,v_approved
   from public.photo_verification_runs_v2
-  where id=current_setting('gestionpisos.workflow_photo_review_reject_run_id')::uuid;
+  where id in (
+    current_setting('gestionpisos.workflow_photo_review_reject_run_1')::uuid,
+    current_setting('gestionpisos.workflow_photo_review_reject_run_2')::uuid
+  );
 
-  select count(*) into v_history
+  select count(*),max(note)
+  into v_history,v_note
   from public.tenant_task_history_v2
   where task_id=current_setting('gestionpisos.workflow_photo_review_reject_task_id')::uuid
     and action_key='review_reject'
@@ -3425,10 +3503,12 @@ begin
 
   if v_task_status<>'rejected'
     or v_execution_status<>'rejected'
-    or v_run_status<>'rejected'
+    or v_rejected<>1
+    or v_approved<>1
     or v_completed_at is not null
-    or v_history<>1 then
-    raise exception 'rejected photo review did not reject workflow consistently';
+    or v_history<>1
+    or position('La fotografía no demuestra el estado solicitado' in coalesce(v_note,''))=0 then
+    raise exception 'mixed photo review did not reject workflow consistently';
   end if;
 end;
 $workflow_photo_review_rejected_state$;

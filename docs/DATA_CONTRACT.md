@@ -29,6 +29,17 @@
 
 Los nombres finales pueden variar, pero estas responsabilidades no deben mezclarse sin una razón documentada.
 
+## Identidades y onboarding
+
+Los datos de negocio y la identidad Auth no se mezclan implícitamente.
+
+- `owners` y `tenants_v2` pueden existir sin cuenta Auth activa.
+- `external_account_onboarding.email` conserva el email concreto para el que se preparó una bienvenida OWNER/TENANT.
+- `internal_staff_onboarding.invitation_email` conserva el email canónico de la identidad ADMIN/EMPLOYEE durante su onboarding y debe coincidir con perfil + Auth.
+- `platform_operators.identity_email` conserva el email canónico de la identidad técnica del operador y es inmutable; cambiarlo requiere una nueva identidad.
+- Las filas de onboarding revocadas se conservan como histórico; no se reescriben para fingir que una invitación antigua pertenecía al email nuevo.
+- Un cambio de email no debe sobrescribir la trazabilidad del correo anterior ni reutilizar silenciosamente tokens/identidades emitidos para otra dirección.
+
 ## Reglas
 
 - No guardar “inquilino actual” como único histórico: usar ocupaciones con fechas.

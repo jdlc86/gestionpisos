@@ -137,7 +137,7 @@ function renderPhotoResources(task,article){
     }else if(resource.status!=="submitted"&&resource.requires_accept&&task.status==="pending"){
       const note=document.createElement("span");
       note.className="task-photo-wait";
-      note.textContent="Acepta primero";
+      note.textContent="Acepta la tarea primero";
       row.append(note);
     }
 

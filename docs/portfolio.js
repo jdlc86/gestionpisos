@@ -577,6 +577,8 @@ function archivedAtFor(status, existing) {
 }
 
 function friendlyWriteError(error, fallback) {
+  if (String(error?.message || "").includes("external_onboarding_email_change_requires_revocation")) return "Existe una invitación pendiente para el email anterior. Debe invalidarse antes de cambiar el correo.";
+  if (String(error?.message || "").includes("external_active_account_email_change_requires_account_flow")) return "La cuenta ya está activada. El email de acceso no puede cambiarse desde esta ficha.";
   if (error?.message === "tenant_email_identity_conflict") return "Ese email ya pertenece a otro inquilino con un documento diferente. Revisa la ficha existente antes de continuar.";
   if (error?.message === "tenant_orphan_identity_conflict") return "Ese email pertenece a una ficha existente sin ocupaciones, pero el documento no coincide. Revisa la identidad antes de reutilizarla.";
 

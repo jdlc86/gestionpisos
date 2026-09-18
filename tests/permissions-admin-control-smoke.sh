@@ -16,8 +16,8 @@ grep -Fq 'p_admin_user_id:null' docs/permissions.js
 grep -Fq 'class="ghost remove-staff"' docs/permissions.js
 grep -Fq 'deactivate_internal_staff_user' docs/permissions.js
 grep -Fq 'disable-internal-staff-auth' docs/permissions.js
-grep -Fq 'staff_write_control_transfer_required' supabase/migrations/20260916023500_internal_staff_deactivation.sql
-grep -Fq 'staff_responsible_reassignment_required' supabase/migrations/20260916023500_internal_staff_deactivation.sql
+grep -Fq 'staff_write_control_transfer_required' supabase/migrations/20260916004853_internal_staff_deactivation.sql
+grep -Fq 'staff_responsible_reassignment_required' supabase/migrations/20260916004853_internal_staff_deactivation.sql
 ! grep -Fq 'capability==="permission_management"' docs/permissions.js
 
 echo 'Permissions administrative control smoke checks passed'

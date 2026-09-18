@@ -6,7 +6,7 @@ hardening='supabase/migrations/20260918010500_workflow_rpc_privilege_hardening.s
 partial='supabase/migrations/20260918013500_workflow_partial_drafts.sql'
 noop='supabase/migrations/20260918023000_workflow_draft_noop_save.sql'
 triggers='supabase/migrations/20260918025500_workflow_trigger_controls.sql'
-applications='supabase/migrations/20260918090000_workflow_publication_applications.sql'
+applications='supabase/migrations/20260918095001_workflow_publication_applications.sql'
 
 test -s "$migration"
 test -s "$hardening"

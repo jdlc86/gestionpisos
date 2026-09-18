@@ -15,6 +15,7 @@ photo_evidence='supabase/migrations/20260918133000_workflow_photo_evidence.sql'
 decisions='supabase/migrations/20260918193000_workflow_accept_reject_decision.sql'
 human_review='supabase/migrations/20260918233000_workflow_human_review.sql'
 review_access='supabase/migrations/20260918234500_workflow_review_actor_visibility_hardening.sql'
+photo_review_hardening='supabase/migrations/20260919001000_photo_review_read_authorization_hardening.sql'
 
 test -s "$migration"
 test -s "$hardening"
@@ -30,6 +31,7 @@ test -s "$photo_evidence"
 test -s "$decisions"
 test -s "$human_review"
 test -s "$review_access"
+test -s "$photo_review_hardening"
 test -s tests/workflow-definition-regression.sql
 
 grep -Fq 'create table if not exists public.workflow_definitions_v2' "$migration"
@@ -199,6 +201,18 @@ grep -Fq "tenant_task_actions_v2.actor='assignee'" "$review_access"
 grep -Fq "tenant_task_actions_v2.actor='agency'" "$review_access"
 grep -Fq "public.workflow_can_manage_v1(t.organization_id)" "$review_access"
 grep -Fq "t.task_type<>'workflow'" "$review_access"
+grep -Fq "create or replace function public.photo_verification_can_review_v1" "$photo_review_hardening"
+grep -Fq "coalesce(auth.jwt()->>'aal','aal1')='aal2'" "$photo_review_hardening"
+grep -Fq "ur.revoked_at is null" "$photo_review_hardening"
+grep -Fq "grant select on public.photo_verification_runs_v2 to authenticated" "$photo_review_hardening"
+grep -Fq "grant select on public.photo_verification_items_v2 to authenticated" "$photo_review_hardening"
+grep -Fq "grant select on storage.objects to authenticated" "$photo_review_hardening"
+grep -Fq "drop policy if exists photo_runs_actor_read" "$photo_review_hardening"
+grep -Fq "drop policy if exists photo_items_actor_read" "$photo_review_hardening"
+grep -Fq "drop policy if exists photo_verification_storage_read" "$photo_review_hardening"
+grep -Fq "public.photo_verification_can_review_v1(split_part(name,'/',1))" "$photo_review_hardening"
+grep -Fq "v_run_applied_new boolean:=false" "$photo_review_hardening"
+grep -Fq "'applied_new',v_run_applied_new" "$photo_review_hardening"
 grep -Fq "revoke all on function public.apply_workflow_photo_review_v1(uuid,uuid,text,text)" "$human_review"
 grep -Fq "tenant_task_actions_v2_workflow_manager_read" "$human_review"
 grep -Fq "public.workflow_can_manage_v1(t.organization_id)" "$human_review"

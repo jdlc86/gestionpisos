@@ -23,6 +23,8 @@ create table storage.objects (
   unique(bucket_id,name)
 );
 
+alter table storage.objects enable row level security;
+
 create function auth.jwt()
 returns jsonb
 language sql

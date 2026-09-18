@@ -664,11 +664,12 @@ grant execute on function public.apply_workflow_photo_review_v1(uuid,uuid,text,t
   to service_role;
 
 -- Los gestores de workflow deben poder leer las acciones agency aunque no sean
--- el asignado de la tarea. Se conserva el resto de visibilidad legacy.
-drop policy if exists tenant_task_actions_v2_read_scope
+-- el asignado de la tarea. La política legacy se conserva intacta; esta política
+-- permisiva adicional amplía únicamente las tareas workflow administrables.
+drop policy if exists tenant_task_actions_v2_workflow_manager_read
   on public.tenant_task_actions_v2;
 
-create policy tenant_task_actions_v2_read_scope
+create policy tenant_task_actions_v2_workflow_manager_read
 on public.tenant_task_actions_v2
 for select
 to authenticated
@@ -677,21 +678,9 @@ using (
     select 1
     from public.tenant_tasks_v2 t
     where t.id=tenant_task_actions_v2.task_id
-      and (
-        public.can_operate_property_v3(t.property_id,false)
-        or t.assigned_user_id=auth.uid()
-        or exists(
-          select 1
-          from public.tenants_v2 tn
-          where tn.id=t.tenant_id
-            and tn.user_id=auth.uid()
-        )
-        or (
-          t.task_type='workflow'
-          and t.source_kind='workflow_execution'
-          and public.workflow_can_manage_v1(t.organization_id)
-        )
-      )
+      and t.task_type='workflow'
+      and t.source_kind='workflow_execution'
+      and public.workflow_can_manage_v1(t.organization_id)
   )
 );
 

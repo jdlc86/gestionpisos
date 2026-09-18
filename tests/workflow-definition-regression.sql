@@ -15,6 +15,18 @@ begin
   if not has_function_privilege('authenticated','public.save_workflow_definition_draft_v1(jsonb,uuid,bigint)','EXECUTE') then
     raise exception 'authenticated cannot execute workflow draft RPC';
   end if;
+  if has_function_privilege('anon','public.publish_workflow_definition_v1(uuid,bigint)','EXECUTE') then
+    raise exception 'anon can execute workflow publish RPC';
+  end if;
+  if has_function_privilege('anon','public.create_workflow_application_v1(uuid,uuid,uuid,uuid)','EXECUTE') then
+    raise exception 'anon can execute workflow application RPC';
+  end if;
+  if has_function_privilege('anon','public.archive_workflow_application_v1(uuid)','EXECUTE') then
+    raise exception 'anon can execute workflow archive RPC';
+  end if;
+  if not has_function_privilege('authenticated','public.publish_workflow_definition_v1(uuid,bigint)','EXECUTE') then
+    raise exception 'authenticated cannot execute workflow publish RPC';
+  end if;
 end;
 $$;
 
@@ -525,6 +537,456 @@ begin
   end if;
 end;
 $$;
+
+-- Publicación y aplicaciones concretas: la receta no contiene el UUID del ámbito real.
+-- Sin AAL2 no se permite publicar una definición completa.
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub',current_setting('gestionpisos.workflow_root'),
+    'role','authenticated',
+    'aal','aal1'
+  )::text,
+  true
+);
+
+do $$
+begin
+  begin
+    perform * from public.publish_workflow_definition_v1(
+      current_setting('gestionpisos.workflow_manual_trigger_id')::uuid,
+      1
+    );
+    raise exception 'workflow publish without aal2 unexpectedly succeeded';
+  exception when insufficient_privilege then null;
+  end;
+end;
+$$;
+
+-- Un TENANT con AAL2 tampoco adquiere capacidad administrativa.
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub',current_setting('gestionpisos.workflow_tenant'),
+    'role','authenticated',
+    'aal','aal2'
+  )::text,
+  true
+);
+
+do $$
+begin
+  begin
+    perform * from public.publish_workflow_definition_v1(
+      current_setting('gestionpisos.workflow_manual_trigger_id')::uuid,
+      1
+    );
+    raise exception 'tenant workflow publish unexpectedly succeeded';
+  exception when insufficient_privilege then null;
+  end;
+end;
+$$;
+
+-- ROOT con AAL2 publica una sola versión inmutable; reintentar no duplica.
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub',current_setting('gestionpisos.workflow_root'),
+    'role','authenticated',
+    'aal','aal2'
+  )::text,
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_org_version_id',
+  (
+    select version_id::text
+    from public.publish_workflow_definition_v1(
+      current_setting('gestionpisos.workflow_manual_trigger_id')::uuid,
+      1
+    )
+    limit 1
+  ),
+  true
+);
+
+do $$
+declare
+  v_versions integer;
+  v_status text;
+  v_scope text;
+begin
+  select count(*) into v_versions
+  from public.workflow_definition_versions_v2
+  where definition_id=current_setting('gestionpisos.workflow_manual_trigger_id')::uuid;
+
+  if v_versions<>1 then
+    raise exception 'workflow publication did not create exactly one version';
+  end if;
+
+  select status into v_status
+  from public.workflow_definitions_v2
+  where id=current_setting('gestionpisos.workflow_manual_trigger_id')::uuid;
+
+  if v_status<>'published' then
+    raise exception 'workflow definition not marked published';
+  end if;
+
+  select spec->>'scopeType' into v_scope
+  from public.workflow_definition_versions_v2
+  where id=current_setting('gestionpisos.workflow_org_version_id')::uuid;
+
+  if v_scope<>'organization' then
+    raise exception 'published version did not freeze logical scope type';
+  end if;
+end;
+$$;
+
+select * from public.publish_workflow_definition_v1(
+  current_setting('gestionpisos.workflow_manual_trigger_id')::uuid,
+  1
+);
+
+do $$
+declare v_versions integer;
+begin
+  select count(*) into v_versions
+  from public.workflow_definition_versions_v2
+  where definition_id=current_setting('gestionpisos.workflow_manual_trigger_id')::uuid;
+  if v_versions<>1 then
+    raise exception 'idempotent workflow publication duplicated version';
+  end if;
+end;
+$$;
+
+-- Un borrador incompleto sigue sin ser publicable.
+do $$
+begin
+  begin
+    perform * from public.publish_workflow_definition_v1(
+      current_setting('gestionpisos.workflow_legacy_id')::uuid,
+      1
+    );
+    raise exception 'incomplete workflow unexpectedly published';
+  exception when invalid_parameter_value then null;
+  end;
+end;
+$$;
+
+-- La aplicación a organización no necesita target concreto.
+select set_config(
+  'gestionpisos.workflow_org_application_id',
+  (
+    select application_id::text
+    from public.create_workflow_application_v1(
+      current_setting('gestionpisos.workflow_org_version_id')::uuid
+    )
+    limit 1
+  ),
+  true
+);
+
+-- Reintentar la misma aplicación es idempotente.
+select * from public.create_workflow_application_v1(
+  current_setting('gestionpisos.workflow_org_version_id')::uuid
+);
+
+do $$
+declare v_count integer;
+begin
+  select count(*) into v_count
+  from public.workflow_applications_v2
+  where definition_id=current_setting('gestionpisos.workflow_manual_trigger_id')::uuid
+    and status='configured';
+  if v_count<>1 then
+    raise exception 'organization workflow application duplicated';
+  end if;
+end;
+$$;
+
+-- Datos reales de ámbito para validar piso/habitación/ocupación.
+reset role;
+
+select set_config('gestionpisos.workflow_owner_1','77777777-7777-4777-8777-777777777777',true);
+select set_config('gestionpisos.workflow_property_1','88888888-8888-4888-8888-888888888888',true);
+select set_config('gestionpisos.workflow_room_1','99999999-9999-4999-8999-999999999999',true);
+select set_config('gestionpisos.workflow_occupancy_1','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',true);
+select set_config('gestionpisos.workflow_owner_2','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',true);
+select set_config('gestionpisos.workflow_property_2','cccccccc-cccc-4ccc-8ccc-cccccccccccc',true);
+
+insert into public.owners(id,organization_id,full_name,status)
+values
+  (current_setting('gestionpisos.workflow_owner_1')::uuid,current_setting('gestionpisos.workflow_org_1')::uuid,'Owner workflow','active'),
+  (current_setting('gestionpisos.workflow_owner_2')::uuid,current_setting('gestionpisos.workflow_org_2')::uuid,'Owner otra org','active');
+
+insert into public.properties_v2(id,organization_id,owner_id,name,address_line,status)
+values
+  (
+    current_setting('gestionpisos.workflow_property_1')::uuid,
+    current_setting('gestionpisos.workflow_org_1')::uuid,
+    current_setting('gestionpisos.workflow_owner_1')::uuid,
+    'Piso Workflow',
+    'Calle Prueba 1',
+    'active'
+  ),
+  (
+    current_setting('gestionpisos.workflow_property_2')::uuid,
+    current_setting('gestionpisos.workflow_org_2')::uuid,
+    current_setting('gestionpisos.workflow_owner_2')::uuid,
+    'Piso Otra Org',
+    'Calle Ajena 2',
+    'active'
+  );
+
+insert into public.rooms_v2(id,property_id,label,status)
+values (
+  current_setting('gestionpisos.workflow_room_1')::uuid,
+  current_setting('gestionpisos.workflow_property_1')::uuid,
+  'Habitación Workflow',
+  'active'
+);
+
+insert into public.occupancies_v2(
+  id,organization_id,property_id,room_id,occupant_email,starts_on,ends_on,status
+) values (
+  current_setting('gestionpisos.workflow_occupancy_1')::uuid,
+  current_setting('gestionpisos.workflow_org_1')::uuid,
+  current_setting('gestionpisos.workflow_property_1')::uuid,
+  current_setting('gestionpisos.workflow_room_1')::uuid,
+  'tenant-workflow@example.invalid',
+  current_date-1,
+  null,
+  'active'
+);
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub',current_setting('gestionpisos.workflow_root'),
+    'role','authenticated',
+    'aal','aal2'
+  )::text,
+  true
+);
+
+-- Publicar la definición de ámbito piso ya creada en la regresión.
+select set_config(
+  'gestionpisos.workflow_property_version_id',
+  (
+    select version_id::text
+    from public.publish_workflow_definition_v1(
+      current_setting('gestionpisos.workflow_custom_id')::uuid,
+      1
+    )
+    limit 1
+  ),
+  true
+);
+
+-- Otra organización nunca puede usarse como target de una aplicación.
+do $$
+begin
+  begin
+    perform * from public.create_workflow_application_v1(
+      current_setting('gestionpisos.workflow_property_version_id')::uuid,
+      current_setting('gestionpisos.workflow_property_2')::uuid
+    );
+    raise exception 'cross-organization workflow application unexpectedly succeeded';
+  exception when invalid_parameter_value then null;
+  end;
+end;
+$$;
+
+select set_config(
+  'gestionpisos.workflow_property_application_id',
+  (
+    select application_id::text
+    from public.create_workflow_application_v1(
+      current_setting('gestionpisos.workflow_property_version_id')::uuid,
+      current_setting('gestionpisos.workflow_property_1')::uuid
+    )
+    limit 1
+  ),
+  true
+);
+
+-- Una habitación usa selector en cascada Piso -> Habitación y se valida server-side.
+select set_config(
+  'gestionpisos.workflow_room_definition_id',
+  (
+    select definition_id::text
+    from public.save_workflow_definition_draft_v1(
+      jsonb_build_object(
+        'authoringVersion',2,
+        'flowName','Inspección de habitación',
+        'flowType','inspection',
+        'flowDescription','',
+        'scopeType','room',
+        'triggerType','manual',
+        'recurrence','',
+        'assignmentType','manual',
+        'steps',jsonb_build_object('accept',true,'photo',false,'checklist',false,'document',false),
+        'closeType','auto',
+        'notifications',jsonb_build_object('onCreate',false,'onClose',false)
+      )
+    )
+    limit 1
+  ),
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_room_version_id',
+  (
+    select version_id::text
+    from public.publish_workflow_definition_v1(
+      current_setting('gestionpisos.workflow_room_definition_id')::uuid,
+      1
+    )
+    limit 1
+  ),
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_room_application_id',
+  (
+    select application_id::text
+    from public.create_workflow_application_v1(
+      current_setting('gestionpisos.workflow_room_version_id')::uuid,
+      current_setting('gestionpisos.workflow_property_1')::uuid,
+      current_setting('gestionpisos.workflow_room_1')::uuid
+    )
+    limit 1
+  ),
+  true
+);
+
+-- Una ocupación real se vincula por UUID y debe estar vigente.
+select set_config(
+  'gestionpisos.workflow_occupancy_definition_id',
+  (
+    select definition_id::text
+    from public.save_workflow_definition_draft_v1(
+      jsonb_build_object(
+        'authoringVersion',2,
+        'flowName','Check-out ocupación',
+        'flowType','checkout',
+        'flowDescription','',
+        'scopeType','occupancy',
+        'triggerType','manual',
+        'recurrence','',
+        'assignmentType','manual',
+        'steps',jsonb_build_object('accept',true,'photo',false,'checklist',false,'document',false),
+        'closeType','auto',
+        'notifications',jsonb_build_object('onCreate',false,'onClose',false)
+      )
+    )
+    limit 1
+  ),
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_occupancy_version_id',
+  (
+    select version_id::text
+    from public.publish_workflow_definition_v1(
+      current_setting('gestionpisos.workflow_occupancy_definition_id')::uuid,
+      1
+    )
+    limit 1
+  ),
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_occupancy_application_id',
+  (
+    select application_id::text
+    from public.create_workflow_application_v1(
+      current_setting('gestionpisos.workflow_occupancy_version_id')::uuid,
+      current_setting('gestionpisos.workflow_property_1')::uuid,
+      null,
+      current_setting('gestionpisos.workflow_occupancy_1')::uuid
+    )
+    limit 1
+  ),
+  true
+);
+
+do $$
+declare
+  v_property uuid;
+  v_room uuid;
+  v_occupancy uuid;
+begin
+  select property_id into v_property
+  from public.workflow_applications_v2
+  where id=current_setting('gestionpisos.workflow_property_application_id')::uuid;
+  if v_property<>current_setting('gestionpisos.workflow_property_1')::uuid then
+    raise exception 'property workflow application lost target';
+  end if;
+
+  select room_id into v_room
+  from public.workflow_applications_v2
+  where id=current_setting('gestionpisos.workflow_room_application_id')::uuid;
+  if v_room<>current_setting('gestionpisos.workflow_room_1')::uuid then
+    raise exception 'room workflow application lost target';
+  end if;
+
+  select occupancy_id into v_occupancy
+  from public.workflow_applications_v2
+  where id=current_setting('gestionpisos.workflow_occupancy_application_id')::uuid;
+  if v_occupancy<>current_setting('gestionpisos.workflow_occupancy_1')::uuid then
+    raise exception 'occupancy workflow application lost target';
+  end if;
+end;
+$$;
+
+-- La tabla de aplicaciones tampoco admite escritura directa desde authenticated.
+do $$
+begin
+  begin
+    insert into public.workflow_applications_v2(
+      definition_id,definition_version_id,organization_id,scope_type,status,created_by
+    ) values (
+      current_setting('gestionpisos.workflow_manual_trigger_id')::uuid,
+      current_setting('gestionpisos.workflow_org_version_id')::uuid,
+      current_setting('gestionpisos.workflow_org_1')::uuid,
+      'organization',
+      'configured',
+      current_setting('gestionpisos.workflow_root')::uuid
+    );
+    raise exception 'direct workflow application insert unexpectedly succeeded';
+  exception when insufficient_privilege then null;
+  end;
+end;
+$$;
+
+-- Archivar es explícito, reversible por nueva aplicación y conserva histórico.
+select public.archive_workflow_application_v1(
+  current_setting('gestionpisos.workflow_property_application_id')::uuid
+);
+
+do $$
+declare v_status text;
+begin
+  select status into v_status
+  from public.workflow_applications_v2
+  where id=current_setting('gestionpisos.workflow_property_application_id')::uuid;
+  if v_status<>'archived' then
+    raise exception 'workflow application archive failed';
+  end if;
+end;
+$$;
+
+select * from public.create_workflow_application_v1(
+  current_setting('gestionpisos.workflow_property_version_id')::uuid,
+  current_setting('gestionpisos.workflow_property_1')::uuid
+);
 
 reset role;
 rollback;

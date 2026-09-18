@@ -322,6 +322,9 @@ function render() {
   records.replaceChildren(...items.map(renderCard));
   emptyState.hidden = items.length !== 0;
   renderSummary();
+  document.dispatchEvent(new CustomEvent("gestionpisos:portfolio-rendered", {
+    detail: { view: current, itemCount: items.length }
+  }));
 }
 
 function relationOptions(type, selectedId) {

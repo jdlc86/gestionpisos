@@ -395,7 +395,7 @@ async function executeNow(app,assigneeId,button){
   if(result?.created_new===false){
     setStatus("El reintento recuperó la ejecución existente; no se creó un duplicado.");
   }else{
-    setStatus("Ejecución creada en estado Pendiente. Todavía no se ha materializado una tarea.");
+    setStatus("Ejecución creada en estado Pendiente y tarea materializada sin duplicados.");
   }
   await loadApplications();
 }

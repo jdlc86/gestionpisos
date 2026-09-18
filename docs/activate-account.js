@@ -90,6 +90,12 @@ async function validateActivationSession() {
       show("Esta invitación fue revocada. Contacta con el administrador.", true);
       return;
     }
+    if (state.email_consistent !== true) {
+      activationReady = false;
+      setFormEnabled(false);
+      show("El correo actual ya no coincide con el correo para el que se emitió esta invitación. Pide al administrador que revoque el alta y cree una nueva identidad.", true);
+      return;
+    }
     if (state.status === "active") {
       activationReady = true;
       passwordUpdated = true;

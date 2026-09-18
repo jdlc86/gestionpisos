@@ -112,6 +112,7 @@ async function revokeInvitationForEmailChange(subject,newEmail){
   const {data,error}=await supabase.functions.invoke("revoke-external-welcome",{body:{subject_type:subject.subjectType,subject_id:subject.subjectId,new_email:newEmail}});
   if(error)throw error;
   if(data?.ok!==true)throw new Error("external_onboarding_revoke_failed");
+  scheduleRefresh(250);
   return data;
 }
 
@@ -188,6 +189,7 @@ async function sendWelcome(subjectType,subjectId,button=null){
   }catch(error){
     const code=await functionErrorCode(error);
     setPortfolioStatus(friendlyWelcomeError(code),"Bienvenida no enviada.");
+    scheduleRefresh(250);
     throw error;
   }finally{if(button)button.disabled=false;}
 }

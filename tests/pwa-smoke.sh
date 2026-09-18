@@ -16,7 +16,7 @@ node --check docs/photo-verifications.js
 grep -q 'photo-verifications.html?v=2026091501' docs/operations.html
 grep -q 'review-photo-verification' docs/photo-verifications.js
 grep -q 'Fotoverificación aprobada correctamente' docs/photo-verifications.js
-grep -q 'photo-verifications.js?v=2026091507' docs/photo-verifications.html
+grep -q 'photo-verifications.js?v=2026091801' docs/photo-verifications.html
 grep -q 'photo-verifications.css?v=2026091505' docs/photo-verifications.html
 grep -q 'id="reviewToast"' docs/photo-verifications.html
 grep -q 'id="propertyFilter"' docs/photo-verifications.html
@@ -32,6 +32,10 @@ grep -q 'review-toast.is-visible' docs/photo-verifications.css
 grep -q 'createSignedUrl' docs/photo-verifications.js
 test -s supabase/functions/review-photo-verification/index.ts
 grep -q 'apply_photo_verification_review_v2' supabase/functions/review-photo-verification/index.ts
+grep -q 'apply_workflow_photo_review_v1' supabase/functions/review-photo-verification/index.ts
+grep -q 'workflow_execution_id' docs/photo-verifications.js
+grep -q 'Workflow completado' docs/photo-verifications.js
+grep -q 'Volver a Tareas' docs/photo-verifications.js
 test -s supabase/migrations/20260914225214_photo_verification_manual_review.sql
 grep -q 'grant execute on function public.apply_photo_verification_review_v2' supabase/migrations/20260914225214_photo_verification_manual_review.sql
 

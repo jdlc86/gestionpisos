@@ -33,7 +33,7 @@ Una tarea con:
 - `task_type='workflow'`; o
 - `source_kind='workflow_execution'`
 
-debe ser rechazada por ese RPC con un error explícito. Así no existe una ruta alternativa capaz de cambiar solo la tarea.
+debe ser rechazada por ese RPC con el error explícito `workflow_task_requires_atomic_action`. Así no existe una ruta alternativa capaz de cambiar solo la tarea.
 
 Las tareas de workflow usan:
 

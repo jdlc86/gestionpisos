@@ -504,7 +504,13 @@ function draftWorkspaceCard(item){
   if(item.authoring_complete){
     const publish=document.createElement("button");publish.type="button";publish.className="primary";
     publish.textContent=item.is_revision?"Publicar v"+(Number(item.base_version)+1):"Publicar";
-    publish.addEventListener("click",()=>publishDefinition(item.definition_id,Number(item.revision),{isRevision:item.is_revision,button:publish}));
+    publish.addEventListener("click",()=>{
+      if(isCurrent){
+        publishCurrentDraft();
+      }else{
+        publishDefinition(item.definition_id,Number(item.revision),{isRevision:item.is_revision,button:publish});
+      }
+    });
     actions.append(publish);
   }
 

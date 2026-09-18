@@ -16,6 +16,12 @@ const rejectBtn = document.getElementById("rejectBtn");
 const closeDialogBtn = document.getElementById("closeDialogBtn");
 const dialogTitle = document.getElementById("dialogTitle");
 const toast = document.getElementById("reviewToast");
+const backLink = document.getElementById("reviewBackLink");
+const initialParams = new URLSearchParams(window.location.search);
+if (backLink && initialParams.get("workflow_execution_id")) {
+  backLink.href = "./workflow-tasks.html";
+  backLink.textContent = "Volver a Tareas";
+}
 
 let currentRun = null;
 let currentItem = null;

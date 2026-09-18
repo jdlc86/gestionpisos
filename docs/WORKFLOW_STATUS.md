@@ -73,6 +73,8 @@ Los borradores anteriores a esta regla no se reinterpretan como completos por su
 
 El guardado de borradores es idempotente: pulsar **Guardar borrador** repetidamente sin modificar la especificación no incrementa `revision`, no cambia `updated_at` y no genera un evento `workflow_draft_updated`. La UI informa **Sin cambios** y conserva la revisión existente.
 
+La activación también es condicional: **Manual** y **Por evento** no muestran frecuencia; **Recurrente** muestra frecuencia y, si se elige **Personalizada**, solicita intervalo + unidad; **Fecha concreta** muestra calendario y hora. El RPC sanea cualquier campo residual que no corresponda al tipo seleccionado.
+
 ### Límite intencional
 
 **Guardar no significa publicar.**

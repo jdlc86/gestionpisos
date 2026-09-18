@@ -2417,6 +2417,740 @@ select set_config(
   true
 );
 
+-- Revisión humana sin Foto: Aceptar deja la ejecución esperando revisión y solo agency puede cerrarla.
+select set_config(
+  'gestionpisos.workflow_review_definition_id',
+  (
+    select definition_id::text
+    from public.save_workflow_definition_draft_v1(
+      jsonb_build_object(
+        'authoringVersion',2,
+        'flowName','Revisión humana workflow',
+        'flowType','inspection',
+        'flowDescription','Regresión revisión humana',
+        'scopeType','property',
+        'triggerType','manual',
+        'recurrence','',
+        'assignmentType','manual',
+        'steps',jsonb_build_object('accept',true,'photo',false,'checklist',false,'document',false),
+        'closeType','human_review',
+        'notifications',jsonb_build_object('onCreate',false,'onClose',false)
+      )
+    )
+    limit 1
+  ),
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_review_version_id',
+  (
+    select version_id::text
+    from public.publish_workflow_definition_v1(
+      current_setting('gestionpisos.workflow_review_definition_id')::uuid,
+      1
+    )
+    limit 1
+  ),
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_review_application_id',
+  (
+    select application_id::text
+    from public.create_workflow_application_v1(
+      current_setting('gestionpisos.workflow_review_version_id')::uuid,
+      current_setting('gestionpisos.workflow_property_1')::uuid
+    )
+    limit 1
+  ),
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_review_execution_id',
+  (
+    select execution_id::text
+    from public.execute_workflow_application_now_v1(
+      current_setting('gestionpisos.workflow_review_application_id')::uuid,
+      'workflow-review-approve-execution-001',
+      current_setting('gestionpisos.workflow_root')::uuid
+    )
+    limit 1
+  ),
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_review_task_id',
+  (
+    select id::text
+    from public.tenant_tasks_v2
+    where source_kind='workflow_execution'
+      and source_id=current_setting('gestionpisos.workflow_review_execution_id')::uuid
+    limit 1
+  ),
+  true
+);
+
+do $workflow_review_seeded_actions$
+declare
+  v_pending_actions integer;
+  v_review_actions integer;
+begin
+  select count(*) into v_pending_actions
+  from public.tenant_task_actions_v2
+  where task_id=current_setting('gestionpisos.workflow_review_task_id')::uuid
+    and from_status='pending'
+    and active=true
+    and actor='assignee'
+    and action_key in ('accept','reject');
+
+  select count(*) into v_review_actions
+  from public.tenant_task_actions_v2
+  where task_id=current_setting('gestionpisos.workflow_review_task_id')::uuid
+    and from_status='waiting_review'
+    and active=true
+    and actor='agency'
+    and (
+      (action_key='review_approve' and to_status='completed' and requires_note=false)
+      or
+      (action_key='review_reject' and to_status='rejected' and requires_note=true)
+    );
+
+  if v_pending_actions<>2 or v_review_actions<>2 then
+    raise exception 'human review actions were not materialized correctly';
+  end if;
+end;
+$workflow_review_seeded_actions$;
+
+select * from public.apply_workflow_task_action_v1(
+  current_setting('gestionpisos.workflow_review_task_id')::uuid,
+  'accept',
+  'workflow-review-accept-001',
+  null
+);
+
+do $workflow_review_waiting_state$
+declare
+  v_task_status text;
+  v_execution_status text;
+begin
+  select status into v_task_status
+  from public.tenant_tasks_v2
+  where id=current_setting('gestionpisos.workflow_review_task_id')::uuid;
+
+  select status into v_execution_status
+  from public.workflow_executions_v2
+  where id=current_setting('gestionpisos.workflow_review_execution_id')::uuid;
+
+  if v_task_status<>'waiting_review' or v_execution_status<>'waiting_review' then
+    raise exception 'accept-only human review workflow did not enter waiting_review';
+  end if;
+end;
+$workflow_review_waiting_state$;
+
+-- Un actor no gestor no puede aprobar aunque conozca task_id.
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub',current_setting('gestionpisos.workflow_tenant'),
+    'role','authenticated',
+    'aal','aal2'
+  )::text,
+  true
+);
+
+do $workflow_review_forbidden_actor$
+begin
+  begin
+    perform * from public.apply_workflow_task_action_v1(
+      current_setting('gestionpisos.workflow_review_task_id')::uuid,
+      'review_approve',
+      'workflow-review-forbidden-001',
+      null
+    );
+    raise exception 'non-manager unexpectedly approved workflow review';
+  exception when insufficient_privilege then null;
+  end;
+end;
+$workflow_review_forbidden_actor$;
+
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub',current_setting('gestionpisos.workflow_root'),
+    'role','authenticated',
+    'aal','aal2'
+  )::text,
+  true
+);
+
+do $workflow_review_approve$
+declare
+  v_task_status text;
+  v_execution_status text;
+  v_applied_new boolean;
+begin
+  select task_status,execution_status,applied_new
+  into v_task_status,v_execution_status,v_applied_new
+  from public.apply_workflow_task_action_v1(
+    current_setting('gestionpisos.workflow_review_task_id')::uuid,
+    'review_approve',
+    'workflow-review-approve-001',
+    null
+  )
+  limit 1;
+
+  if v_task_status<>'completed'
+    or v_execution_status<>'completed'
+    or not v_applied_new then
+    raise exception 'human review approval did not complete task and execution';
+  end if;
+end;
+$workflow_review_approve$;
+
+do $workflow_review_approve_retry$
+declare
+  v_applied_new boolean;
+  v_history integer;
+  v_events integer;
+begin
+  select applied_new into v_applied_new
+  from public.apply_workflow_task_action_v1(
+    current_setting('gestionpisos.workflow_review_task_id')::uuid,
+    'review_approve',
+    'workflow-review-approve-001',
+    null
+  )
+  limit 1;
+
+  select count(*) into v_history
+  from public.tenant_task_history_v2
+  where task_id=current_setting('gestionpisos.workflow_review_task_id')::uuid
+    and action_key='review_approve';
+
+  select count(*) into v_events
+  from public.workflow_execution_events_v2
+  where execution_id=current_setting('gestionpisos.workflow_review_execution_id')::uuid
+    and event_type='task_action_applied'
+    and details->>'request_key'='workflow-review-approve-001';
+
+  if v_applied_new or v_history<>1 or v_events<>1 then
+    raise exception 'human review approval retry duplicated history/event';
+  end if;
+end;
+$workflow_review_approve_retry$;
+
+-- Rechazo de revisión sin Foto: exige motivo y termina en rejected sin completed_at.
+select set_config(
+  'gestionpisos.workflow_review_reject_execution_id',
+  (
+    select execution_id::text
+    from public.execute_workflow_application_now_v1(
+      current_setting('gestionpisos.workflow_review_application_id')::uuid,
+      'workflow-review-reject-execution-001',
+      current_setting('gestionpisos.workflow_root')::uuid
+    )
+    limit 1
+  ),
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_review_reject_task_id',
+  (
+    select id::text
+    from public.tenant_tasks_v2
+    where source_kind='workflow_execution'
+      and source_id=current_setting('gestionpisos.workflow_review_reject_execution_id')::uuid
+    limit 1
+  ),
+  true
+);
+
+select * from public.apply_workflow_task_action_v1(
+  current_setting('gestionpisos.workflow_review_reject_task_id')::uuid,
+  'accept',
+  'workflow-review-reject-accept-001',
+  null
+);
+
+do $workflow_review_reject_requires_note$
+begin
+  begin
+    perform * from public.apply_workflow_task_action_v1(
+      current_setting('gestionpisos.workflow_review_reject_task_id')::uuid,
+      'review_reject',
+      'workflow-review-reject-missing-note-001',
+      null
+    );
+    raise exception 'human review rejection without reason unexpectedly succeeded';
+  exception when invalid_parameter_value then null;
+  end;
+end;
+$workflow_review_reject_requires_note$;
+
+select * from public.apply_workflow_task_action_v1(
+  current_setting('gestionpisos.workflow_review_reject_task_id')::uuid,
+  'review_reject',
+  'workflow-review-reject-001',
+  'La evidencia no cumple el criterio de revisión'
+);
+
+do $workflow_review_reject_state$
+declare
+  v_task_status text;
+  v_execution_status text;
+  v_completed_at timestamptz;
+  v_history integer;
+begin
+  select status into v_task_status
+  from public.tenant_tasks_v2
+  where id=current_setting('gestionpisos.workflow_review_reject_task_id')::uuid;
+
+  select status,completed_at into v_execution_status,v_completed_at
+  from public.workflow_executions_v2
+  where id=current_setting('gestionpisos.workflow_review_reject_execution_id')::uuid;
+
+  select count(*) into v_history
+  from public.tenant_task_history_v2
+  where task_id=current_setting('gestionpisos.workflow_review_reject_task_id')::uuid
+    and action_key='review_reject'
+    and note='La evidencia no cumple el criterio de revisión';
+
+  if v_task_status<>'rejected'
+    or v_execution_status<>'rejected'
+    or v_completed_at is not null
+    or v_history<>1 then
+    raise exception 'human review rejection final state/history is inconsistent';
+  end if;
+end;
+$workflow_review_reject_state$;
+
+-- Revisión humana con Foto: submit termina en waiting_review y la revisión real de foto cierra el workflow.
+select set_config(
+  'gestionpisos.workflow_photo_review_definition_id',
+  (
+    select definition_id::text
+    from public.save_workflow_definition_draft_v1(
+      jsonb_build_object(
+        'authoringVersion',2,
+        'flowName','Foto con revisión humana',
+        'flowType','inspection',
+        'flowDescription','Regresión foto + revisión',
+        'scopeType','property',
+        'triggerType','manual',
+        'recurrence','',
+        'assignmentType','manual',
+        'steps',jsonb_build_object('accept',false,'photo',true,'checklist',false,'document',false),
+        'closeType','human_review',
+        'notifications',jsonb_build_object('onCreate',false,'onClose',false)
+      )
+    )
+    limit 1
+  ),
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_photo_review_version_id',
+  (
+    select version_id::text
+    from public.publish_workflow_definition_v1(
+      current_setting('gestionpisos.workflow_photo_review_definition_id')::uuid,
+      1
+    )
+    limit 1
+  ),
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_photo_review_application_id',
+  (
+    select application_id::text
+    from public.create_workflow_application_v2(
+      current_setting('gestionpisos.workflow_photo_review_version_id')::uuid,
+      current_setting('gestionpisos.workflow_property_1')::uuid,
+      null,
+      null,
+      array[current_setting('gestionpisos.workflow_photo_pattern_1')::uuid]
+    )
+    limit 1
+  ),
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_photo_review_execution_id',
+  (
+    select execution_id::text
+    from public.execute_workflow_application_now_v1(
+      current_setting('gestionpisos.workflow_photo_review_application_id')::uuid,
+      'workflow-photo-review-execution-001',
+      current_setting('gestionpisos.workflow_root')::uuid
+    )
+    limit 1
+  ),
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_photo_review_task_id',
+  (
+    select id::text
+    from public.tenant_tasks_v2
+    where source_kind='workflow_execution'
+      and source_id=current_setting('gestionpisos.workflow_photo_review_execution_id')::uuid
+    limit 1
+  ),
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_photo_review_resource_id',
+  (
+    select id::text
+    from public.workflow_execution_photo_resources_v2
+    where execution_id=current_setting('gestionpisos.workflow_photo_review_execution_id')::uuid
+    limit 1
+  ),
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_photo_review_run_id',
+  (
+    select run_id::text
+    from public.start_workflow_photo_verification_v1(
+      current_setting('gestionpisos.workflow_photo_review_resource_id')::uuid
+    )
+    limit 1
+  ),
+  true
+);
+
+reset role;
+select set_config('gestionpisos.workflow_photo_review_item_id','dddddddd-dddd-4ddd-8ddd-dddddddddddd',true);
+
+insert into public.photo_verification_items_v2(
+  id,run_id,pattern_id,storage_path,alignment_score,alignment_meta
+) values (
+  current_setting('gestionpisos.workflow_photo_review_item_id')::uuid,
+  current_setting('gestionpisos.workflow_photo_review_run_id')::uuid,
+  current_setting('gestionpisos.workflow_photo_pattern_1')::uuid,
+  current_setting('gestionpisos.workflow_org_1')||'/'||
+    current_setting('gestionpisos.workflow_photo_review_run_id')||'/'||
+    current_setting('gestionpisos.workflow_photo_review_item_id')||'.jpg',
+  0.81,
+  jsonb_build_object('algorithm','local-edge-v2','zones',jsonb_build_array(0.6,0.6))
+);
+
+insert into storage.objects(bucket_id,name,owner_id)
+values (
+  'photo-verification',
+  current_setting('gestionpisos.workflow_org_1')||'/'||
+    current_setting('gestionpisos.workflow_photo_review_run_id')||'/'||
+    current_setting('gestionpisos.workflow_photo_review_item_id')||'.jpg',
+  current_setting('gestionpisos.workflow_root')
+);
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub',current_setting('gestionpisos.workflow_root'),
+    'role','authenticated',
+    'aal','aal2'
+  )::text,
+  true
+);
+
+select * from public.submit_workflow_photo_verification_v1(
+  current_setting('gestionpisos.workflow_photo_review_run_id')::uuid,
+  current_setting('gestionpisos.workflow_photo_review_item_id')::uuid,
+  'workflow-photo-review-submit-001'
+);
+
+reset role;
+
+do $workflow_photo_review_waiting$
+declare
+  v_task_status text;
+  v_execution_status text;
+  v_run_status text;
+  v_agency_actions integer;
+begin
+  select status into v_task_status
+  from public.tenant_tasks_v2
+  where id=current_setting('gestionpisos.workflow_photo_review_task_id')::uuid;
+
+  select status into v_execution_status
+  from public.workflow_executions_v2
+  where id=current_setting('gestionpisos.workflow_photo_review_execution_id')::uuid;
+
+  select status into v_run_status
+  from public.photo_verification_runs_v2
+  where id=current_setting('gestionpisos.workflow_photo_review_run_id')::uuid;
+
+  select count(*) into v_agency_actions
+  from public.tenant_task_actions_v2
+  where task_id=current_setting('gestionpisos.workflow_photo_review_task_id')::uuid
+    and from_status='waiting_review'
+    and actor='agency'
+    and active=true;
+
+  if v_task_status<>'waiting_review'
+    or v_execution_status<>'waiting_review'
+    or v_run_status<>'submitted'
+    or v_agency_actions<>0 then
+    raise exception 'photo human-review workflow did not route exclusively through photo review';
+  end if;
+end;
+$workflow_photo_review_waiting$;
+
+select * from public.apply_workflow_photo_review_v1(
+  current_setting('gestionpisos.workflow_photo_review_run_id')::uuid,
+  current_setting('gestionpisos.workflow_root')::uuid,
+  'approved',
+  null
+);
+
+do $workflow_photo_review_approved_state$
+declare
+  v_task_status text;
+  v_execution_status text;
+  v_run_status text;
+  v_history integer;
+  v_events integer;
+begin
+  select status into v_task_status
+  from public.tenant_tasks_v2
+  where id=current_setting('gestionpisos.workflow_photo_review_task_id')::uuid;
+
+  select status into v_execution_status
+  from public.workflow_executions_v2
+  where id=current_setting('gestionpisos.workflow_photo_review_execution_id')::uuid;
+
+  select status into v_run_status
+  from public.photo_verification_runs_v2
+  where id=current_setting('gestionpisos.workflow_photo_review_run_id')::uuid;
+
+  select count(*) into v_history
+  from public.tenant_task_history_v2
+  where task_id=current_setting('gestionpisos.workflow_photo_review_task_id')::uuid
+    and action_key='review_approve'
+    and from_status='waiting_review'
+    and to_status='completed';
+
+  select count(*) into v_events
+  from public.workflow_execution_events_v2
+  where execution_id=current_setting('gestionpisos.workflow_photo_review_execution_id')::uuid
+    and event_type='workflow_review_applied'
+    and to_status='completed';
+
+  if v_task_status<>'completed'
+    or v_execution_status<>'completed'
+    or v_run_status<>'approved'
+    or v_history<>1
+    or v_events<>1 then
+    raise exception 'approved photo review did not complete workflow consistently';
+  end if;
+end;
+$workflow_photo_review_approved_state$;
+
+do $workflow_photo_review_retry$
+declare
+  v_result jsonb;
+  v_history integer;
+  v_events integer;
+begin
+  v_result:=public.apply_workflow_photo_review_v1(
+    current_setting('gestionpisos.workflow_photo_review_run_id')::uuid,
+    current_setting('gestionpisos.workflow_root')::uuid,
+    'approved',
+    null
+  );
+
+  select count(*) into v_history
+  from public.tenant_task_history_v2
+  where task_id=current_setting('gestionpisos.workflow_photo_review_task_id')::uuid
+    and action_key='review_approve';
+
+  select count(*) into v_events
+  from public.workflow_execution_events_v2
+  where execution_id=current_setting('gestionpisos.workflow_photo_review_execution_id')::uuid
+    and event_type='workflow_review_applied';
+
+  if coalesce((v_result->>'applied_new')::boolean,true)
+    or v_history<>1
+    or v_events<>1 then
+    raise exception 'workflow photo review retry duplicated history/event';
+  end if;
+end;
+$workflow_photo_review_retry$;
+
+-- El mismo recorrido con una decisión fotográfica negativa termina en rejected.
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub',current_setting('gestionpisos.workflow_root'),
+    'role','authenticated',
+    'aal','aal2'
+  )::text,
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_photo_review_reject_execution_id',
+  (
+    select execution_id::text
+    from public.execute_workflow_application_now_v1(
+      current_setting('gestionpisos.workflow_photo_review_application_id')::uuid,
+      'workflow-photo-review-reject-execution-001',
+      current_setting('gestionpisos.workflow_root')::uuid
+    )
+    limit 1
+  ),
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_photo_review_reject_task_id',
+  (
+    select id::text
+    from public.tenant_tasks_v2
+    where source_kind='workflow_execution'
+      and source_id=current_setting('gestionpisos.workflow_photo_review_reject_execution_id')::uuid
+    limit 1
+  ),
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_photo_review_reject_resource_id',
+  (
+    select id::text
+    from public.workflow_execution_photo_resources_v2
+    where execution_id=current_setting('gestionpisos.workflow_photo_review_reject_execution_id')::uuid
+    limit 1
+  ),
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_photo_review_reject_run_id',
+  (
+    select run_id::text
+    from public.start_workflow_photo_verification_v1(
+      current_setting('gestionpisos.workflow_photo_review_reject_resource_id')::uuid
+    )
+    limit 1
+  ),
+  true
+);
+
+reset role;
+select set_config('gestionpisos.workflow_photo_review_reject_item_id','cccccccc-cccc-4ccc-8ccc-cccccccccccc',true);
+
+insert into public.photo_verification_items_v2(
+  id,run_id,pattern_id,storage_path,alignment_score,alignment_meta
+) values (
+  current_setting('gestionpisos.workflow_photo_review_reject_item_id')::uuid,
+  current_setting('gestionpisos.workflow_photo_review_reject_run_id')::uuid,
+  current_setting('gestionpisos.workflow_photo_pattern_1')::uuid,
+  current_setting('gestionpisos.workflow_org_1')||'/'||
+    current_setting('gestionpisos.workflow_photo_review_reject_run_id')||'/'||
+    current_setting('gestionpisos.workflow_photo_review_reject_item_id')||'.jpg',
+  0.52,
+  jsonb_build_object('algorithm','local-edge-v2','zones',jsonb_build_array(0.3,0.3))
+);
+
+insert into storage.objects(bucket_id,name,owner_id)
+values (
+  'photo-verification',
+  current_setting('gestionpisos.workflow_org_1')||'/'||
+    current_setting('gestionpisos.workflow_photo_review_reject_run_id')||'/'||
+    current_setting('gestionpisos.workflow_photo_review_reject_item_id')||'.jpg',
+  current_setting('gestionpisos.workflow_root')
+);
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub',current_setting('gestionpisos.workflow_root'),
+    'role','authenticated',
+    'aal','aal2'
+  )::text,
+  true
+);
+
+select * from public.submit_workflow_photo_verification_v1(
+  current_setting('gestionpisos.workflow_photo_review_reject_run_id')::uuid,
+  current_setting('gestionpisos.workflow_photo_review_reject_item_id')::uuid,
+  'workflow-photo-review-reject-submit-001'
+);
+
+reset role;
+
+select * from public.apply_workflow_photo_review_v1(
+  current_setting('gestionpisos.workflow_photo_review_reject_run_id')::uuid,
+  current_setting('gestionpisos.workflow_root')::uuid,
+  'rejected',
+  'La fotografía no demuestra el estado solicitado'
+);
+
+do $workflow_photo_review_rejected_state$
+declare
+  v_task_status text;
+  v_execution_status text;
+  v_run_status text;
+  v_completed_at timestamptz;
+  v_history integer;
+begin
+  select status into v_task_status
+  from public.tenant_tasks_v2
+  where id=current_setting('gestionpisos.workflow_photo_review_reject_task_id')::uuid;
+
+  select status,completed_at into v_execution_status,v_completed_at
+  from public.workflow_executions_v2
+  where id=current_setting('gestionpisos.workflow_photo_review_reject_execution_id')::uuid;
+
+  select status into v_run_status
+  from public.photo_verification_runs_v2
+  where id=current_setting('gestionpisos.workflow_photo_review_reject_run_id')::uuid;
+
+  select count(*) into v_history
+  from public.tenant_task_history_v2
+  where task_id=current_setting('gestionpisos.workflow_photo_review_reject_task_id')::uuid
+    and action_key='review_reject'
+    and to_status='rejected';
+
+  if v_task_status<>'rejected'
+    or v_execution_status<>'rejected'
+    or v_run_status<>'rejected'
+    or v_completed_at is not null
+    or v_history<>1 then
+    raise exception 'rejected photo review did not reject workflow consistently';
+  end if;
+end;
+$workflow_photo_review_rejected_state$;
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub',current_setting('gestionpisos.workflow_root'),
+    'role','authenticated',
+    'aal','aal2'
+  )::text,
+  true
+);
+
 -- El cliente authenticated tampoco puede fabricar tareas saltándose el materializador.
 do $$
 begin

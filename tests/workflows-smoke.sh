@@ -161,6 +161,9 @@ grep -Fq '.from("user_roles")' docs/workflow-tasks.js
 grep -Fq 'managerOrganizationIds' docs/workflow-tasks.js
 ! grep -Fq 'currentUser?.app_metadata?.role' docs/workflow-tasks.js
 grep -Fq 'review_reject' docs/workflow-tasks.js
+grep -Fq 'apply_workflow_photo_review_v1' docs/WORKFLOW_PHOTO_EVIDENCE_CONTRACT.md
+grep -Fq 'waiting_review' docs/WORKFLOW_ACTIONS_CONTRACT.md
+grep -Fq 'Revisar evidencias' docs/workflow-tasks.js
 grep -Fq 'task-actions' docs/workflow-tasks.css
 grep -Fq './workflow-tasks.css?v=2026091804' docs/workflow-tasks.html
 grep -Fq './workflow-tasks.js?v=2026091805' docs/workflow-tasks.html

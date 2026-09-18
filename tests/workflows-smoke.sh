@@ -19,6 +19,7 @@ test -s docs/WORKFLOW_APPLICATIONS_CONTRACT.md
 test -s docs/WORKFLOW_EXECUTION_CONTRACT.md
 test -s docs/WORKFLOW_TASKS_CONTRACT.md
 test -s docs/WORKFLOW_ACTIONS_CONTRACT.md
+test -s docs/WORKFLOW_PHOTO_EVIDENCE_CONTRACT.md
 test -s docs/workflow-tasks.html
 test -s docs/workflow-tasks.css
 test -s docs/workflow-tasks.js
@@ -105,14 +106,14 @@ grep -Fq 'puede publicarse como versión inmutable' docs/workflow-definitions.ht
 grep -Fq 'publish_workflow_definition_v1' docs/workflow-definitions.js
 grep -Fq 'workflow-applications.html?definition=' docs/workflow-definitions.js
 grep -Fq 'Publicar versión' docs/workflow-definitions.js
-grep -Fq 'create_workflow_application_v1' docs/workflow-applications.js
+grep -Fq 'create_workflow_application_v2' docs/workflow-applications.js
 grep -Fq 'archive_workflow_application_v1' docs/workflow-applications.js
 grep -Fq 'properties_v2' docs/workflow-applications.js
 grep -Fq 'rooms_v2' docs/workflow-applications.js
 grep -Fq 'occupancies_v2' docs/workflow-applications.js
 grep -Fq '.application-card [hidden]{display:none!important}' docs/workflow-applications.css
-grep -Fq './workflow-applications.css?v=2026091803' docs/workflow-applications.html
-grep -Fq './workflow-applications.js?v=2026091804' docs/workflow-applications.html
+grep -Fq './workflow-applications.css?v=2026091804' docs/workflow-applications.html
+grep -Fq './workflow-applications.js?v=2026091805' docs/workflow-applications.html
 grep -Fq 'crear una ejecución manual y su tarea asociada' docs/workflow-applications.html
 grep -Fq 'Definición → Versión publicada → Aplicación concreta' docs/WORKFLOW_APPLICATIONS_CONTRACT.md
 grep -Fq 'workflow_applications_v2' docs/WORKFLOW_APPLICATIONS_CONTRACT.md
@@ -140,9 +141,20 @@ grep -Fq 'ACTION_KEY_PREFIX' docs/workflow-tasks.js
 grep -Fq 'Aceptar y completar' docs/WORKFLOW_ACTIONS_CONTRACT.md
 grep -Fq 'Tarea y ejecución actualizadas juntas' docs/workflow-tasks.js
 grep -Fq 'task-actions' docs/workflow-tasks.css
-grep -Fq './workflow-tasks.css?v=2026091802' docs/workflow-tasks.html
-grep -Fq './workflow-tasks.js?v=2026091802' docs/workflow-tasks.html
+grep -Fq './workflow-tasks.css?v=2026091803' docs/workflow-tasks.html
+grep -Fq './workflow-tasks.js?v=2026091803' docs/workflow-tasks.html
 grep -Fq 'cambian tarea y ejecución juntas' docs/workflow-tasks.html
+
+grep -Fq 'workflow_execution_photo_resources_v2' docs/workflow-tasks.js
+grep -Fq 'Hacer foto' docs/workflow-tasks.js
+grep -Fq 'Continuar foto' docs/workflow-tasks.js
+grep -Fq 'workflow_resource_id' docs/workflow-tasks.js
+grep -Fq 'applicationPhotoPatterns' docs/workflow-applications.html
+grep -Fq 'workflow_application_photo_resources_v2' docs/workflow-applications.js
+grep -Fq 'p_photo_pattern_ids' docs/workflow-applications.js
+grep -Fq 'Selecciona uno o varios patrones' docs/workflow-applications.js
+grep -Fq 'Aplicación concreta → Patrones vinculados → Ejecución' docs/WORKFLOW_PHOTO_EVIDENCE_CONTRACT.md
+grep -Fq 'submit_workflow_photo_verification_v1' docs/WORKFLOW_PHOTO_EVIDENCE_CONTRACT.md
 grep -Fq 'Asignadas a mí' docs/workflow-tasks.html
 grep -Fq 'workflow-tasks.html' docs/sw.js
 grep -Fq 'workflow-applications.html' docs/sw.js

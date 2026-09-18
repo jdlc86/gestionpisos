@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-migration='supabase/migrations/20260918005500_workflow_definition_persistence.sql'
-hardening='supabase/migrations/20260918010500_workflow_rpc_privilege_hardening.sql'
-partial='supabase/migrations/20260918013500_workflow_partial_drafts.sql'
-noop='supabase/migrations/20260918023000_workflow_draft_noop_save.sql'
-triggers='supabase/migrations/20260918025500_workflow_trigger_controls.sql'
+migration='supabase/migrations/20260917225637_workflow_definition_persistence.sql'
+hardening='supabase/migrations/20260917230059_workflow_rpc_privilege_hardening.sql'
+partial='supabase/migrations/20260917234351_workflow_partial_drafts.sql'
+noop='supabase/migrations/20260918003146_workflow_draft_noop_save.sql'
+triggers='supabase/migrations/20260918004914_workflow_trigger_controls.sql'
 applications='supabase/migrations/20260918095001_workflow_publication_applications.sql'
 executions='supabase/migrations/20260918103715_workflow_manual_executions.sql'
 materialization='supabase/migrations/20260918110819_workflow_task_materialization.sql'

@@ -61,7 +61,7 @@ La persistencia usa:
 - auditoría `workflow_draft_created` / `workflow_draft_updated`;
 - control de concurrencia optimista: una revisión obsoleta se rechaza con `workflow_draft_conflict`.
 
-`sessionStorage` sigue usándose únicamente como recuperación local de cambios mientras se edita. Ya no es la única persistencia.
+`sessionStorage` se usa únicamente para un borrador local todavía no ligado a una definición guardada. Tras el primer guardado servidor, la caché local genérica se elimina y los flujos persistidos se reabren por `id`; así una definición publicada no reaparece como si fuera un flujo nuevo.
 
 ### Borradores parciales y decisiones explícitas
 
@@ -155,7 +155,7 @@ No se ha creado `workflow_tasks`.
 - el asignado puede leer su tarea por RLS;
 - la pantalla `workflow-tasks.html` lista el trabajo visible.
 
-`tenant_task_actions_v2` y `tenant_task_history_v2` se conservan. Las acciones de workflow se derivan del snapshot de la receta; `apply_workflow_task_action_v1` sincroniza tarea + ejecución e impide que el RPC legacy modifique una tarea de workflow por separado.
+`tenant_task_actions_v2` y `tenant_task_history_v2` se conservan. Las acciones de workflow se derivan del snapshot de la receta; cuando la receta requiere decisión del asignado se publican **Aceptar / Rechazar**. Rechazar exige motivo, deja tarea + ejecución en `rejected` y cancela recursos fotográficos pendientes. `apply_workflow_task_action_v1` mantiene la transición atómica e impide que el RPC legacy modifique una tarea de workflow por separado.
 
 ## 8. Limpieza — transición
 
@@ -197,7 +197,7 @@ Las pruebas se ejecutan también en PostgreSQL 17 desechable desde Schema Guard.
 | Aplicaciones | Implementado para vincular versión publicada con entidad real | Permite `Ejecutar ahora` |
 | Banco Fotográfico | Operativo/reutilizado | Patrones vinculables a aplicaciones y congelados por ejecución |
 | Versiones publicadas | Implementado | Publicación RPC inmutable e idempotente |
-| Tareas | Materialización + primera acción atómica implementadas | `tenant_tasks_v2` reutilizada; `accept` sincroniza tarea + ejecución |
+| Tareas | Materialización + decisión atómica implementadas | `tenant_tasks_v2` reutilizada; `accept/reject` sincronizan tarea + ejecución y rechazo exige motivo |
 | Historial | Parcial | registra creación, materialización, acciones y evidencia fotográfica; ciclo completo pendiente |
 | Ejecución genérica | Implementada en fase inicial | `manual_now`, idempotente, estado `pending` |
 | Adaptador Limpieza | Pendiente | Legacy preservado |
@@ -245,6 +245,16 @@ Añade la distinción entre **guardar** y **configurar**: permite persistir un b
 ### Incremento de corrección — Guardado idempotente
 
 Una revisión representa un cambio real de contenido. Repetir Guardar sin modificaciones devuelve la revisión existente y no altera fecha ni auditoría de actualización.
+
+### Incremento de corrección — Decisión Aceptar/Rechazar y regresiones E2E
+
+Las pruebas reales del recorrido fotográfico detectaron y corrigen tres puntos:
+
+- el paso técnico `steps.accept=true` se presenta y ejecuta como **Requerir decisión del asignado: Aceptar / Rechazar**;
+- Rechazar exige motivo, registra histórico/evento atómico y cancela recursos fotográficos pendientes;
+- el Creador ya no recupera como flujo nuevo la caché local de una definición ya guardada/publicada;
+- la vista previa vacía de la cámara permanece realmente oculta hasta existir una captura.
+
 
 ## 12. Próximo incremento técnico
 

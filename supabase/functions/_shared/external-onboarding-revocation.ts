@@ -17,11 +17,11 @@ export async function disableAndRevokeExternalOnboarding(
   input: {
     authUserId: string;
     actorUserId: string;
-    replacementEmail: string;
+    replacementEmail: string | null;
   },
 ): Promise<RevocationResult> {
-  const replacementEmail = String(input.replacementEmail || "").trim().toLowerCase();
-  if (!input.authUserId || !input.actorUserId || !replacementEmail) {
+  const replacementEmail = input.replacementEmail == null ? null : String(input.replacementEmail).trim().toLowerCase() || null;
+  if (!input.authUserId || !input.actorUserId) {
     throw new Error("external_onboarding_revoke_input_invalid");
   }
 

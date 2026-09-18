@@ -11,6 +11,9 @@ const occupancyRow=document.getElementById("applicationOccupancyRow");
 const propertySelect=document.getElementById("applicationProperty");
 const roomSelect=document.getElementById("applicationRoom");
 const occupancySelect=document.getElementById("applicationOccupancy");
+const photoRow=document.getElementById("applicationPhotoRow");
+const photoNote=document.getElementById("applicationPhotoNote");
+const photoPatternsBox=document.getElementById("applicationPhotoPatterns");
 const targetNote=document.getElementById("applicationTargetNote");
 const createButton=document.getElementById("applicationCreate");
 const applicationsList=document.getElementById("workflowApplications");
@@ -24,6 +27,9 @@ let rooms=[];
 let occupancies=[];
 let applications=[];
 let executions=[];
+let applicationPhotoResources=[];
+let photoPatterns=[];
+let photoPatternById=new Map();
 let permissionContext=null;
 let currentUser=null;
 
@@ -40,6 +46,14 @@ function option(value,label){const node=document.createElement("option");node.va
 function fmtDate(value){if(!value)return "—";try{return new Intl.DateTimeFormat("es-ES",{dateStyle:"medium",timeStyle:"short"}).format(new Date(value))}catch{return value}}
 function activeVersion(){return versions.find(item=>item.id===versionSelect.value)||versions[0]||null}
 function versionScope(){return String(activeVersion()?.spec?.scopeType||definition?.scope_type||"")}
+function versionNeedsPhoto(version=activeVersion()){return version?.spec?.steps?.photo===true}
+function selectedPhotoPatternIds(){
+  return [...photoPatternsBox.querySelectorAll('input[type="checkbox"]:checked')].map(node=>node.value);
+}
+function hasManualContour(pattern){
+  const strokes=pattern?.contour_data?.strokes;
+  return Array.isArray(strokes)&&strokes.length>0;
+}
 function targetLabel(app){
   if(app.scope_type==="organization")return "Toda la organización";
   if(app.scope_type==="property"){
@@ -74,6 +88,13 @@ function errorText(error){
   if(message.includes("workflow_assignment_not_supported"))return "Esta regla de asignación todavía no está habilitada para Ejecutar ahora.";
   if(message.includes("workflow_execution_property_unavailable")||message.includes("workflow_execution_room_unavailable")||message.includes("workflow_execution_occupancy_unavailable"))return "El destino de esta aplicación ya no está disponible para nuevas ejecuciones.";
   if(message.includes("workflow_application_not_executable"))return "La aplicación ya no está configurada para nuevas ejecuciones.";
+  if(message.includes("workflow_photo_step_requires_property"))return "El paso Fotografía necesita una aplicación vinculada a un piso.";
+  if(message.includes("workflow_photo_resources_required"))return "Selecciona al menos un patrón fotográfico real.";
+  if(message.includes("workflow_photo_pattern_not_available"))return "Uno de los patrones ya no está disponible, no pertenece al piso o no tiene silueta guardada.";
+  if(message.includes("workflow_photo_pattern_duplicate"))return "No se puede seleccionar dos veces el mismo patrón.";
+  if(message.includes("workflow_application_photo_resources_conflict"))return "Esta aplicación ya tiene otros recursos fotográficos vinculados.";
+  if(message.includes("workflow_application_photo_resources_locked"))return "Los recursos de esta aplicación ya están congelados por una ejecución existente.";
+  if(message.includes("workflow_execution_photo_snapshot_missing"))return "La ejecución no tiene el snapshot fotográfico requerido.";
   return "No se pudo completar la operación. No se ha modificado ningún dato.";
 }
 function meta(label,value){
@@ -131,12 +152,85 @@ async function loadOccupanciesFor(propertyId){
   }));
 }
 
+function renderPhotoPatternOptions(){
+  photoPatternsBox.replaceChildren();
+  if(!photoPatterns.length){
+    const empty=document.createElement("div");
+    empty.className="application-note";
+    empty.textContent="No hay patrones activos con silueta manual para este piso.";
+    photoPatternsBox.append(empty);
+    return;
+  }
+
+  photoPatterns.forEach(pattern=>{
+    photoPatternById.set(pattern.id,pattern);
+    const label=document.createElement("label");
+    label.className="application-photo-option";
+    const input=document.createElement("input");
+    input.type="checkbox";
+    input.value=pattern.id;
+    input.addEventListener("change",refreshCreateAvailability);
+    const text=document.createElement("span");
+    const strong=document.createElement("strong");
+    strong.textContent=pattern.name||pattern.target_key||"Patrón";
+    const small=document.createElement("small");
+    small.textContent=[pattern.target_key&&pattern.target_key!==pattern.name?pattern.target_key:null,"v"+pattern.version].filter(Boolean).join(" · ");
+    text.append(strong,small);
+    label.append(input,text);
+    photoPatternsBox.append(label);
+  });
+}
+
+async function loadPhotoPatternsFor(propertyId){
+  photoPatterns=[];
+  photoPatternsBox.replaceChildren();
+  if(!versionNeedsPhoto()){
+    photoNote.textContent="";
+    return;
+  }
+  if(!propertyId){
+    photoNote.textContent="Selecciona primero un piso para cargar sus patrones fotográficos.";
+    return;
+  }
+
+  photoNote.textContent="Cargando patrones del piso…";
+  const {data,error}=await supabase
+    .from("photo_patterns_v2")
+    .select("id,property_id,name,target_key,version,active,retired_at,contour_data")
+    .eq("property_id",propertyId)
+    .eq("active",true)
+    .is("retired_at",null)
+    .order("created_at");
+
+  if(error)throw error;
+  photoPatterns=(data||[]).filter(hasManualContour);
+  renderPhotoPatternOptions();
+  photoNote.textContent=photoPatterns.length
+    ?"Selecciona uno o varios patrones. La ejecución congelará la versión y silueta efectiva."
+    :"Este piso no tiene patrones utilizables. Crea y guarda una silueta en Banco Fotográfico.";
+}
+
+function refreshCreateAvailability(){
+  const scope=versionScope();
+  const available=properties.filter(item=>item.status!=="archived"&&!item.archived_at);
+  let disabled=false;
+
+  if(scope!=="organization"&&!available.length)disabled=true;
+  if(versionNeedsPhoto()){
+    if(scope==="organization"||!propertySelect.value||selectedPhotoPatternIds().length<1)disabled=true;
+  }
+
+  createButton.disabled=disabled;
+}
+
 async function updateTargetControls(){
   const scope=versionScope();
+  const photoRequired=versionNeedsPhoto();
   scopeText.textContent=scopeLabels[scope]||"—";
   propertyRow.hidden=!["property","room","occupancy"].includes(scope);
   roomRow.hidden=scope!=="room";
   occupancyRow.hidden=scope!=="occupancy";
+  photoRow.hidden=!photoRequired;
   propertySelect.required=["property","room","occupancy"].includes(scope);
   roomSelect.required=scope==="room";
   occupancySelect.required=scope==="occupancy";
@@ -144,24 +238,43 @@ async function updateTargetControls(){
   occupancySelect.disabled=scope!=="occupancy"||!propertySelect.value;
 
   if(scope==="organization"){
-    targetNote.textContent="Esta versión se aplicará a toda la organización. No requiere otro selector.";
-    createButton.disabled=false;
+    targetNote.textContent=photoRequired
+      ?"Esta receta exige fotografía y todavía necesita un destino que resuelva un piso concreto."
+      :"Esta versión se aplicará a toda la organización. No requiere otro selector.";
+    if(photoRequired){
+      photoPatterns=[];
+      renderPhotoPatternOptions();
+      photoNote.textContent="El paso Fotografía no puede vincular patrones sin un piso concreto.";
+    }
+    refreshCreateAvailability();
     return;
   }
 
   const available=properties.filter(item=>item.status!=="archived"&&!item.archived_at);
   if(!available.length){
     targetNote.textContent="No hay pisos disponibles en Cartera. Crea primero un piso real para poder aplicar esta receta.";
-    createButton.disabled=true;
+    if(photoRequired){
+      photoPatterns=[];
+      renderPhotoPatternOptions();
+      photoNote.textContent="Primero necesitas un piso y después sus patrones fotográficos.";
+    }
+    refreshCreateAvailability();
     return;
   }
 
-  createButton.disabled=false;
   targetNote.textContent=scope==="room"
     ?"Selecciona primero el piso y después una habitación perteneciente a ese piso."
     :scope==="occupancy"
       ?"Selecciona primero el piso y después una ocupación vigente."
       :"Selecciona el piso concreto donde quieres aplicar esta versión.";
+
+  if(photoRequired)await loadPhotoPatternsFor(propertySelect.value);
+  else{
+    photoPatterns=[];
+    photoPatternsBox.replaceChildren();
+    photoNote.textContent="";
+  }
+  refreshCreateAvailability();
 }
 
 function renderDefinition(){
@@ -245,6 +358,17 @@ function clearRequestKey(appId){
   sessionStorage.removeItem(EXECUTION_KEY_PREFIX+appId);
 }
 
+function applicationPhotoLabel(app){
+  const bindings=applicationPhotoResources
+    .filter(item=>item.application_id===app.id)
+    .sort((a,b)=>a.sort_order-b.sort_order);
+  if(!bindings.length)return "Sin vincular";
+  return bindings.map(binding=>{
+    const pattern=photoPatternById.get(binding.pattern_id);
+    return pattern?.name||pattern?.target_key||("Patrón "+String(binding.pattern_id).slice(0,8));
+  }).join(" · ");
+}
+
 function renderApplications(){
   applicationsList.replaceChildren();
   if(!applications.length){
@@ -271,6 +395,7 @@ function renderApplications(){
       meta("Ejecuciones",String(appExecutions.length)),
       meta("Última ejecución",executionLabel(latestExecution))
     );
+    if(versionNeedsPhoto(version))details.append(meta("Fotografías",applicationPhotoLabel(app)));
     article.append(head,details);
 
     if(app.status==="configured"){
@@ -336,6 +461,27 @@ async function loadApplications(){
   applications=data||[];
 
   const applicationIds=applications.map(item=>item.id);
+  applicationPhotoResources=[];
+  if(applicationIds.length){
+    const {data:resourceData,error:resourceError}=await supabase
+      .from("workflow_application_photo_resources_v2")
+      .select("application_id,pattern_id,sort_order")
+      .in("application_id",applicationIds)
+      .order("sort_order");
+    if(resourceError)throw resourceError;
+    applicationPhotoResources=resourceData||[];
+
+    const patternIds=[...new Set(applicationPhotoResources.map(item=>item.pattern_id))];
+    if(patternIds.length){
+      const {data:patternData,error:patternError}=await supabase
+        .from("photo_patterns_v2")
+        .select("id,name,target_key,version,contour_data")
+        .in("id",patternIds);
+      if(patternError)throw patternError;
+      (patternData||[]).forEach(item=>photoPatternById.set(item.id,item));
+    }
+  }
+
   executions=[];
   if(applicationIds.length){
     const {data:executionData,error:executionError}=await supabase
@@ -416,6 +562,8 @@ propertySelect.addEventListener("change",async()=>{
     if(scope==="occupancy")await loadOccupanciesFor(propertySelect.value);
     roomSelect.disabled=scope!=="room"||!propertySelect.value;
     occupancySelect.disabled=scope!=="occupancy"||!propertySelect.value;
+    if(versionNeedsPhoto())await loadPhotoPatternsFor(propertySelect.value);
+    refreshCreateAvailability();
   }catch{setStatus("No se pudieron cargar los destinos dependientes.",true)}
 });
 
@@ -423,6 +571,8 @@ versionSelect.addEventListener("change",async()=>{
   propertySelect.value="";
   roomSelect.replaceChildren(option("","Selecciona una habitación"));
   occupancySelect.replaceChildren(option("","Selecciona una ocupación vigente"));
+  photoPatterns=[];
+  photoPatternsBox.replaceChildren();
   await updateTargetControls();
 });
 
@@ -431,23 +581,29 @@ form.addEventListener("submit",async event=>{
   const version=activeVersion();
   if(!version)return;
   const scope=versionScope();
+  const photoPatternIds=versionNeedsPhoto(version)?selectedPhotoPatternIds():[];
+  if(versionNeedsPhoto(version)&&!photoPatternIds.length){
+    setStatus("Selecciona al menos un patrón fotográfico.",true);
+    return;
+  }
   const args={
     p_definition_version_id:version.id,
     p_property_id:["property","room","occupancy"].includes(scope)?propertySelect.value||null:null,
     p_room_id:scope==="room"?roomSelect.value||null:null,
-    p_occupancy_id:scope==="occupancy"?occupancySelect.value||null:null
+    p_occupancy_id:scope==="occupancy"?occupancySelect.value||null:null,
+    p_photo_pattern_ids:photoPatternIds
   };
   createButton.disabled=true;
   createButton.textContent="Guardando…";
   setStatus("Validando el destino en servidor…");
-  const {error}=await supabase.rpc("create_workflow_application_v1",args);
+  const {error}=await supabase.rpc("create_workflow_application_v2",args);
   createButton.textContent="Crear aplicación";
   if(error){
     createButton.disabled=false;
     setStatus(errorText(error),true);
     return;
   }
-  setStatus("Aplicación configurada. Todavía no crea tareas ni recurrencias.");
+  setStatus(versionNeedsPhoto(version)?"Aplicación configurada con sus patrones fotográficos vinculados.":"Aplicación configurada.");
   propertySelect.value="";
   roomSelect.replaceChildren(option("","Selecciona una habitación"));
   occupancySelect.replaceChildren(option("","Selecciona una ocupación vigente"));

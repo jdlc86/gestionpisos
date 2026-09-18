@@ -1,5 +1,3 @@
--- Stable, optional tenant identity for tenant-attributable cleaning tasks.
--- Tasks that belong only to a property/room keep tenant_id NULL.
 alter table public.cleaning_tasks_v2
   add column if not exists tenant_id uuid null;
 

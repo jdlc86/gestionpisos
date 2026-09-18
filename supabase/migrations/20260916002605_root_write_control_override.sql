@@ -1,6 +1,3 @@
--- ROOT supervisory override for administrative write control.
--- ROOT may atomically revoke the current holder or transfer control to another active ADMIN.
-
 create or replace function public.root_set_admin_write_control(
   p_organization_id uuid,
   p_admin_user_id uuid

@@ -1,3 +1,4 @@
+
 insert into storage.buckets (id,name,public,file_size_limit,allowed_mime_types)
 values (
   'photo-verification',

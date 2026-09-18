@@ -1,3 +1,4 @@
+
 create extension if not exists pg_cron;
 
 create schema if not exists private;

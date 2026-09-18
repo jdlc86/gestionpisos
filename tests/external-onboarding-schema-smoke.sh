@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-MIGRATION='supabase/migrations/20260916203000_external_owner_tenant_onboarding.sql'
+MIGRATION='supabase/migrations/20260916183835_external_owner_tenant_onboarding.sql'
 test -s "$MIGRATION"
 
 grep -Fq 'create table if not exists public.external_account_onboarding (' "$MIGRATION"

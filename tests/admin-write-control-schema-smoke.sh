@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-migration="supabase/migrations/20260916021500_unify_admin_write_control.sql"
-override_migration="supabase/migrations/20260916023000_root_write_control_override.sql"
+migration="supabase/migrations/20260916001312_unify_admin_write_control.sql"
+override_migration="supabase/migrations/20260916002605_root_write_control_override.sql"
 test -s "$migration"
 test -s "$override_migration"
 grep -Fq "'property_lifecycle','permission_management','write_control'" "$migration"

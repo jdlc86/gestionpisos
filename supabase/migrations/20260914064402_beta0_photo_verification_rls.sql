@@ -1,3 +1,4 @@
+
 create policy verification_policies_admin_read
 on public.verification_policies_v2
 for select to authenticated

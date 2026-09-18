@@ -1,3 +1,4 @@
+
 create policy payment_obligations_self_read on public.payment_obligations_v2
 for select to authenticated
 using (tenant_user_id = (select auth.uid()));

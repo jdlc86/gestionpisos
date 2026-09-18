@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-migration="supabase/migrations/20260916023500_internal_staff_deactivation.sql"
+migration="supabase/migrations/20260916004853_internal_staff_deactivation.sql"
 test -s "$migration"
 grep -Fq 'create or replace function public.deactivate_internal_staff_user' "$migration"
 grep -Fq "raise exception 'self_deactivation_not_allowed'" "$migration"

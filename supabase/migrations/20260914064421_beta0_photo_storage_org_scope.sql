@@ -1,3 +1,4 @@
+
 drop policy if exists photo_verification_storage_read on storage.objects;
 drop policy if exists photo_verification_storage_insert on storage.objects;
 drop policy if exists photo_verification_storage_update on storage.objects;

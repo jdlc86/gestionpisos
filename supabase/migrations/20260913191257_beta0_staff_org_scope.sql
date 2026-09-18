@@ -1,0 +1,1 @@
+alter table public.property_staff_assignments add column organization_id uuid references public.organizations(id) on delete restrict; create index property_staff_organization_idx on public.property_staff_assignments(organization_id);

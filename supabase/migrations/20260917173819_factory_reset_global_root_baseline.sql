@@ -10,6 +10,8 @@ set search_path = public, pg_temp
 as $$
 declare
   v_reset_at timestamptz := now();
+  v_profile_organization_id uuid;
+  v_active_organization_count integer := 0;
 begin
   perform set_config('lock_timeout', '5s', true);
   perform set_config('statement_timeout', '30s', true);
@@ -26,7 +28,6 @@ begin
     select 1
     from public.user_roles ur
     where ur.user_id = p_actor_user_id
-      and ur.organization_id = p_organization_id
       and lower(ur.role::text) = 'root'
       and ur.revoked_at is null
   ) then
@@ -35,12 +36,33 @@ begin
 
   if not exists (
     select 1
-    from public.profiles p
-    where p.user_id = p_actor_user_id
-      and p.organization_id = p_organization_id
-      and lower(p.status::text) = 'active'
+    from public.organizations o
+    where o.id = p_organization_id
+      and lower(o.status::text) = 'active'
   ) then
-    raise exception 'factory_reset_active_root_profile_required';
+    raise exception 'factory_reset_active_organization_required';
+  end if;
+
+  select p.organization_id
+    into v_profile_organization_id
+  from public.profiles p
+  where p.user_id = p_actor_user_id
+    and lower(p.status::text) = 'active'
+  limit 1;
+
+  if v_profile_organization_id is not null then
+    if v_profile_organization_id <> p_organization_id then
+      raise exception 'factory_reset_root_organization_mismatch';
+    end if;
+  else
+    select count(*)
+      into v_active_organization_count
+    from public.organizations o
+    where lower(o.status::text) = 'active';
+
+    if v_active_organization_count <> 1 then
+      raise exception 'factory_reset_root_organization_ambiguous';
+    end if;
   end if;
 
   if not exists (
@@ -53,8 +75,6 @@ begin
     raise exception 'factory_reset_root_recovery_operator_required';
   end if;
 
-  -- Explicit test-environment reset. Static workflow templates, the active
-  -- organization, ROOT access and one emergency platform operator are preserved.
   truncate table
     public.access_requests,
     public.admin_capability_holders,
@@ -155,4 +175,4 @@ revoke all on function public.factory_reset_test_data_service(uuid, uuid, uuid) 
 grant execute on function public.factory_reset_test_data_service(uuid, uuid, uuid) to service_role;
 
 comment on function public.factory_reset_test_data_service(uuid, uuid, uuid) is
-  'Service-role-only destructive test reset. Preserves one active ROOT, one active ROOT-recovery platform operator, the active organization and static workflow templates; clears operational data and old audit history, then writes a single reset receipt.';
+  'Service-role-only destructive test reset. Supports global ROOT using the same effective-organization rule as get_effective_organization_id; preserves ROOT, one ROOT-recovery operator, the active organization and static workflow templates.';

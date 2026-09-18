@@ -5,8 +5,8 @@ test -s docs/factory-reset.html
 test -s docs/factory-reset.js
 test -s docs/FACTORY_RESET_RUNBOOK.md
 test -s supabase/functions/factory-reset-test-data/index.ts
-test -s supabase/migrations/20260917170000_factory_reset_test_data_helper.sql
-test -s supabase/migrations/20260917194500_factory_reset_global_root_baseline.sql
+test -s supabase/migrations/20260917144325_factory_reset_test_data_helper.sql
+test -s supabase/migrations/20260917173819_factory_reset_global_root_baseline.sql
 test -s supabase/migrations/20260918110824_factory_reset_workflow_data.sql
 
 node --check docs/factory-reset.js
@@ -35,17 +35,16 @@ grep -Fq 'remainingUsers.length === 2' supabase/functions/factory-reset-test-dat
 grep -Fq 'factory_reset_test_data_service' supabase/functions/factory-reset-test-data/index.ts
 grep -Fq 'response.clone().json()' docs/factory-reset.js
 
-grep -Fq 'security definer' supabase/migrations/20260917170000_factory_reset_test_data_helper.sql
-grep -Fq 'factory_reset_completed' supabase/migrations/20260917170000_factory_reset_test_data_helper.sql
+grep -Fq 'security definer' supabase/migrations/20260917144325_factory_reset_test_data_helper.sql
+grep -Fq 'factory_reset_completed' supabase/migrations/20260917144325_factory_reset_test_data_helper.sql
 grep -Fq 'tenant_task_workflow_templates_v2' docs/FACTORY_RESET_RUNBOOK.md
-grep -Fq 'revoke all on function public.factory_reset_test_data_service' supabase/migrations/20260917170000_factory_reset_test_data_helper.sql
-grep -Fq 'grant execute on function public.factory_reset_test_data_service' supabase/migrations/20260917170000_factory_reset_test_data_helper.sql
+grep -Fq 'revoke all on function public.factory_reset_test_data_service' supabase/migrations/20260917144325_factory_reset_test_data_helper.sql
+grep -Fq 'grant execute on function public.factory_reset_test_data_service' supabase/migrations/20260917144325_factory_reset_test_data_helper.sql
 
-grep -Fq 'ROOT is intentionally allowed to be global' supabase/migrations/20260917194500_factory_reset_global_root_baseline.sql
-grep -Fq 'v_active_organization_count <> 1' supabase/migrations/20260917194500_factory_reset_global_root_baseline.sql
-grep -Fq 'factory_reset_root_organization_ambiguous' supabase/migrations/20260917194500_factory_reset_global_root_baseline.sql
-grep -Fq 'revoke all on function public.factory_reset_test_data_service' supabase/migrations/20260917194500_factory_reset_global_root_baseline.sql
-grep -Fq 'grant execute on function public.factory_reset_test_data_service' supabase/migrations/20260917194500_factory_reset_global_root_baseline.sql
+grep -Fq 'v_active_organization_count <> 1' supabase/migrations/20260917173819_factory_reset_global_root_baseline.sql
+grep -Fq 'factory_reset_root_organization_ambiguous' supabase/migrations/20260917173819_factory_reset_global_root_baseline.sql
+grep -Fq 'revoke all on function public.factory_reset_test_data_service' supabase/migrations/20260917173819_factory_reset_global_root_baseline.sql
+grep -Fq 'grant execute on function public.factory_reset_test_data_service' supabase/migrations/20260917173819_factory_reset_global_root_baseline.sql
 grep -Fq 'public.workflow_execution_events_v2' supabase/migrations/20260918110824_factory_reset_workflow_data.sql
 grep -Fq 'public.workflow_executions_v2' supabase/migrations/20260918110824_factory_reset_workflow_data.sql
 grep -Fq 'public.workflow_applications_v2' supabase/migrations/20260918110824_factory_reset_workflow_data.sql
@@ -55,8 +54,8 @@ grep -Fq 'public.workflow_definitions_v2' supabase/migrations/20260918110824_fac
 # Never expose privileged credentials or implement Storage cleanup through SQL metadata deletion.
 ! grep -Fq 'service_role' docs/factory-reset.html
 ! grep -Fq 'service_role' docs/factory-reset.js
-! grep -Fq 'storage.objects' supabase/migrations/20260917170000_factory_reset_test_data_helper.sql
-! grep -Fq 'storage.objects' supabase/migrations/20260917194500_factory_reset_global_root_baseline.sql
+! grep -Fq 'storage.objects' supabase/migrations/20260917144325_factory_reset_test_data_helper.sql
+! grep -Fq 'storage.objects' supabase/migrations/20260917173819_factory_reset_global_root_baseline.sql
 ! grep -Fq 'storage.objects' supabase/migrations/20260918110824_factory_reset_workflow_data.sql
 
 # The helper must remain explicitly test-only and contractually guarded.

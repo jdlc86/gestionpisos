@@ -1,3 +1,4 @@
+
 create schema if not exists private;
 
 create or replace function private.validate_cleaning_swap_insert()

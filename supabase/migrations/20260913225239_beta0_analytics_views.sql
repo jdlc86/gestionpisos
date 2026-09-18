@@ -1,3 +1,4 @@
+
 create or replace view public.v_property_incident_stats
 with (security_invoker = true)
 as

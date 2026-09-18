@@ -344,6 +344,146 @@ end;
 $$;
 set local role authenticated;
 
+-- Activacion condicional: fecha concreta conserva calendario/hora y no frecuencia.
+select set_config(
+  'gestionpisos.workflow_scheduled_id',
+  (select definition_id::text
+   from public.save_workflow_definition_draft_v1(
+     jsonb_build_object(
+       'authoringVersion',2,
+       'flowName','Inspeccion puntual',
+       'flowType','inspection',
+       'flowDescription','',
+       'scopeType','organization',
+       'triggerType','scheduled_once',
+       'recurrence','weekly',
+       'scheduledAt','2026-10-20T10:30',
+       'customEvery','9',
+       'customUnit','day',
+       'assignmentType','manual',
+       'steps',jsonb_build_object('accept',true,'photo',false,'checklist',false,'document',false),
+       'closeType','auto',
+       'notifications',jsonb_build_object('onCreate',false,'onClose',false)
+     )
+   )
+   limit 1),
+  true
+);
+
+do $$
+declare
+  v_spec jsonb;
+  v_complete boolean;
+begin
+  select draft_spec, authoring_complete
+  into v_spec, v_complete
+  from public.workflow_definitions_v2
+  where id=current_setting('gestionpisos.workflow_scheduled_id')::uuid;
+
+  if not v_complete then
+    raise exception 'scheduled workflow not marked complete';
+  end if;
+  if v_spec ->> 'scheduledAt' <> '2026-10-20T10:30' then
+    raise exception 'scheduled workflow lost scheduledAt';
+  end if;
+  if coalesce(v_spec ->> 'recurrence','') <> ''
+    or coalesce(v_spec ->> 'customEvery','') <> ''
+    or coalesce(v_spec ->> 'customUnit','') <> '' then
+    raise exception 'scheduled workflow retained irrelevant recurrence fields';
+  end if;
+end;
+$$;
+
+-- Recurrencia personalizada requiere valor y unidad; ambos quedan persistidos.
+select set_config(
+  'gestionpisos.workflow_custom_id',
+  (select definition_id::text
+   from public.save_workflow_definition_draft_v1(
+     jsonb_build_object(
+       'authoringVersion',2,
+       'flowName','Limpieza personalizada',
+       'flowType','cleaning',
+       'flowDescription','',
+       'scopeType','property',
+       'triggerType','recurring',
+       'recurrence','custom',
+       'scheduledAt','2026-10-20T10:30',
+       'customEvery','3',
+       'customUnit','day',
+       'assignmentType','property_responsible',
+       'steps',jsonb_build_object('accept',true,'photo',false,'checklist',false,'document',false),
+       'closeType','auto',
+       'notifications',jsonb_build_object('onCreate',false,'onClose',false)
+     )
+   )
+   limit 1),
+  true
+);
+
+do $$
+declare
+  v_spec jsonb;
+  v_complete boolean;
+begin
+  select draft_spec, authoring_complete
+  into v_spec, v_complete
+  from public.workflow_definitions_v2
+  where id=current_setting('gestionpisos.workflow_custom_id')::uuid;
+
+  if not v_complete then
+    raise exception 'custom recurring workflow not marked complete';
+  end if;
+  if v_spec ->> 'customEvery' <> '3' or v_spec ->> 'customUnit' <> 'day' then
+    raise exception 'custom recurring workflow lost cadence';
+  end if;
+  if coalesce(v_spec ->> 'scheduledAt','') <> '' then
+    raise exception 'custom recurring workflow retained irrelevant scheduledAt';
+  end if;
+end;
+$$;
+
+-- Manual ignora cualquier frecuencia o fecha residual enviada por el cliente.
+select set_config(
+  'gestionpisos.workflow_manual_trigger_id',
+  (select definition_id::text
+   from public.save_workflow_definition_draft_v1(
+     jsonb_build_object(
+       'authoringVersion',2,
+       'flowName','Flujo manual saneado',
+       'flowType','custom',
+       'flowDescription','',
+       'scopeType','organization',
+       'triggerType','manual',
+       'recurrence','monthly',
+       'scheduledAt','2026-10-20T10:30',
+       'customEvery','4',
+       'customUnit','week',
+       'assignmentType','manual',
+       'steps',jsonb_build_object('accept',true,'photo',false,'checklist',false,'document',false),
+       'closeType','auto',
+       'notifications',jsonb_build_object('onCreate',false,'onClose',false)
+     )
+   )
+   limit 1),
+  true
+);
+
+do $$
+declare v_spec jsonb;
+begin
+  select draft_spec into v_spec
+  from public.workflow_definitions_v2
+  where id=current_setting('gestionpisos.workflow_manual_trigger_id')::uuid;
+
+  if coalesce(v_spec ->> 'recurrence','') <> ''
+    or coalesce(v_spec ->> 'scheduledAt','') <> ''
+    or coalesce(v_spec ->> 'customEvery','') <> ''
+    or coalesce(v_spec ->> 'customUnit','') <> '' then
+    raise exception 'manual workflow retained irrelevant trigger fields';
+  end if;
+end;
+$$;
+
 -- Un borrador creado por un cliente antiguo no se considera completo aunque sus defaults parezcan válidos.
 select set_config(
   'gestionpisos.workflow_legacy_id',

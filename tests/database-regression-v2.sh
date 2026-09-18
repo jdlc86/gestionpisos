@@ -46,6 +46,7 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -v "$repo_path:/w
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915161841_tenant_task_initial_workflows.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915162747_tenant_task_claims_deposit_workflows.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915163233_tenant_task_rls_and_creator.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915165545_tenant_task_action_actor_authorization.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260917225637_workflow_definition_persistence.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260917230059_workflow_rpc_privilege_hardening.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260917234351_workflow_partial_drafts.sql

@@ -190,6 +190,14 @@ Para recetas que llegan a `waiting_review` sin recursos Foto, `tenant_task_actio
 
 En este primer incremento, `agency` significa ROOT activo o ADMIN activo de la organización, validado server-side mediante el contrato de gestión de workflows.
 
+La lectura de `tenant_task_actions_v2` para tareas de workflow es **actor-aware**:
+
+- `assignee` solo se expone al usuario asignado;
+- `agency` solo se expone a un gestor autorizado de la organización;
+- ver la tarjeta de una tarea no concede visibilidad automática sobre todas sus acciones.
+
+La UI y la Edge Function de revisión resuelven la autorización desde `user_roles` activos. No usan `app_metadata.role` como fuente autoritativa.
+
 El asignado normal puede ver que su tarea espera revisión, pero no adquiere capacidad de aprobarse a sí mismo por ser el asignado.
 
 ### Con evidencia fotográfica

@@ -10,6 +10,7 @@ applications='supabase/migrations/20260918095001_workflow_publication_applicatio
 executions='supabase/migrations/20260918103715_workflow_manual_executions.sql'
 materialization='supabase/migrations/20260918110819_workflow_task_materialization.sql'
 workflow_reset='supabase/migrations/20260918110824_factory_reset_workflow_data.sql'
+actions='supabase/migrations/20260918114500_workflow_atomic_task_actions.sql'
 
 test -s "$migration"
 test -s "$hardening"
@@ -20,6 +21,7 @@ test -s "$applications"
 test -s "$executions"
 test -s "$materialization"
 test -s "$workflow_reset"
+test -s "$actions"
 test -s tests/workflow-definition-regression.sql
 
 grep -Fq 'create table if not exists public.workflow_definitions_v2' "$migration"
@@ -117,5 +119,29 @@ grep -Fq 'public.workflow_executions_v2' "$workflow_reset"
 grep -Fq 'public.workflow_applications_v2' "$workflow_reset"
 grep -Fq 'public.workflow_definition_versions_v2' "$workflow_reset"
 grep -Fq 'public.workflow_definitions_v2' "$workflow_reset"
+
+grep -Fq 'workflow_execution_events_v2_action_request_uq' "$actions"
+grep -Fq 'create or replace function public.workflow_seed_task_actions_internal_v1' "$actions"
+grep -Fq "v_has_accept:=coalesce((v_execution.spec_snapshot->'steps'->>'accept')::boolean,false)" "$actions"
+grep -Fq "v_target_status:='completed'" "$actions"
+grep -Fq "v_target_status:='waiting_review'" "$actions"
+grep -Fq "v_target_status:='active'" "$actions"
+grep -Fq "'Aceptar y completar'" "$actions"
+grep -Fq "'Aceptar y enviar a revisión'" "$actions"
+grep -Fq "actor='assignee'" "$actions"
+grep -Fq 'create trigger workflow_task_seed_actions_v1' "$actions"
+grep -Fq 'workflow_task_requires_atomic_action' "$actions"
+grep -Fq 'security definer' "$actions"
+grep -Fq "ur.role='root'" "$actions"
+grep -Fq "ur.role='admin' and ur.organization_id=v_task.organization_id" "$actions"
+grep -Fq 'create or replace function public.apply_workflow_task_action_v1' "$actions"
+grep -Fq 'workflow_task_execution_state_mismatch' "$actions"
+grep -Fq 'workflow_action_actor_forbidden' "$actions"
+grep -Fq 'workflow_action_request_key_conflict' "$actions"
+grep -Fq 'workflow_action_transition_contract_mismatch' "$actions"
+grep -Fq "'task_action_applied'" "$actions"
+grep -Fq "'workflow_task_action_applied'" "$actions"
+grep -Fq 'revoke execute on function public.apply_workflow_task_action_v1(uuid,text,text,text) from anon' "$actions"
+grep -Fq 'grant execute on function public.apply_workflow_task_action_v1(uuid,text,text,text) to authenticated' "$actions"
 
 echo 'Workflow definition schema smoke checks passed'

@@ -163,12 +163,12 @@ Estados mínimos previstos:
 
 Las transiciones se validan en servidor.
 
-Primer incremento operativo: `execute_workflow_application_now_v1` crea una ejecución `pending` con `trigger_kind=manual_now`, clave idempotente y asignación congelada. La materialización de tareas y las transiciones posteriores siguen siendo capas separadas.
+El runner inicial `execute_workflow_application_now_v1` crea una ejecución `pending` con `trigger_kind=manual_now`, clave idempotente, asignación congelada y una tarea materializada. Las transiciones de workflow usan un RPC atómico que cambia tarea + ejecución juntas; el RPC legacy de tareas no puede modificar una tarea de workflow.
 
 
 ## 9. Tareas
 
-`tenant_tasks_v2` es el candidato principal para materializar trabajo de usuario durante la transición. No se creará una tabla `workflow_tasks` paralela sin demostrar una carencia no resoluble de forma aditiva.
+`tenant_tasks_v2` es el núcleo reutilizado para materializar trabajo de usuario. Las tareas de workflow se identifican por `source_kind='workflow_execution'`; no existe una tabla `workflow_tasks` paralela.
 
 Una ejecución puede crear una o más tareas. Cada tarea debe poder enlazarse de forma inequívoca a la ejecución/origen.
 

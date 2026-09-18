@@ -44,7 +44,7 @@ Estados reservados:
 - `cancelled`;
 - `failed`.
 
-Este incremento solo crea `pending`.
+La creación inicial produce `pending`. Los incrementos posteriores pueden mover la ejecución mediante acciones atómicas validadas.
 
 ## 3. Idempotencia
 
@@ -122,11 +122,7 @@ Este histórico funcional no sustituye `audit_log_v2`. La creación también dej
 
 ## 8. Relación con tenant_tasks_v2
 
-`tenant_tasks_v2` exige actualmente `tenant_id NOT NULL`.
-
-Por tanto no puede representar limpiamente una tarea de un flujo de piso sin inquilino concreto. Este incremento **no fabrica tenant_id** y no crea una tabla paralela `workflow_tasks`.
-
-La capa siguiente generaliza `tenant_tasks_v2` de forma aditiva conforme a `WORKFLOW_TASKS_CONTRACT.md`: las tareas de workflow usan `source_kind='workflow_execution'` y pueden carecer de `tenant_id` sin relajar ese requisito para tareas legacy.
+`tenant_tasks_v2` ya fue generalizada de forma aditiva conforme a `WORKFLOW_TASKS_CONTRACT.md`: las tareas de workflow usan `source_kind='workflow_execution'`, pueden carecer de `tenant_id` y conservan ese requisito para tareas legacy. No existe una tabla paralela `workflow_tasks`.
 
 ## 9. Seguridad
 
@@ -140,16 +136,15 @@ La capa siguiente generaliza `tenant_tasks_v2` de forma aditiva conforme a `WORK
 
 ## 10. Límite de este incremento
 
-Una ejecución `pending` ya puede materializar una tarea visible. Todavía no significa que sus acciones/pasos operativos estén habilitados.
+Una ejecución `pending` materializa una tarea visible. La primera acción operativa `accept` puede mover tarea + ejecución atómicamente conforme a `WORKFLOW_ACTIONS_CONTRACT.md`.
 
 Quedan fuera:
 
-- materialización de tarea;
-- acciones del ejecutor;
-- pasos fotográficos/checklist/documento;
+- evidencia fotográfica;
+- checklist/documento;
 - notificaciones;
 - recurrencia automática;
-- transición a `active/completed`;
-- revisión/cierre.
+- revisión humana operativa;
+- cancelación y adaptadores especializados.
 
-La UI debe comunicar este límite y no presentar una ejecución pendiente como trabajo ya materializado.
+La UI debe mostrar únicamente acciones realmente derivadas de la receta y soportadas por el servidor.

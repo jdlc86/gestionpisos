@@ -39,6 +39,15 @@ begin
   if not has_function_privilege('authenticated','public.materialize_workflow_execution_task_v1(uuid)','EXECUTE') then
     raise exception 'authenticated cannot execute workflow task materialization RPC';
   end if;
+  if has_function_privilege('anon','public.apply_workflow_task_action_v1(uuid,text,text,text)','EXECUTE') then
+    raise exception 'anon can execute workflow task action RPC';
+  end if;
+  if not has_function_privilege('authenticated','public.apply_workflow_task_action_v1(uuid,text,text,text)','EXECUTE') then
+    raise exception 'authenticated cannot execute workflow task action RPC';
+  end if;
+  if has_function_privilege('authenticated','public.workflow_seed_task_actions_internal_v1(uuid)','EXECUTE') then
+    raise exception 'authenticated can execute internal workflow action seed helper';
+  end if;
 end;
 $$;
 
@@ -1106,10 +1115,15 @@ begin
 
   select count(*) into v_actions
   from public.tenant_task_actions_v2
-  where task_id=v_task.id;
+  where task_id=v_task.id
+    and action_key='accept'
+    and from_status='pending'
+    and to_status='completed'
+    and actor='assignee'
+    and active=true;
 
-  if v_actions<>0 then
-    raise exception 'workflow task exposed unsynchronized actions';
+  if v_actions<>1 then
+    raise exception 'workflow task did not expose the single safe accept action';
   end if;
 end;
 $$;
@@ -1237,6 +1251,190 @@ select set_config(
   )::text,
   true
 );
+
+-- La ruta legacy queda bloqueada para tareas workflow para impedir divergencia.
+do $$
+declare v_task_id uuid;
+begin
+  select id into v_task_id
+  from public.tenant_tasks_v2
+  where source_kind='workflow_execution'
+    and source_id=current_setting('gestionpisos.workflow_execution_id')::uuid;
+
+  begin
+    perform public.apply_tenant_task_action_v2(v_task_id,'accept',null);
+    raise exception 'legacy task action RPC unexpectedly changed a workflow task';
+  exception when feature_not_supported then null;
+  end;
+end;
+$$;
+
+-- Guardar el task_id antes de cambiar a un actor que no puede verlo por RLS.
+select set_config(
+  'gestionpisos.workflow_task_id',
+  (
+    select id::text
+    from public.tenant_tasks_v2
+    where source_kind='workflow_execution'
+      and source_id=current_setting('gestionpisos.workflow_execution_id')::uuid
+    limit 1
+  ),
+  true
+);
+
+-- Un usuario no asignado no puede aplicar una acción aunque conozca el task_id.
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub',current_setting('gestionpisos.workflow_tenant'),
+    'role','authenticated',
+    'aal','aal2'
+  )::text,
+  true
+);
+
+do $$
+begin
+  begin
+    perform * from public.apply_workflow_task_action_v1(
+      current_setting('gestionpisos.workflow_task_id')::uuid,
+      'accept',
+      'tenant-forbidden-action-001',
+      null
+    );
+    raise exception 'unassigned tenant workflow action unexpectedly succeeded';
+  exception when insufficient_privilege then null;
+  end;
+end;
+$$;
+
+-- El asignado aplica accept: al ser el único paso y cierre auto, ambos estados terminan en completed.
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub',current_setting('gestionpisos.workflow_root'),
+    'role','authenticated',
+    'aal','aal2'
+  )::text,
+  true
+);
+
+do $$
+declare
+  v_task_status text;
+  v_execution_status text;
+  v_applied_new boolean;
+begin
+  select task_status,execution_status,applied_new
+  into v_task_status,v_execution_status,v_applied_new
+  from public.apply_workflow_task_action_v1(
+    current_setting('gestionpisos.workflow_task_id')::uuid,
+    'accept',
+    'accept-room-001',
+    null
+  )
+  limit 1;
+
+  if v_task_status<>'completed' or v_execution_status<>'completed' or not v_applied_new then
+    raise exception 'atomic workflow accept did not complete task and execution together';
+  end if;
+end;
+$$;
+
+do $$
+declare
+  v_task_status text;
+  v_execution_status text;
+  v_completed_at timestamptz;
+  v_history integer;
+  v_events integer;
+begin
+  select status into v_task_status
+  from public.tenant_tasks_v2
+  where id=current_setting('gestionpisos.workflow_task_id')::uuid;
+
+  select status,completed_at
+  into v_execution_status,v_completed_at
+  from public.workflow_executions_v2
+  where id=current_setting('gestionpisos.workflow_execution_id')::uuid;
+
+  if v_task_status<>'completed' or v_execution_status<>'completed' or v_completed_at is null then
+    raise exception 'workflow task/execution completion state diverged';
+  end if;
+
+  select count(*) into v_history
+  from public.tenant_task_history_v2
+  where task_id=current_setting('gestionpisos.workflow_task_id')::uuid
+    and action_key='accept'
+    and from_status='pending'
+    and to_status='completed';
+
+  select count(*) into v_events
+  from public.workflow_execution_events_v2
+  where execution_id=current_setting('gestionpisos.workflow_execution_id')::uuid
+    and event_type='task_action_applied'
+    and details->>'request_key'='accept-room-001'
+    and details->>'action_key'='accept';
+
+  if v_history<>1 or v_events<>1 then
+    raise exception 'atomic workflow action did not create exactly one history/event';
+  end if;
+end;
+$$;
+
+-- Reintentar la misma request_key es idempotente y no duplica histórico/evento.
+do $$
+declare
+  v_applied_new boolean;
+  v_history integer;
+  v_events integer;
+begin
+  select applied_new
+  into v_applied_new
+  from public.apply_workflow_task_action_v1(
+    current_setting('gestionpisos.workflow_task_id')::uuid,
+    'accept',
+    'accept-room-001',
+    null
+  )
+  limit 1;
+
+  if v_applied_new then
+    raise exception 'workflow action retry claimed a new transition';
+  end if;
+
+  select count(*) into v_history
+  from public.tenant_task_history_v2
+  where task_id=current_setting('gestionpisos.workflow_task_id')::uuid
+    and action_key='accept';
+
+  select count(*) into v_events
+  from public.workflow_execution_events_v2
+  where execution_id=current_setting('gestionpisos.workflow_execution_id')::uuid
+    and event_type='task_action_applied'
+    and details->>'request_key'='accept-room-001';
+
+  if v_history<>1 or v_events<>1 then
+    raise exception 'workflow action retry duplicated history or event';
+  end if;
+end;
+$$;
+
+-- La misma request_key no puede reutilizarse para otra acción.
+do $$
+begin
+  begin
+    perform * from public.apply_workflow_task_action_v1(
+      current_setting('gestionpisos.workflow_task_id')::uuid,
+      'different_action',
+      'accept-room-001',
+      null
+    );
+    raise exception 'workflow action request key conflict unexpectedly succeeded';
+  exception when object_not_in_prerequisite_state then null;
+  end;
+end;
+$$;
 
 -- El cliente authenticated tampoco puede fabricar tareas saltándose el materializador.
 do $$

@@ -81,9 +81,9 @@ Se añade `task_type='workflow'`.
 
 No se reutiliza `generic` porque sus plantillas actuales pertenecen al actor `tenant`; hacerlo para una tarea sin inquilino concedería una semántica incorrecta.
 
-Las acciones específicas de workflow se derivarán de la versión publicada.
+Las acciones específicas de workflow se derivan del `spec_snapshot` congelado de la ejecución.
 
-En este incremento solo se materializa el trabajo y se hace visible. No se habilita una transición que pueda dejar `tenant_tasks_v2.status` y `workflow_executions_v2.status` desincronizados.
+El primer incremento de acciones soporta `steps.accept=true` conforme a `WORKFLOW_ACTIONS_CONTRACT.md`. Ninguna acción de workflow puede usar el RPC legacy si eso permite cambiar solo la tarea.
 
 ## 6. RLS y privilegios
 
@@ -106,9 +106,11 @@ La primera versión:
 - muestra título, origen, ámbito, asignado/propiedad cuando corresponda, estado y fecha;
 - identifica las generadas por workflow;
 - permite abrir el vínculo conceptual con la ejecución;
-- **no permite todavía completar/aceptar** una tarea de workflow hasta que la sincronización de estados esté implementada.
+- muestra únicamente acciones derivadas de la receta y válidas para el estado actual;
+- las acciones de workflow usan un RPC que actualiza tarea + ejecución de forma atómica;
+- una receta con pasos todavía no implementados no recibe una acción de cierre artificial.
 
-Esto evita presentar una acción parcialmente conectada como una capacidad terminada.
+Esto evita presentar una transición parcialmente conectada como una capacidad terminada.
 
 ## 8. Idempotencia
 
@@ -135,14 +137,17 @@ en un orden compatible con FKs, sin usar CASCADE indiscriminado.
 
 ## 10. Fuera de este incremento
 
+La sincronización atómica del primer paso `accept` ya está definida en `WORKFLOW_ACTIONS_CONTRACT.md`.
+
 Aún no se implementan:
 
-- sincronización de acciones tarea ↔ estado de ejecución;
-- pasos de checklist/documento;
+- evidencia fotográfica;
+- checklist/documento;
+- revisión humana operativa;
+- cancelación;
 - binding de Banco Fotográfico;
-- cierre/revisión;
 - notificaciones;
 - recurrencia automática;
 - Historial transversal completo.
 
-El siguiente incremento deberá hacer que las acciones permitidas por la receta muevan tarea y ejecución de forma atómica.
+El siguiente incremento debe implementar el primer paso de evidencia/recurso sin permitir cerrar una ejecución que conserve requisitos pendientes.

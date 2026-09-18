@@ -106,7 +106,7 @@ Muestra:
 
 Los borradores pueden reabrirse en el Creador con su `id` y continuar editándose.
 
-Los borradores configurados pueden publicarse mediante RPC protegido. Una definición publicada ofrece acceso a **Aplicaciones** y una aplicación configurada puede crear una ejecución manual pendiente mediante **Ejecutar ahora**. Pausar, tareas materializadas y recurrencias automáticas siguen pendientes.
+Los borradores configurados pueden publicarse mediante RPC protegido. Una definición publicada ofrece acceso a **Aplicaciones**; `Ejecutar ahora` crea de forma idempotente la ejecución y su tarea materializada. Las primeras acciones atómicas ya pueden avanzar tarea + ejecución juntas.
 
 ## 5. Versiones publicadas y aplicaciones concretas
 
@@ -123,7 +123,7 @@ Los borradores configurados pueden publicarse mediante RPC protegido. Una defini
 
 `workflow_applications_v2` vincula una versión publicada con la entidad real. `create_workflow_application_v1` valida server-side organización, piso, habitación u ocupación y deja la aplicación en estado `configured`.
 
-`configured` no activa recurrencias. Desde la tarjeta puede crear una ejecución explícita `manual_now`; esa ejecución nace `pending` y todavía no materializa una tarea.
+`configured` no activa recurrencias. Desde la tarjeta puede crear una ejecución explícita `manual_now`; esa ejecución nace `pending` y materializa exactamente una tarea vinculada.
 
 La semántica detallada vive en `WORKFLOW_APPLICATIONS_CONTRACT.md`.
 
@@ -155,7 +155,7 @@ No se ha creado `workflow_tasks`.
 - el asignado puede leer su tarea por RLS;
 - la pantalla `workflow-tasks.html` lista el trabajo visible.
 
-`tenant_task_actions_v2` y `tenant_task_history_v2` se conservan. Las acciones de workflow todavía no se habilitan hasta sincronizar atómicamente el estado de tarea y ejecución.
+`tenant_task_actions_v2` y `tenant_task_history_v2` se conservan. Las acciones de workflow se derivan del snapshot de la receta; `apply_workflow_task_action_v1` sincroniza tarea + ejecución e impide que el RPC legacy modifique una tarea de workflow por separado.
 
 ## 8. Limpieza — transición
 
@@ -197,8 +197,8 @@ Las pruebas se ejecutan también en PostgreSQL 17 desechable desde Schema Guard.
 | Aplicaciones | Implementado para vincular versión publicada con entidad real | Permite `Ejecutar ahora` |
 | Banco Fotográfico | Operativo/reutilizado | Infraestructura existente |
 | Versiones publicadas | Implementado | Publicación RPC inmutable e idempotente |
-| Tareas | Materialización inicial implementada | `tenant_tasks_v2` generalizada sin fabricar inquilino; acciones aún bloqueadas |
-| Historial | Inicial | `workflow_execution_events_v2` registra creación; ciclo completo pendiente |
+| Tareas | Materialización + primera acción atómica implementadas | `tenant_tasks_v2` reutilizada; `accept` sincroniza tarea + ejecución |
+| Historial | Parcial | registra creación, materialización y acciones atómicas; ciclo completo pendiente |
 | Ejecución genérica | Implementada en fase inicial | `manual_now`, idempotente, estado `pending` |
 | Adaptador Limpieza | Pendiente | Legacy preservado |
 
@@ -248,16 +248,16 @@ Una revisión representa un cambio real de contenido. Repetir Guardar sin modifi
 
 ## 12. Próximo incremento técnico
 
-El siguiente incremento debe ser **sincronización atómica de acciones tarea ↔ ejecución**.
+El siguiente incremento debe ser **pasos de evidencia/recurso sobre una ejecución activa**.
 
 Orden recomendado:
 
-1. derivar las acciones permitidas desde la versión publicada;
-2. mover tarea y ejecución en una única transacción;
-3. impedir completar si quedan pasos/recursos obligatorios;
-4. incorporar binding de Banco Fotográfico cuando `steps.photo=true`;
-5. registrar eventos de ejecución e histórico de tarea coherentes;
-6. probar reintentos sin duplicar acciones, evidencias ni notificaciones.
+1. cuando `steps.photo=true`, vincular el recurso fotográfico concreto a la aplicación/ejecución;
+2. reutilizar `photo_verification_runs_v2` y `photo_verification_items_v2`;
+3. impedir cierre mientras falte evidencia obligatoria;
+4. mover tarea + ejecución de forma atómica al completar el paso;
+5. registrar eventos e histórico coherentes;
+6. probar reintentos sin duplicar evidencias ni notificaciones.
 
 La recurrencia automática se mantiene posterior a un recorrido manual extremo a extremo.
 

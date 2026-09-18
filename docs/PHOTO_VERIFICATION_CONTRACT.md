@@ -72,6 +72,8 @@ La pantalla `photo-verifications.html` permite a ROOT/ADMIN consultar runs visib
 
 Las decisiones de aprobar/rechazar no abren UPDATE directo al frontend. Se envían a `review-photo-verification`, que exige sesión válida, rol ROOT/ADMIN y AAL2. La aplicación atómica de la decisión se ejecuta mediante `apply_photo_verification_review_v2`, accesible únicamente a `service_role`, y actualiza run + items + auditoría dentro de la misma transacción.
 
+La lectura privilegiada de runs, items y objetos privados del bucket también se resuelve contra `user_roles` activos mediante `photo_verification_can_review_v1` y exige AAL2. Los claims `app_metadata.role/organization_id` no son fuente autoritativa para conceder acceso administrativo a evidencia. El autor de una captura conserva lectura de sus propios objetos según la política del bucket.
+
 
 ## Separación de propósito — limpieza vs. estado/mantenimiento (2026-09-15)
 

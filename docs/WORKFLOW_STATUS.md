@@ -106,7 +106,7 @@ Muestra:
 
 Los borradores pueden reabrirse en el Creador con su `id` y continuar editándose.
 
-Los borradores configurados pueden publicarse mediante RPC protegido. Una definición publicada ofrece acceso a su pantalla de **Aplicaciones**. Ejecutar, pausar y recurrencias automáticas siguen pendientes.
+Los borradores configurados pueden publicarse mediante RPC protegido. Una definición publicada ofrece acceso a **Aplicaciones** y una aplicación configurada puede crear una ejecución manual pendiente mediante **Ejecutar ahora**. Pausar, tareas materializadas y recurrencias automáticas siguen pendientes.
 
 ## 5. Versiones publicadas y aplicaciones concretas
 
@@ -123,7 +123,7 @@ Los borradores configurados pueden publicarse mediante RPC protegido. Una defini
 
 `workflow_applications_v2` vincula una versión publicada con la entidad real. `create_workflow_application_v1` valida server-side organización, piso, habitación u ocupación y deja la aplicación en estado `configured`.
 
-`configured` **no significa activa**: todavía no genera ejecuciones, tareas ni recurrencias.
+`configured` no activa recurrencias. Desde la tarjeta puede crear una ejecución explícita `manual_now`; esa ejecución nace `pending` y todavía no materializa una tarea.
 
 La semántica detallada vive en `WORKFLOW_APPLICATIONS_CONTRACT.md`.
 
@@ -191,12 +191,12 @@ Las pruebas se ejecutan también en PostgreSQL 17 desechable desde Schema Guard.
 | Flujos de Trabajo | Implementado | Hub transversal |
 | Creador de Flujos | Implementado con borradores parciales y completitud explícita | Define receta lógica |
 | Mis Flujos | Implementado; distingue incompletos/configurados/publicados | Publicación controlada disponible |
-| Aplicaciones | Implementado para vincular versión publicada con entidad real | Estado `configured`, sin ejecución |
+| Aplicaciones | Implementado para vincular versión publicada con entidad real | Permite `Ejecutar ahora` |
 | Banco Fotográfico | Operativo/reutilizado | Infraestructura existente |
 | Versiones publicadas | Implementado | Publicación RPC inmutable e idempotente |
 | Tareas | Pendiente de integración genérica | Evaluar `tenant_tasks_v2` |
-| Historial | Pendiente de ejecución transversal | No sustituye históricos actuales |
-| Ejecución genérica | Pendiente | Siguiente incremento |
+| Historial | Inicial | `workflow_execution_events_v2` registra creación; ciclo completo pendiente |
+| Ejecución genérica | Implementada en fase inicial | `manual_now`, idempotente, estado `pending` |
 | Adaptador Limpieza | Pendiente | Legacy preservado |
 
 ## 11. Incrementos
@@ -245,19 +245,18 @@ Una revisión representa un cambio real de contenido. Repetir Guardar sin modifi
 
 ## 12. Próximo incremento técnico
 
-El siguiente incremento debe ser **ejecución manual idempotente sobre una aplicación configurada**.
+El siguiente incremento debe ser **materialización de trabajo sobre una ejecución pendiente**, sin forzar `tenant_tasks_v2` a representar entidades que no tiene.
 
 Orden recomendado:
 
-1. entidad mínima de ejecución referenciando `workflow_applications_v2` + versión publicada;
-2. `idempotency_key` para “Ejecutar ahora”;
-3. resolución server-side del responsable;
-4. enlace/adopción de `tenant_tasks_v2` cuando encaje;
-5. snapshot de recursos/versiones concretos;
-6. eventos de ciclo de vida suficientes para Historial;
-7. pruebas de reintento sin duplicar ejecución/tarea/notificación.
+1. decidir la generalización/adaptación aditiva de la capa de tareas, dado que `tenant_tasks_v2.tenant_id` es obligatorio;
+2. enlazar una tarea inequívocamente con `workflow_executions_v2`;
+3. materializar los pasos soportados sin duplicar cámara, Storage ni históricos;
+4. incorporar snapshot/binding de recursos concretos cuando el paso lo exija;
+5. añadir transiciones de ejecución y eventos suficientes para Historial;
+6. probar reintentos sin duplicar tarea/notificación.
 
-La recurrencia automática se añadirá **después** de demostrar que la ejecución manual es idempotente y auditable.
+La recurrencia automática se mantiene posterior a una ejecución manual con tarea extremo a extremo.
 
 ## 13. Reglas de no regresión
 

@@ -32,8 +32,8 @@ grep -q 'review-toast.is-visible' docs/photo-verifications.css
 grep -q 'createSignedUrl' docs/photo-verifications.js
 test -s supabase/functions/review-photo-verification/index.ts
 grep -q 'apply_photo_verification_review_v2' supabase/functions/review-photo-verification/index.ts
-test -s supabase/migrations/20260915005000_photo_verification_manual_review.sql
-grep -q 'grant execute on function public.apply_photo_verification_review_v2' supabase/migrations/20260915005000_photo_verification_manual_review.sql
+test -s supabase/migrations/20260914225214_photo_verification_manual_review.sql
+grep -q 'grant execute on function public.apply_photo_verification_review_v2' supabase/migrations/20260914225214_photo_verification_manual_review.sql
 
 grep -q 'manifest.webmanifest' docs/index.html
 grep -q 'app.css' docs/index.html

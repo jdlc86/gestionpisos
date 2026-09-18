@@ -146,13 +146,16 @@ Cuando exista una ejecución real, el motor deberá congelar la versión exacta 
 
 No se ha creado `workflow_tasks`.
 
-`tenant_tasks_v2` sigue siendo el candidato principal para materializar trabajo de usuario, junto con:
+`tenant_tasks_v2` se reutiliza como núcleo de tareas mediante una generalización aditiva:
 
-- `tenant_task_actions_v2`;
-- `tenant_task_history_v2`;
-- `tenant_task_workflow_templates_v2` como subcomponente de transiciones.
+- tareas legacy conservan `tenant_id` obligatorio;
+- tareas de workflow usan `task_type='workflow'` y `source_kind='workflow_execution'`;
+- `tenant_id` puede ser NULL únicamente bajo esa forma validada;
+- una ejecución produce como máximo una tarea por índice único;
+- el asignado puede leer su tarea por RLS;
+- la pantalla `workflow-tasks.html` lista el trabajo visible.
 
-La integración se decidirá de forma aditiva durante la ejecución manual del siguiente incremento.
+`tenant_task_actions_v2` y `tenant_task_history_v2` se conservan. Las acciones de workflow todavía no se habilitan hasta sincronizar atómicamente el estado de tarea y ejecución.
 
 ## 8. Limpieza — transición
 
@@ -194,7 +197,7 @@ Las pruebas se ejecutan también en PostgreSQL 17 desechable desde Schema Guard.
 | Aplicaciones | Implementado para vincular versión publicada con entidad real | Permite `Ejecutar ahora` |
 | Banco Fotográfico | Operativo/reutilizado | Infraestructura existente |
 | Versiones publicadas | Implementado | Publicación RPC inmutable e idempotente |
-| Tareas | Pendiente de integración genérica | Evaluar `tenant_tasks_v2` |
+| Tareas | Materialización inicial implementada | `tenant_tasks_v2` generalizada sin fabricar inquilino; acciones aún bloqueadas |
 | Historial | Inicial | `workflow_execution_events_v2` registra creación; ciclo completo pendiente |
 | Ejecución genérica | Implementada en fase inicial | `manual_now`, idempotente, estado `pending` |
 | Adaptador Limpieza | Pendiente | Legacy preservado |
@@ -245,18 +248,18 @@ Una revisión representa un cambio real de contenido. Repetir Guardar sin modifi
 
 ## 12. Próximo incremento técnico
 
-El siguiente incremento debe ser **materialización de trabajo sobre una ejecución pendiente**, sin forzar `tenant_tasks_v2` a representar entidades que no tiene.
+El siguiente incremento debe ser **sincronización atómica de acciones tarea ↔ ejecución**.
 
 Orden recomendado:
 
-1. decidir la generalización/adaptación aditiva de la capa de tareas, dado que `tenant_tasks_v2.tenant_id` es obligatorio;
-2. enlazar una tarea inequívocamente con `workflow_executions_v2`;
-3. materializar los pasos soportados sin duplicar cámara, Storage ni históricos;
-4. incorporar snapshot/binding de recursos concretos cuando el paso lo exija;
-5. añadir transiciones de ejecución y eventos suficientes para Historial;
-6. probar reintentos sin duplicar tarea/notificación.
+1. derivar las acciones permitidas desde la versión publicada;
+2. mover tarea y ejecución en una única transacción;
+3. impedir completar si quedan pasos/recursos obligatorios;
+4. incorporar binding de Banco Fotográfico cuando `steps.photo=true`;
+5. registrar eventos de ejecución e histórico de tarea coherentes;
+6. probar reintentos sin duplicar acciones, evidencias ni notificaciones.
 
-La recurrencia automática se mantiene posterior a una ejecución manual con tarea extremo a extremo.
+La recurrencia automática se mantiene posterior a un recorrido manual extremo a extremo.
 
 ## 13. Reglas de no regresión
 

@@ -7,6 +7,7 @@ test -s docs/FACTORY_RESET_RUNBOOK.md
 test -s supabase/functions/factory-reset-test-data/index.ts
 test -s supabase/migrations/20260917170000_factory_reset_test_data_helper.sql
 test -s supabase/migrations/20260917194500_factory_reset_global_root_baseline.sql
+test -s supabase/migrations/20260918111600_factory_reset_workflow_data.sql
 
 node --check docs/factory-reset.js
 
@@ -45,12 +46,18 @@ grep -Fq 'v_active_organization_count <> 1' supabase/migrations/20260917194500_f
 grep -Fq 'factory_reset_root_organization_ambiguous' supabase/migrations/20260917194500_factory_reset_global_root_baseline.sql
 grep -Fq 'revoke all on function public.factory_reset_test_data_service' supabase/migrations/20260917194500_factory_reset_global_root_baseline.sql
 grep -Fq 'grant execute on function public.factory_reset_test_data_service' supabase/migrations/20260917194500_factory_reset_global_root_baseline.sql
+grep -Fq 'public.workflow_execution_events_v2' supabase/migrations/20260918111600_factory_reset_workflow_data.sql
+grep -Fq 'public.workflow_executions_v2' supabase/migrations/20260918111600_factory_reset_workflow_data.sql
+grep -Fq 'public.workflow_applications_v2' supabase/migrations/20260918111600_factory_reset_workflow_data.sql
+grep -Fq 'public.workflow_definition_versions_v2' supabase/migrations/20260918111600_factory_reset_workflow_data.sql
+grep -Fq 'public.workflow_definitions_v2' supabase/migrations/20260918111600_factory_reset_workflow_data.sql
 
 # Never expose privileged credentials or implement Storage cleanup through SQL metadata deletion.
 ! grep -Fq 'service_role' docs/factory-reset.html
 ! grep -Fq 'service_role' docs/factory-reset.js
 ! grep -Fq 'storage.objects' supabase/migrations/20260917170000_factory_reset_test_data_helper.sql
 ! grep -Fq 'storage.objects' supabase/migrations/20260917194500_factory_reset_global_root_baseline.sql
+! grep -Fq 'storage.objects' supabase/migrations/20260918111600_factory_reset_workflow_data.sql
 
 # The helper must remain explicitly test-only and contractually guarded.
 grep -Fq 'Factory reset del entorno de pruebas' docs/SECURITY_CONTRACT.md

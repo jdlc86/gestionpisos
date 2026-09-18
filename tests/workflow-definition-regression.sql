@@ -33,6 +33,12 @@ begin
   if not has_function_privilege('authenticated','public.execute_workflow_application_now_v1(uuid,text,uuid)','EXECUTE') then
     raise exception 'authenticated cannot execute workflow execution RPC';
   end if;
+  if has_function_privilege('anon','public.materialize_workflow_execution_task_v1(uuid)','EXECUTE') then
+    raise exception 'anon can execute workflow task materialization RPC';
+  end if;
+  if not has_function_privilege('authenticated','public.materialize_workflow_execution_task_v1(uuid)','EXECUTE') then
+    raise exception 'authenticated cannot execute workflow task materialization RPC';
+  end if;
 end;
 $$;
 
@@ -1055,6 +1061,56 @@ begin
   if v_events<>1 then
     raise exception 'workflow execution did not create exactly one initial event';
   end if;
+
+  select count(*) into v_events
+  from public.workflow_execution_events_v2
+  where execution_id=v_execution.id and event_type='task_materialized';
+
+  if v_events<>1 then
+    raise exception 'workflow execution did not materialize exactly one task event';
+  end if;
+end;
+$$;
+
+do $$
+declare
+  v_task public.tenant_tasks_v2;
+  v_history integer;
+  v_actions integer;
+begin
+  select * into v_task
+  from public.tenant_tasks_v2
+  where source_kind='workflow_execution'
+    and source_id=current_setting('gestionpisos.workflow_execution_id')::uuid;
+
+  if v_task.id is null then
+    raise exception 'workflow task was not materialized';
+  end if;
+
+  if v_task.task_type<>'workflow'
+    or v_task.status<>'pending'
+    or v_task.tenant_id is not null
+    or v_task.property_id<>current_setting('gestionpisos.workflow_property_1')::uuid
+    or v_task.room_id<>current_setting('gestionpisos.workflow_room_1')::uuid
+    or v_task.assigned_user_id<>current_setting('gestionpisos.workflow_root')::uuid then
+    raise exception 'workflow task lost execution scope or assignment';
+  end if;
+
+  select count(*) into v_history
+  from public.tenant_task_history_v2
+  where task_id=v_task.id and action_key='create';
+
+  if v_history<>1 then
+    raise exception 'workflow task did not create exactly one history row';
+  end if;
+
+  select count(*) into v_actions
+  from public.tenant_task_actions_v2
+  where task_id=v_task.id;
+
+  if v_actions<>0 then
+    raise exception 'workflow task exposed unsynchronized actions';
+  end if;
 end;
 $$;
 
@@ -1065,6 +1121,9 @@ declare
   v_created_new boolean;
   v_count integer;
   v_events integer;
+  v_tasks integer;
+  v_task_history integer;
+  v_task_events integer;
 begin
   select execution_id,created_new
   into v_execution_id,v_created_new
@@ -1091,9 +1150,118 @@ begin
   from public.workflow_execution_events_v2
   where execution_id=v_execution_id and event_type='created';
 
-  if v_count<>1 or v_events<>1 then
-    raise exception 'workflow execution idempotency duplicated execution or event';
+  select count(*) into v_tasks
+  from public.tenant_tasks_v2
+  where source_kind='workflow_execution'
+    and source_id=v_execution_id;
+
+  select count(*) into v_task_history
+  from public.tenant_task_history_v2 h
+  join public.tenant_tasks_v2 t on t.id=h.task_id
+  where t.source_kind='workflow_execution'
+    and t.source_id=v_execution_id
+    and h.action_key='create';
+
+  select count(*) into v_task_events
+  from public.workflow_execution_events_v2
+  where execution_id=v_execution_id
+    and event_type='task_materialized';
+
+  if v_count<>1 or v_events<>1 or v_tasks<>1 or v_task_history<>1 or v_task_events<>1 then
+    raise exception 'workflow execution idempotency duplicated execution, task or event';
   end if;
+end;
+$$;
+
+-- Materializar de nuevo explícitamente es idempotente.
+do $$
+declare
+  v_task_id uuid;
+  v_count integer;
+begin
+  select id into v_task_id
+  from public.materialize_workflow_execution_task_v1(
+    current_setting('gestionpisos.workflow_execution_id')::uuid
+  );
+
+  select count(*) into v_count
+  from public.tenant_tasks_v2
+  where source_kind='workflow_execution'
+    and source_id=current_setting('gestionpisos.workflow_execution_id')::uuid;
+
+  if v_task_id is null or v_count<>1 then
+    raise exception 'explicit workflow task materialization was not idempotent';
+  end if;
+end;
+$$;
+
+-- TENANT no puede forzar materialización ni leer la tarea ajena.
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub',current_setting('gestionpisos.workflow_tenant'),
+    'role','authenticated',
+    'aal','aal2'
+  )::text,
+  true
+);
+
+do $$
+declare v_visible integer;
+begin
+  begin
+    perform public.materialize_workflow_execution_task_v1(
+      current_setting('gestionpisos.workflow_execution_id')::uuid
+    );
+    raise exception 'tenant workflow task materialization unexpectedly succeeded';
+  exception when insufficient_privilege then null;
+  end;
+
+  select count(*) into v_visible
+  from public.tenant_tasks_v2
+  where source_kind='workflow_execution'
+    and source_id=current_setting('gestionpisos.workflow_execution_id')::uuid;
+
+  if v_visible<>0 then
+    raise exception 'tenant can read workflow task outside scope';
+  end if;
+end;
+$$;
+
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub',current_setting('gestionpisos.workflow_root'),
+    'role','authenticated',
+    'aal','aal2'
+  )::text,
+  true
+);
+
+-- El cliente authenticated tampoco puede fabricar tareas saltándose el materializador.
+do $$
+begin
+  begin
+    insert into public.tenant_tasks_v2(
+      organization_id,tenant_id,property_id,room_id,task_type,origin,title,status,
+      assigned_user_id,source_kind,source_id,created_by
+    ) values (
+      current_setting('gestionpisos.workflow_org_1')::uuid,
+      null,
+      current_setting('gestionpisos.workflow_property_1')::uuid,
+      current_setting('gestionpisos.workflow_room_1')::uuid,
+      'workflow',
+      'automatic',
+      'Directa prohibida',
+      'pending',
+      current_setting('gestionpisos.workflow_root')::uuid,
+      'workflow_execution',
+      current_setting('gestionpisos.workflow_execution_id')::uuid,
+      current_setting('gestionpisos.workflow_root')::uuid
+    );
+    raise exception 'direct workflow task insert unexpectedly succeeded';
+  exception when insufficient_privilege then null;
+  end;
 end;
 $$;
 
@@ -1126,6 +1294,40 @@ begin
   end;
 end;
 $$;
+
+-- La relajación de tenant_id no permite tareas legacy sin inquilino.
+reset role;
+
+do $$
+begin
+  begin
+    insert into public.tenant_tasks_v2(
+      organization_id,tenant_id,task_type,origin,title,status,created_by
+    ) values (
+      current_setting('gestionpisos.workflow_org_1')::uuid,
+      null,
+      'generic',
+      'manual',
+      'Legacy sin inquilino prohibida',
+      'pending',
+      current_setting('gestionpisos.workflow_root')::uuid
+    );
+    raise exception 'legacy task without tenant unexpectedly succeeded';
+  exception when check_violation then null;
+  end;
+end;
+$$;
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub',current_setting('gestionpisos.workflow_root'),
+    'role','authenticated',
+    'aal','aal2'
+  )::text,
+  true
+);
 
 -- La tabla de aplicaciones tampoco admite escritura directa desde authenticated.
 do $$

@@ -71,6 +71,7 @@ for protected_screen in \
   docs/workflows.html \
   docs/workflow-builder.html \
   docs/workflow-applications.html \
+  docs/workflow-tasks.html \
   docs/cleaning.html \
   docs/incidents.html \
   docs/permissions.html \
@@ -113,7 +114,7 @@ grep -Fq 'verification_note' supabase/functions/recover-privileged-mfa/index.ts
 grep -Fq 'Nunca aprobar una recuperación únicamente por conocer el código de solicitud' docs/MFA_RECOVERY_RUNBOOK.md
 grep -Fq 'el navegador nunca llama directamente a `recover-privileged-mfa`' docs/MFA_RECOVERY_RUNBOOK.md
 
-grep -Fq "gestionpisos-shell-v4" docs/sw.js
+grep -Fq "gestionpisos-shell-v5" docs/sw.js
 grep -Fq "'./mfa-setup.html'" docs/sw.js
 grep -Fq "'./mfa-challenge.html'" docs/sw.js
 

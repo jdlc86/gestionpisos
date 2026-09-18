@@ -8,6 +8,8 @@ noop='supabase/migrations/20260918023000_workflow_draft_noop_save.sql'
 triggers='supabase/migrations/20260918025500_workflow_trigger_controls.sql'
 applications='supabase/migrations/20260918095001_workflow_publication_applications.sql'
 executions='supabase/migrations/20260918103715_workflow_manual_executions.sql'
+materialization='supabase/migrations/20260918111500_workflow_task_materialization.sql'
+workflow_reset='supabase/migrations/20260918111600_factory_reset_workflow_data.sql'
 
 test -s "$migration"
 test -s "$hardening"
@@ -16,6 +18,8 @@ test -s "$noop"
 test -s "$triggers"
 test -s "$applications"
 test -s "$executions"
+test -s "$materialization"
+test -s "$workflow_reset"
 test -s tests/workflow-definition-regression.sql
 
 grep -Fq 'create table if not exists public.workflow_definitions_v2' "$migration"
@@ -89,5 +93,29 @@ grep -Fq 'workflow_manual_assignee_not_eligible' "$executions"
 grep -Fq 'workflow_execution_created' "$executions"
 grep -Fq 'revoke execute on function public.execute_workflow_application_now_v1(uuid,text,uuid) from anon' "$executions"
 grep -Fq 'grant execute on function public.execute_workflow_application_now_v1(uuid,text,uuid) to authenticated' "$executions"
+
+grep -Fq 'alter column tenant_id drop not null' "$materialization"
+grep -Fq 'tenant_tasks_v2_subject_or_workflow_check' "$materialization"
+grep -Fq "source_kind='workflow_execution'" "$materialization"
+grep -Fq 'tenant_tasks_v2_workflow_execution_uq' "$materialization"
+grep -Fq "task_type='workflow'" "$materialization"
+grep -Fq 'revoke all on public.tenant_tasks_v2 from anon' "$materialization"
+grep -Fq 'revoke insert,update,delete,truncate,references,trigger' "$materialization"
+grep -Fq 'create policy tenant_tasks_v2_admin_read' "$materialization"
+grep -Fq 'workflow_can_read_definitions_v1(organization_id)' "$materialization"
+grep -Fq 'create policy tenant_tasks_v2_assignee_read' "$materialization"
+grep -Fq 'create policy tenant_tasks_v2_tenant_read' "$materialization"
+grep -Fq 'workflow_materialize_execution_task_internal_v1' "$materialization"
+grep -Fq 'create or replace function public.materialize_workflow_execution_task_v1' "$materialization"
+grep -Fq 'workflow_task_materialization_not_authorized' "$materialization"
+grep -Fq 'workflow_task_materialized' "$materialization"
+grep -Fq 'task_materialized' "$materialization"
+grep -Fq 'perform public.workflow_materialize_execution_task_internal_v1(v_execution_id,v_actor)' "$materialization"
+grep -Fq 'revoke execute on function public.materialize_workflow_execution_task_v1(uuid) from anon' "$materialization"
+grep -Fq 'public.workflow_execution_events_v2' "$workflow_reset"
+grep -Fq 'public.workflow_executions_v2' "$workflow_reset"
+grep -Fq 'public.workflow_applications_v2' "$workflow_reset"
+grep -Fq 'public.workflow_definition_versions_v2' "$workflow_reset"
+grep -Fq 'public.workflow_definitions_v2' "$workflow_reset"
 
 echo 'Workflow definition schema smoke checks passed'

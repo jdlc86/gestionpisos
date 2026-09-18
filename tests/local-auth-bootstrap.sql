@@ -8,6 +8,7 @@ create extension pgcrypto with schema extensions;
 
 create role anon nologin;
 create role authenticated nologin;
+create role service_role nologin;
 
 create table auth.users (
   id uuid primary key
@@ -32,5 +33,5 @@ as $$
   select nullif(auth.jwt() ->> 'sub', '')::uuid;
 $$;
 
-grant usage on schema auth, public to authenticated;
+grant usage on schema auth, public to authenticated, service_role;
 grant execute on function auth.jwt(), auth.uid() to authenticated;

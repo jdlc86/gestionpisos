@@ -17,9 +17,14 @@ test -s docs/workflow-applications.css
 test -s docs/workflow-applications.js
 test -s docs/WORKFLOW_APPLICATIONS_CONTRACT.md
 test -s docs/WORKFLOW_EXECUTION_CONTRACT.md
+test -s docs/WORKFLOW_TASKS_CONTRACT.md
+test -s docs/workflow-tasks.html
+test -s docs/workflow-tasks.css
+test -s docs/workflow-tasks.js
 node --check docs/workflow-builder.js
 node --check docs/workflow-definitions.js
 node --check docs/workflow-applications.js
+node --check docs/workflow-tasks.js
 
 grep -Fq 'href="./workflows.html"' docs/index.html
 grep -Fq '>🔄</span>Flujos de Trabajo' docs/index.html
@@ -35,6 +40,7 @@ grep -Fq '>📷</span>Banco Fotográfico' docs/workflows.html
 grep -Fq 'href="./photo-patterns.html?from=workflows"' docs/workflows.html
 grep -Fq 'data-workflow-module="tasks"' docs/workflows.html
 grep -Fq '>📋</span>Tareas' docs/workflows.html
+grep -Fq 'href="./workflow-tasks.html"' docs/workflows.html
 grep -Fq 'data-workflow-module="history"' docs/workflows.html
 grep -Fq '>🕘</span>Historial' docs/workflows.html
 
@@ -42,10 +48,12 @@ grep -Fq './auth-guard.js' docs/workflows.html
 grep -Fq './auth-guard.js' docs/workflow-builder.html
 grep -Fq './auth-guard.js' docs/workflow-definitions.html
 grep -Fq './auth-guard.js' docs/workflow-applications.html
+grep -Fq './auth-guard.js' docs/workflow-tasks.html
 grep -Fq 'data-theme-toggle' docs/workflows.html
 grep -Fq 'data-theme-toggle' docs/workflow-builder.html
 grep -Fq 'data-theme-toggle' docs/workflow-definitions.html
 grep -Fq 'data-theme-toggle' docs/workflow-applications.html
+grep -Fq 'data-theme-toggle' docs/workflow-tasks.html
 grep -Fq 'class="ui-nav-icon"' docs/workflows.html
 
 grep -Fq 'Borrador incompleto' docs/workflow-builder.html
@@ -103,7 +111,7 @@ grep -Fq 'rooms_v2' docs/workflow-applications.js
 grep -Fq 'occupancies_v2' docs/workflow-applications.js
 grep -Fq '.application-card [hidden]{display:none!important}' docs/workflow-applications.css
 grep -Fq './workflow-applications.css?v=2026091803' docs/workflow-applications.html
-grep -Fq './workflow-applications.js?v=2026091802' docs/workflow-applications.html
+grep -Fq './workflow-applications.js?v=2026091803' docs/workflow-applications.html
 grep -Fq 'podrás crear una ejecución manual pendiente' docs/workflow-applications.html
 grep -Fq 'Definición → Versión publicada → Aplicación concreta' docs/WORKFLOW_APPLICATIONS_CONTRACT.md
 grep -Fq 'workflow_applications_v2' docs/WORKFLOW_APPLICATIONS_CONTRACT.md
@@ -111,11 +119,19 @@ grep -Fq 'execute_workflow_application_now_v1' docs/workflow-applications.js
 grep -Fq 'workflow_executions_v2' docs/workflow-applications.js
 grep -Fq 'EXECUTION_KEY_PREFIX' docs/workflow-applications.js
 grep -Fq 'Ejecutar ahora' docs/workflow-applications.js
-grep -Fq 'Ejecución creada en estado Pendiente' docs/workflow-applications.js
+grep -Fq 'Ejecución creada en estado Pendiente y tarea materializada sin duplicados.' docs/workflow-applications.js
 grep -Fq 'Definición → Versión publicada → Aplicación concreta → Ejecutar ahora → Ejecución' docs/WORKFLOW_EXECUTION_CONTRACT.md
 grep -Fq 'tenant_id NOT NULL' docs/WORKFLOW_EXECUTION_CONTRACT.md
 grep -Fq 'workflow_executions_v2' docs/WORKFLOW_EXECUTION_CONTRACT.md
 grep -Fq 'workflow_execution_events_v2' docs/WORKFLOW_EXECUTION_CONTRACT.md
+grep -Fq 'tenant_tasks_v2' docs/WORKFLOW_TASKS_CONTRACT.md
+grep -Fq "source_kind='workflow_execution'" docs/WORKFLOW_TASKS_CONTRACT.md
+grep -Fq 'materialize_workflow_execution_task_v1' docs/WORKFLOW_TASKS_CONTRACT.md
+grep -Fq 'workflow_tasks' docs/WORKFLOW_TASKS_CONTRACT.md
+grep -Fq 'tenant_tasks_v2' docs/workflow-tasks.js
+grep -Fq 'source_kind' docs/workflow-tasks.js
+grep -Fq 'Asignadas a mí' docs/workflow-tasks.html
+grep -Fq 'workflow-tasks.html' docs/sw.js
 grep -Fq 'workflow-applications.html' docs/sw.js
 
 grep -Fq 'Definición → Versión publicada → Aplicación concreta → Disparador → Ejecución' docs/WORKFLOW_ENGINE_CONTRACT.md

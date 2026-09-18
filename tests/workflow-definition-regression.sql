@@ -2561,6 +2561,23 @@ select set_config(
   true
 );
 
+do $workflow_review_hidden_agency_actions$
+declare
+  v_visible integer;
+begin
+  select count(*) into v_visible
+  from public.tenant_task_actions_v2
+  where task_id=current_setting('gestionpisos.workflow_review_task_id')::uuid
+    and from_status='waiting_review'
+    and actor='agency'
+    and active=true;
+
+  if v_visible<>0 then
+    raise exception 'non-manager can read agency workflow review actions';
+  end if;
+end;
+$workflow_review_hidden_agency_actions$;
+
 do $workflow_review_forbidden_actor$
 begin
   begin
@@ -2755,6 +2772,49 @@ begin
 end;
 $workflow_review_reject_state$;
 
+-- Segundo patrón para comprobar revisión multi-foto e idempotencia parcial.
+reset role;
+select set_config('gestionpisos.workflow_photo_pattern_2','abababab-abab-4bab-8bab-abababababab',true);
+
+insert into public.photo_patterns_v2(
+  id,organization_id,property_id,name,target_type,target_key,
+  reference_storage_path,contour_data,version,active,created_by
+) values (
+  current_setting('gestionpisos.workflow_photo_pattern_2')::uuid,
+  current_setting('gestionpisos.workflow_org_1')::uuid,
+  current_setting('gestionpisos.workflow_property_1')::uuid,
+  'Patrón workflow salón',
+  'zone',
+  'Salon',
+  current_setting('gestionpisos.workflow_org_1')||'/patterns/workflow-photo-salon/reference.jpg',
+  jsonb_build_object(
+    'image',jsonb_build_object('width',1200,'height',900),
+    'strokes',jsonb_build_array(
+      jsonb_build_object(
+        'kind','rect',
+        'raw_points',jsonb_build_array(
+          jsonb_build_array(0.15,0.15),
+          jsonb_build_array(0.75,0.75)
+        )
+      )
+    )
+  ),
+  1,
+  true,
+  current_setting('gestionpisos.workflow_root')::uuid
+);
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub',current_setting('gestionpisos.workflow_root'),
+    'role','authenticated',
+    'aal','aal2'
+  )::text,
+  true
+);
+
 -- Revisión humana con Foto: submit termina en waiting_review y la revisión real de foto cierra el workflow.
 select set_config(
   'gestionpisos.workflow_photo_review_definition_id',
@@ -2802,7 +2862,10 @@ select set_config(
       current_setting('gestionpisos.workflow_property_1')::uuid,
       null,
       null,
-      array[current_setting('gestionpisos.workflow_photo_pattern_1')::uuid]
+      array[
+        current_setting('gestionpisos.workflow_photo_pattern_1')::uuid,
+        current_setting('gestionpisos.workflow_photo_pattern_2')::uuid
+      ]
     )
     limit 1
   ),
@@ -2836,22 +2899,48 @@ select set_config(
 );
 
 select set_config(
-  'gestionpisos.workflow_photo_review_resource_id',
+  'gestionpisos.workflow_photo_review_resource_1',
   (
     select id::text
     from public.workflow_execution_photo_resources_v2
     where execution_id=current_setting('gestionpisos.workflow_photo_review_execution_id')::uuid
+    order by sort_order
     limit 1
   ),
   true
 );
 
 select set_config(
-  'gestionpisos.workflow_photo_review_run_id',
+  'gestionpisos.workflow_photo_review_resource_2',
+  (
+    select id::text
+    from public.workflow_execution_photo_resources_v2
+    where execution_id=current_setting('gestionpisos.workflow_photo_review_execution_id')::uuid
+    order by sort_order
+    offset 1
+    limit 1
+  ),
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_photo_review_run_1',
   (
     select run_id::text
     from public.start_workflow_photo_verification_v1(
-      current_setting('gestionpisos.workflow_photo_review_resource_id')::uuid
+      current_setting('gestionpisos.workflow_photo_review_resource_1')::uuid
+    )
+    limit 1
+  ),
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_photo_review_run_2',
+  (
+    select run_id::text
+    from public.start_workflow_photo_verification_v1(
+      current_setting('gestionpisos.workflow_photo_review_resource_2')::uuid
     )
     limit 1
   ),
@@ -2859,31 +2948,154 @@ select set_config(
 );
 
 reset role;
-select set_config('gestionpisos.workflow_photo_review_item_id','dddddddd-dddd-4ddd-8ddd-dddddddddddd',true);
+select set_config('gestionpisos.workflow_photo_review_item_1','bcbcbcbc-bcbc-4bcb-8bcb-bcbcbcbcbcbc',true);
+select set_config('gestionpisos.workflow_photo_review_item_2','cdcdcdcd-cdcd-4dcd-8dcd-cdcdcdcdcdcd',true);
 
 insert into public.photo_verification_items_v2(
   id,run_id,pattern_id,storage_path,alignment_score,alignment_meta
-) values (
-  current_setting('gestionpisos.workflow_photo_review_item_id')::uuid,
-  current_setting('gestionpisos.workflow_photo_review_run_id')::uuid,
+) values
+(
+  current_setting('gestionpisos.workflow_photo_review_item_1')::uuid,
+  current_setting('gestionpisos.workflow_photo_review_run_1')::uuid,
   current_setting('gestionpisos.workflow_photo_pattern_1')::uuid,
   current_setting('gestionpisos.workflow_org_1')||'/'||
-    current_setting('gestionpisos.workflow_photo_review_run_id')||'/'||
-    current_setting('gestionpisos.workflow_photo_review_item_id')||'.jpg',
+    current_setting('gestionpisos.workflow_photo_review_run_1')||'/'||
+    current_setting('gestionpisos.workflow_photo_review_item_1')||'.jpg',
   0.81,
   jsonb_build_object('algorithm','local-edge-v2','zones',jsonb_build_array(0.6,0.6))
+),
+(
+  current_setting('gestionpisos.workflow_photo_review_item_2')::uuid,
+  current_setting('gestionpisos.workflow_photo_review_run_2')::uuid,
+  current_setting('gestionpisos.workflow_photo_pattern_2')::uuid,
+  current_setting('gestionpisos.workflow_org_1')||'/'||
+    current_setting('gestionpisos.workflow_photo_review_run_2')||'/'||
+    current_setting('gestionpisos.workflow_photo_review_item_2')||'.jpg',
+  0.79,
+  jsonb_build_object('algorithm','local-edge-v2','zones',jsonb_build_array(0.55,0.55))
 );
 
 insert into storage.objects(bucket_id,name,owner_id)
-values (
+values
+(
   'photo-verification',
   current_setting('gestionpisos.workflow_org_1')||'/'||
-    current_setting('gestionpisos.workflow_photo_review_run_id')||'/'||
-    current_setting('gestionpisos.workflow_photo_review_item_id')||'.jpg',
+    current_setting('gestionpisos.workflow_photo_review_run_1')||'/'||
+    current_setting('gestionpisos.workflow_photo_review_item_1')||'.jpg',
+  current_setting('gestionpisos.workflow_root')
+),
+(
+  'photo-verification',
+  current_setting('gestionpisos.workflow_org_1')||'/'||
+    current_setting('gestionpisos.workflow_photo_review_run_2')||'/'||
+    current_setting('gestionpisos.workflow_photo_review_item_2')||'.jpg',
   current_setting('gestionpisos.workflow_root')
 );
 
+-- Un JWT con claims admin falsos no concede lectura si user_roles no respalda el rol.
 set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub',current_setting('gestionpisos.workflow_tenant'),
+    'role','authenticated',
+    'aal','aal2',
+    'app_metadata',jsonb_build_object(
+      'role','admin',
+      'organization_id',current_setting('gestionpisos.workflow_org_1')
+    )
+  )::text,
+  true
+);
+
+do $photo_review_stale_claims_cannot_read$
+declare
+  v_runs integer;
+  v_items integer;
+  v_objects integer;
+begin
+  select count(*) into v_runs
+  from public.photo_verification_runs_v2
+  where id in (
+    current_setting('gestionpisos.workflow_photo_review_run_1')::uuid,
+    current_setting('gestionpisos.workflow_photo_review_run_2')::uuid
+  );
+
+  select count(*) into v_items
+  from public.photo_verification_items_v2
+  where id in (
+    current_setting('gestionpisos.workflow_photo_review_item_1')::uuid,
+    current_setting('gestionpisos.workflow_photo_review_item_2')::uuid
+  );
+
+  select count(*) into v_objects
+  from storage.objects
+  where bucket_id='photo-verification'
+    and name in (
+      current_setting('gestionpisos.workflow_org_1')||'/'||
+        current_setting('gestionpisos.workflow_photo_review_run_1')||'/'||
+        current_setting('gestionpisos.workflow_photo_review_item_1')||'.jpg',
+      current_setting('gestionpisos.workflow_org_1')||'/'||
+        current_setting('gestionpisos.workflow_photo_review_run_2')||'/'||
+        current_setting('gestionpisos.workflow_photo_review_item_2')||'.jpg'
+    );
+
+  if v_runs<>0 or v_items<>0 or v_objects<>0 then
+    raise exception 'stale privileged JWT claims can still read photo review evidence';
+  end if;
+end;
+$photo_review_stale_claims_cannot_read$;
+
+-- Un ADMIN activo sí puede leer sin depender de app_metadata.role.
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub',current_setting('gestionpisos.workflow_admin_1'),
+    'role','authenticated',
+    'aal','aal2'
+  )::text,
+  true
+);
+
+do $photo_review_active_admin_can_read$
+declare
+  v_runs integer;
+  v_items integer;
+  v_objects integer;
+begin
+  select count(*) into v_runs
+  from public.photo_verification_runs_v2
+  where id in (
+    current_setting('gestionpisos.workflow_photo_review_run_1')::uuid,
+    current_setting('gestionpisos.workflow_photo_review_run_2')::uuid
+  );
+
+  select count(*) into v_items
+  from public.photo_verification_items_v2
+  where id in (
+    current_setting('gestionpisos.workflow_photo_review_item_1')::uuid,
+    current_setting('gestionpisos.workflow_photo_review_item_2')::uuid
+  );
+
+  select count(*) into v_objects
+  from storage.objects
+  where bucket_id='photo-verification'
+    and name in (
+      current_setting('gestionpisos.workflow_org_1')||'/'||
+        current_setting('gestionpisos.workflow_photo_review_run_1')||'/'||
+        current_setting('gestionpisos.workflow_photo_review_item_1')||'.jpg',
+      current_setting('gestionpisos.workflow_org_1')||'/'||
+        current_setting('gestionpisos.workflow_photo_review_run_2')||'/'||
+        current_setting('gestionpisos.workflow_photo_review_item_2')||'.jpg'
+    );
+
+  if v_runs<>2 or v_items<>2 or v_objects<>2 then
+    raise exception 'active admin cannot read photo review evidence through current roles';
+  end if;
+end;
+$photo_review_active_admin_can_read$;
+
+-- El asignado envía ambas evidencias; solo entonces entra en waiting_review.
 select set_config(
   'request.jwt.claims',
   jsonb_build_object(
@@ -2895,9 +3107,15 @@ select set_config(
 );
 
 select * from public.submit_workflow_photo_verification_v1(
-  current_setting('gestionpisos.workflow_photo_review_run_id')::uuid,
-  current_setting('gestionpisos.workflow_photo_review_item_id')::uuid,
+  current_setting('gestionpisos.workflow_photo_review_run_1')::uuid,
+  current_setting('gestionpisos.workflow_photo_review_item_1')::uuid,
   'workflow-photo-review-submit-001'
+);
+
+select * from public.submit_workflow_photo_verification_v1(
+  current_setting('gestionpisos.workflow_photo_review_run_2')::uuid,
+  current_setting('gestionpisos.workflow_photo_review_item_2')::uuid,
+  'workflow-photo-review-submit-002'
 );
 
 reset role;
@@ -2906,7 +3124,7 @@ do $workflow_photo_review_waiting$
 declare
   v_task_status text;
   v_execution_status text;
-  v_run_status text;
+  v_submitted integer;
   v_agency_actions integer;
 begin
   select status into v_task_status
@@ -2917,9 +3135,13 @@ begin
   from public.workflow_executions_v2
   where id=current_setting('gestionpisos.workflow_photo_review_execution_id')::uuid;
 
-  select status into v_run_status
+  select count(*) into v_submitted
   from public.photo_verification_runs_v2
-  where id=current_setting('gestionpisos.workflow_photo_review_run_id')::uuid;
+  where id in (
+    current_setting('gestionpisos.workflow_photo_review_run_1')::uuid,
+    current_setting('gestionpisos.workflow_photo_review_run_2')::uuid
+  )
+    and status='submitted';
 
   select count(*) into v_agency_actions
   from public.tenant_task_actions_v2
@@ -2930,15 +3152,56 @@ begin
 
   if v_task_status<>'waiting_review'
     or v_execution_status<>'waiting_review'
-    or v_run_status<>'submitted'
+    or v_submitted<>2
     or v_agency_actions<>0 then
-    raise exception 'photo human-review workflow did not route exclusively through photo review';
+    raise exception 'multi-photo human-review workflow did not enter waiting_review correctly';
   end if;
 end;
 $workflow_photo_review_waiting$;
 
+-- Primera revisión: cambia el run, pero el workflow sigue esperando la segunda.
+do $workflow_photo_review_partial_apply$
+declare
+  v_result jsonb;
+begin
+  v_result:=public.apply_workflow_photo_review_v1(
+    current_setting('gestionpisos.workflow_photo_review_run_1')::uuid,
+    current_setting('gestionpisos.workflow_root')::uuid,
+    'approved',
+    null
+  );
+
+  if coalesce((v_result->>'applied_new')::boolean,false) is not true
+    or coalesce((v_result->>'all_reviewed')::boolean,true) is not false
+    or v_result->>'execution_status'<>'waiting_review' then
+    raise exception 'first photo review did not report a new partial review';
+  end if;
+end;
+$workflow_photo_review_partial_apply$;
+
+-- Repetir la misma decisión sobre el mismo run no cambia nada.
+do $workflow_photo_review_partial_retry$
+declare
+  v_result jsonb;
+begin
+  v_result:=public.apply_workflow_photo_review_v1(
+    current_setting('gestionpisos.workflow_photo_review_run_1')::uuid,
+    current_setting('gestionpisos.workflow_root')::uuid,
+    'approved',
+    null
+  );
+
+  if coalesce((v_result->>'applied_new')::boolean,true)
+    or coalesce((v_result->>'all_reviewed')::boolean,true)
+    or v_result->>'execution_status'<>'waiting_review' then
+    raise exception 'partial photo review retry incorrectly reports a new application';
+  end if;
+end;
+$workflow_photo_review_partial_retry$;
+
+-- Revisar la última evidencia completa el workflow exactamente una vez.
 select * from public.apply_workflow_photo_review_v1(
-  current_setting('gestionpisos.workflow_photo_review_run_id')::uuid,
+  current_setting('gestionpisos.workflow_photo_review_run_2')::uuid,
   current_setting('gestionpisos.workflow_root')::uuid,
   'approved',
   null
@@ -2948,7 +3211,7 @@ do $workflow_photo_review_approved_state$
 declare
   v_task_status text;
   v_execution_status text;
-  v_run_status text;
+  v_approved integer;
   v_history integer;
   v_events integer;
 begin
@@ -2960,9 +3223,13 @@ begin
   from public.workflow_executions_v2
   where id=current_setting('gestionpisos.workflow_photo_review_execution_id')::uuid;
 
-  select status into v_run_status
+  select count(*) into v_approved
   from public.photo_verification_runs_v2
-  where id=current_setting('gestionpisos.workflow_photo_review_run_id')::uuid;
+  where id in (
+    current_setting('gestionpisos.workflow_photo_review_run_1')::uuid,
+    current_setting('gestionpisos.workflow_photo_review_run_2')::uuid
+  )
+    and status='approved';
 
   select count(*) into v_history
   from public.tenant_task_history_v2
@@ -2979,10 +3246,10 @@ begin
 
   if v_task_status<>'completed'
     or v_execution_status<>'completed'
-    or v_run_status<>'approved'
+    or v_approved<>2
     or v_history<>1
     or v_events<>1 then
-    raise exception 'approved photo review did not complete workflow consistently';
+    raise exception 'approved multi-photo review did not complete workflow consistently';
   end if;
 end;
 $workflow_photo_review_approved_state$;
@@ -2994,7 +3261,7 @@ declare
   v_events integer;
 begin
   v_result:=public.apply_workflow_photo_review_v1(
-    current_setting('gestionpisos.workflow_photo_review_run_id')::uuid,
+    current_setting('gestionpisos.workflow_photo_review_run_2')::uuid,
     current_setting('gestionpisos.workflow_root')::uuid,
     'approved',
     null
@@ -3013,7 +3280,7 @@ begin
   if coalesce((v_result->>'applied_new')::boolean,true)
     or v_history<>1
     or v_events<>1 then
-    raise exception 'workflow photo review retry duplicated history/event';
+    raise exception 'workflow photo review final retry duplicated history/event';
   end if;
 end;
 $workflow_photo_review_retry$;

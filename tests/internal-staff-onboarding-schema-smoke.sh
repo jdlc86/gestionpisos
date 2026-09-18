@@ -2,7 +2,9 @@
 set -euo pipefail
 
 MIGRATION='supabase/migrations/20260916180953_internal_staff_onboarding.sql'
+EMAIL_INVARIANT='supabase/migrations/20260918224500_invitation_email_invariant.sql'
 test -s "$MIGRATION"
+test -s "$EMAIL_INVARIANT"
 
 grep -Fq 'create table if not exists public.internal_staff_onboarding (' "$MIGRATION"
 grep -Fq 'create table if not exists public.internal_staff_onboarding_access_snapshot (' "$MIGRATION"
@@ -30,6 +32,15 @@ grep -Fq "restore_result='skipped_responsible_conflict'" "$MIGRATION"
 grep -Fq "'onboarding_status',u.onboarding_status" "$MIGRATION"
 grep -Fq "o.status='pending'" "$MIGRATION"
 grep -Fq "onboarding_revoked" "$MIGRATION"
+grep -Fq 'add column if not exists invitation_email text' "$EMAIL_INVARIANT"
+grep -Fq 'internal_staff_invitation_email_backfill_inconsistent' "$EMAIL_INVARIANT"
+grep -Fq 'internal_staff_onboarding_invitation_email_check' "$EMAIL_INVARIANT"
+grep -Fq 'internal_staff_invitation_email_immutable' "$EMAIL_INVARIANT"
+grep -Fq 'internal_staff_invitation_email_mismatch' "$EMAIL_INVARIANT"
+grep -Fq 'internal_staff_pending_email_change_requires_reprovision' "$EMAIL_INVARIANT"
+grep -Fq 'internal_staff_active_email_change_requires_account_flow' "$EMAIL_INVARIANT"
+grep -Fq "'email_consistent'" "$EMAIL_INVARIANT"
+grep -Fq 'profiles_internal_staff_email_guard' "$EMAIL_INVARIANT"
 
 # Backfill is intentionally evidence-scoped; generated/auth UUIDs must not be hardcoded.
 ! grep -Fq '7cbb88da-1ae1-47d8-a86b-f92e83cfd1b8' "$MIGRATION"

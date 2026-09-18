@@ -122,7 +122,7 @@ grep -Fq 'EXECUTION_KEY_PREFIX' docs/workflow-applications.js
 grep -Fq 'Ejecutar ahora' docs/workflow-applications.js
 grep -Fq 'Ejecución creada en estado Pendiente y tarea materializada sin duplicados.' docs/workflow-applications.js
 grep -Fq 'Definición → Versión publicada → Aplicación concreta → Ejecutar ahora → Ejecución' docs/WORKFLOW_EXECUTION_CONTRACT.md
-grep -Fq 'tenant_id NOT NULL' docs/WORKFLOW_EXECUTION_CONTRACT.md
+grep -Fq "source_kind='workflow_execution'" docs/WORKFLOW_EXECUTION_CONTRACT.md
 grep -Fq 'workflow_executions_v2' docs/WORKFLOW_EXECUTION_CONTRACT.md
 grep -Fq 'workflow_execution_events_v2' docs/WORKFLOW_EXECUTION_CONTRACT.md
 grep -Fq 'Tarea visible → Acción autorizada → Transacción única' docs/WORKFLOW_ACTIONS_CONTRACT.md

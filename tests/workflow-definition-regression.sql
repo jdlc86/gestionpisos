@@ -266,6 +266,84 @@ begin
 end;
 $$;
 
+-- Guardar exactamente la misma especificacion no fabrica una revision nueva.
+reset role;
+select set_config(
+  'gestionpisos.workflow_partial_audit_before',
+  (
+    select count(*)::text
+    from public.audit_log_v2
+    where entity_type='workflow_definition'
+      and entity_id=current_setting('gestionpisos.workflow_partial_id')
+      and action='workflow_draft_updated'
+  ),
+  true
+);
+set local role authenticated;
+
+do $$
+declare
+  v_before_revision bigint;
+  v_after_revision bigint;
+  v_before_updated_at timestamptz;
+  v_after_updated_at timestamptz;
+begin
+  select revision, updated_at
+  into v_before_revision, v_before_updated_at
+  from public.workflow_definitions_v2
+  where id=current_setting('gestionpisos.workflow_partial_id')::uuid;
+
+  perform *
+  from public.save_workflow_definition_draft_v1(
+    jsonb_build_object(
+      'authoringVersion',2,
+      'flowName','Borrador parcial',
+      'flowType','inspection',
+      'flowDescription','',
+      'scopeType','organization',
+      'triggerType','manual',
+      'recurrence','',
+      'assignmentType','manual',
+      'steps',jsonb_build_object('accept',true,'photo',false,'checklist',false,'document',false),
+      'closeType','auto',
+      'notifications',jsonb_build_object('onCreate',false,'onClose',false)
+    ),
+    current_setting('gestionpisos.workflow_partial_id')::uuid,
+    v_before_revision
+  );
+
+  select revision, updated_at
+  into v_after_revision, v_after_updated_at
+  from public.workflow_definitions_v2
+  where id=current_setting('gestionpisos.workflow_partial_id')::uuid;
+
+  if v_after_revision <> v_before_revision then
+    raise exception 'no-op workflow save incremented revision';
+  end if;
+  if v_after_updated_at is distinct from v_before_updated_at then
+    raise exception 'no-op workflow save changed updated_at';
+  end if;
+end;
+$$;
+
+reset role;
+do $$
+declare v_after_audit integer;
+begin
+  select count(*)
+  into v_after_audit
+  from public.audit_log_v2
+  where entity_type='workflow_definition'
+    and entity_id=current_setting('gestionpisos.workflow_partial_id')
+    and action='workflow_draft_updated';
+
+  if v_after_audit <> current_setting('gestionpisos.workflow_partial_audit_before')::integer then
+    raise exception 'no-op workflow save created update audit event';
+  end if;
+end;
+$$;
+set local role authenticated;
+
 -- Un borrador creado por un cliente antiguo no se considera completo aunque sus defaults parezcan válidos.
 select set_config(
   'gestionpisos.workflow_legacy_id',

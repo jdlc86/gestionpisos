@@ -38,3 +38,21 @@
 .builder-dependent-grid{display:grid;grid-template-columns:minmax(100px,.7fr) minmax(160px,1.3fr);gap:10px}
 .builder-dependent-grid[hidden]{display:none!important}
 @media(max-width:560px){.builder-dependent-grid{grid-template-columns:1fr}}
+
+.builder-drafts-section{display:grid;gap:12px;margin-bottom:14px}
+.builder-drafts-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.builder-drafts-toolbar h2{margin:0;font-size:22px}
+.builder-drafts-toolbar>a{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+.builder-drafts-list{display:grid;gap:10px}
+.builder-draft-card{display:grid;gap:10px;padding:14px;border:1px solid var(--ui-border);border-radius:var(--ui-radius);background:var(--ui-surface)}
+.builder-draft-card--loading{color:var(--ui-muted)}
+.builder-draft-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.builder-draft-head h3{margin:0;font-size:16px}
+.builder-draft-badge{display:inline-flex;align-items:center;min-height:24px;padding:4px 8px;border:1px solid var(--ui-border);border-radius:999px;background:var(--ui-subtle);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em}
+.builder-draft-badge.is-complete{border-color:var(--ui-success);background:var(--ui-success-soft);color:var(--ui-success)}
+.builder-draft-badge.is-pending{border-color:var(--ui-warning);background:var(--ui-warning-soft);color:var(--ui-text)}
+.builder-draft-meta{display:flex;flex-wrap:wrap;gap:8px;color:var(--ui-muted);font-size:12px}
+.builder-draft-actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.builder-draft-actions a,.builder-draft-actions button{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+.builder-draft-card.is-current{outline:2px solid var(--ui-primary);outline-offset:1px}
+@media(max-width:620px){.builder-drafts-toolbar{align-items:stretch;flex-direction:column}.builder-drafts-toolbar>a{width:100%}.builder-draft-head{display:grid}.builder-draft-actions{justify-content:stretch}.builder-draft-actions a,.builder-draft-actions button{width:100%}}

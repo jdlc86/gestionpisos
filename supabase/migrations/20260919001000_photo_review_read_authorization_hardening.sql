@@ -34,6 +34,12 @@ revoke all on function public.photo_verification_can_review_v1(text)
 grant execute on function public.photo_verification_can_review_v1(text)
   to authenticated,service_role;
 
+-- RLS only participates after table privileges allow SELECT. Production already
+-- has these grants; declaring them here makes the migration reproducible.
+grant select on public.photo_verification_runs_v2 to authenticated;
+grant select on public.photo_verification_items_v2 to authenticated;
+grant select on storage.objects to authenticated;
+
 drop policy if exists photo_runs_actor_read
   on public.photo_verification_runs_v2;
 

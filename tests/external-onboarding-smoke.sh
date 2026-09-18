@@ -7,6 +7,8 @@ test -s docs/portfolio-onboarding.js
 test -s supabase/functions/send-external-welcome/index.ts
 test -s supabase/functions/complete-external-onboarding/index.ts
 test -s supabase/functions/_shared/external-onboarding-email.ts
+test -s supabase/functions/_shared/external-onboarding-revocation.ts
+test -s supabase/functions/revoke-external-welcome/index.ts
 
 node --check docs/activate-external-account.js
 node --check docs/portfolio-onboarding.js
@@ -27,7 +29,7 @@ grep -Fq 'auth_metadata_synced' docs/activate-external-account.js
 grep -Fq 'get_my_external_account_onboarding' docs/auth-guard.js
 grep -Fq 'activate-external-account.html' docs/auth-guard.js
 
-grep -Fq 'portfolio-onboarding.js?v=2026091602' docs/portfolio.html
+grep -Fq 'portfolio-onboarding.js?v=2026091801' docs/portfolio.html
 grep -Fq 'Guardar y enviar bienvenida' docs/portfolio.html
 grep -Fq 'Bienvenida del propietario' docs/portfolio-onboarding.js
 grep -Fq 'Enviar bienvenida' docs/portfolio-onboarding.js
@@ -36,6 +38,12 @@ grep -Fq 'get_external_onboarding_statuses' docs/portfolio-onboarding.js
 grep -Fq 'send-external-welcome' docs/portfolio-onboarding.js
 grep -Fq 'email_internal_identity_conflict' docs/portfolio-onboarding.js
 grep -Fq 'delivery==="failed"?"Envío no confirmado":"Invitación pendiente"' docs/portfolio-onboarding.js
+grep -Fq 'Email cambiado · nueva invitación necesaria' docs/portfolio-onboarding.js
+grep -Fq 'Cambiar el email invalidará la invitación enviada a ' docs/portfolio-onboarding.js
+grep -Fq 'revoke-external-welcome' docs/portfolio-onboarding.js
+grep -Fq 'externalEmailChangeBypass' docs/portfolio-onboarding.js
+grep -Fq 'external_active_account_email_change_requires_account_flow' docs/portfolio-onboarding.js
+grep -Fq 'external_onboarding_email_change_requires_revocation' docs/portfolio.js
 
 grep -Fq 'auth.admin.generateLink' supabase/functions/_shared/external-onboarding-email.ts
 grep -Fq 'https://api.resend.com/emails' supabase/functions/_shared/external-onboarding-email.ts
@@ -49,6 +57,13 @@ grep -Fq 'email_auth_identity_conflict' supabase/functions/send-external-welcome
 grep -Fq 'can_manage_permissions' supabase/functions/send-external-welcome/index.ts
 grep -Fq 'can_operate_property_v3' supabase/functions/send-external-welcome/index.ts
 ! grep -Fq 'password:' supabase/functions/send-external-welcome/index.ts
+grep -Fq 'disableAndRevokeExternalOnboarding' supabase/functions/send-external-welcome/index.ts
+grep -Fq 'external_stale_onboarding_revoke_failed' supabase/functions/send-external-welcome/index.ts
+grep -Fq 'admin.auth.admin.deleteUser(input.authUserId, true)' supabase/functions/_shared/external-onboarding-revocation.ts
+grep -Fq 'revoke_external_account_onboarding_v1' supabase/functions/_shared/external-onboarding-revocation.ts
+grep -Fq 'disableAndRevokeExternalOnboarding' supabase/functions/revoke-external-welcome/index.ts
+grep -Fq 'external_active_account_email_change_requires_account_flow' supabase/functions/revoke-external-welcome/index.ts
+grep -Fq 'external_welcome_permission_required' supabase/functions/revoke-external-welcome/index.ts
 
 # Claims may only be published after the authoritative DB completion call.
 FILE='supabase/functions/complete-external-onboarding/index.ts'

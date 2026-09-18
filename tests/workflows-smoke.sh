@@ -91,7 +91,7 @@ grep -Fq 'function activationText(row)' docs/workflow-definitions.js
 grep -Fq 'meta("Activación",activationText(row))' docs/workflow-definitions.js
 grep -Fq 'updated_at,draft_spec' docs/workflow-definitions.js
 grep -Fq './workflow-definitions.js?v=2026091804' docs/workflow-definitions.html
-grep -Fq 'borradores incompletos y configurados' docs/workflow-definitions.html
+grep -Fq 'puede publicarse como versión inmutable' docs/workflow-definitions.html
 grep -Fq 'publish_workflow_definition_v1' docs/workflow-definitions.js
 grep -Fq 'workflow-applications.html?definition=' docs/workflow-definitions.js
 grep -Fq 'Publicar versión' docs/workflow-definitions.js
@@ -100,7 +100,7 @@ grep -Fq 'archive_workflow_application_v1' docs/workflow-applications.js
 grep -Fq 'properties_v2' docs/workflow-applications.js
 grep -Fq 'rooms_v2' docs/workflow-applications.js
 grep -Fq 'occupancies_v2' docs/workflow-applications.js
-grep -Fq 'Configurada no significa activa' docs/workflow-applications.html
+grep -Fq 'configurada, pero todavía no ejecutará tareas ni recurrencias' docs/workflow-applications.html
 grep -Fq 'Definición → Versión publicada → Aplicación concreta' docs/WORKFLOW_APPLICATIONS_CONTRACT.md
 grep -Fq 'workflow_applications_v2' docs/WORKFLOW_APPLICATIONS_CONTRACT.md
 grep -Fq 'workflow-applications.html' docs/sw.js

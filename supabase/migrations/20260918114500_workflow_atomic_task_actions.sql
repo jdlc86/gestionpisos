@@ -129,7 +129,7 @@ returns public.tenant_tasks_v2
 language plpgsql
 security definer
 set search_path=public,pg_temp
-as $
+as $$
 declare
   v_actor uuid:=auth.uid();
   v_task public.tenant_tasks_v2;

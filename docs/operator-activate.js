@@ -58,6 +58,21 @@ function enable() {
   show("Invitación verificada. Crea tu contraseña de operador.");
   password.focus();
 }
+async function enableVerifiedOperator() {
+  try {
+    const { data, error } = await supabase.functions.invoke("operator-mfa-recovery", {
+      body: { action: "status" },
+    });
+    if (error || data?.ok !== true) {
+      invalidate("El correo actual ya no coincide con la identidad de operador autorizada. Pide a ROOT que reprovisione el operador.");
+      return;
+    }
+    sessionStorage.setItem("allaiso-platform-operator-activation", "1");
+    enable();
+  } catch {
+    invalidate("No se pudo validar la identidad de operador. Pide a ROOT que revise o reprovisione el acceso.");
+  }
+}
 
 function invalidate(text = "La invitación no es válida o ha caducado. Pide a ROOT que vuelva a designar el operador.") {
   activationReady = false;
@@ -76,8 +91,7 @@ if (authError) invalidate("La invitación ha caducado o ya fue utilizada. Pide a
 
 supabase.auth.onAuthStateChange((event, session) => {
   if (event === "PASSWORD_RECOVERY" && session) {
-    sessionStorage.setItem("allaiso-platform-operator-activation", "1");
-    enable();
+    enableVerifiedOperator();
   }
 });
 
@@ -87,7 +101,7 @@ async function bootstrap() {
     const { data, error } = await supabase.auth.getSession();
     if (error) throw error;
     if (data.session && activationHint) {
-      enable();
+      await enableVerifiedOperator();
       return;
     }
     invalidate();

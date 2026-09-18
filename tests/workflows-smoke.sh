@@ -18,6 +18,7 @@ test -s docs/workflow-applications.js
 test -s docs/WORKFLOW_APPLICATIONS_CONTRACT.md
 test -s docs/WORKFLOW_EXECUTION_CONTRACT.md
 test -s docs/WORKFLOW_TASKS_CONTRACT.md
+test -s docs/WORKFLOW_ACTIONS_CONTRACT.md
 test -s docs/workflow-tasks.html
 test -s docs/workflow-tasks.css
 test -s docs/workflow-tasks.js
@@ -124,12 +125,24 @@ grep -Fq 'Definición → Versión publicada → Aplicación concreta → Ejecut
 grep -Fq 'tenant_id NOT NULL' docs/WORKFLOW_EXECUTION_CONTRACT.md
 grep -Fq 'workflow_executions_v2' docs/WORKFLOW_EXECUTION_CONTRACT.md
 grep -Fq 'workflow_execution_events_v2' docs/WORKFLOW_EXECUTION_CONTRACT.md
+grep -Fq 'Tarea visible → Acción autorizada → Transacción única' docs/WORKFLOW_ACTIONS_CONTRACT.md
+grep -Fq 'apply_workflow_task_action_v1' docs/WORKFLOW_ACTIONS_CONTRACT.md
+grep -Fq 'workflow_task_requires_atomic_action' docs/WORKFLOW_ACTIONS_CONTRACT.md
+grep -Fq 'Aceptar y completar' docs/WORKFLOW_ACTIONS_CONTRACT.md
 grep -Fq 'tenant_tasks_v2' docs/WORKFLOW_TASKS_CONTRACT.md
 grep -Fq "source_kind='workflow_execution'" docs/WORKFLOW_TASKS_CONTRACT.md
 grep -Fq 'materialize_workflow_execution_task_v1' docs/WORKFLOW_TASKS_CONTRACT.md
 grep -Fq 'workflow_tasks' docs/WORKFLOW_TASKS_CONTRACT.md
 grep -Fq 'tenant_tasks_v2' docs/workflow-tasks.js
 grep -Fq 'source_kind' docs/workflow-tasks.js
+grep -Fq 'apply_workflow_task_action_v1' docs/workflow-tasks.js
+grep -Fq 'ACTION_KEY_PREFIX' docs/workflow-tasks.js
+grep -Fq 'Aceptar y completar' docs/WORKFLOW_ACTIONS_CONTRACT.md
+grep -Fq 'Tarea y ejecución actualizadas juntas' docs/workflow-tasks.js
+grep -Fq 'task-actions' docs/workflow-tasks.css
+grep -Fq './workflow-tasks.css?v=2026091802' docs/workflow-tasks.html
+grep -Fq './workflow-tasks.js?v=2026091802' docs/workflow-tasks.html
+grep -Fq 'cambian tarea y ejecución juntas' docs/workflow-tasks.html
 grep -Fq 'Asignadas a mí' docs/workflow-tasks.html
 grep -Fq 'workflow-tasks.html' docs/sw.js
 grep -Fq 'workflow-applications.html' docs/sw.js

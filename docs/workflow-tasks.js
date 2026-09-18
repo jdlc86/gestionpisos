@@ -10,6 +10,8 @@ let properties=new Map();
 let rooms=new Map();
 let profiles=new Map();
 let actionsByTask=new Map();
+let managerOrganizationIds=new Set();
+let rootManager=false;
 let photoResourcesByExecution=new Map();
 
 const ACTION_KEY_PREFIX="workflow-task-action:";
@@ -96,12 +98,12 @@ function workflowPhotoReviewUrl(task){
   url.searchParams.set("status","submitted");
   return url.href;
 }
-function currentRole(){
-  return String(currentUser?.app_metadata?.role||"").toLowerCase();
+function canManageTask(task){
+  return rootManager||managerOrganizationIds.has(task.organization_id);
 }
 function canRenderWorkflowAction(task,action){
   if(action.actor==="assignee")return task.assigned_user_id===currentUser?.id;
-  if(action.actor==="agency")return ["root","admin"].includes(currentRole());
+  if(action.actor==="agency")return canManageTask(task);
   return false;
 }
 function workflowPhotoUrl(task,resource){
@@ -162,7 +164,7 @@ function renderPhotoResources(task,article){
     box.append(row);
   });
 
-  if(task.status==="waiting_review"&&["root","admin"].includes(currentRole())){
+  if(task.status==="waiting_review"&&canManageTask(task)){
     const reviewLink=document.createElement("a");
     reviewLink.className="primary task-photo-button";
     reviewLink.href=workflowPhotoReviewUrl(task);
@@ -318,6 +320,25 @@ async function applyWorkflowAction(task,action,button){
   await load(true);
 }
 
+async function loadManagerAccess(){
+  managerOrganizationIds=new Set();
+  rootManager=false;
+  if(!currentUser?.id)return;
+
+  const {data,error}=await supabase
+    .from("user_roles")
+    .select("role,organization_id,revoked_at")
+    .eq("user_id",currentUser.id)
+    .is("revoked_at",null);
+
+  if(error)throw error;
+
+  (data||[]).forEach(row=>{
+    if(row.role==="root")rootManager=true;
+    if(row.role==="admin"&&row.organization_id)managerOrganizationIds.add(row.organization_id);
+  });
+}
+
 async function loadRelated(){
   properties=new Map();
   rooms=new Map();
@@ -414,7 +435,7 @@ async function load(preserveStatus=false){
   tasks=data||[];
 
   try{
-    await Promise.all([loadRelated(),loadActions(),loadPhotoResources()]);
+    await Promise.all([loadManagerAccess(),loadRelated(),loadActions(),loadPhotoResources()]);
   }catch{
     list.replaceChildren();
     const empty=document.createElement("article");empty.className="task-empty";

@@ -1591,7 +1591,7 @@ declare
   v_pattern uuid;
   v_order integer;
 begin
-  select count(*),min(pattern_id),min(sort_order)
+  select count(*),max(pattern_id::text)::uuid,min(sort_order)
   into v_count,v_pattern,v_order
   from public.workflow_application_photo_resources_v2
   where application_id=current_setting('gestionpisos.workflow_photo_application_id')::uuid;

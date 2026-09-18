@@ -2660,6 +2660,16 @@ begin
 end;
 $workflow_review_approve_retry$;
 
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub',current_setting('gestionpisos.workflow_root'),
+    'role','authenticated',
+    'aal','aal2'
+  )::text,
+  true
+);
+
 -- Rechazo de revisión sin Foto: exige motivo y termina en rejected sin completed_at.
 select set_config(
   'gestionpisos.workflow_review_reject_execution_id',

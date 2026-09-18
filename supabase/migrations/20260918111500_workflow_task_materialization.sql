@@ -58,6 +58,7 @@ revoke insert,update,delete,truncate,references,trigger
 grant select on public.tenant_tasks_v2 to authenticated;
 grant select on public.tenant_task_actions_v2 to authenticated;
 grant select on public.tenant_task_history_v2 to authenticated;
+grant select on public.tenants_v2 to authenticated;
 
 drop policy if exists tenant_tasks_v2_root_all on public.tenant_tasks_v2;
 drop policy if exists tenant_tasks_v2_admin_org_all on public.tenant_tasks_v2;

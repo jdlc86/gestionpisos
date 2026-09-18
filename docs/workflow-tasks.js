@@ -9,10 +9,13 @@ let tasks=[];
 let properties=new Map();
 let rooms=new Map();
 let profiles=new Map();
+let actionsByTask=new Map();
 
+const ACTION_KEY_PREFIX="workflow-task-action:";
 const statusLabels={
-  pending:"Pendiente",accepted:"Aceptada",in_progress:"En curso",waiting_info:"Esperando información",
-  submitted:"Enviada",completed:"Completada",cancelled:"Cancelada",rejected:"Rechazada",
+  pending:"Pendiente",active:"En curso",waiting_review:"Esperando revisión",
+  accepted:"Aceptada",in_progress:"En curso",waiting_info:"Esperando información",
+  submitted:"Enviada",completed:"Completada",cancelled:"Cancelada",failed:"Fallida",rejected:"Rechazada",
   requested:"Solicitada",scheduled:"Programada",open:"Abierta",assigned:"Asignada",
   draft:"Borrador",claimed:"Reclamada",disputed:"En disputa",received:"Recibida",
   under_review:"En revisión",refunded:"Devuelta",partially_held:"Retención parcial",held:"Retenida"
@@ -51,6 +54,70 @@ function visibleTasks(){
   if(filter.value==="all")return tasks;
   if(filter.value==="mine")return tasks.filter(task=>task.assigned_user_id===currentUser?.id);
   return tasks.filter(task=>!["completed","cancelled","rejected","refunded","held"].includes(task.status));
+}
+function errorText(error){
+  const message=String(error?.message||"");
+  if(message.includes("workflow_action_actor_forbidden"))return "Esta acción solo puede realizarla la persona asignada.";
+  if(message.includes("workflow_action_not_allowed"))return "La acción ya no está disponible para el estado actual.";
+  if(message.includes("workflow_task_execution_state_mismatch"))return "Tarea y ejecución no están sincronizadas. No se ha aplicado ningún cambio.";
+  if(message.includes("workflow_action_request_key_conflict"))return "El identificador de reintento pertenece a otra acción. Recarga la pantalla.";
+  if(message.includes("workflow_action_note_required"))return "Esta acción requiere una nota.";
+  if(message.includes("workflow_action_not_supported")||message.includes("workflow_action_close_rule_not_supported"))return "Esta transición todavía no está habilitada para esta receta.";
+  return "No se pudo aplicar la acción. No se ha confirmado ningún cambio.";
+}
+function requestKey(task,action){
+  const storageKey=ACTION_KEY_PREFIX+task.id+":"+action.action_key+":"+action.from_status;
+  let key=sessionStorage.getItem(storageKey);
+  if(!key){
+    key=globalThis.crypto?.randomUUID?.()||("action-"+Date.now()+"-"+Math.random().toString(36).slice(2));
+    sessionStorage.setItem(storageKey,key);
+  }
+  return {storageKey,key};
+}
+function actionNote(task){
+  if(task.status==="completed")return "Tarea y ejecución completadas de forma sincronizada.";
+  if(task.status==="waiting_review")return "La tarea está esperando la revisión definida por la receta.";
+  if(task.status==="active")return "La tarea está activa. Quedan pasos de la receta que todavía deben completarse.";
+  return "No hay una acción operativa habilitada para esta receta en el estado actual.";
+}
+function renderActions(task,article){
+  if(task.source_kind!=="workflow_execution")return;
+
+  const available=(actionsByTask.get(task.id)||[])
+    .filter(action=>action.active&&action.from_status===task.status)
+    .sort((a,b)=>(a.sort_order||0)-(b.sort_order||0));
+
+  if(!available.length){
+    const note=document.createElement("div");note.className="task-note";
+    note.textContent=actionNote(task);
+    article.append(note);
+    return;
+  }
+
+  const box=document.createElement("div");box.className="task-actions";
+  const heading=document.createElement("strong");heading.textContent="Acciones";
+  box.append(heading);
+
+  available.forEach(action=>{
+    const button=document.createElement("button");
+    button.type="button";
+    button.className="primary";
+    button.textContent=action.label;
+    button.addEventListener("click",()=>applyWorkflowAction(task,action,button));
+    box.append(button);
+
+    if(action.to_status==="completed"){
+      const note=document.createElement("span");note.className="task-action-note";
+      note.textContent="Esta es la única etapa pendiente; al aceptar se cerrarán tarea y ejecución.";
+      box.append(note);
+    }else if(action.to_status==="waiting_review"){
+      const note=document.createElement("span");note.className="task-action-note";
+      note.textContent="Después de aceptar quedará pendiente la revisión humana.";
+      box.append(note);
+    }
+  });
+
+  article.append(box);
 }
 function render(){
   list.replaceChildren();
@@ -93,17 +160,63 @@ function render(){
     );
     article.append(details);
 
-    if(task.source_kind==="workflow_execution"){
-      const note=document.createElement("div");note.className="task-note";
-      note.textContent="La tarea está materializada y trazada a su ejecución. Las acciones se habilitarán cuando tarea y ejecución puedan cambiar de estado de forma atómica.";
-      article.append(note);
-    }
-
+    renderActions(task,article);
     list.append(article);
   });
 }
 
+async function applyWorkflowAction(task,action,button){
+  let note=null;
+  if(action.requires_note){
+    note=window.prompt("Añade la nota obligatoria para esta acción:");
+    if(note===null)return;
+    if(!note.trim()){
+      setStatus("Esta acción requiere una nota.",true);
+      return;
+    }
+  }
+
+  const {storageKey,key}=requestKey(task,action);
+  const original=button.textContent;
+  button.disabled=true;
+  button.textContent="Aplicando…";
+  setStatus("Aplicando la acción sobre tarea y ejecución en una única transacción…");
+
+  const {data,error}=await supabase.rpc("apply_workflow_task_action_v1",{
+    p_task_id:task.id,
+    p_action_key:action.action_key,
+    p_request_key:key,
+    p_note:note
+  });
+
+  button.textContent=original;
+
+  if(error){
+    button.disabled=false;
+    const message=String(error.message||"");
+    if(message.includes("workflow_")&&!message.includes("network"))sessionStorage.removeItem(storageKey);
+    setStatus(errorText(error),true);
+    return;
+  }
+
+  sessionStorage.removeItem(storageKey);
+  const result=Array.isArray(data)?data[0]:null;
+  const label=statusLabels[result?.task_status]||result?.task_status||"actualizado";
+
+  if(result?.applied_new===false){
+    setStatus("El reintento recuperó la transición ya aplicada; no se duplicó el histórico.");
+  }else{
+    setStatus("Tarea y ejecución actualizadas juntas: "+label+".");
+  }
+
+  await load();
+}
+
 async function loadRelated(){
+  properties=new Map();
+  rooms=new Map();
+  profiles=new Map();
+
   const propertyIds=[...new Set(tasks.map(task=>task.property_id).filter(Boolean))];
   if(propertyIds.length){
     const {data}=await supabase.from("properties_v2").select("id,name,address_line").in("id",propertyIds);
@@ -121,6 +234,29 @@ async function loadRelated(){
     const {data}=await supabase.from("profiles").select("user_id,display_name,email").in("user_id",userIds);
     (data||[]).forEach(item=>profiles.set(item.user_id,item));
   }
+}
+
+async function loadActions(){
+  actionsByTask=new Map();
+  const workflowIds=tasks
+    .filter(task=>task.source_kind==="workflow_execution")
+    .map(task=>task.id);
+  if(!workflowIds.length)return;
+
+  const {data,error}=await supabase
+    .from("tenant_task_actions_v2")
+    .select("id,task_id,action_key,label,from_status,to_status,requires_note,sort_order,active,actor")
+    .in("task_id",workflowIds)
+    .eq("active",true)
+    .order("sort_order");
+
+  if(error)throw error;
+
+  (data||[]).forEach(action=>{
+    const bucket=actionsByTask.get(action.task_id)||[];
+    bucket.push(action);
+    actionsByTask.set(action.task_id,bucket);
+  });
 }
 
 async function load(){
@@ -148,7 +284,18 @@ async function load(){
   }
 
   tasks=data||[];
-  await loadRelated();
+
+  try{
+    await Promise.all([loadRelated(),loadActions()]);
+  }catch{
+    list.replaceChildren();
+    const empty=document.createElement("article");empty.className="task-empty";
+    empty.textContent="No se pudieron cargar todos los datos operativos de las tareas.";
+    list.append(empty);
+    setStatus("La tarea existe, pero sus datos relacionados no pudieron consultarse.",true);
+    return;
+  }
+
   render();
 
   const workflowCount=tasks.filter(task=>task.source_kind==="workflow_execution").length;

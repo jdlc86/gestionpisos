@@ -1,7 +1,8 @@
 import { supabase } from "./supabase-client.js";
 
 const AUTHORING_VERSION=2;
-const DRAFT_KEY="gestionpisos.workflow-builder.draft.v2";
+const DRAFT_KEY="gestionpisos.workflow-builder.draft.v3";
+const LEGACY_DRAFT_KEY="gestionpisos.workflow-builder.draft.v2";
 const form=document.getElementById("workflowBuilderForm");
 const panels=[...document.querySelectorAll(".builder-panel")];
 const stepButtons=[...document.querySelectorAll(".builder-step")];
@@ -92,7 +93,7 @@ function triggerComplete(data){
 }
 
 function saveLocalDraft(){
-  if(loadingServerDraft)return;
+  if(loadingServerDraft||currentDefinitionId)return;
   try{sessionStorage.setItem(DRAFT_KEY,JSON.stringify(draft()))}catch{}
 }
 
@@ -113,7 +114,10 @@ function applyDraft(saved,{restoreStep=true}={}){
 
 function restoreLocalDraft(){
   let saved=null;
-  try{saved=JSON.parse(sessionStorage.getItem(DRAFT_KEY)||"null")}catch{}
+  try{
+    sessionStorage.removeItem(LEGACY_DRAFT_KEY);
+    saved=JSON.parse(sessionStorage.getItem(DRAFT_KEY)||"null");
+  }catch{}
   applyDraft(saved);
 }
 
@@ -284,7 +288,7 @@ function renderSummary(){
   const data=draft();
   const state=completion(data);
   const stepNames=[];
-  if(data.steps.accept)stepNames.push("Confirmar / aceptar");
+  if(data.steps.accept)stepNames.push("Decisión Aceptar / Rechazar");
   if(data.steps.photo)stepNames.push("Evidencia fotográfica");
   if(data.steps.checklist)stepNames.push("Checklist / formulario");
   if(data.steps.document)stepNames.push("Documento");
@@ -363,7 +367,10 @@ async function saveServerDraft(){
   const url=new URL(window.location.href);
   url.searchParams.set("id",currentDefinitionId);
   window.history.replaceState({},"",url);
-  saveLocalDraft();
+  try{
+    sessionStorage.removeItem(DRAFT_KEY);
+    sessionStorage.removeItem(LEGACY_DRAFT_KEY);
+  }catch{}
 
   const {data:persisted}=await supabase
     .from("workflow_definitions_v2")
@@ -404,7 +411,10 @@ clearButton.addEventListener("click",()=>{
     ?"¿Descartar los cambios locales? El borrador guardado en el servidor no se eliminará."
     :"¿Borrar el borrador local de este flujo?";
   if(!window.confirm(message))return;
-  try{sessionStorage.removeItem(DRAFT_KEY)}catch{}
+  try{
+    sessionStorage.removeItem(DRAFT_KEY);
+    sessionStorage.removeItem(LEGACY_DRAFT_KEY);
+  }catch{}
   form.reset();
   currentStep=0;
   legacyDraftNeedsReview=false;

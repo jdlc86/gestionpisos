@@ -24,9 +24,12 @@ Estados mínimos:
 Reglas:
 
 1. publicar nunca sobrescribe una versión ya utilizada;
-2. editar una definición publicada crea un nuevo borrador/versionado, no reescribe ejecuciones anteriores;
-3. archivar es soft-delete funcional;
-4. nombre, categoría y descripción no conceden permisos ni alteran autorización.
+2. los borradores iniciales viven en el **Creador de Flujos** y no aparecen en **Mis Flujos**;
+3. editar una definición publicada crea un borrador de futura versión separado en `workflow_definition_revision_drafts_v2`; la versión publicada permanece operativa;
+4. publicar ese borrador añade la siguiente versión inmutable y consume la autoría activa sin migrar aplicaciones existentes;
+5. cada aplicación queda ligada a la versión exacta con la que fue creada; publicar vN+1 no cambia silenciosamente una aplicación de vN;
+6. archivar es soft-delete funcional;
+7. nombre, categoría y descripción no conceden permisos ni alteran autorización.
 
 ## 2. Versión publicada
 
@@ -279,6 +282,10 @@ El Creador puede persistir **borradores parciales**. Guardar exige únicamente u
 
 Reglas de autoría:
 
+- el **Creador de Flujos** es la única superficie de borradores, edición y publicación;
+- **Mis Flujos** es catálogo operativo y solo muestra definiciones con al menos una versión publicada;
+- una nueva versión se inicia desde Mis Flujos pero se edita/publica siempre en el Creador;
+- mientras existe un borrador de vN+1, vN continúa siendo la versión publicada operativa;
 - ninguna selección de tipo, ámbito, activación, asignación, pasos o cierre se presupone;
 - un apartado solo se considera configurado cuando existe una decisión explícita del usuario;
 - el servidor conserva un indicador derivado de completitud de autoría; el cliente no puede autoatribuirse ese estado;

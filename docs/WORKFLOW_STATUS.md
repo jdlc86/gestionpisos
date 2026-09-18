@@ -197,9 +197,9 @@ Las pruebas se ejecutan también en PostgreSQL 17 desechable desde Schema Guard.
 | Aplicaciones | Implementado para vincular versión publicada con entidad real | Permite `Ejecutar ahora` |
 | Banco Fotográfico | Operativo/reutilizado | Patrones vinculables a aplicaciones y congelados por ejecución |
 | Versiones publicadas | Implementado | Publicación RPC inmutable e idempotente |
-| Tareas | Materialización + decisión atómica implementadas | `tenant_tasks_v2` reutilizada; `accept/reject` sincronizan tarea + ejecución y rechazo exige motivo |
-| Historial | Parcial | registra creación, materialización, acciones y evidencia fotográfica; ciclo completo pendiente |
-| Ejecución genérica | Implementada y validada E2E para recorrido manual con Foto | `manual_now`, snapshot de recursos, tarea materializada y cierre automático para pasos implementados |
+| Tareas | Materialización + decisión + revisión humana implementadas | `tenant_tasks_v2` reutilizada; `accept/reject` y revisión agency sincronizan tarea + ejecución |
+| Historial | Parcial avanzado | registra creación, materialización, acciones, evidencia y cierre de revisión; falta unificar la vista transversal completa |
+| Ejecución genérica | Implementada; cierre auto validado E2E y `human_review` cubierto por regresión de integración | `manual_now`, snapshots, tarea materializada, cierre automático y revisión humana para pasos implementados |
 | Adaptador Limpieza | Pendiente | Legacy preservado |
 
 ## 11. Incrementos
@@ -287,22 +287,37 @@ Estas pruebas demuestran que el primer flujo manual con evidencia fotográfica *
 - `reject` exige motivo, mantiene tarea + ejecución en `rejected` y cancela recursos fotográficos pendientes.
 
 
+### Incremento — Revisión humana operativa
+
+Se implementa `closeType=human_review` sin crear una cola de revisión paralela:
+
+- los pasos operativos terminan en `waiting_review`;
+- workflows sin Foto exponen `review_approve/review_reject` para actor `agency` (ROOT/ADMIN autorizado);
+- workflows con Foto reutilizan **Fotoverificaciones**, de modo que la decisión se toma viendo la evidencia;
+- todas las fotos aprobadas → tarea + ejecución `completed`;
+- alguna foto rechazada, una vez revisadas todas → tarea + ejecución `rejected`;
+- rechazo exige/conserva motivo;
+- RLS permite al gestor leer las acciones `agency` aunque no sea el asignado;
+- reintentos no duplican histórico/eventos;
+- regresión PostgreSQL cubre aprobación, rechazo, actor no autorizado, ámbito organización y revisión fotográfica.
+
+Este incremento está implementado y cubierto por regresión automatizada. La validación E2E real en la PWA se realizará como siguiente prueba antes de dar por cerrado el recorrido de revisión humana en producción de pruebas.
+
+
 ## 12. Próximo incremento técnico
 
-El paso **Fotografía** ya dispone de binding en Aplicaciones, snapshot reproducible por ejecución, cámara reutilizada y cierre transaccional mediante la infraestructura de fotoverificación existente.
-
-El siguiente incremento debe ser **revisión/cierre posterior y siguientes tipos de paso**.
+El paso **Fotografía** y el cierre **human_review** ya están conectados a la infraestructura existente. El siguiente trabajo debe empezar por **validar E2E real la revisión humana** y después avanzar a los tipos de paso restantes.
 
 Orden recomendado:
 
-1. integrar la revisión humana del workflow cuando `closeType=human_review`;
-2. decidir cómo una aprobación/rechazo fotográfico afecta al workflow sin reinterpretar evidencia de Limpieza;
+1. validar en producción de pruebas un workflow Foto + `human_review`, tanto aprobación como rechazo;
+2. validar un workflow sin Foto que llegue a `waiting_review` y sea revisado por un ADMIN distinto del asignado;
 3. implementar checklist/documento con el mismo principio de bloqueo de cierre;
-4. completar Historial transversal ejecución → tarea → evidencia → revisión → cierre;
-5. probar reintentos y permisos negativos;
+4. completar la vista de Historial transversal ejecución → tarea → evidencia → revisión → cierre;
+5. añadir notificaciones operativas específicas de cierre/rechazo;
 6. después habilitar recurrencias automáticas.
 
-El recorrido manual extremo a extremo con evidencia ya está validado. La recurrencia automática sigue posterior a cerrar revisión humana y los restantes tipos de paso, para no automatizar un ciclo funcional todavía incompleto.
+La recurrencia automática permanece posterior a estos E2E para no automatizar un ciclo que todavía tenga tipos de paso incompletos.
 
 ## 13. Reglas de no regresión
 
@@ -335,4 +350,4 @@ El criterio inicial quedó demostrado el 18/09/2026 para el recorrido manual con
 
 Por tanto, **una definición publicada y aplicada ya puede representar un proceso operativo real dentro de los pasos implementados**.
 
-Esto no debe generalizarse a capacidades aún pendientes. Un flujo que incluya checklist, documento, revisión humana genérica o recurrencia automática no puede considerarse completo hasta que esos componentes tengan contrato, implementación y E2E propios.
+Esto no debe generalizarse a capacidades aún pendientes. Un flujo que incluya checklist, documento o recurrencia automática no puede considerarse completo hasta que esos componentes tengan contrato, implementación y E2E propios. `human_review` ya tiene contrato e implementación; falta cerrar su validación E2E real.

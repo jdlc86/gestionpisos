@@ -280,6 +280,8 @@ async function saveServerDraft(){
   saveButton.textContent="Guardando…";
   setServerStatus("Guardando borrador en GestionPisos…");
 
+  const wasExisting=Boolean(currentDefinitionId);
+  const previousRevision=currentRevision;
   const args={p_spec:serverDraft()};
   if(currentDefinitionId)args.p_definition_id=currentDefinitionId;
   if(currentDefinitionId&&Number.isFinite(currentRevision))args.p_expected_revision=currentRevision;
@@ -308,11 +310,14 @@ async function saveServerDraft(){
 
   const state=completion();
   const serverComplete=Boolean(persisted?.authoring_complete);
+  const noChanges=wasExisting&&Number.isFinite(previousRevision)&&currentRevision===previousRevision;
   setServerStatus(
-    serverComplete
-      ?"Borrador guardado · revisión "+currentRevision+" · configuración completa. Todavía no está publicado."
-      :"Borrador guardado · revisión "+currentRevision+" · incompleto ("+state.completed+"/"+state.total+" apartados). Puedes continuar después desde Mis Flujos.",
-    serverComplete?"success":"neutral"
+    noChanges
+      ?"Sin cambios · revisión "+currentRevision+". No se creó una revisión nueva."
+      :serverComplete
+        ?"Borrador guardado · revisión "+currentRevision+" · configuración completa. Todavía no está publicado."
+        :"Borrador guardado · revisión "+currentRevision+" · incompleto ("+state.completed+"/"+state.total+" apartados). Puedes continuar después desde Mis Flujos.",
+    noChanges||serverComplete?"success":"neutral"
   );
   saveButton.disabled=false;
   saveButton.textContent="Guardar borrador";

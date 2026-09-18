@@ -55,6 +55,25 @@ $$;
 revoke all on function public.workflow_authoring_complete_v1(jsonb) from public;
 revoke execute on function public.workflow_authoring_complete_v1(jsonb) from anon;
 
+-- Normaliza la forma JSON de borradores existentes sin fabricar una revision.
+-- Esto evita que el primer Guardar tras desplegar estos campos parezca un cambio.
+update public.workflow_definitions_v2
+set draft_spec = draft_spec || jsonb_build_object(
+      'scheduledAt', coalesce(draft_spec ->> 'scheduledAt',''),
+      'customEvery', coalesce(draft_spec ->> 'customEvery',''),
+      'customUnit', coalesce(draft_spec ->> 'customUnit','')
+    )
+where status = 'draft'
+  and (
+    not (draft_spec ? 'scheduledAt')
+    or not (draft_spec ? 'customEvery')
+    or not (draft_spec ? 'customUnit')
+  );
+
+update public.workflow_definitions_v2
+set authoring_complete = public.workflow_authoring_complete_v1(draft_spec)
+where status = 'draft';
+
 create or replace function public.save_workflow_definition_draft_v1(
   p_spec jsonb,
   p_definition_id uuid default null,

@@ -91,6 +91,215 @@ using (
   )
 );
 
+create or replace function public.workflow_create_application_core_v1(
+  p_definition_version_id uuid,
+  p_property_id uuid default null,
+  p_room_id uuid default null,
+  p_occupancy_id uuid default null
+)
+returns table(
+  application_id uuid,
+  status text,
+  created_at timestamptz
+)
+language plpgsql
+security definer
+set search_path=public,pg_temp
+as $
+declare
+  v_actor uuid:=auth.uid();
+  v_definition_id uuid;
+  v_org uuid;
+  v_scope_type text;
+  v_existing_id uuid;
+  v_existing_version uuid;
+  v_application_id uuid;
+  v_created_at timestamptz;
+begin
+  if v_actor is null then
+    raise exception 'not_authenticated' using errcode='42501';
+  end if;
+
+  if coalesce(auth.jwt()->>'aal','aal1') <> 'aal2' then
+    raise exception 'aal2_required' using errcode='42501';
+  end if;
+
+  select wv.definition_id,wv.organization_id,wv.spec->>'scopeType'
+  into v_definition_id,v_org,v_scope_type
+  from public.workflow_definition_versions_v2 wv
+  where wv.id=p_definition_version_id;
+
+  if v_definition_id is null then
+    raise exception 'workflow_version_not_found' using errcode='P0002';
+  end if;
+
+  if not public.workflow_can_manage_v1(v_org) then
+    raise exception 'workflow_application_not_authorized' using errcode='42501';
+  end if;
+
+  if v_scope_type='organization' then
+    if p_property_id is not null or p_room_id is not null or p_occupancy_id is not null then
+      raise exception 'workflow_scope_target_invalid' using errcode='22023';
+    end if;
+  elsif v_scope_type='property' then
+    if p_property_id is null or p_room_id is not null or p_occupancy_id is not null then
+      raise exception 'workflow_property_required' using errcode='22023';
+    end if;
+
+    if not exists(
+      select 1 from public.properties_v2 p
+      where p.id=p_property_id
+        and p.organization_id=v_org
+        and p.archived_at is null
+        and p.status<>'archived'
+    ) then
+      raise exception 'workflow_property_not_available' using errcode='22023';
+    end if;
+  elsif v_scope_type='room' then
+    if p_property_id is null or p_room_id is null or p_occupancy_id is not null then
+      raise exception 'workflow_room_required' using errcode='22023';
+    end if;
+
+    if not exists(
+      select 1
+      from public.rooms_v2 r
+      join public.properties_v2 p on p.id=r.property_id
+      where r.id=p_room_id
+        and r.property_id=p_property_id
+        and p.organization_id=v_org
+        and p.archived_at is null
+        and p.status<>'archived'
+        and r.archived_at is null
+        and r.status<>'archived'
+    ) then
+      raise exception 'workflow_room_not_available' using errcode='22023';
+    end if;
+  elsif v_scope_type='occupancy' then
+    if p_property_id is null or p_room_id is not null or p_occupancy_id is null then
+      raise exception 'workflow_occupancy_required' using errcode='22023';
+    end if;
+
+    if not exists(
+      select 1
+      from public.occupancies_v2 o
+      join public.properties_v2 p on p.id=o.property_id
+      where o.id=p_occupancy_id
+        and o.property_id=p_property_id
+        and o.organization_id=v_org
+        and p.organization_id=v_org
+        and p.archived_at is null
+        and p.status<>'archived'
+        and o.status='active'
+        and o.starts_on<=current_date
+        and (o.ends_on is null or o.ends_on>=current_date)
+    ) then
+      raise exception 'workflow_occupancy_not_available' using errcode='22023';
+    end if;
+  else
+    raise exception 'workflow_scope_invalid' using errcode='22023';
+  end if;
+
+  select wa.id,wa.definition_version_id
+  into v_existing_id,v_existing_version
+  from public.workflow_applications_v2 wa
+  where wa.definition_id=v_definition_id
+    and wa.status='configured'
+    and (
+      (v_scope_type='organization' and wa.scope_type='organization' and wa.organization_id=v_org)
+      or
+      (v_scope_type='property' and wa.scope_type='property' and wa.property_id=p_property_id)
+      or
+      (v_scope_type='room' and wa.scope_type='room' and wa.room_id=p_room_id)
+      or
+      (v_scope_type='occupancy' and wa.scope_type='occupancy' and wa.occupancy_id=p_occupancy_id)
+    )
+  for update;
+
+  if v_existing_id is not null then
+    if v_existing_version=p_definition_version_id then
+      select wa.created_at into v_created_at
+      from public.workflow_applications_v2 wa
+      where wa.id=v_existing_id;
+
+      return query select v_existing_id,'configured'::text,v_created_at;
+      return;
+    end if;
+
+    raise exception 'workflow_application_version_conflict' using errcode='55000';
+  end if;
+
+  insert into public.workflow_applications_v2(
+    definition_id,definition_version_id,organization_id,scope_type,
+    property_id,room_id,occupancy_id,status,created_by
+  ) values (
+    v_definition_id,p_definition_version_id,v_org,v_scope_type,
+    p_property_id,p_room_id,p_occupancy_id,'configured',v_actor
+  )
+  returning id,workflow_applications_v2.created_at
+  into v_application_id,v_created_at;
+
+  insert into public.audit_log_v2(
+    organization_id,actor_user_id,action,entity_type,entity_id,result,details
+  ) values (
+    v_org,v_actor,'workflow_application_created','workflow_application',
+    v_application_id::text,'success',
+    jsonb_build_object(
+      'definition_id',v_definition_id,
+      'definition_version_id',p_definition_version_id,
+      'scope_type',v_scope_type,
+      'property_id',p_property_id,
+      'room_id',p_room_id,
+      'occupancy_id',p_occupancy_id
+    )
+  );
+
+  return query select v_application_id,'configured'::text,v_created_at;
+end;
+$;
+
+
+revoke all on function public.workflow_create_application_core_v1(uuid,uuid,uuid,uuid)
+  from public,anon,authenticated;
+
+create or replace function public.create_workflow_application_v1(
+  p_definition_version_id uuid,
+  p_property_id uuid default null,
+  p_room_id uuid default null,
+  p_occupancy_id uuid default null
+)
+returns table(
+  application_id uuid,
+  status text,
+  created_at timestamptz
+)
+language plpgsql
+security definer
+set search_path=public,pg_temp
+as $
+declare
+  v_photo_required boolean:=false;
+begin
+  select coalesce((wv.spec->'steps'->>'photo')::boolean,false)
+  into v_photo_required
+  from public.workflow_definition_versions_v2 wv
+  where wv.id=p_definition_version_id;
+
+  if v_photo_required then
+    raise exception 'workflow_photo_application_requires_v2' using errcode='0A000';
+  end if;
+
+  return query
+  select a.application_id,a.status,a.created_at
+  from public.workflow_create_application_core_v1(
+    p_definition_version_id,p_property_id,p_room_id,p_occupancy_id
+  ) a;
+end;
+$;
+
+revoke all on function public.create_workflow_application_v1(uuid,uuid,uuid,uuid) from public;
+revoke execute on function public.create_workflow_application_v1(uuid,uuid,uuid,uuid) from anon;
+grant execute on function public.create_workflow_application_v1(uuid,uuid,uuid,uuid) to authenticated;
+
 create or replace function public.create_workflow_application_v2(
   p_definition_version_id uuid,
   p_property_id uuid default null,
@@ -173,7 +382,7 @@ begin
 
   select a.application_id,a.status,a.created_at
   into v_application_id,v_status,v_created_at
-  from public.create_workflow_application_v1(
+  from public.workflow_create_application_core_v1(
     p_definition_version_id,
     p_property_id,
     p_room_id,

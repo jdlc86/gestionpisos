@@ -74,7 +74,12 @@ Deno.serve(async (req: Request) => {
   if (role === "admin" && run.organization_id !== organizationId) {
     return json(404, { error: "run_not_found" });
   }
-  if (!["submitted","manual_review","ai_review"].includes(run.status)) {
+  const reviewableStatuses = ["submitted","manual_review","ai_review"];
+  if (run.source_type === "workflow_execution") {
+    if (!reviewableStatuses.includes(run.status) && run.status !== decision) {
+      return json(409, { error: "run_not_reviewable" });
+    }
+  } else if (!reviewableStatuses.includes(run.status)) {
     return json(409, { error: "run_not_reviewable" });
   }
 

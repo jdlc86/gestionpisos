@@ -18,6 +18,7 @@ Este helper devuelve GestionPisos a un baseline técnico conocido sin reconstrui
 - propietarios, inquilinos, pisos, habitaciones y ocupaciones;
 - documentos/metadatos de inquilino;
 - tareas, incidencias, pagos, reclamaciones, notificaciones y comunicaciones;
+- definiciones, versiones publicadas, aplicaciones, ejecuciones y eventos de Flujos de Trabajo;
 - patrones y ejecuciones de fotoverificación;
 - auditoría histórica de pruebas;
 - objetos de los buckets operativos `photo-verification` y `tenant-documents-v2` mediante la API oficial de Storage.

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-migration='supabase/migrations/20260916115000_responsibility_resolution.sql'
+migration='supabase/migrations/20260916120518_responsibility_resolution.sql'
 test -s "$migration"
 
 grep -Fq 'create or replace function public.assign_property_responsible_v3' "$migration"

@@ -17,6 +17,9 @@ jobs:
       - name: Reject legacy Supabase table usage
         run: bash tests/no-legacy-schema.sh
 
+      - name: Verify Supabase migration history shape
+        run: bash tests/migration-history-smoke.sh
+
       - name: Verify security regression artifacts
         run: bash tests/schema-regression-smoke.sh
 

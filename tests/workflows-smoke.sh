@@ -156,6 +156,10 @@ grep -Fq 'review_approve' docs/WORKFLOW_ACTIONS_CONTRACT.md
 grep -Fq 'workflowPhotoReviewUrl' docs/workflow-tasks.js
 grep -Fq 'Revisar evidencias' docs/workflow-tasks.js
 grep -Fq 'canRenderWorkflowAction' docs/workflow-tasks.js
+grep -Fq 'loadManagerAccess' docs/workflow-tasks.js
+grep -Fq '.from("user_roles")' docs/workflow-tasks.js
+grep -Fq 'managerOrganizationIds' docs/workflow-tasks.js
+! grep -Fq 'currentUser?.app_metadata?.role' docs/workflow-tasks.js
 grep -Fq 'review_reject' docs/workflow-tasks.js
 grep -Fq 'task-actions' docs/workflow-tasks.css
 grep -Fq './workflow-tasks.css?v=2026091804' docs/workflow-tasks.html

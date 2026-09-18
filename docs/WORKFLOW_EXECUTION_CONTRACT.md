@@ -139,13 +139,17 @@ Este histórico funcional no sustituye `audit_log_v2`. La creación también dej
 
 Una ejecución `pending` materializa una tarea visible. Si la receta requiere decisión del asignado, `accept` y `reject` mueven tarea + ejecución atómicamente conforme a `WORKFLOW_ACTIONS_CONTRACT.md`. `reject` conserva el rechazo como estado terminal explícito.
 
-Quedan fuera:
+Ya están conectados en incrementos posteriores a este runner inicial:
 
 - evidencia fotográfica;
+- decisión Aceptar/Rechazar;
+- cierre `human_review` para los pasos actualmente operativos.
+
+Siguen fuera:
+
 - checklist/documento;
-- notificaciones;
+- notificaciones operativas genéricas;
 - recurrencia automática;
-- revisión humana operativa;
-- cancelación y adaptadores especializados.
+- cancelación genérica y adaptadores especializados.
 
 La UI debe mostrar únicamente acciones realmente derivadas de la receta y soportadas por el servidor.

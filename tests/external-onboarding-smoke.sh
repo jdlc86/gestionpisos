@@ -29,7 +29,7 @@ grep -Fq 'auth_metadata_synced' docs/activate-external-account.js
 grep -Fq 'get_my_external_account_onboarding' docs/auth-guard.js
 grep -Fq 'activate-external-account.html' docs/auth-guard.js
 
-grep -Fq 'portfolio-onboarding.js?v=2026091801' docs/portfolio.html
+grep -Fq 'portfolio-onboarding.js?v=2026091802' docs/portfolio.html
 grep -Fq 'Guardar y enviar bienvenida' docs/portfolio.html
 grep -Fq 'Bienvenida del propietario' docs/portfolio-onboarding.js
 grep -Fq 'Enviar bienvenida' docs/portfolio-onboarding.js
@@ -42,6 +42,7 @@ grep -Fq 'Email cambiado · nueva invitación necesaria' docs/portfolio-onboardi
 grep -Fq 'Cambiar el email invalidará la invitación enviada a ' docs/portfolio-onboarding.js
 grep -Fq 'revoke-external-welcome' docs/portfolio-onboarding.js
 grep -Fq 'externalEmailChangeBypass' docs/portfolio-onboarding.js
+grep -Fq 'scheduleRefresh(250);' docs/portfolio-onboarding.js
 grep -Fq 'external_active_account_email_change_requires_account_flow' docs/portfolio-onboarding.js
 grep -Fq 'external_onboarding_email_change_requires_revocation' docs/portfolio.js
 

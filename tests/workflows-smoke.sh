@@ -100,6 +100,8 @@ grep -Fq 'archive_workflow_application_v1' docs/workflow-applications.js
 grep -Fq 'properties_v2' docs/workflow-applications.js
 grep -Fq 'rooms_v2' docs/workflow-applications.js
 grep -Fq 'occupancies_v2' docs/workflow-applications.js
+grep -Fq '.application-card [hidden]{display:none!important}' docs/workflow-applications.css
+grep -Fq './workflow-applications.css?v=2026091802' docs/workflow-applications.html
 grep -Fq 'configurada, pero todavía no ejecutará tareas ni recurrencias' docs/workflow-applications.html
 grep -Fq 'Definición → Versión publicada → Aplicación concreta' docs/WORKFLOW_APPLICATIONS_CONTRACT.md
 grep -Fq 'workflow_applications_v2' docs/WORKFLOW_APPLICATIONS_CONTRACT.md

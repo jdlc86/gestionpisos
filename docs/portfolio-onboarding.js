@@ -72,6 +72,85 @@ document.addEventListener("submit",event=>{
   dialog.showModal();
 },true);
 
+document.addEventListener("click",event=>{
+  const target=event.target.closest("button");
+  if(!target)return;
+  if(target.id==="newItemBtn"){editingExternalContext=null;return;}
+  if(target.dataset.action!=="edit")return;
+  const view=activeView();
+  if(view==="owners")editingExternalContext={subjectType:"owner",recordId:target.dataset.id};
+  else if(view==="occupancies")editingExternalContext={subjectType:"tenant",occupancyId:target.dataset.id};
+  else editingExternalContext=null;
+},true);
+
+async function resolveEditingExternalSubject(){
+  const context=editingExternalContext;
+  if(!context)return null;
+  if(context.subjectType==="owner"){
+    const {data,error}=await supabase.from("owners").select("id,organization_id,email,status,archived_at").eq("id",context.recordId).maybeSingle();
+    if(error)throw error;
+    if(!data)return null;
+    return {subjectType:"owner",subjectId:String(data.id),organizationId:String(data.organization_id),currentEmail:normalizeEmail(data.email)};
+  }
+  const {data:occupancy,error:occupancyError}=await supabase.from("occupancies_v2").select("tenant_id,organization_id").eq("id",context.occupancyId).maybeSingle();
+  if(occupancyError)throw occupancyError;
+  if(!occupancy?.tenant_id)return null;
+  const {data:tenant,error:tenantError}=await supabase.from("tenants_v2").select("id,organization_id,email,status,archived_at").eq("id",occupancy.tenant_id).maybeSingle();
+  if(tenantError)throw tenantError;
+  if(!tenant)return null;
+  return {subjectType:"tenant",subjectId:String(tenant.id),organizationId:String(tenant.organization_id||occupancy.organization_id),currentEmail:normalizeEmail(tenant.email)};
+}
+
+async function currentOnboardingForSubject(subject){
+  const {data,error}=await supabase.rpc("get_external_onboarding_statuses",{p_organization_id:subject.organizationId});
+  if(error)throw error;
+  const rows=Array.isArray(data)?data:[];
+  return rows.find(row=>row.subject_type===subject.subjectType&&String(row.subject_id)===subject.subjectId)||null;
+}
+
+async function revokeInvitationForEmailChange(subject,newEmail){
+  const {data,error}=await supabase.functions.invoke("revoke-external-welcome",{body:{subject_type:subject.subjectType,subject_id:subject.subjectId,new_email:newEmail}});
+  if(error)throw error;
+  if(data?.ok!==true)throw new Error("external_onboarding_revoke_failed");
+  return data;
+}
+
+document.addEventListener("submit",async event=>{
+  if(event.target!==$("editorForm"))return;
+  if(externalEmailChangeBypass||!editingExternalContext)return;
+  if(!$("editorTitle")?.textContent?.startsWith("Editar"))return;
+  const view=activeView();
+  if(!["owners","occupancies"].includes(view))return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  const form=event.target;
+  const newEmail=normalizeEmail(form.elements.namedItem("email")?.value);
+  try{
+    const subject=await resolveEditingExternalSubject();
+    if(!subject){showEditorEmailError("No se pudo comprobar la identidad asociada antes de guardar.");return;}
+    if(subject.currentEmail===newEmail){resumeEditorSubmit();return;}
+    const onboarding=await currentOnboardingForSubject(subject);
+    if(!onboarding){resumeEditorSubmit();return;}
+    const onboardingEmail=normalizeEmail(onboarding.email);
+    if(newEmail===onboardingEmail){resumeEditorSubmit();return;}
+    if(onboarding.status==="active"){
+      showEditorEmailError("Este acceso ya está activado. Para cambiar su email hace falta un flujo específico de cambio de cuenta; no se modificó la ficha.");
+      return;
+    }
+    if(onboarding.status!=="pending"){resumeEditorSubmit();return;}
+    const destination=newEmail||"sin email";
+    const confirmed=window.confirm("Cambiar el email invalidará la invitación enviada a "+onboardingEmail+". El enlace anterior dejará de ser válido y "+destination+" quedará sin invitación hasta que envíes una nueva bienvenida. ¿Continuar?");
+    if(!confirmed)return;
+    await revokeInvitationForEmailChange(subject,newEmail);
+    setPortfolioStatus("La invitación anterior quedó revocada. Guardando el nuevo email; después podrás enviar una nueva bienvenida.","Invitación invalidada.");
+    resumeEditorSubmit();
+  }catch(error){
+    const code=await functionErrorCode(error);
+    console.error("external_email_change_guard_failed",error);
+    showEditorEmailError(friendlyWelcomeError(code||"external_onboarding_revoke_failed"));
+  }
+},true);
+
 async function functionErrorCode(error){
   try{if(error?.context instanceof Response){const body=await error.context.clone().json();return String(body?.error||"");}}catch{}
   return String(error?.message||"");

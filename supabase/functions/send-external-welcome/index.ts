@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { sendExternalOnboardingInvitation } from "../_shared/external-onboarding-email.ts";
+import { disableAndRevokeExternalOnboarding } from "../_shared/external-onboarding-revocation.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "https://jdlc86.github.io",
@@ -100,18 +101,30 @@ Deno.serve(async (req: Request) => {
   if (!authorized && !isRoot) return json(403, { error: "external_welcome_permission_required" });
 
   const subjectColumn = subjectType === "owner" ? "owner_id" : "tenant_id";
-  const { data: existing, error: existingError } = await admin.from("external_account_onboarding")
+  const { data: existingData, error: existingError } = await admin.from("external_account_onboarding")
     .select("id,auth_user_id,status,email,last_delivery_status")
     .eq(subjectColumn, subjectId)
     .in("status", ["pending", "active"])
     .maybeSingle();
   if (existingError) return json(500, { error: "external_onboarding_lookup_failed" });
+  let existing = existingData;
   if (existing?.status === "active" || linkedUserId) return json(409, { error: "external_account_already_active" });
 
-  let authUserId = existing?.auth_user_id ? String(existing.auth_user_id) : "";
-  if (existing && String(existing.email || "").trim().toLowerCase() !== email) {
-    return json(409, { error: "external_onboarding_email_changed" });
+  if (existing?.status === "pending" && String(existing.email || "").trim().toLowerCase() !== email) {
+    try {
+      await disableAndRevokeExternalOnboarding(admin, {
+        authUserId: String(existing.auth_user_id),
+        actorUserId: actor.id,
+        replacementEmail: email,
+      });
+      existing = null;
+    } catch (error) {
+      console.error(error);
+      return json(500, { error: "external_stale_onboarding_revoke_failed" });
+    }
   }
+
+  let authUserId = existing?.auth_user_id ? String(existing.auth_user_id) : "";
 
   if (!existing) {
     const { data: externalEmail, error: externalEmailError } = await admin.from("external_account_onboarding")

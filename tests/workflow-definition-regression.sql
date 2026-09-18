@@ -1253,7 +1253,7 @@ select set_config(
 );
 
 -- La ruta legacy queda bloqueada para tareas workflow para impedir divergencia.
-do $
+do $$
 declare v_task_id uuid;
 begin
   select id into v_task_id
@@ -1267,7 +1267,7 @@ begin
   exception when feature_not_supported then null;
   end;
 end;
-$;
+$$;
 
 -- Un usuario no asignado no puede aplicar una acción aunque conozca el task_id.
 select set_config(
@@ -1280,7 +1280,7 @@ select set_config(
   true
 );
 
-do $
+do $$
 declare v_task_id uuid;
 begin
   select id into v_task_id
@@ -1296,7 +1296,7 @@ begin
   exception when insufficient_privilege then null;
   end;
 end;
-$;
+$$;
 
 -- El asignado aplica accept: al ser el único paso y cierre auto, ambos estados terminan en completed.
 select set_config(
@@ -1321,7 +1321,7 @@ select set_config(
   true
 );
 
-do $
+do $$
 declare
   v_task_status text;
   v_execution_status text;
@@ -1341,9 +1341,9 @@ begin
     raise exception 'atomic workflow accept did not complete task and execution together';
   end if;
 end;
-$;
+$$;
 
-do $
+do $$
 declare
   v_task_status text;
   v_execution_status text;
@@ -1382,10 +1382,10 @@ begin
     raise exception 'atomic workflow action did not create exactly one history/event';
   end if;
 end;
-$;
+$$;
 
 -- Reintentar la misma request_key es idempotente y no duplica histórico/evento.
-do $
+do $$
 declare
   v_applied_new boolean;
   v_history integer;
@@ -1420,10 +1420,10 @@ begin
     raise exception 'workflow action retry duplicated history or event';
   end if;
 end;
-$;
+$$;
 
 -- La misma request_key no puede reutilizarse para otra acción.
-do $
+do $$
 begin
   begin
     perform * from public.apply_workflow_task_action_v1(
@@ -1436,7 +1436,7 @@ begin
   exception when object_not_in_prerequisite_state then null;
   end;
 end;
-$;
+$$;
 
 -- El cliente authenticated tampoco puede fabricar tareas saltándose el materializador.
 do $$

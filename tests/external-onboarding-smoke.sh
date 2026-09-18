@@ -12,6 +12,7 @@ test -s supabase/functions/revoke-external-welcome/index.ts
 
 node --check docs/activate-external-account.js
 node --check docs/portfolio-onboarding.js
+node --check docs/portfolio.js
 
 grep -Fq 'minlength="12"' docs/activate-external-account.html
 grep -Fq 'id="passwordChecklist"' docs/activate-external-account.html
@@ -29,7 +30,7 @@ grep -Fq 'auth_metadata_synced' docs/activate-external-account.js
 grep -Fq 'get_my_external_account_onboarding' docs/auth-guard.js
 grep -Fq 'activate-external-account.html' docs/auth-guard.js
 
-grep -Fq 'portfolio-onboarding.js?v=2026091802' docs/portfolio.html
+grep -Fq 'portfolio-onboarding.js?v=2026091803' docs/portfolio.html
 grep -Fq 'Guardar y enviar bienvenida' docs/portfolio.html
 grep -Fq 'Bienvenida del propietario' docs/portfolio-onboarding.js
 grep -Fq 'Enviar bienvenida' docs/portfolio-onboarding.js
@@ -43,6 +44,10 @@ grep -Fq 'Cambiar el email invalidará la invitación enviada a ' docs/portfolio
 grep -Fq 'revoke-external-welcome' docs/portfolio-onboarding.js
 grep -Fq 'externalEmailChangeBypass' docs/portfolio-onboarding.js
 grep -Fq 'scheduleRefresh(250);' docs/portfolio-onboarding.js
+grep -Fq 'gestionpisos:portfolio-rendered' docs/portfolio.js
+grep -Fq 'gestionpisos:portfolio-rendered' docs/portfolio-onboarding.js
+! grep -Fq 'new MutationObserver' docs/portfolio-onboarding.js
+grep -Fq 'portfolio.js?v=2026091802' docs/portfolio.html
 grep -Fq 'external_active_account_email_change_requires_account_flow' docs/portfolio-onboarding.js
 grep -Fq 'external_onboarding_email_change_requires_revocation' docs/portfolio.js
 

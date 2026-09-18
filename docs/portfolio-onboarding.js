@@ -280,8 +280,7 @@ async function refreshExternalOnboarding(){
 }
 function scheduleRefresh(delay=100){clearTimeout(refreshTimer);refreshTimer=setTimeout(refreshExternalOnboarding,delay);}
 
-const records=$("records");
-if(records)new MutationObserver(()=>scheduleRefresh()).observe(records,{childList:true,subtree:true});
+document.addEventListener("gestionpisos:portfolio-rendered",()=>scheduleRefresh(0));
 document.querySelectorAll(".segment").forEach(button=>button.addEventListener("click",()=>scheduleRefresh(100)));
 $("organizationSelect")?.addEventListener("change",()=>scheduleRefresh(200));
 scheduleRefresh(700);

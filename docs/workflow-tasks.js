@@ -209,7 +209,7 @@ async function applyWorkflowAction(task,action,button){
     setStatus("Tarea y ejecución actualizadas juntas: "+label+".");
   }
 
-  await load();
+  await load(true);
 }
 
 async function loadRelated(){
@@ -259,7 +259,7 @@ async function loadActions(){
   });
 }
 
-async function load(){
+async function load(preserveStatus=false){
   const {data:userData,error:userError}=await supabase.auth.getUser();
   if(userError||!userData?.user){
     list.replaceChildren();
@@ -299,7 +299,9 @@ async function load(){
   render();
 
   const workflowCount=tasks.filter(task=>task.source_kind==="workflow_execution").length;
-  setStatus(tasks.length+" tarea"+(tasks.length===1?"":"s")+" visible"+(tasks.length===1?"":"s")+(workflowCount?" · "+workflowCount+" generada"+(workflowCount===1?"":"s")+" por workflow.":"."));
+  if(!preserveStatus){
+    setStatus(tasks.length+" tarea"+(tasks.length===1?"":"s")+" visible"+(tasks.length===1?"":"s")+(workflowCount?" · "+workflowCount+" generada"+(workflowCount===1?"":"s")+" por workflow.":"."));
+  }
 }
 
 filter.addEventListener("change",render);

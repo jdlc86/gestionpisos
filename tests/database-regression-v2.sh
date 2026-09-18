@@ -55,6 +55,7 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -v "$repo_path:/w
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260918103715_workflow_manual_executions.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260918110819_workflow_task_materialization.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260918110824_factory_reset_workflow_data.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260918114500_workflow_atomic_task_actions.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/database-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/photo-verification-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-definition-regression.sql

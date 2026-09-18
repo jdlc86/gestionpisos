@@ -16,6 +16,7 @@ test -s docs/workflow-applications.html
 test -s docs/workflow-applications.css
 test -s docs/workflow-applications.js
 test -s docs/WORKFLOW_APPLICATIONS_CONTRACT.md
+test -s docs/WORKFLOW_EXECUTION_CONTRACT.md
 node --check docs/workflow-builder.js
 node --check docs/workflow-definitions.js
 node --check docs/workflow-applications.js
@@ -101,10 +102,20 @@ grep -Fq 'properties_v2' docs/workflow-applications.js
 grep -Fq 'rooms_v2' docs/workflow-applications.js
 grep -Fq 'occupancies_v2' docs/workflow-applications.js
 grep -Fq '.application-card [hidden]{display:none!important}' docs/workflow-applications.css
-grep -Fq './workflow-applications.css?v=2026091802' docs/workflow-applications.html
-grep -Fq 'configurada, pero todavía no ejecutará tareas ni recurrencias' docs/workflow-applications.html
+grep -Fq './workflow-applications.css?v=2026091803' docs/workflow-applications.html
+grep -Fq './workflow-applications.js?v=2026091802' docs/workflow-applications.html
+grep -Fq 'podrás crear una ejecución manual pendiente' docs/workflow-applications.html
 grep -Fq 'Definición → Versión publicada → Aplicación concreta' docs/WORKFLOW_APPLICATIONS_CONTRACT.md
 grep -Fq 'workflow_applications_v2' docs/WORKFLOW_APPLICATIONS_CONTRACT.md
+grep -Fq 'execute_workflow_application_now_v1' docs/workflow-applications.js
+grep -Fq 'workflow_executions_v2' docs/workflow-applications.js
+grep -Fq 'EXECUTION_KEY_PREFIX' docs/workflow-applications.js
+grep -Fq 'Ejecutar ahora' docs/workflow-applications.js
+grep -Fq 'Ejecución creada en estado Pendiente' docs/workflow-applications.js
+grep -Fq 'Definición → Versión publicada → Aplicación concreta → Ejecutar ahora → Ejecución' docs/WORKFLOW_EXECUTION_CONTRACT.md
+grep -Fq 'tenant_id NOT NULL' docs/WORKFLOW_EXECUTION_CONTRACT.md
+grep -Fq 'workflow_executions_v2' docs/WORKFLOW_EXECUTION_CONTRACT.md
+grep -Fq 'workflow_execution_events_v2' docs/WORKFLOW_EXECUTION_CONTRACT.md
 grep -Fq 'workflow-applications.html' docs/sw.js
 
 grep -Fq 'Definición → Versión publicada → Aplicación concreta → Disparador → Ejecución' docs/WORKFLOW_ENGINE_CONTRACT.md

@@ -7,6 +7,7 @@ partial='supabase/migrations/20260918013500_workflow_partial_drafts.sql'
 noop='supabase/migrations/20260918023000_workflow_draft_noop_save.sql'
 triggers='supabase/migrations/20260918025500_workflow_trigger_controls.sql'
 applications='supabase/migrations/20260918095001_workflow_publication_applications.sql'
+executions='supabase/migrations/20260918123000_workflow_manual_executions.sql'
 
 test -s "$migration"
 test -s "$hardening"
@@ -14,6 +15,7 @@ test -s "$partial"
 test -s "$noop"
 test -s "$triggers"
 test -s "$applications"
+test -s "$executions"
 test -s tests/workflow-definition-regression.sql
 
 grep -Fq 'create table if not exists public.workflow_definitions_v2' "$migration"
@@ -72,5 +74,20 @@ grep -Fq 'workflow_application_created' "$applications"
 grep -Fq 'workflow_application_archived' "$applications"
 grep -Fq 'revoke execute on function public.publish_workflow_definition_v1(uuid,bigint) from anon' "$applications"
 grep -Fq 'revoke execute on function public.create_workflow_application_v1(uuid,uuid,uuid,uuid) from anon' "$applications"
+
+grep -Fq 'create table public.workflow_executions_v2' "$executions"
+grep -Fq 'create table public.workflow_execution_events_v2' "$executions"
+grep -Fq 'alter table public.workflow_executions_v2 enable row level security' "$executions"
+grep -Fq 'alter table public.workflow_execution_events_v2 enable row level security' "$executions"
+grep -Fq 'workflow_executions_v2_application_idempotency_uq' "$executions"
+grep -Fq 'create or replace function public.execute_workflow_application_now_v1' "$executions"
+grep -Fq "trigger_kind in ('manual_now')" "$executions"
+grep -Fq "v_assignment_type='manual'" "$executions"
+grep -Fq "v_assignment_type='property_responsible'" "$executions"
+grep -Fq 'workflow_assignment_not_supported' "$executions"
+grep -Fq 'workflow_manual_assignee_not_eligible' "$executions"
+grep -Fq 'workflow_execution_created' "$executions"
+grep -Fq 'revoke execute on function public.execute_workflow_application_now_v1(uuid,text,uuid) from anon' "$executions"
+grep -Fq 'grant execute on function public.execute_workflow_application_now_v1(uuid,text,uuid) to authenticated' "$executions"
 
 echo 'Workflow definition schema smoke checks passed'

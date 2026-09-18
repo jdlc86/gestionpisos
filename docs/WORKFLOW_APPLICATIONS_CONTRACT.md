@@ -156,19 +156,17 @@ No se duplican patrones dentro del workflow.
 - La UI nunca convierte la visibilidad de un botón en permiso.
 - Publicar/aplicar/archivar requieren `aal2`.
 
-## 10. Límite de este incremento
+## 10. Límite y siguiente capa
 
-Una aplicación `configured` **no significa que el flujo esté operativo**.
+Una aplicación `configured` **no significa por sí sola que exista trabajo materializado**.
 
-Aún faltan:
+La siguiente capa ya consume `workflow_applications_v2` mediante el contrato `WORKFLOW_EXECUTION_CONTRACT.md`: crea ejecuciones `manual_now` idempotentes, congela asignación y registra el evento inicial.
 
-- entidad mínima de ejecución;
-- `idempotency_key`;
-- “Ejecutar ahora” idempotente;
-- resolución de asignación;
-- integración con `tenant_tasks_v2`;
+Siguen fuera de Aplicaciones:
+
+- materialización de tareas;
 - bindings concretos de recursos cuando correspondan;
 - recurrencia automática;
-- historial transversal de ejecución.
+- ciclo de vida completo de ejecución.
 
-La siguiente capa debe consumir `workflow_applications_v2`; no debe volver a mezclar el UUID del destino dentro de la definición.
+El UUID del destino permanece exclusivamente en la aplicación/ejecución concreta; no vuelve a la definición lógica.

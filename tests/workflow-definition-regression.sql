@@ -1785,7 +1785,7 @@ select set_config(
   true
 );
 
-do $
+do $photo_retry$
 declare
   v_run_id uuid;
   v_created_new boolean;
@@ -1802,11 +1802,11 @@ begin
     raise exception 'workflow photo start retry was not idempotent';
   end if;
 end;
-$;
+$photo_retry$;
 
 reset role;
 
-do $
+do $photo_inspect$
 declare
   v_source_type text;
   v_source_id uuid;
@@ -1829,7 +1829,7 @@ begin
     raise exception 'workflow photo start did not create the expected linked run/resource state';
   end if;
 end;
-$;
+$photo_inspect$;
 
 set local role authenticated;
 

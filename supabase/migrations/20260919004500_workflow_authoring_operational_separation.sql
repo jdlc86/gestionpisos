@@ -439,9 +439,9 @@ begin
     raise exception 'aal2_required' using errcode='42501';
   end if;
 
-  select * into v_definition
-  from public.workflow_definitions_v2
-  where id=p_definition_id
+  select wd.* into v_definition
+  from public.workflow_definitions_v2 wd
+  where wd.id=p_definition_id
   for update;
 
   if v_definition.id is null then

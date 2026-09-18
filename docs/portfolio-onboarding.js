@@ -246,7 +246,7 @@ function onboardingBadge(row,currentEmail){
   return {label:"Acceso activado",button:null};
 }
 function decorateCard(card,subjectType,subjectId,row,currentEmail,canSend=true){
-  if(card.querySelector("[data-external-onboarding-ui]"))return;
+  card.querySelectorAll("[data-external-onboarding-ui]").forEach(element=>element.remove());
   const meta=card.querySelector(".record-meta");
   const actions=card.querySelector(".record-actions");
   if(!meta||!actions)return;

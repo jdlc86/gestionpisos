@@ -9,7 +9,8 @@ Usar estos documentos en este orden:
 5. **`WORKFLOW_EXECUTION_CONTRACT.md`** — contrato del primer runner manual idempotente, asignación congelada, seguridad e histórico mínimo.
 6. **`WORKFLOW_TASKS_CONTRACT.md`** — generalización aditiva de `tenant_tasks_v2`, materialización idempotente, RLS y límites de acciones.
 7. **`WORKFLOW_ACTIONS_CONTRACT.md`** — acciones derivadas de la receta, autorización del asignado, idempotencia y transición atómica tarea ↔ ejecución.
-8. **`WORKFLOW_STATUS.md`** — fotografía fechada del estado real de implementación, PRs integrados, límites actuales y siguiente incremento.
+8. **`WORKFLOW_PHOTO_EVIDENCE_CONTRACT.md`** — binding de patrones, snapshot por ejecución, cámara reutilizada y cierre transaccional de evidencia fotográfica.
+9. **`WORKFLOW_STATUS.md`** — fotografía fechada del estado real de implementación, PRs integrados, límites actuales y siguiente incremento.
 
 ## Regla de mantenimiento
 
@@ -20,6 +21,7 @@ Usar estos documentos en este orden:
 - Cambios en **creación/idempotencia/asignación de ejecuciones** → actualizar `WORKFLOW_EXECUTION_CONTRACT.md`.
 - Cambios en **materialización/visibilidad de tareas** → actualizar `WORKFLOW_TASKS_CONTRACT.md`.
 - Cambios en **acciones/transiciones atómicas tarea ↔ ejecución** → actualizar `WORKFLOW_ACTIONS_CONTRACT.md`.
+- Cambios en **patrones/snapshots/captura fotográfica de workflows** → actualizar `WORKFLOW_PHOTO_EVIDENCE_CONTRACT.md`.
 - Cambios de **estado real de implementación** → actualizar `WORKFLOW_STATUS.md` con fecha, sin reescribir decisiones históricas.
 
 La documentación nunca debe presentar como operativo un componente que solo existe como UI, borrador o propuesta.

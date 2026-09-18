@@ -195,10 +195,10 @@ Las pruebas se ejecutan también en PostgreSQL 17 desechable desde Schema Guard.
 | Creador de Flujos | Implementado con borradores parciales y completitud explícita | Define receta lógica |
 | Mis Flujos | Implementado; distingue incompletos/configurados/publicados | Publicación controlada disponible |
 | Aplicaciones | Implementado para vincular versión publicada con entidad real | Permite `Ejecutar ahora` |
-| Banco Fotográfico | Operativo/reutilizado | Infraestructura existente |
+| Banco Fotográfico | Operativo/reutilizado | Patrones vinculables a aplicaciones y congelados por ejecución |
 | Versiones publicadas | Implementado | Publicación RPC inmutable e idempotente |
 | Tareas | Materialización + primera acción atómica implementadas | `tenant_tasks_v2` reutilizada; `accept` sincroniza tarea + ejecución |
-| Historial | Parcial | registra creación, materialización y acciones atómicas; ciclo completo pendiente |
+| Historial | Parcial | registra creación, materialización, acciones y evidencia fotográfica; ciclo completo pendiente |
 | Ejecución genérica | Implementada en fase inicial | `manual_now`, idempotente, estado `pending` |
 | Adaptador Limpieza | Pendiente | Legacy preservado |
 
@@ -248,18 +248,20 @@ Una revisión representa un cambio real de contenido. Repetir Guardar sin modifi
 
 ## 12. Próximo incremento técnico
 
-El siguiente incremento debe ser **pasos de evidencia/recurso sobre una ejecución activa**.
+El paso **Fotografía** ya dispone de binding en Aplicaciones, snapshot reproducible por ejecución, cámara reutilizada y cierre transaccional mediante la infraestructura de fotoverificación existente.
+
+El siguiente incremento debe ser **revisión/cierre posterior y siguientes tipos de paso**.
 
 Orden recomendado:
 
-1. cuando `steps.photo=true`, vincular el recurso fotográfico concreto a la aplicación/ejecución;
-2. reutilizar `photo_verification_runs_v2` y `photo_verification_items_v2`;
-3. impedir cierre mientras falte evidencia obligatoria;
-4. mover tarea + ejecución de forma atómica al completar el paso;
-5. registrar eventos e histórico coherentes;
-6. probar reintentos sin duplicar evidencias ni notificaciones.
+1. integrar la revisión humana del workflow cuando `closeType=human_review`;
+2. decidir cómo una aprobación/rechazo fotográfico afecta al workflow sin reinterpretar evidencia de Limpieza;
+3. implementar checklist/documento con el mismo principio de bloqueo de cierre;
+4. completar Historial transversal ejecución → tarea → evidencia → revisión → cierre;
+5. probar reintentos y permisos negativos;
+6. después habilitar recurrencias automáticas.
 
-La recurrencia automática se mantiene posterior a un recorrido manual extremo a extremo.
+La recurrencia automática se mantiene posterior a un recorrido manual extremo a extremo con evidencia.
 
 ## 13. Reglas de no regresión
 

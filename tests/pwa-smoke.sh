@@ -40,7 +40,7 @@ grep -q 'app.css' docs/index.html
 grep -q 'app.js' docs/index.html
 grep -q 'serviceWorker' docs/app.js
 grep -q 'GestionPisos' docs/manifest.webmanifest
-grep -q 'gestionpisos-shell-v6' docs/sw.js
+grep -q 'gestionpisos-shell-v7' docs/sw.js
 grep -q 'operations.html' docs/index.html
 grep -q 'Notificaciones' docs/operations.html
 grep -q 'Pagos' docs/operations.html
@@ -67,6 +67,7 @@ grep -q 'zone_label' docs/photo-patterns.js
 grep -q 'target_key: zoneLabel' docs/photo-pattern-persistence.js
 test -s docs/photo-reference-guide.js
 node --check docs/photo-reference-guide.js
+node --check docs/photo-persistence.js
 node --check docs/photo-alignment.js
 test -s docs/photo-pattern-editor.html
 test -s docs/photo-pattern-editor.css
@@ -156,7 +157,7 @@ test -s docs/photo-camera.html
 test -s docs/photo-camera.css
 test -s docs/photo-camera.js
 grep -q 'photo-camera.css?v=2026091501' docs/photo-camera.html
-grep -q 'photo-reference-guide.js?v=2026091502' docs/photo-camera.html
+grep -q 'photo-reference-guide.js?v=2026091801' docs/photo-camera.html
 grep -q 'photo-alignment.js?v=2026091503' docs/photo-camera.js
 grep -q 'photo-camera.js' docs/photo-camera.html
 grep -q 'id="closeCamera"' docs/photo-camera.html
@@ -187,6 +188,12 @@ grep -q 'photo_verification_runs_v2' docs/photo-persistence.js
 grep -q 'photo_verification_items_v2' docs/photo-persistence.js
 grep -q 'submit-photo-verification' docs/photo-persistence.js
 grep -q 'alignment_meta' docs/photo-persistence.js
+grep -q 'start_workflow_photo_verification_v1' docs/photo-persistence.js
+grep -q 'submit_workflow_photo_verification_v1' docs/photo-persistence.js
+grep -q 'workflow_resource_id' docs/photo-persistence.js
+grep -q 'workflow_execution_photo_resources_v2' docs/photo-reference-guide.js
+grep -q 'pattern_snapshot' docs/photo-reference-guide.js
+grep -q 'photo-persistence.js?v=2026091801' docs/photo-camera.html
 
 test -s docs/permissions.html
 test -s docs/permissions.js

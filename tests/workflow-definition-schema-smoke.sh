@@ -11,6 +11,7 @@ executions='supabase/migrations/20260918103715_workflow_manual_executions.sql'
 materialization='supabase/migrations/20260918110819_workflow_task_materialization.sql'
 workflow_reset='supabase/migrations/20260918110824_factory_reset_workflow_data.sql'
 actions='supabase/migrations/20260918114500_workflow_atomic_task_actions.sql'
+photo_evidence='supabase/migrations/20260918133000_workflow_photo_evidence.sql'
 
 test -s "$migration"
 test -s "$hardening"
@@ -22,6 +23,7 @@ test -s "$executions"
 test -s "$materialization"
 test -s "$workflow_reset"
 test -s "$actions"
+test -s "$photo_evidence"
 test -s tests/workflow-definition-regression.sql
 
 grep -Fq 'create table if not exists public.workflow_definitions_v2' "$migration"
@@ -143,5 +145,34 @@ grep -Fq "'task_action_applied'" "$actions"
 grep -Fq "'workflow_task_action_applied'" "$actions"
 grep -Fq 'revoke execute on function public.apply_workflow_task_action_v1(uuid,text,text,text) from anon' "$actions"
 grep -Fq 'grant execute on function public.apply_workflow_task_action_v1(uuid,text,text,text) to authenticated' "$actions"
+
+grep -Fq 'create table public.workflow_application_photo_resources_v2' "$photo_evidence"
+grep -Fq 'create table public.workflow_execution_photo_resources_v2' "$photo_evidence"
+grep -Fq 'alter table public.workflow_application_photo_resources_v2 enable row level security' "$photo_evidence"
+grep -Fq 'alter table public.workflow_execution_photo_resources_v2 enable row level security' "$photo_evidence"
+grep -Fq 'create or replace function public.create_workflow_application_v2' "$photo_evidence"
+grep -Fq 'workflow_create_application_core_v1' "$photo_evidence"
+grep -Fq 'workflow_photo_application_requires_v2' "$photo_evidence"
+grep -Fq 'revoke all on function public.workflow_create_application_core_v1(uuid,uuid,uuid,uuid)' "$photo_evidence"
+grep -Fq 'workflow_photo_resources_required' "$photo_evidence"
+grep -Fq 'workflow_photo_pattern_not_available' "$photo_evidence"
+grep -Fq 'workflow_snapshot_photo_resources_internal_v1' "$photo_evidence"
+grep -Fq 'pattern_snapshot' "$photo_evidence"
+grep -Fq 'workflow_execution_photo_snapshot_missing' "$photo_evidence"
+grep -Fq 'start_workflow_photo_verification_v1' "$photo_evidence"
+grep -Fq 'submit_workflow_photo_verification_v1' "$photo_evidence"
+grep -Fq "check (source_type in ('cleaning_task','inspection','random_request','manual','workflow_execution'))" "$photo_evidence"
+grep -Fq "and source_type<>'workflow_execution'" "$photo_evidence"
+grep -Fq 'workflow_photo_actor_forbidden' "$photo_evidence"
+grep -Fq 'workflow_photo_object_missing' "$photo_evidence"
+grep -Fq "'photo_evidence_submitted'" "$photo_evidence"
+grep -Fq 'private.photo_pattern_usage_v2' "$photo_evidence"
+grep -Fq "'workflow_application'" "$photo_evidence"
+grep -Fq "'workflow_execution'" "$photo_evidence"
+grep -Fq 'public.workflow_execution_photo_resources_v2' "$photo_evidence"
+grep -Fq 'public.workflow_application_photo_resources_v2' "$photo_evidence"
+grep -Fq 'create or replace function public.factory_reset_test_data_service' "$photo_evidence"
+grep -Fq 'revoke execute on function public.start_workflow_photo_verification_v1(uuid) from anon' "$photo_evidence"
+grep -Fq 'revoke execute on function public.submit_workflow_photo_verification_v1(uuid,uuid,text) from anon' "$photo_evidence"
 
 echo 'Workflow definition schema smoke checks passed'

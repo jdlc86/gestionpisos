@@ -8,6 +8,7 @@ test -s supabase/functions/factory-reset-test-data/index.ts
 test -s supabase/migrations/20260917144325_factory_reset_test_data_helper.sql
 test -s supabase/migrations/20260917173819_factory_reset_global_root_baseline.sql
 test -s supabase/migrations/20260918110824_factory_reset_workflow_data.sql
+test -s supabase/migrations/20260918133000_workflow_photo_evidence.sql
 
 node --check docs/factory-reset.js
 
@@ -50,6 +51,9 @@ grep -Fq 'public.workflow_executions_v2' supabase/migrations/20260918110824_fact
 grep -Fq 'public.workflow_applications_v2' supabase/migrations/20260918110824_factory_reset_workflow_data.sql
 grep -Fq 'public.workflow_definition_versions_v2' supabase/migrations/20260918110824_factory_reset_workflow_data.sql
 grep -Fq 'public.workflow_definitions_v2' supabase/migrations/20260918110824_factory_reset_workflow_data.sql
+grep -Fq 'public.workflow_execution_photo_resources_v2' supabase/migrations/20260918133000_workflow_photo_evidence.sql
+grep -Fq 'public.workflow_application_photo_resources_v2' supabase/migrations/20260918133000_workflow_photo_evidence.sql
+grep -Fq 'create or replace function public.factory_reset_test_data_service' supabase/migrations/20260918133000_workflow_photo_evidence.sql
 
 # Never expose privileged credentials or implement Storage cleanup through SQL metadata deletion.
 ! grep -Fq 'service_role' docs/factory-reset.html

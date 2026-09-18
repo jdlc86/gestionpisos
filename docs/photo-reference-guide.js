@@ -2,6 +2,7 @@ import { supabase } from "./supabase-client.js";
 
 const params = new URLSearchParams(window.location.search);
 const patternId = params.get("pattern_id");
+const workflowResourceId = params.get("workflow_resource_id");
 const mode = params.get("mode");
 const hint = document.getElementById("alignmentHint");
 const guide = document.getElementById("cameraGuide");
@@ -158,14 +159,40 @@ async function loadReference() {
   if (hint) hint.textContent = "Cargando silueta manual…";
   if (cameraMessage) cameraMessage.textContent = "Preparando guía de referencia…";
 
-  const { data: pattern, error: patternError } = await supabase
-    .from("photo_patterns_v2")
-    .select("id,name,target_key,contour_data,active")
-    .eq("id", patternId)
-    .maybeSingle();
+  let pattern;
 
-  if (patternError) throw patternError;
-  if (!pattern?.active) throw new Error("pattern_not_available");
+  if (workflowResourceId) {
+    if (!uuidLike(workflowResourceId)) throw new Error("workflow_resource_invalid");
+
+    const { data: resource, error: resourceError } = await supabase
+      .from("workflow_execution_photo_resources_v2")
+      .select("id,pattern_id,pattern_snapshot,status")
+      .eq("id", workflowResourceId)
+      .maybeSingle();
+
+    if (resourceError) throw resourceError;
+    if (!resource) throw new Error("workflow_resource_not_available");
+    if (patternId && resource.pattern_id !== patternId) throw new Error("workflow_pattern_mismatch");
+
+    const snapshot = resource.pattern_snapshot || {};
+    pattern = {
+      id: resource.pattern_id,
+      name: snapshot.name,
+      target_key: snapshot.target_key,
+      contour_data: snapshot.contour_data,
+      active: true
+    };
+  } else {
+    const { data: currentPattern, error: patternError } = await supabase
+      .from("photo_patterns_v2")
+      .select("id,name,target_key,contour_data,active")
+      .eq("id", patternId)
+      .maybeSingle();
+
+    if (patternError) throw patternError;
+    if (!currentPattern?.active) throw new Error("pattern_not_available");
+    pattern = currentPattern;
+  }
 
   const { canvas: mask, count } = makeManualMask(pattern.contour_data);
 
@@ -174,7 +201,8 @@ async function loadReference() {
   window.__allaisoReferencePattern = {
     id: pattern.id,
     name: pattern.name,
-    zone: pattern.target_key
+    zone: pattern.target_key,
+    workflowResourceId: workflowResourceId || null
   };
 
   if (guide) {
@@ -208,6 +236,9 @@ loadReference().catch(error => {
   } else if (code.includes("pattern_id_required")) {
     if (hint) hint.textContent = "Falta seleccionar un patrón";
     if (cameraMessage) cameraMessage.textContent = "La verificación necesita un patrón válido.";
+  } else if (code.includes("workflow_resource") || code.includes("workflow_pattern_mismatch")) {
+    if (hint) hint.textContent = "El recurso fotográfico ya no está disponible";
+    if (cameraMessage) cameraMessage.textContent = "Vuelve a Tareas y abre de nuevo la evidencia fotográfica.";
   } else {
     if (hint) hint.textContent = "No se pudo cargar la guía manual";
     if (cameraMessage) cameraMessage.textContent = "No se pudo preparar la silueta de referencia.";

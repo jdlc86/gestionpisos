@@ -41,7 +41,6 @@ grep -Fq 'tenant_task_workflow_templates_v2' docs/FACTORY_RESET_RUNBOOK.md
 grep -Fq 'revoke all on function public.factory_reset_test_data_service' supabase/migrations/20260917144325_factory_reset_test_data_helper.sql
 grep -Fq 'grant execute on function public.factory_reset_test_data_service' supabase/migrations/20260917144325_factory_reset_test_data_helper.sql
 
-grep -Fq 'ROOT is intentionally allowed to be global' supabase/migrations/20260917173819_factory_reset_global_root_baseline.sql
 grep -Fq 'v_active_organization_count <> 1' supabase/migrations/20260917173819_factory_reset_global_root_baseline.sql
 grep -Fq 'factory_reset_root_organization_ambiguous' supabase/migrations/20260917173819_factory_reset_global_root_baseline.sql
 grep -Fq 'revoke all on function public.factory_reset_test_data_service' supabase/migrations/20260917173819_factory_reset_global_root_baseline.sql

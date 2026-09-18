@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-baseline="supabase/migrations/20260913000000_remote_baseline.sql"
+baseline="tests/fixtures/20260913_remote_baseline.sql"
 migration="supabase/migrations/20260913205141_close_owners_and_occupancy_blockers.sql"
 test_sql="tests/database-regression.sql"
 photo_migration="supabase/migrations/20260914074246_beta0_photo_verification_write_policies.sql"
 storage_migration="supabase/migrations/20260914074301_beta0_photo_storage_read_org_hardening.sql"
 photo_test_sql="tests/photo-verification-regression.sql"
 review_hardening="supabase/migrations/20260914123135_beta0_review_security_hardening.sql"
-contour_authoring="supabase/migrations/20260914234500_allow_versioned_photo_contour_edits.sql"
+contour_authoring="supabase/migrations/20260914214933_allow_versioned_photo_contour_edits.sql"
 
 test -s "$baseline"
 test -s "$migration"
@@ -80,7 +80,7 @@ grep -q "new.property_id is distinct from old.property_id" "$contour_authoring"
 grep -q "photo pattern version may change only with contour_data" "$contour_authoring"
 
 # Operator portfolio security contract.
-operator_migration="supabase/migrations/20260916010000_scoped_tenant_onboarding.sql"
+operator_migration="supabase/migrations/20260915205838_scoped_tenant_onboarding.sql"
 test -s "$operator_migration"
 grep -Fq 'can_operate_property_v3(p_property_id,true)' "$operator_migration"
 grep -Fq 'room_property_mismatch' "$operator_migration"

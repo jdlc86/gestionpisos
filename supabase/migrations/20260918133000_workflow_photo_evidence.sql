@@ -869,6 +869,7 @@ declare
   v_other_steps boolean:=false;
   v_close_type text;
   v_target_status text;
+  v_from_status text;
 begin
   if v_actor is null then
     raise exception 'not_authenticated' using errcode='42501';
@@ -925,6 +926,8 @@ begin
   if v_task.status is distinct from v_execution.status then
     raise exception 'workflow_task_execution_state_mismatch' using errcode='55000';
   end if;
+
+  v_from_status:=v_execution.status;
 
   select * into v_previous_event
   from public.workflow_execution_events_v2 ev
@@ -1065,7 +1068,7 @@ begin
     v_execution.id,
     v_execution.organization_id,
     'photo_evidence_submitted',
-    case when v_target_status is distinct from v_task.status then v_task.status else v_execution.status end,
+    v_from_status,
     v_execution.status,
     v_actor,
     jsonb_build_object(

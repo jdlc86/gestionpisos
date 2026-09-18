@@ -63,13 +63,12 @@ Si el mismo request se reintenta:
 
 ## 4. Autorización para lanzar
 
-Puede lanzar una ejecución:
+En este primer incremento puede lanzar una ejecución:
 
 - ROOT activo;
-- ADMIN activo de la organización;
-- operador con escritura vigente sobre el piso cuando la aplicación es property/room/occupancy.
+- ADMIN activo de la organización.
 
-La autorización se valida en servidor. Ver un botón no concede capacidad.
+La autorización se valida en servidor. Ver un botón no concede capacidad. La extensión futura al responsable/operador de piso se hará cuando exista una vista operativa de Tareas; la pantalla actual de Aplicaciones sigue siendo administrativa.
 
 ## 5. Asignación soportada inicialmente
 

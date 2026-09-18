@@ -288,11 +288,11 @@ begin
   returning * into v_execution;
 
   if p_action_key='reject' then
-    update public.workflow_execution_photo_resources_v2
+    update public.workflow_execution_photo_resources_v2 as photo_resource
     set status='cancelled',
-        completed_at=coalesce(completed_at,now())
-    where execution_id=v_execution.id
-      and status in ('pending','capturing');
+        completed_at=coalesce(photo_resource.completed_at,now())
+    where photo_resource.execution_id=v_execution.id
+      and photo_resource.status in ('pending','capturing');
   end if;
 
   insert into public.tenant_task_history_v2(

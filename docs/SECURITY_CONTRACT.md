@@ -2,6 +2,8 @@
 
 ROOT es un rol protegido. RLS es obligatoria en datos sensibles. La autorización se valida en backend y base de datos. QR no concede acceso. MFA es obligatorio para ROOT y ADMIN. Los cambios de contraseña invalidan las demás sesiones. Las acciones críticas se auditan. La IA no toma decisiones de seguridad.
 
+Para datos sensibles revisables (por ejemplo fotoverificaciones), una lectura administrativa debe comprobar roles activos server-side y el nivel de autenticación requerido. Los claims `app_metadata.role/organization_id` no son una fuente autoritativa suficiente para mantener acceso tras revocaciones o cambios de rol.
+
 ## Invariante de identidad e invitaciones
 
 - Toda invitación de acceso queda ligada a un usuario/identidad y a un email canónico concretos.

@@ -1319,7 +1319,7 @@ select set_config(
   true
 );
 
-do $
+do $$
 declare
   v_task_status text;
   v_execution_status text;

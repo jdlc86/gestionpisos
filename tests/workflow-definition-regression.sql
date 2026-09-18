@@ -27,6 +27,12 @@ begin
   if not has_function_privilege('authenticated','public.publish_workflow_definition_v1(uuid,bigint)','EXECUTE') then
     raise exception 'authenticated cannot execute workflow publish RPC';
   end if;
+  if has_function_privilege('anon','public.execute_workflow_application_now_v1(uuid,text,uuid)','EXECUTE') then
+    raise exception 'anon can execute workflow execution RPC';
+  end if;
+  if not has_function_privilege('authenticated','public.execute_workflow_application_now_v1(uuid,text,uuid)','EXECUTE') then
+    raise exception 'authenticated cannot execute workflow execution RPC';
+  end if;
 end;
 $$;
 
@@ -946,8 +952,183 @@ begin
 end;
 $$;
 
+-- Ejecución manual: TENANT no puede lanzar aunque conozca el application_id.
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub',current_setting('gestionpisos.workflow_tenant'),
+    'role','authenticated',
+    'aal','aal2'
+  )::text,
+  true
+);
+
+do $
+begin
+  begin
+    perform * from public.execute_workflow_application_now_v1(
+      current_setting('gestionpisos.workflow_room_application_id')::uuid,
+      'tenant-forbidden-001',
+      current_setting('gestionpisos.workflow_tenant')::uuid
+    );
+    raise exception 'tenant workflow execution unexpectedly succeeded';
+  exception when insufficient_privilege then null;
+  end;
+end;
+$;
+
+-- ROOT vuelve a lanzar el caso manual exacto y se asigna explícitamente.
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub',current_setting('gestionpisos.workflow_root'),
+    'role','authenticated',
+    'aal','aal2'
+  )::text,
+  true
+);
+
+do $
+begin
+  begin
+    perform * from public.execute_workflow_application_now_v1(
+      current_setting('gestionpisos.workflow_room_application_id')::uuid,
+      'manual-missing-assignee-001',
+      null
+    );
+    raise exception 'manual workflow execution without assignee unexpectedly succeeded';
+  exception when invalid_parameter_value then null;
+  end;
+end;
+$;
+
+select set_config(
+  'gestionpisos.workflow_execution_id',
+  (
+    select execution_id::text
+    from public.execute_workflow_application_now_v1(
+      current_setting('gestionpisos.workflow_room_application_id')::uuid,
+      'manual-room-001',
+      current_setting('gestionpisos.workflow_root')::uuid
+    )
+    limit 1
+  ),
+  true
+);
+
+do $
+declare
+  v_execution public.workflow_executions_v2;
+  v_events integer;
+begin
+  select * into v_execution
+  from public.workflow_executions_v2
+  where id=current_setting('gestionpisos.workflow_execution_id')::uuid;
+
+  if v_execution.id is null then
+    raise exception 'workflow execution was not created';
+  end if;
+  if v_execution.application_id<>current_setting('gestionpisos.workflow_room_application_id')::uuid then
+    raise exception 'workflow execution lost application identity';
+  end if;
+  if v_execution.scope_type<>'room'
+    or v_execution.property_id<>current_setting('gestionpisos.workflow_property_1')::uuid
+    or v_execution.room_id<>current_setting('gestionpisos.workflow_room_1')::uuid
+    or v_execution.occupancy_id is not null then
+    raise exception 'workflow execution lost concrete room scope';
+  end if;
+  if v_execution.trigger_kind<>'manual_now'
+    or v_execution.assignment_type<>'manual'
+    or v_execution.assigned_user_id<>current_setting('gestionpisos.workflow_root')::uuid
+    or v_execution.status<>'pending' then
+    raise exception 'workflow execution did not freeze trigger/assignment/status';
+  end if;
+  if v_execution.spec_snapshot->>'scopeType'<>'room'
+    or v_execution.spec_snapshot->>'assignmentType'<>'manual' then
+    raise exception 'workflow execution lost immutable spec snapshot';
+  end if;
+
+  select count(*) into v_events
+  from public.workflow_execution_events_v2
+  where execution_id=v_execution.id and event_type='created';
+
+  if v_events<>1 then
+    raise exception 'workflow execution did not create exactly one initial event';
+  end if;
+end;
+$;
+
+-- Reintentar la misma intención devuelve la ejecución existente y no duplica eventos.
+do $
+declare
+  v_execution_id uuid;
+  v_created_new boolean;
+  v_count integer;
+  v_events integer;
+begin
+  select execution_id,created_new
+  into v_execution_id,v_created_new
+  from public.execute_workflow_application_now_v1(
+    current_setting('gestionpisos.workflow_room_application_id')::uuid,
+    'manual-room-001',
+    current_setting('gestionpisos.workflow_root')::uuid
+  )
+  limit 1;
+
+  if v_execution_id<>current_setting('gestionpisos.workflow_execution_id')::uuid then
+    raise exception 'workflow execution idempotent retry returned another execution';
+  end if;
+  if v_created_new then
+    raise exception 'workflow execution idempotent retry claimed a new execution';
+  end if;
+
+  select count(*) into v_count
+  from public.workflow_executions_v2
+  where application_id=current_setting('gestionpisos.workflow_room_application_id')::uuid
+    and idempotency_key='manual-room-001';
+
+  select count(*) into v_events
+  from public.workflow_execution_events_v2
+  where execution_id=v_execution_id and event_type='created';
+
+  if v_count<>1 or v_events<>1 then
+    raise exception 'workflow execution idempotency duplicated execution or event';
+  end if;
+end;
+$;
+
+-- El cliente authenticated no puede fabricar ejecuciones saltándose el RPC.
+do $
+begin
+  begin
+    insert into public.workflow_executions_v2(
+      application_id,definition_id,definition_version_id,organization_id,
+      scope_type,property_id,room_id,trigger_kind,idempotency_key,
+      assignment_type,assigned_user_id,status,spec_snapshot,created_by
+    ) values (
+      current_setting('gestionpisos.workflow_room_application_id')::uuid,
+      current_setting('gestionpisos.workflow_room_definition_id')::uuid,
+      current_setting('gestionpisos.workflow_room_version_id')::uuid,
+      current_setting('gestionpisos.workflow_org_1')::uuid,
+      'room',
+      current_setting('gestionpisos.workflow_property_1')::uuid,
+      current_setting('gestionpisos.workflow_room_1')::uuid,
+      'manual_now',
+      'direct-forbidden-001',
+      'manual',
+      current_setting('gestionpisos.workflow_root')::uuid,
+      'pending',
+      '{}'::jsonb,
+      current_setting('gestionpisos.workflow_root')::uuid
+    );
+    raise exception 'direct workflow execution insert unexpectedly succeeded';
+  exception when insufficient_privilege then null;
+  end;
+end;
+$;
+
 -- La tabla de aplicaciones tampoco admite escritura directa desde authenticated.
-do $$
+do $
 begin
   begin
     insert into public.workflow_applications_v2(
@@ -971,7 +1152,7 @@ select public.archive_workflow_application_v1(
   current_setting('gestionpisos.workflow_property_application_id')::uuid
 );
 
-do $$
+do $
 declare v_status text;
 begin
   select status into v_status
@@ -981,7 +1162,21 @@ begin
     raise exception 'workflow application archive failed';
   end if;
 end;
-$$;
+$;
+
+do $
+begin
+  begin
+    perform * from public.execute_workflow_application_now_v1(
+      current_setting('gestionpisos.workflow_property_application_id')::uuid,
+      'archived-forbidden-001',
+      null
+    );
+    raise exception 'archived workflow application unexpectedly executed';
+  exception when object_not_in_prerequisite_state then null;
+  end;
+end;
+$;
 
 select * from public.create_workflow_application_v1(
   current_setting('gestionpisos.workflow_property_version_id')::uuid,

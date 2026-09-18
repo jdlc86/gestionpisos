@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#ffffff">
   <meta name="description" content="Creador de Flujos de GestionPisos">
   <link rel="stylesheet" href="./app.css?v=2026091703">
-  <link rel="stylesheet" href="./workflow-builder.css?v=2026091805">
+  <link rel="stylesheet" href="./workflow-builder.css?v=2026091901">
   <title>Allaiso · Creador de Flujos</title>
 </head>
 <body>
@@ -23,7 +23,20 @@
     <section class="hero">
       <span id="builderBadge" class="badge">Borrador incompleto</span>
       <h2>Construye la receta paso a paso.</h2>
-      <p>Puedes guardar un borrador aunque falten apartados. GestionPisos ya no presupone ninguna decisión de negocio: cada tipo, ámbito, activación, asignación, paso y cierre debe elegirse de forma explícita.</p>
+      <p>Este es el espacio de autoría. Aquí creas, retomas, editas y publicas borradores. Una receta solo pasa a Mis Flujos cuando existe una versión publicada.</p>
+    </section>
+
+    <section class="builder-drafts-section" aria-labelledby="builderDraftsTitle">
+      <div class="builder-drafts-toolbar">
+        <div>
+          <p class="eyebrow">Autoría</p>
+          <h2 id="builderDraftsTitle">Borradores</h2>
+        </div>
+        <a class="primary" href="./workflow-builder.html">➕ Nuevo borrador</a>
+      </div>
+      <div id="builderDrafts" class="builder-drafts-list" aria-live="polite">
+        <article class="builder-draft-card builder-draft-card--loading">Cargando borradores…</article>
+      </div>
     </section>
 
     <section class="builder-layout">
@@ -161,16 +174,17 @@
           <button id="builderBack" type="button" class="secondary" disabled>Atrás</button>
           <button id="builderClear" type="button" class="secondary">Descartar cambios locales</button>
           <button id="builderSave" type="button" class="secondary">Guardar borrador</button>
+          <button id="builderPublish" type="button" class="secondary" disabled>Publicar</button>
           <button id="builderNext" type="button" class="primary">Continuar</button>
         </div>
       </form>
     </section>
 
-    <section class="status"><span class="dot"></span><span>Los borradores parciales están permitidos. El estado «configuración completa» solo se obtiene con decisiones explícitas; publicar y ejecutar siguen bloqueados.</span></section>
+    <section class="status"><span class="dot"></span><span>Autoría y operación están separadas: los borradores viven aquí; Mis Flujos muestra únicamente recetas con versiones publicadas.</span></section>
   </main>
 
   <script src="./app.js?v=202609152" defer></script>
-  <script type="module" src="./workflow-builder.js?v=2026091807"></script>
+  <script type="module" src="./workflow-builder.js?v=2026091901"></script>
   <script type="module" src="./auth-guard.js"></script>
 </body>
 </html>

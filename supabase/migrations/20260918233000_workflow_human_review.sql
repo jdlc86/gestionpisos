@@ -663,13 +663,15 @@ revoke all on function public.apply_workflow_photo_review_v1(uuid,uuid,text,text
 grant execute on function public.apply_workflow_photo_review_v1(uuid,uuid,text,text)
   to service_role;
 
--- Los gestores de workflow deben poder leer las acciones agency aunque no sean
--- el asignado de la tarea. La política legacy se conserva intacta; esta política
--- permisiva adicional amplía únicamente las tareas workflow administrables.
+-- Visibilidad actor-aware de acciones. En workflow, el asignado ve solo
+-- acciones assignee y ROOT/ADMIN autorizados ven las acciones agency.
+-- Las tareas legacy conservan su criterio anterior.
+drop policy if exists tenant_task_actions_v2_read_scope
+  on public.tenant_task_actions_v2;
 drop policy if exists tenant_task_actions_v2_workflow_manager_read
   on public.tenant_task_actions_v2;
 
-create policy tenant_task_actions_v2_workflow_manager_read
+create policy tenant_task_actions_v2_read_scope
 on public.tenant_task_actions_v2
 for select
 to authenticated
@@ -678,9 +680,44 @@ using (
     select 1
     from public.tenant_tasks_v2 t
     where t.id=tenant_task_actions_v2.task_id
-      and t.task_type='workflow'
-      and t.source_kind='workflow_execution'
-      and public.workflow_can_manage_v1(t.organization_id)
+      and (
+        (
+          t.task_type='workflow'
+          and t.source_kind='workflow_execution'
+          and (
+            (
+              tenant_task_actions_v2.actor='assignee'
+              and t.assigned_user_id=auth.uid()
+            )
+            or (
+              tenant_task_actions_v2.actor='agency'
+              and public.workflow_can_manage_v1(t.organization_id)
+            )
+            or (
+              tenant_task_actions_v2.actor='tenant'
+              and exists(
+                select 1
+                from public.tenants_v2 tn
+                where tn.id=t.tenant_id
+                  and tn.user_id=auth.uid()
+              )
+            )
+          )
+        )
+        or (
+          (t.task_type<>'workflow' or t.source_kind is distinct from 'workflow_execution')
+          and (
+            public.can_operate_property_v3(t.property_id,false)
+            or t.assigned_user_id=auth.uid()
+            or exists(
+              select 1
+              from public.tenants_v2 tn
+              where tn.id=t.tenant_id
+                and tn.user_id=auth.uid()
+            )
+          )
+        )
+      )
   )
 );
 

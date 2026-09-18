@@ -507,7 +507,7 @@ async function load(){
   formCard.hidden=false;
   await updateTargetControls();
   await loadApplications();
-  setStatus("Aplicaciones cargadas. Ejecutar ahora crea una ejecución pendiente; las tareas y recurrencias siguen separadas.");
+  setStatus("Aplicaciones cargadas. Ejecutar ahora crea una ejecución pendiente y su tarea asociada; las recurrencias automáticas siguen separadas.");
 }
 
 load().catch(()=>setStatus("No se pudieron cargar las aplicaciones del flujo.",true));

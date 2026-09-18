@@ -7,7 +7,8 @@ Usar estos documentos en este orden:
 3. **`WORKFLOW_ENGINE_CONTRACT.md`** — contrato técnico obligatorio del motor persistente: versionado, idempotencia, asignación server-side, RLS, snapshots, tareas, evidencias y adaptador de Limpieza.
 4. **`WORKFLOW_APPLICATIONS_CONTRACT.md`** — separación obligatoria entre receta lógica y destino real; publicación, aplicación concreta, RLS y límites de ejecución.
 5. **`WORKFLOW_EXECUTION_CONTRACT.md`** — contrato del primer runner manual idempotente, asignación congelada, seguridad e histórico mínimo.
-6. **`WORKFLOW_STATUS.md`** — fotografía fechada del estado real de implementación, PRs integrados, límites actuales y siguiente incremento.
+6. **`WORKFLOW_TASKS_CONTRACT.md`** — generalización aditiva de `tenant_tasks_v2`, materialización idempotente, RLS y límites de acciones.
+7. **`WORKFLOW_STATUS.md`** — fotografía fechada del estado real de implementación, PRs integrados, límites actuales y siguiente incremento.
 
 ## Regla de mantenimiento
 
@@ -16,6 +17,7 @@ Usar estos documentos en este orden:
 - Cambios en **invariantes del motor o seguridad técnica** → actualizar `WORKFLOW_ENGINE_CONTRACT.md` antes del código que dependa de ellos.
 - Cambios en **vinculación receta ↔ entidad real** → actualizar `WORKFLOW_APPLICATIONS_CONTRACT.md`.
 - Cambios en **creación/idempotencia/asignación de ejecuciones** → actualizar `WORKFLOW_EXECUTION_CONTRACT.md`.
+- Cambios en **materialización/visibilidad/acciones de tareas** → actualizar `WORKFLOW_TASKS_CONTRACT.md`.
 - Cambios de **estado real de implementación** → actualizar `WORKFLOW_STATUS.md` con fecha, sin reescribir decisiones históricas.
 
 La documentación nunca debe presentar como operativo un componente que solo existe como UI, borrador o propuesta.

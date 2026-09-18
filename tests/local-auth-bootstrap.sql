@@ -1,5 +1,5 @@
 -- Local-only PostgreSQL auth emulation for isolated regression.
--- Application schema must come from supabase/migrations/20260913000000_remote_baseline.sql.
+-- Application schema must come from tests/fixtures/20260913_remote_baseline.sql.
 
 create schema auth;
 create schema extensions;

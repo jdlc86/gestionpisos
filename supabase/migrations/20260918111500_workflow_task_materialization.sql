@@ -109,14 +109,6 @@ using (
   )
 );
 
-create policy tenant_tasks_v2_property_operator_read
-on public.tenant_tasks_v2
-for select to authenticated
-using (
-  property_id is not null
-  and public.can_operate_property_v3(property_id,false)
-);
-
 create or replace function public.workflow_materialize_execution_task_internal_v1(
   p_execution_id uuid,
   p_actor_user_id uuid

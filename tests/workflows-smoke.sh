@@ -12,8 +12,13 @@ test -s docs/workflow-builder.js
 test -s docs/workflow-definitions.html
 test -s docs/workflow-definitions.css
 test -s docs/workflow-definitions.js
+test -s docs/workflow-applications.html
+test -s docs/workflow-applications.css
+test -s docs/workflow-applications.js
+test -s docs/WORKFLOW_APPLICATIONS_CONTRACT.md
 node --check docs/workflow-builder.js
 node --check docs/workflow-definitions.js
+node --check docs/workflow-applications.js
 
 grep -Fq 'href="./workflows.html"' docs/index.html
 grep -Fq '>🔄</span>Flujos de Trabajo' docs/index.html
@@ -35,9 +40,11 @@ grep -Fq '>🕘</span>Historial' docs/workflows.html
 grep -Fq './auth-guard.js' docs/workflows.html
 grep -Fq './auth-guard.js' docs/workflow-builder.html
 grep -Fq './auth-guard.js' docs/workflow-definitions.html
+grep -Fq './auth-guard.js' docs/workflow-applications.html
 grep -Fq 'data-theme-toggle' docs/workflows.html
 grep -Fq 'data-theme-toggle' docs/workflow-builder.html
 grep -Fq 'data-theme-toggle' docs/workflow-definitions.html
+grep -Fq 'data-theme-toggle' docs/workflow-applications.html
 grep -Fq 'class="ui-nav-icon"' docs/workflows.html
 
 grep -Fq 'Borrador incompleto' docs/workflow-builder.html
@@ -83,10 +90,22 @@ grep -Fq 'Completar borrador' docs/workflow-definitions.js
 grep -Fq 'function activationText(row)' docs/workflow-definitions.js
 grep -Fq 'meta("Activación",activationText(row))' docs/workflow-definitions.js
 grep -Fq 'updated_at,draft_spec' docs/workflow-definitions.js
-grep -Fq './workflow-definitions.js?v=2026091803' docs/workflow-definitions.html
-grep -Fq 'borradores incompletos y configurados' docs/workflow-definitions.html
+grep -Fq './workflow-definitions.js?v=2026091804' docs/workflow-definitions.html
+grep -Fq 'puede publicarse como versión inmutable' docs/workflow-definitions.html
+grep -Fq 'publish_workflow_definition_v1' docs/workflow-definitions.js
+grep -Fq 'workflow-applications.html?definition=' docs/workflow-definitions.js
+grep -Fq 'Publicar versión' docs/workflow-definitions.js
+grep -Fq 'create_workflow_application_v1' docs/workflow-applications.js
+grep -Fq 'archive_workflow_application_v1' docs/workflow-applications.js
+grep -Fq 'properties_v2' docs/workflow-applications.js
+grep -Fq 'rooms_v2' docs/workflow-applications.js
+grep -Fq 'occupancies_v2' docs/workflow-applications.js
+grep -Fq 'configurada, pero todavía no ejecutará tareas ni recurrencias' docs/workflow-applications.html
+grep -Fq 'Definición → Versión publicada → Aplicación concreta' docs/WORKFLOW_APPLICATIONS_CONTRACT.md
+grep -Fq 'workflow_applications_v2' docs/WORKFLOW_APPLICATIONS_CONTRACT.md
+grep -Fq 'workflow-applications.html' docs/sw.js
 
-grep -Fq 'Definición → Versión publicada → Disparador → Ejecución' docs/WORKFLOW_ENGINE_CONTRACT.md
+grep -Fq 'Definición → Versión publicada → Aplicación concreta → Disparador → Ejecución' docs/WORKFLOW_ENGINE_CONTRACT.md
 grep -Fq 'idempotency_key' docs/WORKFLOW_ENGINE_CONTRACT.md
 grep -Fq 'tenant_tasks_v2' docs/WORKFLOW_ENGINE_CONTRACT.md
 grep -Fq 'photo_patterns_v2' docs/WORKFLOW_ENGINE_CONTRACT.md

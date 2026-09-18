@@ -10,7 +10,7 @@ Este documento resume el estado real de implementación de **Flujos de Trabajo**
 
 Cadena canónica:
 
-`Definición → Versión publicada → Disparador → Ejecución → Asignación → Tareas → Recursos → Evidencias → Revisión/Cierre → Historial`
+`Definición → Versión publicada → Aplicación concreta → Disparador → Ejecución → Asignación → Tareas → Recursos → Evidencias → Revisión/Cierre → Historial`
 
 ## 1. Decisión arquitectónica vigente
 
@@ -106,19 +106,26 @@ Muestra:
 
 Los borradores pueden reabrirse en el Creador con su `id` y continuar editándose.
 
-No existen todavía acciones de publicar, ejecutar, pausar o archivar desde esta pantalla.
+Los borradores configurados pueden publicarse mediante RPC protegido. Una definición publicada ofrece acceso a su pantalla de **Aplicaciones**. Ejecutar, pausar y recurrencias automáticas siguen pendientes.
 
-## 5. Versiones publicadas — preparación
+## 5. Versiones publicadas y aplicaciones concretas
 
-Existe `workflow_definition_versions_v2` para representar futuras versiones inmutables.
+`workflow_definition_versions_v2` representa versiones inmutables de la receta lógica.
 
-En esta fase:
+`publish_workflow_definition_v1`:
 
-- no hay RPC de publicación;
-- el cliente no tiene permisos de escritura directa;
-- la tabla permanece vacía hasta implementar publicación controlada.
+- exige `aal2`;
+- publica solo autoría completa;
+- no acepta INSERT cliente;
+- congela el `scopeType` lógico;
+- no selecciona todavía una entidad real;
+- es idempotente ante reintento de una definición ya publicada.
 
-Esto evita publicar accidentalmente una receta incompleta mientras se valida la capa de autoría.
+`workflow_applications_v2` vincula una versión publicada con la entidad real. `create_workflow_application_v1` valida server-side organización, piso, habitación u ocupación y deja la aplicación en estado `configured`.
+
+`configured` **no significa activa**: todavía no genera ejecuciones, tareas ni recurrencias.
+
+La semántica detallada vive en `WORKFLOW_APPLICATIONS_CONTRACT.md`.
 
 ## 6. Banco Fotográfico
 
@@ -182,10 +189,11 @@ Las pruebas se ejecutan también en PostgreSQL 17 desechable desde Schema Guard.
 | Módulo | Estado | Observación |
 | --- | --- | --- |
 | Flujos de Trabajo | Implementado | Hub transversal |
-| Creador de Flujos | Implementado con borradores parciales y completitud explícita | Sin publicación |
-| Mis Flujos | Implementado; distingue incompletos/configurados | Sin ejecutar/publicar |
+| Creador de Flujos | Implementado con borradores parciales y completitud explícita | Define receta lógica |
+| Mis Flujos | Implementado; distingue incompletos/configurados/publicados | Publicación controlada disponible |
+| Aplicaciones | Implementado para vincular versión publicada con entidad real | Estado `configured`, sin ejecución |
 | Banco Fotográfico | Operativo/reutilizado | Infraestructura existente |
-| Versiones publicadas | Estructura preparada | RPC de publicación pendiente |
+| Versiones publicadas | Implementado | Publicación RPC inmutable e idempotente |
 | Tareas | Pendiente de integración genérica | Evaluar `tenant_tasks_v2` |
 | Historial | Pendiente de ejecución transversal | No sustituye históricos actuales |
 | Ejecución genérica | Pendiente | Siguiente incremento |
@@ -237,20 +245,17 @@ Una revisión representa un cambio real de contenido. Repetir Guardar sin modifi
 
 ## 12. Próximo incremento técnico
 
-El siguiente incremento debe ser **publicación inmutable + ejecución manual idempotente**.
+El siguiente incremento debe ser **ejecución manual idempotente sobre una aplicación configurada**.
 
 Orden recomendado:
 
-1. selección y validación server-side de la entidad concreta del ámbito;
-2. publicación a `workflow_definition_versions_v2` con versión inmutable;
-3. operación explícita y auditada de publicar;
-4. entidad mínima de ejecución;
-5. `idempotency_key` para “Ejecutar ahora”;
-6. resolución server-side del responsable;
-7. enlace/adopción de `tenant_tasks_v2` cuando encaje;
-8. snapshot de recursos/versiones;
-9. eventos de ciclo de vida suficientes para Historial;
-10. pruebas de reintento sin duplicar ejecución/tarea/notificación.
+1. entidad mínima de ejecución referenciando `workflow_applications_v2` + versión publicada;
+2. `idempotency_key` para “Ejecutar ahora”;
+3. resolución server-side del responsable;
+4. enlace/adopción de `tenant_tasks_v2` cuando encaje;
+5. snapshot de recursos/versiones concretos;
+6. eventos de ciclo de vida suficientes para Historial;
+7. pruebas de reintento sin duplicar ejecución/tarea/notificación.
 
 La recurrencia automática se añadirá **después** de demostrar que la ejecución manual es idempotente y auditable.
 
@@ -263,6 +268,7 @@ La recurrencia automática se añadirá **después** de demostrar que la ejecuci
 - no convertir `cleaning_plans_v2` en modelo universal;
 - no retirar `cleaning.html` antes de sustitución funcional probada;
 - no confiar en organización/ámbito enviados por cliente;
+- no volver a guardar UUID de piso/habitación/ocupación dentro de la receta lógica;
 - no presentar un borrador guardado como publicado;
 - no permitir que editar una definición cambie ejecuciones ya creadas;
 - no permitir publicación directa por INSERT cliente.

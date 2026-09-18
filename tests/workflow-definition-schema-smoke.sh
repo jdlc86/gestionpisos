@@ -6,12 +6,14 @@ hardening='supabase/migrations/20260918010500_workflow_rpc_privilege_hardening.s
 partial='supabase/migrations/20260918013500_workflow_partial_drafts.sql'
 noop='supabase/migrations/20260918023000_workflow_draft_noop_save.sql'
 triggers='supabase/migrations/20260918025500_workflow_trigger_controls.sql'
+applications='supabase/migrations/20260918090000_workflow_publication_applications.sql'
 
 test -s "$migration"
 test -s "$hardening"
 test -s "$partial"
 test -s "$noop"
 test -s "$triggers"
+test -s "$applications"
 test -s tests/workflow-definition-regression.sql
 
 grep -Fq 'create table if not exists public.workflow_definitions_v2' "$migration"
@@ -54,5 +56,21 @@ grep -Fq "v_trigger_type is distinct from 'recurring'" "$triggers"
 grep -Fq "v_trigger_type is distinct from 'scheduled_once'" "$triggers"
 grep -Fq "not (draft_spec ? 'scheduledAt')" "$triggers"
 grep -Fq 'set authoring_complete = public.workflow_authoring_complete_v1(draft_spec)' "$triggers"
+
+grep -Fq 'create table public.workflow_applications_v2' "$applications"
+grep -Fq 'alter table public.workflow_applications_v2 enable row level security' "$applications"
+grep -Fq 'create policy workflow_applications_v2_read_authorized' "$applications"
+grep -Fq 'create or replace function public.publish_workflow_definition_v1' "$applications"
+grep -Fq 'create or replace function public.create_workflow_application_v1' "$applications"
+grep -Fq 'create or replace function public.archive_workflow_application_v1' "$applications"
+grep -Fq "coalesce(auth.jwt()->>'aal','aal1') <> 'aal2'" "$applications"
+grep -Fq 'workflow_application_not_authorized' "$applications"
+grep -Fq 'workflow_property_not_available' "$applications"
+grep -Fq 'workflow_room_not_available' "$applications"
+grep -Fq 'workflow_occupancy_not_available' "$applications"
+grep -Fq 'workflow_application_created' "$applications"
+grep -Fq 'workflow_application_archived' "$applications"
+grep -Fq 'revoke execute on function public.publish_workflow_definition_v1(uuid,bigint) from anon' "$applications"
+grep -Fq 'revoke execute on function public.create_workflow_application_v1(uuid,uuid,uuid,uuid) from anon' "$applications"
 
 echo 'Workflow definition schema smoke checks passed'

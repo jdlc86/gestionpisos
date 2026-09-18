@@ -182,13 +182,26 @@ Es la **receta**.
 
 Ejemplos:
 
-- Limpieza semanal del Piso A;
-- Inspección trimestral del Piso B;
+- Limpieza semanal de una vivienda;
+- Inspección trimestral de una vivienda;
 - Check-out de una habitación;
 - Revisión posterior a reparación;
 - Comprobación de humedad bajo fregadero.
 
 La definición describe el comportamiento, pero no representa una ejecución concreta.
+
+### 3.2.1 Aplicación concreta
+
+Es la vinculación entre una **versión publicada de la receta** y una entidad real.
+
+Ejemplos:
+
+- `Limpieza semanal v1 → Piso A`;
+- `Inspección de habitación v2 → Piso B → Habitación 3`;
+- `Check-out v1 → ocupación vigente X`.
+
+El Creador solo define el tipo lógico de ámbito. El UUID del piso, habitación u ocupación se selecciona después, al aplicar la versión publicada. Así una misma receta puede reutilizarse en varios destinos sin duplicarse.
+
 
 ### 3.3 Disparador
 
@@ -312,7 +325,11 @@ La cadena general es:
 
 `Definición de Flujo`
 
-→ el **disparador** decide cuándo ejecutarla
+→ se publica una **Versión inmutable**
+
+→ se crea una **Aplicación concreta** sobre una entidad real
+
+→ el **disparador** de esa aplicación decide cuándo ejecutarla
 
 → se crea una **Ejecución**
 
@@ -338,9 +355,11 @@ La relación debe ser referencial y versionada, no mediante copia arbitraria de 
 
 ### Definición
 
-**Nombre:** Limpieza semanal Piso A
+**Nombre:** Limpieza semanal
 
-**Ámbito:** Piso A
+**Ámbito lógico:** Piso
+
+**Aplicación de ejemplo:** Piso A
 
 **Disparador:** cada lunes
 
@@ -462,7 +481,7 @@ Modificar un patrón crea una nueva versión lógica sin reinterpretar evidencia
 
 ### Congelación de recursos en una ejecución
 
-Cuando una ejecución se genera, debe quedar asociada a la **versión exacta** del patrón seleccionada.
+La receta puede declarar que necesita evidencia fotográfica, pero los patrones ligados físicamente a una vivienda se seleccionan en la aplicación concreta. Cuando una ejecución se genera, debe quedar asociada a la **versión exacta** del patrón realmente utilizada.
 
 Ejemplo:
 
@@ -656,6 +675,7 @@ Los nombres finales de tablas se decidirán después de auditar el esquema actua
 
 - `workflow_definitions` — receta;
 - `workflow_definition_versions` — versiones publicadas;
+- `workflow_applications` — vinculación de una versión publicada con una entidad real de su ámbito;
 - `workflow_triggers` — reglas de activación;
 - `workflow_assignment_rules` — reglas de asignación;
 - `workflow_steps` — pasos ordenados;
@@ -681,8 +701,8 @@ Primero debe identificarse qué estructuras existentes pueden generalizarse sin 
 Responsabilidades del motor:
 
 1. detectar o recibir un disparador;
-2. seleccionar una versión publicada de la definición;
-3. resolver el ámbito;
+2. seleccionar una aplicación concreta;
+3. cargar la versión publicada asociada y validar su ámbito real;
 4. resolver la asignación server-side;
 5. congelar recursos/versiones relevantes;
 6. crear ejecución y tareas de forma idempotente;
@@ -837,6 +857,6 @@ La arquitectura objetivo puede resumirse así:
 
 Cadena:
 
-`Flujo → Disparador → Ejecución → Asignación → Tareas → Recursos → Evidencias → Revisión/Cierre → Historial`
+`Flujo → Versión publicada → Aplicación concreta → Disparador → Ejecución → Asignación → Tareas → Recursos → Evidencias → Revisión/Cierre → Historial`
 
 Esta separación permite que GestionPisos añada nuevos procesos sin multiplicar subsistemas independientes y convierte la infraestructura fotográfica ya construida en una capacidad transversal del producto.

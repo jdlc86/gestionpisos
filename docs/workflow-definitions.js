@@ -2,6 +2,7 @@ import { supabase } from "./supabase-client.js";
 
 const list=document.getElementById("workflowDefinitions");
 const status=document.getElementById("definitionsStatus");
+let versionsByDefinition=new Map();
 
 const labels={
   flowType:{cleaning:"Limpieza",inspection:"Inspección",maintenance:"Mantenimiento",checkin:"Check-in",checkout:"Check-out",custom:"Personalizado"},
@@ -23,11 +24,12 @@ function dateTime(value){
   if(!value)return "—";
   try{return new Intl.DateTimeFormat("es-ES",{dateStyle:"medium",timeStyle:"short"}).format(new Date(value))}catch{return value}
 }
+function latestVersion(row){return versionsByDefinition.get(row.id)?.[0]||null}
 function activationText(row){
-  const base=text("triggerType",row.trigger_type);
-  if(row.status!=="draft")return base;
-  const spec=row.draft_spec&&typeof row.draft_spec==="object"?row.draft_spec:{};
-  if(row.trigger_type==="recurring"){
+  const spec=row.status==="published"?(latestVersion(row)?.spec||{}):(row.draft_spec&&typeof row.draft_spec==="object"?row.draft_spec:{});
+  const trigger=String(spec.triggerType||row.trigger_type||"");
+  const base=text("triggerType",trigger);
+  if(trigger==="recurring"){
     const recurrence=String(spec.recurrence||"");
     if(!recurrence)return base;
     if(recurrence==="custom"){
@@ -37,19 +39,48 @@ function activationText(row){
     }
     return base+" · "+text("recurrence",recurrence);
   }
-  if(row.trigger_type==="scheduled_once"){
+  if(trigger==="scheduled_once"){
     const scheduledAt=String(spec.scheduledAt||"").trim();
     return scheduledAt?base+" · "+dateTime(scheduledAt):base;
   }
   return base;
 }
-
+function errorText(error){
+  const message=String(error?.message||"");
+  if(message.includes("aal2_required"))return "Para publicar debes completar MFA (sesión AAL2). El borrador no se ha modificado.";
+  if(message.includes("workflow_authoring_incomplete"))return "El borrador todavía no tiene toda la configuración explícita.";
+  if(message.includes("workflow_draft_conflict"))return "El borrador cambió en otra sesión. Recarga antes de publicar.";
+  if(message.includes("workflow_publish_not_authorized"))return "Tu sesión no tiene autorización para publicar este flujo.";
+  return "No se pudo publicar. El borrador conserva su estado anterior.";
+}
 function meta(label,value){
   const box=document.createElement("div");box.className="definition-meta-item";
   const strong=document.createElement("strong");strong.textContent=label;
   const span=document.createElement("span");span.textContent=value||"Pendiente";
   box.append(strong,span);return box;
 }
+
+async function publishDefinition(row,button){
+  if(!window.confirm("¿Publicar esta receta? Se creará una versión inmutable. El piso, habitación u ocupación concreta se seleccionará después en Aplicaciones."))return;
+  button.disabled=true;
+  const original=button.textContent;
+  button.textContent="Publicando…";
+  setStatus("Validando y publicando la receta…");
+  const {data,error}=await supabase.rpc("publish_workflow_definition_v1",{
+    p_definition_id:row.id,
+    p_expected_revision:row.revision
+  });
+  if(error){
+    button.disabled=false;
+    button.textContent=original;
+    setStatus(errorText(error),true);
+    return;
+  }
+  const published=Array.isArray(data)?data[0]:null;
+  setStatus("Versión v"+(published?.version||1)+" publicada. Ahora puedes aplicarla a un destino real.");
+  await load();
+}
+
 function card(row){
   const article=document.createElement("article");article.className="definition-card";
   const head=document.createElement("div");head.className="definition-card-head";
@@ -61,17 +92,19 @@ function card(row){
     badge.classList.toggle("definition-badge--incomplete",!row.authoring_complete);
   }else{
     badge.textContent=text("status",row.status);
+    badge.classList.toggle("definition-badge--complete",row.status==="published");
   }
   head.append(title,badge);
 
+  const version=latestVersion(row);
   const details=document.createElement("div");details.className="definition-meta";
   details.append(
     meta("Configuración",row.authoring_complete?"Completa":"Pendiente"),
     meta("Tipo",text("flowType",row.flow_type)),
-    meta("Ámbito",text("scopeType",row.scope_type)),
+    meta("Ámbito lógico",text("scopeType",row.scope_type)),
     meta("Activación",activationText(row)),
     meta("Asignación",text("assignmentType",row.assignment_type)),
-    meta("Revisión",String(row.revision||1)),
+    meta(row.status==="published"?"Versión publicada":"Revisión",row.status==="published"?"v"+(version?.version||"?"):String(row.revision||1)),
     meta("Último cambio",dateTime(row.updated_at))
   );
 
@@ -82,7 +115,23 @@ function card(row){
     edit.href="./workflow-builder.html?id="+encodeURIComponent(row.id);
     edit.textContent=row.authoring_complete?"Revisar borrador":"Completar borrador";
     actions.append(edit);
+
+    if(row.authoring_complete){
+      const publish=document.createElement("button");
+      publish.type="button";
+      publish.className="primary";
+      publish.textContent="Publicar versión";
+      publish.addEventListener("click",()=>publishDefinition(row,publish));
+      actions.append(publish);
+    }
+  }else if(row.status==="published"){
+    const applications=document.createElement("a");
+    applications.className="primary";
+    applications.href="./workflow-applications.html?definition="+encodeURIComponent(row.id);
+    applications.textContent="Aplicaciones";
+    actions.append(applications);
   }
+
   article.append(head,details,actions);
   return article;
 }
@@ -129,16 +178,37 @@ async function load(){
     return;
   }
 
+  const rows=data||[];
+  versionsByDefinition=new Map();
+  if(rows.length){
+    const {data:versionData,error:versionError}=await supabase
+      .from("workflow_definition_versions_v2")
+      .select("id,definition_id,version,spec,published_at")
+      .in("definition_id",rows.map(row=>row.id))
+      .order("version",{ascending:false});
+    if(versionError){
+      setStatus("No se pudieron consultar las versiones publicadas.",true);
+      return;
+    }
+    (versionData||[]).forEach(version=>{
+      const bucket=versionsByDefinition.get(version.definition_id)||[];
+      bucket.push(version);
+      versionsByDefinition.set(version.definition_id,bucket);
+    });
+  }
+
   list.replaceChildren();
-  if(!data?.length){
+  if(!rows.length){
     list.append(emptyState());
     setStatus("No hay definiciones guardadas en tu ámbito.");
     return;
   }
-  data.forEach(row=>list.append(card(row)));
-  const incomplete=data.filter(row=>row.status==="draft"&&!row.authoring_complete).length;
+  rows.forEach(row=>list.append(card(row)));
+  const incomplete=rows.filter(row=>row.status==="draft"&&!row.authoring_complete).length;
+  const published=rows.filter(row=>row.status==="published").length;
   setStatus(
-    data.length+" definición"+(data.length===1?"":"es")+" visible"+(data.length===1?"":"s")+" en tu ámbito"
+    rows.length+" definición"+(rows.length===1?"":"es")+" visible"+(rows.length===1?"":"s")
+    +(published?" · "+published+" publicada"+(published===1?"":"s"):"")
     +(incomplete?" · "+incomplete+" borrador"+(incomplete===1?"":"es")+" incompleto"+(incomplete===1?"":"s")+".":".")
   );
 }

@@ -1,6 +1,6 @@
 # Estado de implementación — Flujos de Trabajo
 
-Fecha de referencia: **2026-09-18**.
+Fecha de referencia: **2026-09-19**.
 
 Este documento resume el estado real de implementación de **Flujos de Trabajo** y complementa:
 
@@ -63,6 +63,30 @@ La persistencia usa:
 
 `sessionStorage` se usa únicamente para un borrador local todavía no ligado a una definición guardada. Tras el primer guardado servidor, la caché local genérica se elimina y los flujos persistidos se reabren por `id`; así una definición publicada no reaparece como si fuera un flujo nuevo.
 
+### Separación de autoría y operación
+
+El **Creador de Flujos** concentra ahora toda la autoría:
+
+- nuevo borrador;
+- lista de borradores guardados;
+- retomar/editar;
+- publicar la primera versión;
+- editar y publicar una futura versión.
+
+Los borradores iniciales continúan en `workflow_definitions_v2(status='draft')`.
+
+Cuando una definición ya está publicada, una futura versión se prepara en `workflow_definition_revision_drafts_v2`. Ese borrador conserva `base_version`, revisión optimista y especificación separada. Mientras se edita v2, v1 y sus aplicaciones siguen intactas.
+
+La publicación de una nueva versión:
+
+- exige AAL2;
+- añade una nueva fila inmutable a `workflow_definition_versions_v2`;
+- es idempotente ante reintentos;
+- actualiza la metadata canónica únicamente después de publicar;
+- no migra aplicaciones creadas con versiones anteriores.
+
+**Mis Flujos** deja de ser zona de autoría: solo muestra recetas publicadas. Si existe una futura versión en borrador, la tarjeta lo indica y enlaza de vuelta al Creador.
+
 ### Borradores parciales y decisiones explícitas
 
 El Creador permite guardar un borrador con solo un nombre y continuar más tarde. Las opciones de tipo, ámbito, activación, asignación, pasos y cierre ya no tienen decisiones de negocio preseleccionadas.
@@ -91,22 +115,22 @@ Un borrador guardado todavía no:
 
 ## 4. Mis Flujos — estado actual
 
-`workflow-definitions.html` ya consulta `workflow_definitions_v2` mediante RLS.
+`workflow-definitions.html` es el **catálogo operativo** y consulta únicamente definiciones `published` mediante RLS.
 
-Muestra:
+Cada tarjeta se construye desde la última versión inmutable publicada y muestra:
 
 - nombre;
-- estado;
+- versión publicada;
 - tipo;
 - ámbito conceptual;
 - activación;
 - asignación;
-- revisión;
-- fecha de último cambio.
+- cierre;
+- fecha de publicación.
 
-Los borradores pueden reabrirse en el Creador con su `id` y continuar editándose.
+Desde aquí se accede a **Aplicaciones**. También existe **Crear nueva versión**; esa acción prepara un borrador separado y redirige al Creador. Si ese borrador ya existe, la tarjeta indica que vN sigue operativa y permite **Continuar nueva versión**.
 
-Los borradores configurados pueden publicarse mediante RPC protegido. Una definición publicada ofrece acceso a **Aplicaciones**; `Ejecutar ahora` crea de forma idempotente la ejecución y su tarea materializada. Las primeras acciones atómicas ya pueden avanzar tarea + ejecución juntas.
+Mis Flujos no edita ni publica borradores directamente.
 
 ## 5. Versiones publicadas y aplicaciones concretas
 
@@ -192,8 +216,8 @@ Las pruebas se ejecutan también en PostgreSQL 17 desechable desde Schema Guard.
 | Módulo | Estado | Observación |
 | --- | --- | --- |
 | Flujos de Trabajo | Implementado | Hub transversal |
-| Creador de Flujos | Implementado con borradores parciales y completitud explícita | Define receta lógica |
-| Mis Flujos | Implementado; distingue incompletos/configurados/publicados | Publicación controlada disponible |
+| Creador de Flujos | Implementado como workspace de autoría | Nuevo/editar/publicar borradores y futuras versiones |
+| Mis Flujos | Implementado como catálogo operativo published-only | Aplicaciones + crear/continuar nueva versión |
 | Aplicaciones | Implementado para vincular versión publicada con entidad real | Permite `Ejecutar ahora` |
 | Banco Fotográfico | Operativo/reutilizado | Patrones vinculables a aplicaciones y congelados por ejecución |
 | Versiones publicadas | Implementado | Publicación RPC inmutable e idempotente |
@@ -301,8 +325,26 @@ Se implementa `closeType=human_review` sin crear una cola de revisión paralela:
 - reintentos no duplican histórico/eventos;
 - regresión PostgreSQL cubre aprobación, rechazo, actor no autorizado, ámbito organización y revisión fotográfica.
 
-Este incremento está implementado y cubierto por regresión automatizada. La validación E2E real en la PWA se realizará como siguiente prueba antes de dar por cerrado el recorrido de revisión humana en producción de pruebas.
+Este incremento está implementado y cubierto por regresión automatizada. Además, el 19/09/2026 se validó E2E real en la PWA el recorrido **Foto + human_review**:
 
+- una ejecución fue aprobada: run `approved`, tarea + ejecución `completed`, revisor/fecha, histórico, evento y auditoría únicos;
+- dos ejecuciones independientes fueron rechazadas con motivos distintos: run/tarea/ejecución `rejected`, motivo conservado y exactamente un histórico/evento/auditoría por ejecución.
+
+Queda pendiente el E2E real de `human_review` **sin Foto** y con revisor ADMIN distinto del asignado.
+
+
+### Incremento — Separación Creador / Mis Flujos
+
+La autoría queda separada de la operación:
+
+- los borradores y la publicación viven en Creador;
+- Mis Flujos muestra únicamente versiones publicadas;
+- `workflow_definition_revision_drafts_v2` permite preparar vN+1 sin tocar vN;
+- publicar vN+1 no modifica aplicaciones existentes de vN;
+- el borrador de nueva versión usa concurrencia optimista y publicación idempotente;
+- la PWA pasa a shell v11 para refrescar la nueva organización de pantallas.
+
+La regresión específica demuestra v1 → aplicación v1 → borrador v2 → publicación v2 manteniendo la aplicación vinculada a v1.
 
 ## 12. Próximo incremento técnico
 
@@ -310,12 +352,11 @@ El paso **Fotografía** y el cierre **human_review** ya están conectados a la i
 
 Orden recomendado:
 
-1. validar en producción de pruebas un workflow Foto + `human_review`, tanto aprobación como rechazo;
-2. validar un workflow sin Foto que llegue a `waiting_review` y sea revisado por un ADMIN distinto del asignado;
-3. implementar checklist/documento con el mismo principio de bloqueo de cierre;
-4. completar la vista de Historial transversal ejecución → tarea → evidencia → revisión → cierre;
-5. añadir notificaciones operativas específicas de cierre/rechazo;
-6. después habilitar recurrencias automáticas.
+1. validar un workflow sin Foto que llegue a `waiting_review` y sea revisado por un ADMIN distinto del asignado;
+2. implementar checklist/documento con el mismo principio de bloqueo de cierre;
+3. completar la vista de Historial transversal ejecución → tarea → evidencia → revisión → cierre;
+4. añadir notificaciones operativas específicas de cierre/rechazo;
+5. después habilitar recurrencias automáticas.
 
 La recurrencia automática permanece posterior a estos E2E para no automatizar un ciclo que todavía tenga tipos de paso incompletos.
 

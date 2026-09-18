@@ -52,5 +52,7 @@ grep -Fq 'workflow_scheduled_at_invalid' "$triggers"
 grep -Fq 'workflow_custom_recurrence_invalid' "$triggers"
 grep -Fq "v_trigger_type is distinct from 'recurring'" "$triggers"
 grep -Fq "v_trigger_type is distinct from 'scheduled_once'" "$triggers"
+grep -Fq "not (draft_spec ? 'scheduledAt')" "$triggers"
+grep -Fq 'set authoring_complete = public.workflow_authoring_complete_v1(draft_spec)' "$triggers"
 
 echo 'Workflow definition schema smoke checks passed'

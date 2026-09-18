@@ -5,6 +5,21 @@ let ownerSubmitDecision=null;
 let refreshTimer=null;
 let refreshRunning=false;
 let lastOrganizationId=null;
+let editingExternalContext=null;
+let externalEmailChangeBypass=false;
+
+function normalizeEmail(value){return String(value||"").trim().toLowerCase();}
+function showEditorEmailError(message){
+  const error=$("editorError");
+  if(error){error.textContent=message;error.hidden=false;}
+  setPortfolioStatus(message,"Cambio de email bloqueado.");
+}
+function resumeEditorSubmit(){
+  const form=$("editorForm");if(!form)return;
+  externalEmailChangeBypass=true;
+  form.requestSubmit();
+  queueMicrotask(()=>{externalEmailChangeBypass=false;});
+}
 
 function activeView(){return document.querySelector(".segment.is-active")?.dataset.view||"owners";}
 async function effectiveOrganizationId(){
@@ -70,6 +85,8 @@ function friendlyWelcomeError(code){
   if(code.includes("tenant_not_active"))return "El inquilino debe estar en estado Alta antes de enviar la bienvenida.";
   if(code.includes("invitation_cooldown"))return "La invitación se acaba de solicitar. Espera aproximadamente un minuto antes de reenviarla.";
   if(code.includes("external_welcome_permission_required"))return "Tu usuario no tiene permiso para enviar esta bienvenida.";
+  if(code.includes("external_active_account_email_change_requires_account_flow"))return "Ese acceso ya está activado. El email de acceso no puede cambiarse desde la ficha; necesita un flujo específico de cambio de cuenta.";
+  if(code.includes("external_onboarding_revoke_failed")||code.includes("external_stale_onboarding_revoke_failed"))return "No se pudo invalidar de forma segura la invitación anterior. El email no se ha cambiado.";
   return "No se pudo enviar la bienvenida. La ficha no se ha cruzado con ninguna otra identidad.";
 }
 
@@ -131,9 +148,12 @@ document.addEventListener("click",event=>{
   if(action){event.preventDefault();event.stopPropagation();sendWelcome(target.dataset.subjectType,target.dataset.subjectId,target).catch(()=>{});}
 },true);
 
-function onboardingBadge(row){
+function onboardingBadge(row,currentEmail){
   if(!row)return {label:"Sin invitación",button:"Enviar bienvenida"};
   if(row.status==="pending"){
+    if(normalizeEmail(row.email)!==normalizeEmail(currentEmail)){
+      return {label:"Email cambiado · nueva invitación necesaria",button:"Enviar nueva bienvenida"};
+    }
     const delivery=row.last_delivery_status;
     return {
       label:delivery==="sent"?"Pendiente de activación":delivery==="not_configured"?"Correo pendiente":delivery==="failed"?"Envío no confirmado":"Invitación pendiente",
@@ -142,12 +162,12 @@ function onboardingBadge(row){
   }
   return {label:"Acceso activado",button:null};
 }
-function decorateCard(card,subjectType,subjectId,row,canSend=true){
+function decorateCard(card,subjectType,subjectId,row,currentEmail,canSend=true){
   if(card.querySelector("[data-external-onboarding-ui]"))return;
   const meta=card.querySelector(".record-meta");
   const actions=card.querySelector(".record-actions");
   if(!meta||!actions)return;
-  const state=onboardingBadge(row);
+  const state=onboardingBadge(row,currentEmail);
   const badge=document.createElement("span");badge.className="relation-chip";badge.dataset.externalOnboardingUi="1";badge.textContent=`Acceso: ${state.label}`;meta.appendChild(badge);
   if(state.button&&canSend){const button=document.createElement("button");button.type="button";button.className="secondary";button.dataset.externalOnboardingUi="1";button.dataset.externalWelcome="1";button.dataset.subjectType=subjectType;button.dataset.subjectId=subjectId;button.textContent=state.button;actions.appendChild(button);}
 }
@@ -163,13 +183,13 @@ async function refreshExternalOnboarding(){
     const statusByKey=new Map(rows.map(row=>[`${row.subject_type}:${row.subject_id}`,row]));
     const cards=[...document.querySelectorAll("#records .record-card")];
     if(view==="owners"){
-      for(const card of cards){const id=card.querySelector('button[data-action="edit"]')?.dataset.id;if(!id)continue;const email=card.querySelector("p")?.textContent||"";decorateCard(card,"owner",id,statusByKey.get(`owner:${id}`),email.includes("@"));}
+      for(const card of cards){const id=card.querySelector('button[data-action="edit"]')?.dataset.id;if(!id)continue;const text=card.querySelector("p")?.textContent||"";const email=text.split(" · ")[0].trim();decorateCard(card,"owner",id,statusByKey.get(`owner:${id}`),email,email.includes("@"));}
     }else{
       const occupancyIds=cards.map(card=>card.querySelector('button[data-action="edit"]')?.dataset.id).filter(Boolean);
       if(!occupancyIds.length)return;
       const {data:occupancies}=await supabase.from("occupancies_v2").select("id,tenant_id,status").in("id",occupancyIds);
       const byOccupancy=new Map((occupancies||[]).map(row=>[row.id,row]));
-      for(const card of cards){const id=card.querySelector('button[data-action="edit"]')?.dataset.id;const oc=byOccupancy.get(id);if(!oc?.tenant_id)continue;decorateCard(card,"tenant",oc.tenant_id,statusByKey.get(`tenant:${oc.tenant_id}`),oc.status==="active");}
+      for(const card of cards){const id=card.querySelector('button[data-action="edit"]')?.dataset.id;const oc=byOccupancy.get(id);if(!oc?.tenant_id)continue;const text=card.querySelector("p")?.textContent||"";const email=text.split(" · ")[0].trim();decorateCard(card,"tenant",oc.tenant_id,statusByKey.get(`tenant:${oc.tenant_id}`),email,oc.status==="active");}
     }
   }finally{refreshRunning=false;}
 }

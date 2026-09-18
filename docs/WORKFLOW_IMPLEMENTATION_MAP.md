@@ -37,7 +37,7 @@ Cambios integrados previamente:
 - PR #196 → contrato del motor + Creador de Flujos local;
 - PR #197 → actualización documental del estado previo a persistencia.
 
-El incremento actual publica versiones inmutables, permite aplicaciones concretas y crea ejecuciones manuales idempotentes `pending`, pero **todavía no materializa tareas genéricas**.
+El incremento actual publica versiones inmutables, permite aplicaciones concretas, crea ejecuciones manuales idempotentes y **materializa tareas visibles reutilizando `tenant_tasks_v2`**.
 
 ## 1. Inventario funcional existente
 
@@ -314,7 +314,7 @@ Ya existe persistencia genérica para **identidad estable de definición y borra
 Falta implementar:
 
 - referencias persistentes/versionadas a recursos;
-- materialización/adopción de tareas;
+- acciones de tarea sincronizadas atómicamente con ejecución;
 - congelación explícita de recursos/versiones concretos;
 - transiciones posteriores de ejecución;
 - historial transversal que una definición, ejecución, tarea, evidencia y cierre.
@@ -329,7 +329,7 @@ La generalización/adaptación de la capa de tareas es el **siguiente incremento
 | --- | --- | --- |
 | Banco Fotográfico | `photo_patterns_v2` + editor/cámara | Reutilizar |
 | Evidencia fotográfica | `photo_verification_runs_v2` + `photo_verification_items_v2` | Reutilizar/adaptar |
-| Tarea de usuario | `tenant_tasks_v2` | Candidato a generalización aditiva |
+| Tarea de usuario | `tenant_tasks_v2` | Generalización aditiva implementada para `source_kind=workflow_execution` |
 | Acciones de tarea | `tenant_task_actions_v2` | Reutilizar |
 | Histórico de tarea | `tenant_task_history_v2` | Reutilizar |
 | Plantillas de transición | `tenant_task_workflow_templates_v2` | Reutilizar como subcomponente, no como flujo completo |
@@ -343,6 +343,7 @@ La generalización/adaptación de la capa de tareas es el **siguiente incremento
 | Disparador manual explícito | `execute_workflow_application_now_v1` | Implementado con idempotencia |
 | Regla de asignación inicial | Snapshot en `workflow_executions_v2` | Manual y responsable de piso soportados; otras bloqueadas explícitamente |
 | Ejecución genérica | `workflow_executions_v2` | Fase inicial `pending` implementada |
+| Tarea materializada | `tenant_tasks_v2` + `source_kind/source_id` | Implementada e idempotente; acciones aún bloqueadas |
 | Enlace genérico flujo→recurso | No existe persistente | Implementar sin copiar recursos |
 | Eventos transversales de ejecución | `workflow_execution_events_v2` | Evento inicial `created`; ciclo completo pendiente |
 
@@ -417,17 +418,16 @@ Implementado en esta fase:
 
 ## 8. Próximo incremento técnico
 
-El siguiente trabajo debe ser **materialización de tarea/pasos desde `workflow_executions_v2`**, no otra ejecución paralela.
+El siguiente trabajo debe ser **acciones de tarea sincronizadas con `workflow_executions_v2`**.
 
 Debe cubrir:
 
-- resolver de forma aditiva la limitación `tenant_tasks_v2.tenant_id NOT NULL`;
-- enlazar la tarea resultante con la ejecución;
-- conservar idempotencia al materializar trabajo;
-- reutilizar acciones/histórico existentes cuando encajen;
-- snapshot/binding de recursos para pasos que lo necesiten;
-- permisos/RLS y pruebas negativas;
-- trazabilidad para el futuro adaptador de Limpieza.
+- derivar acciones desde los pasos de la versión;
+- actualizar tarea + ejecución de forma atómica;
+- reutilizar `tenant_task_history_v2` y eventos de ejecución;
+- incorporar snapshot/binding de recursos cuando el paso lo necesite;
+- mantener permisos/RLS y pruebas negativas;
+- no habilitar cierre antes de satisfacer pasos obligatorios.
 
 La recurrencia automática se incorpora después de demostrar un recorrido manual extremo a extremo.
 

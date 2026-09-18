@@ -61,6 +61,28 @@ Mientras no exista un modelo multirol explícito:
 
 Esta regla es especialmente importante porque una misma dirección de email puede aparecer accidentalmente en fichas distintas durante pruebas o importaciones.
 
+## Cambio de email con invitación pendiente
+
+El email de la ficha y el email de la identidad pendiente deben representar la misma intención de acceso.
+
+Si una ficha OWNER/TENANT tiene una invitación `pending` y el gestor intenta cambiar su email:
+
+1. la interfaz debe advertir qué dirección recibió la invitación anterior;
+2. el gestor debe confirmar explícitamente el cambio;
+3. la identidad Auth pendiente anterior se deshabilita mediante backend privilegiado;
+4. solo después se marca el onboarding anterior como `revoked`, conservando histórico y auditoría;
+5. el cambio de email de la ficha queda permitido;
+6. la tarjeta pasa a **Sin invitación** / **Email cambiado · nueva invitación necesaria**;
+7. una nueva bienvenida crea una nueva identidad pendiente para el email actual.
+
+La invitación anterior nunca se considera transferida al nuevo email.
+
+Un trigger de base de datos impide cambiar directamente el email mientras exista un onboarding `pending` o `active` sin resolver. Así, saltarse la UI no puede dejar la ficha apuntando a un email distinto del acceso pendiente.
+
+Si el onboarding ya está `active`, el email de acceso **no puede cambiarse desde la edición ordinaria de Cartera**. Ese caso requiere un flujo específico de cambio de identidad/cuenta para no romper la relación Auth ya activa.
+
+Para inconsistencias históricas donde la ficha ya cambió pero el onboarding todavía apunta al email antiguo, la tarjeta debe mostrar **Email cambiado · nueva invitación necesaria**. Al enviar una nueva bienvenida, el backend revoca primero la identidad pendiente antigua y después prepara la nueva.
+
 ## Entrega y antiabuso
 
 - Proveedor inicial preferido: Resend.

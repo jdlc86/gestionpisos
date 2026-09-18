@@ -45,6 +45,53 @@ export type StaffInvitationResult = {
   provider_message_id?: string | null;
 };
 
+function normalizeEmail(value: unknown) {
+  return String(value || "").trim().toLowerCase();
+}
+
+async function assertStaffInvitationEmailInvariant(
+  admin: ReturnType<typeof createClient>,
+  input: { userId: string; organizationId: string; email: string },
+) {
+  const expectedEmail = normalizeEmail(input.email);
+  const { data: onboarding, error: onboardingError } = await admin
+    .from("internal_staff_onboarding")
+    .select("invitation_email,status")
+    .eq("user_id", input.userId)
+    .eq("organization_id", input.organizationId)
+    .maybeSingle();
+  if (onboardingError || !onboarding || onboarding.status !== "pending") {
+    throw new Error("pending_onboarding_required");
+  }
+
+  const invitationEmail = normalizeEmail(onboarding.invitation_email);
+  const { data: profile, error: profileError } = await admin
+    .from("profiles")
+    .select("email,status,archived_at")
+    .eq("user_id", input.userId)
+    .maybeSingle();
+  if (profileError || !profile || profile.status !== "active" || profile.archived_at) {
+    throw new Error("active_profile_required");
+  }
+
+  const { data: authData, error: authError } = await admin.auth.admin.getUserById(input.userId);
+  const authEmail = normalizeEmail(authData?.user?.email);
+  const profileEmail = normalizeEmail(profile.email);
+
+  if (
+    authError ||
+    !authData?.user ||
+    !invitationEmail ||
+    invitationEmail !== expectedEmail ||
+    profileEmail !== invitationEmail ||
+    authEmail !== invitationEmail
+  ) {
+    throw new Error("internal_staff_invitation_email_mismatch");
+  }
+
+  return invitationEmail;
+}
+
 export async function sendStaffOnboardingInvitation(
   admin: ReturnType<typeof createClient>,
   input: {
@@ -56,6 +103,12 @@ export async function sendStaffOnboardingInvitation(
     role: "admin" | "employee";
   },
 ): Promise<StaffInvitationResult> {
+  const invitationEmail = await assertStaffInvitationEmailInvariant(admin, {
+    userId: input.userId,
+    organizationId: input.organizationId,
+    email: input.email,
+  });
+
   const { data: claim, error: claimError } = await admin.rpc("claim_internal_staff_invitation_attempt", {
     p_user_id: input.userId,
     p_organization_id: input.organizationId,
@@ -88,7 +141,7 @@ export async function sendStaffOnboardingInvitation(
     const redirectTo = `${appBaseUrl()}/activate-account.html?onboarding=1`;
     const { data, error } = await admin.auth.admin.generateLink({
       type: "recovery",
-      email: input.email,
+      email: invitationEmail,
       options: { redirectTo },
     });
     if (error) throw error;
@@ -122,7 +175,7 @@ export async function sendStaffOnboardingInvitation(
       },
       body: JSON.stringify({
         from: sender,
-        to: [input.email],
+        to: [invitationEmail],
         subject: "Activa tu cuenta de GestionPisos",
         html,
       }),

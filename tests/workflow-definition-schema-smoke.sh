@@ -16,7 +16,7 @@ decisions='supabase/migrations/20260918193000_workflow_accept_reject_decision.sq
 human_review='supabase/migrations/20260918233000_workflow_human_review.sql'
 review_access='supabase/migrations/20260918234500_workflow_review_actor_visibility_hardening.sql'
 photo_review_hardening='supabase/migrations/20260919001000_photo_review_read_authorization_hardening.sql'
-authoring_separation='supabase/migrations/20260919004500_workflow_authoring_operational_separation.sql'
+authoring_separation='supabase/migrations/20260918234456_workflow_authoring_operational_separation.sql'
 
 test -s "$migration"
 test -s "$hardening"

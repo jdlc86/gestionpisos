@@ -6,7 +6,7 @@ Este contrato define la semántica mínima que debe respetar el futuro motor tra
 
 Cadena canónica:
 
-`Definición → Versión publicada → Disparador → Ejecución → Asignación → Tareas → Recursos → Evidencias → Revisión/Cierre → Historial`
+`Definición → Versión publicada → Aplicación concreta → Disparador → Ejecución → Asignación → Tareas → Recursos → Evidencias → Revisión/Cierre → Historial`
 
 El motor no pertenece a Limpieza, Inspecciones, Mantenimiento ni Check-in. Es infraestructura común. Los dominios se expresan como recetas y adaptadores sobre este motor.
 
@@ -30,10 +30,10 @@ Reglas:
 
 ## 2. Versión publicada
 
-Cada publicación produce una versión inmutable de la receta. La versión congela al menos:
+Cada publicación produce una versión inmutable de la receta lógica. La versión congela al menos:
 
 - tipo/categoría del flujo;
-- ámbito;
+- tipo lógico de ámbito;
 - disparador;
 - regla de asignación;
 - pasos ordenados;
@@ -42,11 +42,11 @@ Cada publicación produce una versión inmutable de la receta. La versión conge
 - política de notificación;
 - versión de adaptador de dominio si existe.
 
-Una ejecución siempre referencia una única versión publicada.
+Una ejecución siempre referencia una única versión publicada y una aplicación concreta de esa versión.
 
-## 3. Ámbito
+## 3. Ámbito y aplicación concreta
 
-El ámbito debe ser explícito y validable server-side. Tipos iniciales previstos:
+La definición contiene el **tipo lógico de ámbito**. Tipos iniciales:
 
 - organización;
 - piso;
@@ -54,7 +54,13 @@ El ámbito debe ser explícito y validable server-side. Tipos iniciales previsto
 - ocupación/inquilino;
 - entidad futura expresamente soportada.
 
-No se acepta un nombre visible como credencial de ámbito. Las referencias reales son IDs validados contra organización, permisos y RLS.
+Seleccionar `piso` en el Creador significa “esta receta está diseñada para ejecutarse sobre un piso”; no selecciona todavía qué piso.
+
+Después de publicar, una **aplicación concreta** vincula la versión inmutable con la entidad real. Esa capa vive en `workflow_applications_v2` y se rige por `WORKFLOW_APPLICATIONS_CONTRACT.md`.
+
+No se acepta un nombre visible como credencial. Las referencias reales son UUID validados server-side contra organización, relaciones, estado y RLS.
+
+Una misma versión puede aplicarse a varios destinos sin duplicar la definición. Para habitación, la relación real es `Piso → Habitación`; para ocupación, el piso puede usarse como filtro de navegación y el servidor valida la ocupación real.
 
 ## 4. Disparadores
 
@@ -77,7 +83,7 @@ Todo disparador automático debe producir una `idempotency_key` determinista par
 
 Ejemplos conceptuales:
 
-- recurrencia semanal: `workflow_version + scope + periodo`;
+- recurrencia semanal: `workflow_application + periodo`;
 - evento: `workflow_version + source_event_id`.
 
 La idempotencia se valida en servidor/BD, nunca solo en cliente.
@@ -132,7 +138,7 @@ Reglas:
 
 ## 8. Ejecución
 
-Una ejecución es una instancia concreta e inmutable de una versión publicada.
+Una ejecución es una instancia concreta e inmutable de una aplicación y de la versión publicada que esa aplicación referencia.
 
 Debe conservar al menos:
 
@@ -272,7 +278,7 @@ Reglas de autoría:
 - el servidor conserva un indicador derivado de completitud de autoría; el cliente no puede autoatribuirse ese estado;
 - un borrador incompleto puede guardarse y retomarse;
 - un borrador creado antes del contrato de decisiones explícitas se trata como incompleto hasta ser revisado;
-- **configuración completa no equivale todavía a publicable**: publicar además debe validar ámbito real, recursos y cualquier condición server-side del contrato;
+- **configuración completa no equivale a flujo operativo**: publicar congela la receta lógica; después debe existir una aplicación concreta validada y, más adelante, el motor de ejecución;
 - ningún borrador, completo o incompleto, puede presentarse como flujo publicado ni ejecutable.
 
 ## 18. Condiciones antes del primer DDL

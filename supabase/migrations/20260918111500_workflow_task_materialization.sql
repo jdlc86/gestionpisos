@@ -64,34 +64,15 @@ drop policy if exists tenant_tasks_v2_root_all on public.tenant_tasks_v2;
 drop policy if exists tenant_tasks_v2_admin_org_all on public.tenant_tasks_v2;
 drop policy if exists tenant_tasks_v2_root_read on public.tenant_tasks_v2;
 drop policy if exists tenant_tasks_v2_admin_org_read on public.tenant_tasks_v2;
+drop policy if exists tenant_tasks_v2_admin_read on public.tenant_tasks_v2;
 drop policy if exists tenant_tasks_v2_assignee_read on public.tenant_tasks_v2;
 drop policy if exists tenant_tasks_v2_tenant_read on public.tenant_tasks_v2;
 drop policy if exists tenant_tasks_v2_property_operator_read on public.tenant_tasks_v2;
 
-create policy tenant_tasks_v2_root_read
+create policy tenant_tasks_v2_admin_read
 on public.tenant_tasks_v2
 for select to authenticated
-using (
-  exists(
-    select 1 from public.user_roles ur
-    where ur.user_id=auth.uid()
-      and ur.role='root'
-      and ur.revoked_at is null
-  )
-);
-
-create policy tenant_tasks_v2_admin_org_read
-on public.tenant_tasks_v2
-for select to authenticated
-using (
-  exists(
-    select 1 from public.user_roles ur
-    where ur.user_id=auth.uid()
-      and ur.organization_id=tenant_tasks_v2.organization_id
-      and ur.role='admin'
-      and ur.revoked_at is null
-  )
-);
+using (public.workflow_can_read_definitions_v1(organization_id));
 
 create policy tenant_tasks_v2_assignee_read
 on public.tenant_tasks_v2

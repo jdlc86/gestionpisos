@@ -57,8 +57,8 @@ begin
     raise exception 'pending_external_onboarding_required' using errcode='55000';
   end if;
 
-  if v_replacement_email is null
-    or v_replacement_email=lower(btrim(v_row.email)) then
+  if v_replacement_email is not null
+    and v_replacement_email=lower(btrim(v_row.email)) then
     raise exception 'external_replacement_email_invalid' using errcode='22023';
   end if;
 
@@ -139,6 +139,7 @@ as $$
 declare
   v_subject_type text;
   v_onboarding_status text;
+  v_onboarding_email text;
 begin
   if lower(btrim(coalesce(old.email,'')))=lower(btrim(coalesce(new.email,''))) then
     return new;
@@ -146,22 +147,29 @@ begin
 
   if tg_table_name='owners' then
     v_subject_type:='owner';
-    select o.status
-    into v_onboarding_status
+    select o.status,lower(btrim(o.email))
+    into v_onboarding_status,v_onboarding_email
     from public.external_account_onboarding o
     where o.owner_id=old.id and o.status in ('pending','active')
     order by o.created_at desc
     limit 1;
   elsif tg_table_name='tenants_v2' then
     v_subject_type:='tenant';
-    select o.status
-    into v_onboarding_status
+    select o.status,lower(btrim(o.email))
+    into v_onboarding_status,v_onboarding_email
     from public.external_account_onboarding o
     where o.tenant_id=old.id and o.status in ('pending','active')
     order by o.created_at desc
     limit 1;
   else
     raise exception 'external_email_guard_invalid_table' using errcode='55000';
+  end if;
+
+  -- If a previously inconsistent business email is changed back to the exact
+  -- email of the current onboarding, the edit repairs the mismatch and is safe.
+  if v_onboarding_status in ('pending','active')
+    and lower(btrim(coalesce(new.email,'')))=coalesce(v_onboarding_email,'') then
+    return new;
   end if;
 
   if v_onboarding_status='pending' then

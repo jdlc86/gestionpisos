@@ -3,6 +3,7 @@
 
 create schema auth;
 create schema extensions;
+create schema storage;
 
 create extension pgcrypto with schema extensions;
 
@@ -12,6 +13,14 @@ create role service_role nologin;
 
 create table auth.users (
   id uuid primary key
+);
+
+create table storage.objects (
+  id uuid primary key default extensions.gen_random_uuid(),
+  bucket_id text not null,
+  name text not null,
+  owner_id text,
+  unique(bucket_id,name)
 );
 
 create function auth.jwt()
@@ -33,5 +42,5 @@ as $$
   select nullif(auth.jwt() ->> 'sub', '')::uuid;
 $$;
 
-grant usage on schema auth, public to authenticated, service_role;
+grant usage on schema auth, public, storage to authenticated, service_role;
 grant execute on function auth.jwt(), auth.uid() to authenticated;

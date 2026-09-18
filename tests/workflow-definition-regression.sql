@@ -2580,12 +2580,29 @@ $workflow_review_forbidden_actor$;
 select set_config(
   'request.jwt.claims',
   jsonb_build_object(
-    'sub',current_setting('gestionpisos.workflow_root'),
+    'sub',current_setting('gestionpisos.workflow_admin_1'),
     'role','authenticated',
     'aal','aal2'
   )::text,
   true
 );
+
+do $workflow_review_agency_rls$
+declare
+  v_visible integer;
+begin
+  select count(*) into v_visible
+  from public.tenant_task_actions_v2
+  where task_id=current_setting('gestionpisos.workflow_review_task_id')::uuid
+    and from_status='waiting_review'
+    and actor='agency'
+    and active=true;
+
+  if v_visible<>2 then
+    raise exception 'authorized admin reviewer cannot read agency workflow actions';
+  end if;
+end;
+$workflow_review_agency_rls$;
 
 do $workflow_review_approve$
 declare

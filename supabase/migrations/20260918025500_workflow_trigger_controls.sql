@@ -206,7 +206,32 @@ begin
     raise exception 'workflow_recurrence_invalid' using errcode = '22023';
   end if;
   if v_scheduled_at is not null
-    and v_scheduled_at !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}
+    and v_scheduled_at !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}$' then
+    raise exception 'workflow_scheduled_at_invalid' using errcode = '22023';
+  end if;
+  if v_custom_every is not null then
+    if v_custom_every !~ '^[0-9]+$'
+      or v_custom_every::integer < 1
+      or v_custom_every::integer > 365 then
+      raise exception 'workflow_custom_recurrence_invalid' using errcode = '22023';
+    end if;
+  end if;
+  if v_custom_unit is not null and v_custom_unit not in ('day','week','month') then
+    raise exception 'workflow_custom_recurrence_invalid' using errcode = '22023';
+  end if;
+
+  if v_trigger_type is distinct from 'recurring' then
+    v_recurrence := null;
+    v_custom_every := null;
+    v_custom_unit := null;
+  elsif v_recurrence is distinct from 'custom' then
+    v_custom_every := null;
+    v_custom_unit := null;
+  end if;
+
+  if v_trigger_type is distinct from 'scheduled_once' then
+    v_scheduled_at := null;
+  end if;
   if v_assignment_type is not null and v_assignment_type not in ('property_responsible','active_occupants_rotation','fixed_person','role','manual') then
     raise exception 'workflow_assignment_invalid' using errcode = '22023';
   end if;

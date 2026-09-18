@@ -144,6 +144,7 @@ function setServerStatus(message,tone="neutral"){
 function errorMessage(error){
   const text=String(error?.message||error?.details||"");
   if(text.includes("workflow_draft_conflict"))return "Este borrador cambió en otra sesión. Recarga antes de volver a guardar para no sobrescribir cambios.";
+  if(text.includes("aal2_required"))return "Para publicar debes completar MFA (sesión AAL2). El borrador permanece guardado.";
   if(text.includes("workflow_author_role_required"))return "Solo ROOT o ADMIN pueden guardar definiciones de flujo.";
   if(text.includes("workflow_definition_not_editable"))return "Este flujo ya no es un borrador editable.";
   if(text.includes("workflow_revision_draft_not_found"))return "No existe el borrador de la nueva versión. Vuelve a iniciarlo desde Mis Flujos.";
@@ -218,8 +219,9 @@ async function loadServerDraft(){
   const query=revisionMode
     ? supabase
         .from("workflow_definition_revision_drafts_v2")
-        .select("definition_id,base_version,revision,draft_spec,authoring_complete,updated_at")
+        .select("definition_id,base_version,revision,draft_spec,authoring_complete,updated_at,published_at")
         .eq("definition_id",currentDefinitionId)
+        .is("published_at",null)
     : supabase
         .from("workflow_definitions_v2")
         .select("id,status,revision,draft_spec,authoring_complete,updated_at")
@@ -411,7 +413,7 @@ async function saveServerDraft(){
   }catch{}
 
   const persistedQuery=revisionMode
-    ? supabase.from("workflow_definition_revision_drafts_v2").select("authoring_complete").eq("definition_id",currentDefinitionId)
+    ? supabase.from("workflow_definition_revision_drafts_v2").select("authoring_complete").eq("definition_id",currentDefinitionId).is("published_at",null)
     : supabase.from("workflow_definitions_v2").select("authoring_complete").eq("id",currentDefinitionId);
   const {data:persisted}=await persistedQuery.maybeSingle();
 
@@ -520,7 +522,8 @@ async function loadDraftWorkspace(){
       .order("updated_at",{ascending:false}),
     supabase
       .from("workflow_definition_revision_drafts_v2")
-      .select("definition_id,base_version,revision,draft_spec,authoring_complete,updated_at")
+      .select("definition_id,base_version,revision,draft_spec,authoring_complete,updated_at,published_at")
+      .is("published_at",null)
       .order("updated_at",{ascending:false})
   ]);
 

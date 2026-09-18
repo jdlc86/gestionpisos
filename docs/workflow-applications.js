@@ -23,8 +23,13 @@ let properties=[];
 let rooms=[];
 let occupancies=[];
 let applications=[];
+let executions=[];
+let permissionContext=null;
+let currentUser=null;
 
+const EXECUTION_KEY_PREFIX="workflow-execute-now:";
 const scopeLabels={organization:"Toda la organización",property:"Un piso",room:"Una habitación",occupancy:"Una ocupación / inquilino"};
+const executionStatusLabels={pending:"Pendiente",active:"Activa",waiting_review:"Esperando revisión",completed:"Completada",cancelled:"Cancelada",failed:"Fallida"};
 
 function setStatus(message,error=false){
   const span=status?.querySelector("span:last-child");
@@ -62,7 +67,14 @@ function errorText(error){
   if(message.includes("workflow_occupancy_not_available"))return "La ocupación ya no está vigente o no pertenece al piso.";
   if(message.includes("workflow_application_version_conflict"))return "Este flujo ya está aplicado a ese destino con otra versión. Archiva primero la aplicación existente.";
   if(message.includes("workflow_application_not_authorized"))return "Tu sesión no tiene autorización para aplicar este flujo.";
-  return "No se pudo guardar la aplicación. No se ha modificado ningún dato.";
+  if(message.includes("workflow_execution_not_authorized"))return "Tu sesión no tiene autorización para ejecutar este flujo.";
+  if(message.includes("workflow_manual_assignee_required"))return "Selecciona quién realizará esta ejecución.";
+  if(message.includes("workflow_manual_assignee_not_eligible"))return "La persona seleccionada no tiene capacidad operativa válida para este ámbito.";
+  if(message.includes("workflow_property_responsible_unavailable"))return "Este piso no tiene un responsable operativo vigente para ejecutar el flujo.";
+  if(message.includes("workflow_assignment_not_supported"))return "Esta regla de asignación todavía no está habilitada para Ejecutar ahora.";
+  if(message.includes("workflow_execution_property_unavailable")||message.includes("workflow_execution_room_unavailable")||message.includes("workflow_execution_occupancy_unavailable"))return "El destino de esta aplicación ya no está disponible para nuevas ejecuciones.";
+  if(message.includes("workflow_application_not_executable"))return "La aplicación ya no está configurada para nuevas ejecuciones.";
+  return "No se pudo completar la operación. No se ha modificado ningún dato.";
 }
 function meta(label,value){
   const box=document.createElement("div");box.className="application-meta-item";
@@ -168,6 +180,71 @@ function renderDefinition(){
   definitionBox.replaceChildren(head,info);
 }
 
+function versionForApplication(app){
+  return versions.find(item=>item.id===app.definition_version_id)||null;
+}
+function executionLabel(execution){
+  if(!execution)return "Ninguna";
+  return (executionStatusLabels[execution.status]||execution.status)+" · "+fmtDate(execution.created_at);
+}
+function candidateLabel(person){
+  const roles=Array.isArray(person.roles)?person.roles:[];
+  const role=roles.includes("admin")?"ADMIN":roles.includes("employee")?"EMPLEADO":roles.includes("root")?"ROOT":"USUARIO";
+  return (person.display_name||person.email||"Usuario")+" · "+role;
+}
+function executionCandidates(app){
+  const candidates=[];
+  const seen=new Set();
+  const actorRole=String(currentUser?.app_metadata?.role||"").toLowerCase();
+
+  if(actorRole==="root"&&currentUser?.id){
+    candidates.push({
+      user_id:currentUser.id,
+      display_name:currentUser.user_metadata?.display_name||currentUser.email||"ROOT",
+      email:currentUser.email||"",
+      roles:["root"]
+    });
+    seen.add(currentUser.id);
+  }
+
+  const propertyContext=(permissionContext?.properties||[]).find(item=>item.id===app.property_id);
+  const responsibleId=propertyContext?.responsible_user_id||null;
+  const writableAccess=new Set(
+    (propertyContext?.staff_access||[])
+      .filter(item=>item.can_write===true)
+      .map(item=>item.employee_user_id)
+  );
+
+  (permissionContext?.people||[]).forEach(person=>{
+    if(!person?.user_id||seen.has(person.user_id))return;
+    if(person.profile_status==="archived")return;
+    const roles=Array.isArray(person.roles)?person.roles:[];
+    const isAdmin=roles.includes("admin");
+    const isEmployee=roles.includes("employee");
+    const employeeEligible=isEmployee&&(
+      !app.property_id
+      || person.user_id===responsibleId
+      || writableAccess.has(person.user_id)
+    );
+    if(!isAdmin&&!employeeEligible)return;
+    candidates.push(person);
+    seen.add(person.user_id);
+  });
+  return candidates;
+}
+function requestKey(appId){
+  const storageKey=EXECUTION_KEY_PREFIX+appId;
+  let key=sessionStorage.getItem(storageKey);
+  if(!key){
+    key=globalThis.crypto?.randomUUID?.()||("manual-"+Date.now()+"-"+Math.random().toString(36).slice(2));
+    sessionStorage.setItem(storageKey,key);
+  }
+  return {storageKey,key};
+}
+function clearRequestKey(appId){
+  sessionStorage.removeItem(EXECUTION_KEY_PREFIX+appId);
+}
+
 function renderApplications(){
   applicationsList.replaceChildren();
   if(!applications.length){
@@ -175,22 +252,71 @@ function renderApplications(){
     empty.textContent="Todavía no hay aplicaciones para esta definición.";
     applicationsList.append(empty);return;
   }
+
   applications.forEach(app=>{
     const article=document.createElement("article");article.className="application-card";
     const head=document.createElement("div");head.className="application-item-head";
     const title=document.createElement("h3");title.textContent=targetLabel(app);
     const badge=document.createElement("span");badge.className="application-badge application-badge--"+app.status;badge.textContent=app.status==="configured"?"Configurada":"Archivada";
     head.append(title,badge);
+
+    const appExecutions=executions.filter(item=>item.application_id===app.id);
+    const latestExecution=appExecutions[0]||null;
     const details=document.createElement("div");details.className="application-meta";
-    const version=versions.find(item=>item.id===app.definition_version_id);
+    const version=versionForApplication(app);
     details.append(
       meta("Ámbito",scopeLabels[app.scope_type]||app.scope_type),
       meta("Versión","v"+(version?.version||"?")),
       meta("Creada",fmtDate(app.created_at)),
-      meta("Estado",app.status==="configured"?"Sin ejecución todavía":"Archivada")
+      meta("Ejecuciones",String(appExecutions.length)),
+      meta("Última ejecución",executionLabel(latestExecution))
     );
     article.append(head,details);
+
     if(app.status==="configured"){
+      const assignmentType=String(version?.spec?.assignmentType||"");
+      const controls=document.createElement("div");controls.className="execution-controls";
+      const controlTitle=document.createElement("strong");controlTitle.textContent="Ejecutar ahora";
+      controls.append(controlTitle);
+
+      let assigneeSelect=null;
+      let executable=true;
+
+      if(assignmentType==="manual"){
+        const candidates=executionCandidates(app);
+        const label=document.createElement("label");label.textContent="Responsable de esta ejecución";
+        assigneeSelect=document.createElement("select");
+        assigneeSelect.append(option("","Selecciona una persona"));
+        assigneeSelect.append(...candidates.map(person=>option(person.user_id,candidateLabel(person))));
+        assigneeSelect.addEventListener("change",()=>clearRequestKey(app.id));
+        label.append(assigneeSelect);
+        controls.append(label);
+        if(!candidates.length){
+          executable=false;
+          const note=document.createElement("span");note.className="execution-note";
+          note.textContent="No hay una persona con capacidad operativa disponible para este ámbito.";
+          controls.append(note);
+        }
+      }else if(assignmentType==="property_responsible"){
+        const note=document.createElement("span");note.className="execution-note";
+        note.textContent="El servidor resolverá y congelará al responsable operativo vigente del piso.";
+        controls.append(note);
+      }else{
+        executable=false;
+        const note=document.createElement("span");note.className="execution-note";
+        note.textContent="Esta regla de asignación todavía no está habilitada para ejecución manual.";
+        controls.append(note);
+      }
+
+      const run=document.createElement("button");
+      run.type="button";
+      run.className="primary";
+      run.textContent="Ejecutar ahora";
+      run.disabled=!executable;
+      run.addEventListener("click",()=>executeNow(app,assigneeSelect?.value||null,run));
+      controls.append(run);
+      article.append(controls);
+
       const actions=document.createElement("div");actions.className="application-actions";
       const archive=document.createElement("button");archive.type="button";archive.className="danger-soft";archive.textContent="Archivar aplicación";
       archive.addEventListener("click",()=>archiveApplication(app));
@@ -209,6 +335,18 @@ async function loadApplications(){
   if(error)throw error;
   applications=data||[];
 
+  const applicationIds=applications.map(item=>item.id);
+  executions=[];
+  if(applicationIds.length){
+    const {data:executionData,error:executionError}=await supabase
+      .from("workflow_executions_v2")
+      .select("id,application_id,status,assigned_user_id,assignment_type,trigger_kind,created_at")
+      .in("application_id",applicationIds)
+      .order("created_at",{ascending:false});
+    if(executionError)throw executionError;
+    executions=executionData||[];
+  }
+
   const roomIds=[...new Set(applications.map(x=>x.room_id).filter(Boolean))];
   if(roomIds.length){
     const {data}=await supabase.from("rooms_v2").select("id,property_id,label,status,archived_at").in("id",roomIds);
@@ -220,6 +358,46 @@ async function loadApplications(){
     (data||[]).forEach(item=>{if(!occupancies.some(existing=>existing.id===item.id))occupancies.push(item)});
   }
   renderApplications();
+}
+
+async function executeNow(app,assigneeId,button){
+  const version=versionForApplication(app);
+  const assignmentType=String(version?.spec?.assignmentType||"");
+  if(assignmentType==="manual"&&!assigneeId){
+    setStatus("Selecciona quién realizará esta ejecución.",true);
+    return;
+  }
+
+  const {storageKey,key}=requestKey(app.id);
+  button.disabled=true;
+  const original=button.textContent;
+  button.textContent="Creando ejecución…";
+  setStatus("Creando una ejecución idempotente y validando la asignación…");
+
+  const {data,error}=await supabase.rpc("execute_workflow_application_now_v1",{
+    p_application_id:app.id,
+    p_idempotency_key:key,
+    p_assigned_user_id:assignmentType==="manual"?assigneeId:null
+  });
+
+  button.textContent=original;
+
+  if(error){
+    button.disabled=false;
+    const known=String(error.message||"").includes("workflow_");
+    if(known)sessionStorage.removeItem(storageKey);
+    setStatus(errorText(error),true);
+    return;
+  }
+
+  sessionStorage.removeItem(storageKey);
+  const result=Array.isArray(data)?data[0]:null;
+  if(result?.created_new===false){
+    setStatus("El reintento recuperó la ejecución existente; no se creó un duplicado.");
+  }else{
+    setStatus("Ejecución creada en estado Pendiente. Todavía no se ha materializado una tarea.");
+  }
+  await loadApplications();
 }
 
 async function archiveApplication(app){
@@ -287,6 +465,7 @@ async function load(){
 
   const {data:userData,error:userError}=await supabase.auth.getUser();
   if(userError||!userData?.user){setStatus("No se pudo validar la sesión.",true);return}
+  currentUser=userData.user;
   const role=String(userData.user.app_metadata?.role||"").toLowerCase();
   if(!["root","admin"].includes(role)){
     setStatus("Las aplicaciones de flujo requieren acceso administrativo.",true);
@@ -321,11 +500,14 @@ async function load(){
   const available=properties.filter(item=>item.status!=="archived"&&!item.archived_at);
   propertySelect.replaceChildren(option("","Selecciona un piso"),...available.map(item=>option(item.id,item.name+(item.address_line?" · "+item.address_line:""))));
 
+  const {data:contextData,error:contextError}=await supabase.rpc("get_permission_management_context",{p_organization_id:definition.organization_id});
+  permissionContext=contextError?null:contextData;
+
   renderDefinition();
   formCard.hidden=false;
   await updateTargetControls();
   await loadApplications();
-  setStatus("Aplicaciones cargadas. Configurada no significa activa: la ejecución todavía está bloqueada.");
+  setStatus("Aplicaciones cargadas. Ejecutar ahora crea una ejecución pendiente; las tareas y recurrencias siguen separadas.");
 }
 
 load().catch(()=>setStatus("No se pudieron cargar las aplicaciones del flujo.",true));

@@ -71,6 +71,8 @@ El Creador permite guardar un borrador con solo un nombre y continuar más tarde
 
 Los borradores anteriores a esta regla no se reinterpretan como completos por sus antiguos valores por defecto: permanecen incompletos hasta ser revisados en el Creador.
 
+El guardado de borradores es idempotente: pulsar **Guardar borrador** repetidamente sin modificar la especificación no incrementa `revision`, no cambia `updated_at` y no genera un evento `workflow_draft_updated`. La UI informa **Sin cambios** y conserva la revisión existente.
+
 ### Límite intencional
 
 **Guardar no significa publicar.**
@@ -226,6 +228,10 @@ Incluye:
 ### Incremento de corrección — Borradores parciales
 
 Añade la distinción entre **guardar** y **configurar**: permite persistir un borrador incompleto, elimina valores de negocio implícitos en la UI y mantiene la completitud calculada server-side mediante `authoring_complete`.
+
+### Incremento de corrección — Guardado idempotente
+
+Una revisión representa un cambio real de contenido. Repetir Guardar sin modificaciones devuelve la revisión existente y no altera fecha ni auditoría de actualización.
 
 ## 12. Próximo incremento técnico
 

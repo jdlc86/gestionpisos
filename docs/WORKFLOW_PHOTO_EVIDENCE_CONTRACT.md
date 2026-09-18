@@ -79,9 +79,11 @@ RPC:
 
 Solo puede usarlo la persona asignada a la tarea/ejecución.
 
-### Con paso Aceptar
+### Con decisión Aceptar / Rechazar
 
-Si `steps.accept=true`, la ejecución debe estar `active`. La captura no puede saltarse Aceptar.
+Por compatibilidad, `steps.accept=true` significa que el asignado debe decidir **Aceptar / Rechazar**.
+
+Solo **Aceptar** permite que la ejecución pase a `active` y habilite la captura. **Rechazar** deja tarea + ejecución en `rejected`, exige motivo y cancela los recursos fotográficos pendientes; no se crea ningún run.
 
 ### Sin paso Aceptar
 
@@ -181,7 +183,7 @@ Para cada foto muestra:
 - nombre del patrón congelado;
 - estado pendiente/capturando/enviada;
 - “Hacer foto” o “Continuar foto” cuando corresponde;
-- “Acepta primero” si la receta exige aceptación.
+- “Acepta la tarea primero” si la receta exige la decisión Aceptar/Rechazar.
 
 No se crea una acción artificial `complete`.
 

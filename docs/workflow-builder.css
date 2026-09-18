@@ -9,6 +9,7 @@
 .builder-panel.is-active{display:grid}
 .builder-panel h2{margin:0;font-size:24px;letter-spacing:-.025em}
 .builder-panel label{display:grid;gap:7px;color:var(--ui-muted);font-size:12px;font-weight:750}
+.builder-panel [hidden]{display:none!important}
 .builder-panel textarea{resize:vertical;min-height:100px}
 .builder-note,.builder-warning{padding:12px 13px;border:1px solid var(--ui-border);border-radius:var(--ui-radius-sm);background:var(--ui-subtle);color:var(--ui-muted);font-size:12px;line-height:1.5}
 .builder-warning{border-color:var(--ui-warning);background:var(--ui-warning-soft);color:var(--ui-text)}

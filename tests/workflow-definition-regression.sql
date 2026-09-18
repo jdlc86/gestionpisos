@@ -2369,6 +2369,8 @@ select * from public.apply_workflow_task_action_v1(
   'No puedo realizar esta inspección'
 );
 
+reset role;
+
 do $workflow_photo_reject_state$
 declare
   v_task_status text;
@@ -2403,6 +2405,17 @@ begin
   end if;
 end;
 $workflow_photo_reject_state$;
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub',current_setting('gestionpisos.workflow_root'),
+    'role','authenticated',
+    'aal','aal2'
+  )::text,
+  true
+);
 
 -- El cliente authenticated tampoco puede fabricar tareas saltándose el materializador.
 do $$

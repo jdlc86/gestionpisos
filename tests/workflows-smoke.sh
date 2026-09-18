@@ -56,6 +56,13 @@ grep -Fq 'Pendiente · selecciona cómo termina' docs/workflow-builder.html
 ! grep -Fq 'name="stepAccept" checked' docs/workflow-builder.html
 ! grep -Fq 'name="notifyOnCreate" checked' docs/workflow-builder.html
 grep -Fq 'const AUTHORING_VERSION=2' docs/workflow-builder.js
+grep -Fq 'id="scheduledAt"' docs/workflow-builder.html
+grep -Fq 'id="customRecurrenceRow"' docs/workflow-builder.html
+grep -Fq 'name="customEvery"' docs/workflow-builder.html
+grep -Fq 'name="customUnit"' docs/workflow-builder.html
+grep -Fq 'toggleDependentRow' docs/workflow-builder.js
+grep -Fq 'data.triggerType==="scheduled_once"' docs/workflow-builder.js
+grep -Fq 'data.recurrence==="custom"' docs/workflow-builder.js
 grep -Fq 'authoringVersion:AUTHORING_VERSION' docs/workflow-builder.js
 grep -Fq 'legacyDraftNeedsReview' docs/workflow-builder.js
 grep -Fq 'authoring_complete' docs/workflow-builder.js

@@ -14,6 +14,7 @@ actions='supabase/migrations/20260918114500_workflow_atomic_task_actions.sql'
 photo_evidence='supabase/migrations/20260918133000_workflow_photo_evidence.sql'
 decisions='supabase/migrations/20260918193000_workflow_accept_reject_decision.sql'
 human_review='supabase/migrations/20260918233000_workflow_human_review.sql'
+review_access='supabase/migrations/20260918234500_workflow_review_actor_visibility_hardening.sql'
 
 test -s "$migration"
 test -s "$hardening"
@@ -28,6 +29,7 @@ test -s "$actions"
 test -s "$photo_evidence"
 test -s "$decisions"
 test -s "$human_review"
+test -s "$review_access"
 test -s tests/workflow-definition-regression.sql
 
 grep -Fq 'create table if not exists public.workflow_definitions_v2' "$migration"
@@ -191,6 +193,12 @@ grep -Fq "create or replace function public.apply_workflow_photo_review_v1" "$hu
 grep -Fq "workflow_review_actor_forbidden" "$human_review"
 grep -Fq "workflow_review_applied" "$human_review"
 grep -Fq "grant execute on function public.apply_workflow_photo_review_v1(uuid,uuid,text,text)" "$human_review"
+grep -Fq "create policy tenant_task_actions_v2_workflow_actor_gate" "$review_access"
+grep -Fq "as restrictive" "$review_access"
+grep -Fq "tenant_task_actions_v2.actor='assignee'" "$review_access"
+grep -Fq "tenant_task_actions_v2.actor='agency'" "$review_access"
+grep -Fq "public.workflow_can_manage_v1(t.organization_id)" "$review_access"
+grep -Fq "t.task_type<>'workflow'" "$review_access"
 grep -Fq "revoke all on function public.apply_workflow_photo_review_v1(uuid,uuid,text,text)" "$human_review"
 grep -Fq "tenant_task_actions_v2_workflow_manager_read" "$human_review"
 grep -Fq "public.workflow_can_manage_v1(t.organization_id)" "$human_review"

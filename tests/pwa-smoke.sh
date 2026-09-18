@@ -33,6 +33,9 @@ grep -q 'createSignedUrl' docs/photo-verifications.js
 test -s supabase/functions/review-photo-verification/index.ts
 grep -q 'apply_photo_verification_review_v2' supabase/functions/review-photo-verification/index.ts
 grep -q 'apply_workflow_photo_review_v1' supabase/functions/review-photo-verification/index.ts
+grep -q '.from("user_roles")' supabase/functions/review-photo-verification/index.ts
+grep -q 'isAdminForRun' supabase/functions/review-photo-verification/index.ts
+! grep -q 'user.app_metadata?.role' supabase/functions/review-photo-verification/index.ts
 grep -q 'workflow_execution_id' docs/photo-verifications.js
 grep -q 'Workflow completado' docs/photo-verifications.js
 grep -q 'Volver a Tareas' docs/photo-verifications.js
@@ -44,7 +47,7 @@ grep -q 'app.css' docs/index.html
 grep -q 'app.js' docs/index.html
 grep -q 'serviceWorker' docs/app.js
 grep -q 'GestionPisos' docs/manifest.webmanifest
-grep -q 'gestionpisos-shell-v9' docs/sw.js
+grep -q 'gestionpisos-shell-v10' docs/sw.js
 grep -q 'operations.html' docs/index.html
 grep -q 'Notificaciones' docs/operations.html
 grep -q 'Pagos' docs/operations.html

@@ -42,7 +42,8 @@ Estados reservados:
 - `waiting_review`;
 - `completed`;
 - `cancelled`;
-- `failed`.
+- `failed`;
+- `rejected`.
 
 La creación inicial produce `pending`. Los incrementos posteriores pueden mover la ejecución mediante acciones atómicas validadas.
 
@@ -136,7 +137,7 @@ Este histórico funcional no sustituye `audit_log_v2`. La creación también dej
 
 ## 10. Límite de este incremento
 
-Una ejecución `pending` materializa una tarea visible. La primera acción operativa `accept` puede mover tarea + ejecución atómicamente conforme a `WORKFLOW_ACTIONS_CONTRACT.md`.
+Una ejecución `pending` materializa una tarea visible. Si la receta requiere decisión del asignado, `accept` y `reject` mueven tarea + ejecución atómicamente conforme a `WORKFLOW_ACTIONS_CONTRACT.md`. `reject` conserva el rechazo como estado terminal explícito.
 
 Quedan fuera:
 

@@ -150,9 +150,15 @@ grep -Fq 'task-action--reject' docs/workflow-tasks.js
 grep -Fq 'task-action--reject' docs/workflow-tasks.css
 grep -Fq 'Rechazar' docs/WORKFLOW_ACTIONS_CONTRACT.md
 grep -Fq 'motivo obligatorio' docs/WORKFLOW_ACTIONS_CONTRACT.md
+grep -Fq 'Aprobar revisión' docs/WORKFLOW_ACTIONS_CONTRACT.md
+grep -Fq 'review_approve' docs/WORKFLOW_ACTIONS_CONTRACT.md
+grep -Fq 'workflowPhotoReviewUrl' docs/workflow-tasks.js
+grep -Fq 'Revisar evidencias' docs/workflow-tasks.js
+grep -Fq 'canRenderWorkflowAction' docs/workflow-tasks.js
+grep -Fq 'review_reject' docs/workflow-tasks.js
 grep -Fq 'task-actions' docs/workflow-tasks.css
 grep -Fq './workflow-tasks.css?v=2026091804' docs/workflow-tasks.html
-grep -Fq './workflow-tasks.js?v=2026091804' docs/workflow-tasks.html
+grep -Fq './workflow-tasks.js?v=2026091805' docs/workflow-tasks.html
 grep -Fq 'cambian tarea y ejecución juntas' docs/workflow-tasks.html
 
 grep -Fq 'workflow_execution_photo_resources_v2' docs/workflow-tasks.js

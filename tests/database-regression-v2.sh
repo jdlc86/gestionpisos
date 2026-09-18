@@ -71,6 +71,7 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -v "$repo_path:/w
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/database-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/photo-verification-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-definition-regression.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-authoring-separation-regression.sql
 
     trap - EXIT
     cleanup

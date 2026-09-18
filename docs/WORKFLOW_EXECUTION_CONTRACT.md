@@ -126,7 +126,7 @@ Este histórico funcional no sustituye `audit_log_v2`. La creación también dej
 
 Por tanto no puede representar limpiamente una tarea de un flujo de piso sin inquilino concreto. Este incremento **no fabrica tenant_id** y no crea una tabla paralela `workflow_tasks`.
 
-Primero se consolida la ejecución genérica. La siguiente decisión de arquitectura será generalizar/adaptar la capa de tareas de forma aditiva sin romper los flujos de inquilino existentes.
+La capa siguiente generaliza `tenant_tasks_v2` de forma aditiva conforme a `WORKFLOW_TASKS_CONTRACT.md`: las tareas de workflow usan `source_kind='workflow_execution'` y pueden carecer de `tenant_id` sin relajar ese requisito para tareas legacy.
 
 ## 9. Seguridad
 
@@ -140,7 +140,7 @@ Primero se consolida la ejecución genérica. La siguiente decisión de arquitec
 
 ## 10. Límite de este incremento
 
-Una ejecución `pending` todavía no significa tarea operativa completables.
+Una ejecución `pending` ya puede materializar una tarea visible. Todavía no significa que sus acciones/pasos operativos estén habilitados.
 
 Quedan fuera:
 

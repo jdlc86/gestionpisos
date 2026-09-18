@@ -37,10 +37,18 @@ Deno.serve(async (req: Request) => {
   const user = userData?.user;
   if (userError || !user) return json(401, { error: "invalid_session" });
 
-  const role = String(user.app_metadata?.role || "");
-  const organizationId = String(user.app_metadata?.organization_id || "");
-  if (!["root","admin"].includes(role)) return json(403, { error: "review_not_allowed" });
+  const { data: roleRows, error: roleError } = await admin
+    .from("user_roles")
+    .select("role,organization_id,revoked_at")
+    .eq("user_id", user.id)
+    .is("revoked_at", null);
 
+  if (roleError) return json(500, { error: "review_role_lookup_failed" });
+
+  const activeRoles = roleRows || [];
+  const isRoot = activeRoles.some((row) => row.role === "root");
+  const hasAnyAdmin = activeRoles.some((row) => row.role === "admin");
+  if (!isRoot && !hasAnyAdmin) return json(403, { error: "review_not_allowed" });
 
   let body: { run_id?: string; decision?: string; rejection_reason?: string | null };
   try {
@@ -71,9 +79,14 @@ Deno.serve(async (req: Request) => {
 
   if (runError) return json(500, { error: "run_lookup_failed" });
   if (!run) return json(404, { error: "run_not_found" });
-  if (role === "admin" && run.organization_id !== organizationId) {
+
+  const isAdminForRun = activeRoles.some(
+    (row) => row.role === "admin" && row.organization_id === run.organization_id,
+  );
+  if (!isRoot && !isAdminForRun) {
     return json(404, { error: "run_not_found" });
   }
+
   const reviewableStatuses = ["submitted","manual_review","ai_review"];
   if (run.source_type === "workflow_execution") {
     if (!reviewableStatuses.includes(run.status) && run.status !== decision) {

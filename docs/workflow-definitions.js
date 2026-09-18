@@ -192,8 +192,9 @@ async function load(){
         .order("version",{ascending:false}),
       supabase
         .from("workflow_definition_revision_drafts_v2")
-        .select("definition_id,base_version,revision,authoring_complete,updated_at")
+        .select("definition_id,base_version,revision,authoring_complete,updated_at,published_at")
         .in("definition_id",ids)
+        .is("published_at",null)
     ]);
 
     if(versionResult.error||draftResult.error){

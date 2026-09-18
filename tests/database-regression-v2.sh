@@ -43,6 +43,7 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -v "$repo_path:/w
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260914074246_beta0_photo_verification_write_policies.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260914135759_beta0_photo_alignment_meta.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260914135829_beta0_photo_alignment_meta_check_add.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260914225214_photo_verification_manual_review.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915080948_photo_run_purpose_cleaning_link.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915082914_cleaning_photo_requests.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915094134_tenant_identity_model.sql

@@ -163,6 +163,9 @@ Estados mínimos previstos:
 
 Las transiciones se validan en servidor.
 
+Primer incremento operativo: `execute_workflow_application_now_v1` crea una ejecución `pending` con `trigger_kind=manual_now`, clave idempotente y asignación congelada. La materialización de tareas y las transiciones posteriores siguen siendo capas separadas.
+
+
 ## 9. Tareas
 
 `tenant_tasks_v2` es el candidato principal para materializar trabajo de usuario durante la transición. No se creará una tabla `workflow_tasks` paralela sin demostrar una carencia no resoluble de forma aditiva.

@@ -345,7 +345,7 @@ begin
     raise exception 'workflow_assignment_invalid' using errcode='22023';
   end if;
 
-  insert into public.workflow_executions_v2(
+  insert into public.workflow_executions_v2 as new_execution(
     application_id,definition_id,definition_version_id,organization_id,
     scope_type,property_id,room_id,occupancy_id,
     trigger_kind,idempotency_key,assignment_type,assigned_user_id,
@@ -356,7 +356,7 @@ begin
     'manual_now',v_key,v_assignment_type,v_assigned_user,
     'pending',v_spec,v_actor
   )
-  returning id,status,created_at
+  returning new_execution.id,new_execution.status,new_execution.created_at
   into v_execution_id,v_execution_status,v_execution_created_at;
 
   insert into public.workflow_execution_events_v2(

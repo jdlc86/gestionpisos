@@ -7,7 +7,7 @@ partial='supabase/migrations/20260918013500_workflow_partial_drafts.sql'
 noop='supabase/migrations/20260918023000_workflow_draft_noop_save.sql'
 triggers='supabase/migrations/20260918025500_workflow_trigger_controls.sql'
 applications='supabase/migrations/20260918095001_workflow_publication_applications.sql'
-executions='supabase/migrations/20260918123000_workflow_manual_executions.sql'
+executions='supabase/migrations/20260918103715_workflow_manual_executions.sql'
 
 test -s "$migration"
 test -s "$hardening"

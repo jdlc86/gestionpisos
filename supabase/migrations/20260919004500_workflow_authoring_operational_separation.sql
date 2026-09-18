@@ -14,10 +14,14 @@ create table if not exists public.workflow_definition_revision_drafts_v2 (
   draft_spec jsonb not null check (jsonb_typeof(draft_spec)='object'),
   revision bigint not null default 1 check (revision > 0),
   authoring_complete boolean not null default false,
+  published_version_id uuid
+    references public.workflow_definition_versions_v2(id) on delete restrict,
+  published_at timestamptz,
   created_by uuid not null,
   updated_by uuid not null,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  check ((published_version_id is null) = (published_at is null))
 );
 
 create index if not exists workflow_definition_revision_drafts_v2_org_idx
@@ -248,11 +252,16 @@ begin
   from public.workflow_definition_revision_drafts_v2
   where definition_id=p_definition_id;
 
-  if v_existing.definition_id is not null then
+  if v_existing.definition_id is not null and v_existing.published_at is null then
     return query
     select v_existing.definition_id,v_existing.base_version,
            v_existing.revision,v_existing.updated_at,false;
     return;
+  end if;
+
+  if v_existing.definition_id is not null and v_existing.published_at is not null then
+    delete from public.workflow_definition_revision_drafts_v2
+    where definition_id=p_definition_id;
   end if;
 
   select * into v_version
@@ -344,6 +353,7 @@ begin
   select * into v_draft
   from public.workflow_definition_revision_drafts_v2
   where definition_id=p_definition_id
+    and published_at is null
   for update;
 
   if v_draft.definition_id is null then
@@ -460,6 +470,21 @@ begin
     raise exception 'workflow_draft_conflict' using errcode='40001';
   end if;
 
+  if v_draft.published_at is not null then
+    select v.id,v.version,v.published_at
+    into v_version_id,v_new_version,v_published_at
+    from public.workflow_definition_versions_v2 v
+    where v.id=v_draft.published_version_id;
+
+    if v_version_id is null then
+      raise exception 'workflow_revision_publication_receipt_invalid' using errcode='55000';
+    end if;
+
+    return query
+    select p_definition_id,v_version_id,v_new_version,v_published_at;
+    return;
+  end if;
+
   if not v_draft.authoring_complete then
     raise exception 'workflow_authoring_incomplete' using errcode='22023';
   end if;
@@ -505,7 +530,11 @@ begin
       updated_at=now()
   where wd.id=p_definition_id;
 
-  delete from public.workflow_definition_revision_drafts_v2
+  update public.workflow_definition_revision_drafts_v2
+  set published_version_id=v_version_id,
+      published_at=v_published_at,
+      updated_by=v_actor,
+      updated_at=now()
   where definition_id=p_definition_id;
 
   insert into public.audit_log_v2(
@@ -532,7 +561,7 @@ grant execute on function public.publish_workflow_definition_revision_v1(uuid,bi
   to authenticated;
 
 comment on table public.workflow_definition_revision_drafts_v2 is
-  'Borrador de futura versión de una definición publicada. La versión operativa permanece inmutable hasta publicar.';
+  'Borrador de futura versión de una definición publicada. Tras publicar conserva un recibo idempotente; solo published_at IS NULL representa autoría activa.';
 comment on function public.start_workflow_definition_revision_v1(uuid) is
   'Crea idempotentemente un borrador de nueva versión copiando la última versión publicada.';
 comment on function public.publish_workflow_definition_revision_v1(uuid,bigint) is

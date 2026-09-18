@@ -130,7 +130,7 @@
             <label class="check-row"><input type="checkbox" name="stepChecklist"> Completar checklist o formulario</label>
             <label class="check-row"><input type="checkbox" name="stepDocument"> Adjuntar o revisar documento</label>
           </fieldset>
-          <a class="resource-link" href="./photo-patterns.html?from=workflow-builder">📷 Abrir Banco Fotográfico</a>
+          <a id="photoBankLink" class="resource-link" href="./photo-patterns.html?from=workflow-builder" hidden>📷 Abrir Banco Fotográfico</a>
           <div class="builder-note">Selecciona al menos un paso para considerar configurado este apartado. Los patrones se referenciarán por versión; no se copiarán dentro del flujo.</div>
         </section>
 
@@ -170,7 +170,7 @@
   </main>
 
   <script src="./app.js?v=202609152" defer></script>
-  <script type="module" src="./workflow-builder.js?v=2026091805"></script>
+  <script type="module" src="./workflow-builder.js?v=2026091806"></script>
   <script type="module" src="./auth-guard.js"></script>
 </body>
 </html>

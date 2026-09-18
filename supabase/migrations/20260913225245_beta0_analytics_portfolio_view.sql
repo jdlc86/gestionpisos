@@ -1,3 +1,4 @@
+
 create or replace view public.v_portfolio_stats
 with (security_invoker = true)
 as

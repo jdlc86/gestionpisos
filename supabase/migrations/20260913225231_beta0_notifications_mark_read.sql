@@ -1,3 +1,4 @@
+
 drop policy if exists notifications_self_update on public.notifications_v2;
 
 create or replace function public.mark_notification_read(p_notification_id uuid)

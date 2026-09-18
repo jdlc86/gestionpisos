@@ -1,3 +1,4 @@
+
 create table if not exists public.payment_obligations_v2 (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null references public.organizations(id),
@@ -54,9 +55,12 @@ alter table public.claims_v2 enable row level security;
 
 create index if not exists payment_obligations_tenant_due_idx
   on public.payment_obligations_v2(tenant_user_id,status,due_date);
+
 create index if not exists payment_obligations_property_idx
   on public.payment_obligations_v2(property_id,status,due_date);
+
 create index if not exists reminder_rules_org_event_idx
   on public.reminder_rules_v2(organization_id,event_type,active);
+
 create index if not exists claims_tenant_status_idx
   on public.claims_v2(tenant_user_id,status,created_at desc);

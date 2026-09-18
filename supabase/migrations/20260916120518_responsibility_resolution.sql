@@ -89,7 +89,6 @@ begin
 
   if v_id is not null and v_old=p_employee_user_id then return v_id; end if;
 
-  -- A responsible person does not also need a duplicate additional-access row.
   update public.property_staff_access_v3
   set revoked_at=now()
   where property_id=p_property_id
@@ -183,7 +182,6 @@ begin
     raise exception 'staff_write_control_transfer_required';
   end if;
 
-  -- Serialize removal for this staff member and lock affected active properties.
   perform pg_advisory_xact_lock(hashtextextended(p_organization_id::text||':staff:'||p_target_user_id::text,0));
   perform p.id
   from public.properties_v2 p
@@ -223,7 +221,6 @@ begin
         raise exception 'replacement_not_eligible';
       end if;
 
-      -- Remove redundant additional access for the incoming responsible person.
       update public.property_staff_access_v3
       set revoked_at=now()
       where employee_user_id=p_replacement_user_id
@@ -292,8 +289,6 @@ begin
     );
   end if;
 
-  -- Reuse the established deactivation contract. Because this call is in the same
-  -- transaction, responsibility resolution and staff deactivation commit atomically.
   v_result:=public.deactivate_internal_staff_user(p_organization_id,p_target_user_id);
 
   return v_result || jsonb_build_object(

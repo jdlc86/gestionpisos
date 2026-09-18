@@ -1,3 +1,4 @@
+
 create or replace function private.apply_cleaning_swap_decision()
 returns trigger
 language plpgsql

@@ -1,3 +1,4 @@
+
 alter table public.cleaning_swap_requests_v2
   add column if not exists decided_by uuid references auth.users(id);
 

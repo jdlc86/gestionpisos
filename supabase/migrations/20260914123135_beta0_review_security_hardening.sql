@@ -1,6 +1,5 @@
--- Review hardening for PR #10.
--- Closes security findings without rewriting already-applied migrations.
 
+-- 1) Photo verification runs: only safe initial state and authorized property/source.
 drop policy if exists photo_runs_actor_insert on public.photo_verification_runs_v2;
 
 create policy photo_runs_actor_insert
@@ -70,6 +69,7 @@ with check (
   )
 );
 
+-- 2) Pattern write scope: organization and property must match.
 drop policy if exists photo_patterns_root_admin_insert on public.photo_patterns_v2;
 drop policy if exists photo_patterns_root_admin_update on public.photo_patterns_v2;
 
@@ -116,6 +116,7 @@ with check (
   )
 );
 
+-- Pattern content is immutable after publication; only retirement metadata may change.
 create or replace function private.enforce_photo_pattern_immutability()
 returns trigger
 language plpgsql
@@ -145,6 +146,7 @@ create trigger trg_photo_pattern_immutability
 before update on public.photo_patterns_v2
 for each row execute function private.enforce_photo_pattern_immutability();
 
+-- 3) Photo items must match actor run and pattern scope.
 drop policy if exists photo_items_actor_insert on public.photo_verification_items_v2;
 
 create policy photo_items_actor_insert
@@ -169,6 +171,7 @@ with check (
   and reviewed_at is null
 );
 
+-- 4) Privileged Storage reads require AAL2.
 drop policy if exists photo_verification_storage_read on storage.objects;
 
 create policy photo_verification_storage_read
@@ -194,6 +197,7 @@ using (
   )
 );
 
+-- 5) Claims: no physical client delete.
 drop policy if exists claims_admin_write on public.claims_v2;
 
 create policy claims_admin_insert
@@ -227,6 +231,7 @@ with check (
 
 revoke delete on table public.claims_v2 from anon, authenticated;
 
+-- 6) Mark notification read through a narrow SECURITY DEFINER RPC.
 create or replace function public.mark_notification_read(p_notification_id uuid)
 returns void
 language plpgsql
@@ -255,6 +260,7 @@ revoke all on function public.mark_notification_read(uuid) from public, anon;
 grant execute on function public.mark_notification_read(uuid) to authenticated;
 revoke update on table public.notifications_v2 from authenticated;
 
+-- 7) Configuration writes are auditable.
 create or replace function private.audit_photo_verification_config()
 returns trigger
 language plpgsql

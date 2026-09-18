@@ -1,7 +1,0 @@
--- Version RLS policies and creator consolidation already applied to production.
-create policy tenant_tasks_v2_root_all on public.tenant_tasks_v2 for all to authenticated using (((auth.jwt()->'app_metadata'->>'role')='root')) with check (((auth.jwt()->'app_metadata'->>'role')='root'));
-create policy tenant_tasks_v2_admin_org_all on public.tenant_tasks_v2 for all to authenticated using (((auth.jwt()->'app_metadata'->>'role')='admin') and organization_id=((auth.jwt()->'app_metadata'->>'organization_id')::uuid)) with check (((auth.jwt()->'app_metadata'->>'role')='admin') and organization_id=((auth.jwt()->'app_metadata'->>'organization_id')::uuid));
-create policy tenant_task_actions_v2_scope on public.tenant_task_actions_v2 for all to authenticated using (exists(select 1 from public.tenant_tasks_v2 t where t.id=task_id)) with check (exists(select 1 from public.tenant_tasks_v2 t where t.id=task_id));
-create policy tenant_task_history_v2_scope on public.tenant_task_history_v2 for select to authenticated using (exists(select 1 from public.tenant_tasks_v2 t where t.id=task_id));
-create policy tenant_task_history_v2_insert_scope on public.tenant_task_history_v2 for insert to authenticated with check (exists(select 1 from public.tenant_tasks_v2 t where t.id=task_id));
-create policy tenant_task_templates_read on public.tenant_task_workflow_templates_v2 for select to authenticated using (true);

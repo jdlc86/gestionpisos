@@ -1,0 +1,1 @@
+alter table public.admin_capability_holders drop constraint if exists admin_capability_holders_organization_id_capability_key;

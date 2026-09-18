@@ -1,3 +1,4 @@
+
 alter table public.broadcasts_v2
   add column if not exists channel_in_app boolean not null default true,
   add column if not exists channel_email boolean not null default false;

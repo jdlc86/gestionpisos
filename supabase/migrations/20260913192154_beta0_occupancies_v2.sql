@@ -1,0 +1,1 @@
+create table public.occupancies_v2 (id uuid primary key default gen_random_uuid(), organization_id uuid not null, property_id uuid not null, room_id uuid not null, occupant_email text not null, starts_on date not null, ends_on date, status public.record_status not null default 'active');

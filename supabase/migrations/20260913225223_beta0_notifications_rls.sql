@@ -1,3 +1,4 @@
+
 create policy notifications_self_read on public.notifications_v2
 for select to authenticated
 using (recipient_user_id = (select auth.uid()));

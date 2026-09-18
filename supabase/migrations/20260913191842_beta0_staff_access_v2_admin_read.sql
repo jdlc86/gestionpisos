@@ -1,0 +1,1 @@
+create policy staff_v2_admin_read on public.property_staff_access_v2 for select to authenticated using ((select auth.jwt()->'app_metadata'->>'role') = 'root' or ((select auth.jwt()->'app_metadata'->>'role') = 'admin' and organization_id::text = (select auth.jwt()->'app_metadata'->>'organization_id')));

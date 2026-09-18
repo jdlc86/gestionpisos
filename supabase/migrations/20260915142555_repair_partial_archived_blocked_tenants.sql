@@ -1,0 +1,1 @@
+update public.tenants_v2 t set status='blocked', archived_at=null, deletion_requested_at=null, deletion_requested_by=null, updated_at=now() from public.occupancies_v2 o where o.tenant_id=t.id and o.status='blocked' and t.status='archived';

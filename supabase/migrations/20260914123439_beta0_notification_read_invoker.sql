@@ -1,3 +1,4 @@
+
 drop policy if exists notifications_mark_read_update on public.notifications_v2;
 
 create policy notifications_mark_read_update

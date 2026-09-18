@@ -1,3 +1,4 @@
+
 create policy payment_obligations_admin_write on public.payment_obligations_v2
 for all to authenticated
 using (

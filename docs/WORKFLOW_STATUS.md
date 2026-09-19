@@ -197,7 +197,7 @@ El 19/09/2026 se detectó además una diferencia entre el PostgreSQL local y los
 | Banco Fotográfico | Operativo/reutilizado | Patrones vinculables a aplicaciones y congelados por ejecución |
 | Versiones publicadas | Implementado | Editables solo antes de primera ejecución; después inmutables por historial |
 | Tareas | Materialización + decisión + revisión humana implementadas | `tenant_tasks_v2` reutilizada; `accept/reject` y revisión agency sincronizan tarea + ejecución |
-| Historial | Parcial avanzado | registra creación, materialización, acciones, evidencia y cierre de revisión; falta unificar la vista transversal completa |
+| Historial | Operativo inicial | vista única de ejecuciones con tarea, Foto/Checklist/Documento, decisiones, revisión y cierre; filtros avanzados/paginación profunda quedan posteriores |
 | Ejecución genérica | Implementada; cierre auto validado E2E y `human_review` cubierto por regresión de integración | `manual_now`, snapshots, tarea materializada, cierre automático y revisión humana para pasos implementados |
 | Adaptador Limpieza | Pendiente | Legacy preservado |
 
@@ -378,7 +378,7 @@ Orden recomendado:
 
 1. validar E2E humano Checklist y Documento en producción;
 2. validar combinaciones Foto + Checklist + Documento en órdenes distintos;
-3. completar la vista de Historial transversal ejecución → tarea → evidencia → revisión → cierre;
+3. validar la vista de Historial transversal con ejecuciones reales;
 4. añadir notificaciones operativas específicas de cierre/rechazo;
 5. después habilitar recurrencias automáticas.
 

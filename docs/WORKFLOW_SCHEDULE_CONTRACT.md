@@ -24,8 +24,9 @@ Esto evita:
 
 - tratar `datetime-local` como UTC;
 - desplazar la ejecución según el servidor;
-- decidir silenciosamente una hora en cambios DST;
 - reinterpretar una versión histórica desde otro dispositivo.
+
+Si una hora local aparece **dos veces** por el cambio horario de otoño, el Creador y el backend la rechazan como ambigua y exigen elegir otra hora. El sistema no decide silenciosamente cuál de los dos instantes usar.
 
 La fecha debe seguir estando en el futuro en el momento de Programar.
 

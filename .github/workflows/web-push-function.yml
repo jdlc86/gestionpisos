@@ -1,0 +1,34 @@
+name: Web Push Function
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/functions/web-push/**'
+      - '.github/workflows/web-push-function.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-production-web-push
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy web-push Edge Function
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Deploy authenticated-by-handler Web Push function
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: >
+          supabase functions deploy web-push
+          --project-ref qsxtmmkftsohkqqmytbb
+          --no-verify-jwt

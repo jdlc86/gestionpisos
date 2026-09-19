@@ -735,18 +735,25 @@ declare
   v_resolved uuid;
   v_schedule public.workflow_application_schedules_v2;
 begin
-  select wa,wv.spec
-  into v_app,v_spec
+  select wa.*
+  into v_app
   from public.workflow_applications_v2 wa
-  join public.workflow_definition_versions_v2 wv
-    on wv.id=wa.definition_version_id
-   and wv.definition_id=wa.definition_id
-   and wv.organization_id=wa.organization_id
   where wa.id=p_application_id
-  for update of wa;
+  for update;
 
   if v_app.id is null then
     raise exception 'workflow_application_not_found' using errcode='P0002';
+  end if;
+
+  select wv.spec
+  into v_spec
+  from public.workflow_definition_versions_v2 wv
+  where wv.id=v_app.definition_version_id
+    and wv.definition_id=v_app.definition_id
+    and wv.organization_id=v_app.organization_id;
+
+  if v_spec is null then
+    raise exception 'workflow_application_version_not_found' using errcode='55000';
   end if;
 
   v_trigger_type:=nullif(v_spec->>'triggerType','');

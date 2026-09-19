@@ -363,3 +363,24 @@ grep -Fq "'./cleaning.html?task_id='" docs/photo-camera.js
 grep -Fq "return './photo-patterns.html';" docs/photo-camera.js
 grep -Fq "const back = document.getElementById(\"cameraBackLink\");" docs/photo-persistence.js
 ! grep -Fq 'document.querySelector(".topbar a.ghost")' docs/photo-persistence.js
+
+
+# Campanita global de Inicio.
+test -s docs/notification-center.js
+test -s docs/notification-center.css
+node --check docs/notification-center.js
+grep -Fq './notification-center.css?v=2026091910' docs/index.html
+grep -Fq './notification-center.js?v=2026091910' docs/auth-guard.js
+grep -Fq 'mountNotificationCenter({ supabase, session })' docs/auth-guard.js
+grep -Fq 'id="notificationBell"' docs/notification-center.js
+grep -Fq '.from("notifications_v2")' docs/notification-center.js
+grep -Fq 'supabase.rpc("mark_notification_read"' docs/notification-center.js
+grep -Fq 'Marcar todo como leído' docs/notification-center.js
+grep -Fq 'workflow_task_created:"./workflow-tasks.html"' docs/notification-center.js
+grep -Fq 'workflow_completed:"./workflow-history.html"' docs/notification-center.js
+grep -Fq 'workflow_rejected:"./workflow-history.html"' docs/notification-center.js
+! grep -Fq 'url.searchParams.set("execution"' docs/notification-center.js
+grep -Fq "'./notification-center.js'" docs/sw.js
+grep -Fq "'./notification-center.css'" docs/sw.js
+grep -Fq '.notification-bell-count{' docs/notification-center.css
+grep -Fq '.notification-sheet{' docs/notification-center.css

@@ -18,6 +18,7 @@ review_access='supabase/migrations/20260918234500_workflow_review_actor_visibili
 photo_review_hardening='supabase/migrations/20260919001000_photo_review_read_authorization_hardening.sql'
 authoring_separation='supabase/migrations/20260918234456_workflow_authoring_operational_separation.sql'
 draft_discard='supabase/migrations/20260919141500_workflow_draft_discard.sql'
+lifecycle='supabase/migrations/20260919143208_workflow_publish_execute_lifecycle.sql'
 checklist='supabase/migrations/20260919103000_workflow_checklist_step.sql'
 
 test -s "$migration"
@@ -37,7 +38,9 @@ test -s "$review_access"
 test -s "$photo_review_hardening"
 test -s "$authoring_separation"
 test -s "$draft_discard"
+test -s "$lifecycle"
 test -s tests/workflow-draft-discard-regression.sql
+test -s tests/workflow-publish-execute-lifecycle-regression.sql
 test -s "$checklist"
 test -s tests/workflow-definition-regression.sql
 test -s tests/workflow-authoring-separation-regression.sql
@@ -263,3 +266,24 @@ grep -Fq "workflow_draft_has_dependencies" "$draft_discard"
 grep -Fq "workflow_definition_revision_draft_discarded" "$draft_discard"
 grep -Fq 'grant execute on function public.discard_workflow_definition_draft_v1' "$draft_discard"
 grep -Fq 'grant execute on function public.discard_workflow_definition_revision_draft_v1' "$draft_discard"
+
+
+# Publicar / Ejecutar: la primera ejecucion es la frontera historica.
+grep -Fq 'add column if not exists creation_request_key text' "$lifecycle"
+grep -Fq 'workflow_definitions_v2_creation_request_uq' "$lifecycle"
+grep -Fq 'create or replace function public.publish_workflow_ready_v1' "$lifecycle"
+grep -Fq 'create or replace function public.update_unexecuted_workflow_v1' "$lifecycle"
+grep -Fq 'create or replace function public.publish_workflow_revision_ready_v1' "$lifecycle"
+grep -Fq 'create or replace function public.delete_unexecuted_workflow_v1' "$lifecycle"
+grep -Fq 'create or replace function public.archive_workflow_definition_v1' "$lifecycle"
+grep -Fq "coalesce(auth.jwt()->>'aal','aal1') <> 'aal2'" "$lifecycle"
+grep -Fq "raise exception 'workflow_definition_has_history'" "$lifecycle"
+grep -Fq "raise exception 'workflow_revision_requires_history'" "$lifecycle"
+grep -Fq "raise exception 'workflow_unexecuted_delete_instead'" "$lifecycle"
+grep -Fq "update public.workflow_definition_versions_v2 wv" "$lifecycle"
+grep -Fq "perform pg_advisory_xact_lock" "$lifecycle"
+grep -Fq "grant execute on function public.publish_workflow_ready_v1" "$lifecycle"
+grep -Fq "grant execute on function public.update_unexecuted_workflow_v1" "$lifecycle"
+grep -Fq "grant execute on function public.publish_workflow_revision_ready_v1" "$lifecycle"
+grep -Fq "grant execute on function public.delete_unexecuted_workflow_v1" "$lifecycle"
+grep -Fq "grant execute on function public.archive_workflow_definition_v1" "$lifecycle"

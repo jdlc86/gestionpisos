@@ -32,6 +32,18 @@ as $task_personal_hide_allowed$
     and p_task.assigned_user_id=p_actor
     and p_task.status in ('completed','cancelled','failed','rejected','refunded','held')
     and (
+      coalesce(p_task.source_kind,'')<>'workflow_execution'
+      or (
+        p_task.source_id is not null
+        and exists(
+          select 1
+          from public.workflow_executions_v2 e
+          where e.id=p_task.source_id
+            and e.status in ('completed','cancelled','failed','rejected')
+        )
+      )
+    )
+    and (
       exists(
         select 1
         from public.user_roles ur
@@ -92,6 +104,20 @@ begin
     if v_task.status not in ('completed','cancelled','failed','rejected','refunded','held') then
       raise exception 'task_hide_requires_terminal' using errcode='55000';
     end if;
+
+    if v_task.source_kind='workflow_execution'
+      and (
+        v_task.source_id is null
+        or not exists(
+          select 1
+          from public.workflow_executions_v2 e
+          where e.id=v_task.source_id
+            and e.status in ('completed','cancelled','failed','rejected')
+        )
+      ) then
+      raise exception 'task_hide_execution_not_terminal' using errcode='55000';
+    end if;
+
     raise exception 'task_hide_forbidden' using errcode='42501';
   end if;
 

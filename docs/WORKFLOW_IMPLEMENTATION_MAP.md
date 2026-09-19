@@ -315,7 +315,7 @@ Falta implementar:
 
 - congelación explícita de otros recursos/versiones concretos;
 - notificaciones operativas genéricas de cierre/rechazo;
-- historial transversal presentado como una vista única que una definición, ejecución, tarea, evidencia, revisión y cierre.
+- la vista transversal de Historial ya presenta ejecución, tarea, evidencias, revisión y cierre usando las fuentes existentes; paginación profunda y filtros avanzados quedan como evolución.
 
 La revisión/cierre `human_review` ya está implementada para los pasos actualmente operativos.
 
@@ -349,7 +349,7 @@ Fotografía, Checklist y Documento ya son pasos operativos del motor mínimo.
 | Acción atómica | `tenant_task_actions_v2` + `apply_workflow_task_action_v1` | `accept/reject` y revisión `agency` sin Foto; mantiene tarea/ejecución sincronizadas |
 | Binding aplicación→foto | `workflow_application_photo_resources_v2` | Implementado con patrones reales del piso |
 | Snapshot ejecución→foto | `workflow_execution_photo_resources_v2` | Implementado; congela versión y silueta |
-| Eventos transversales de ejecución | `workflow_execution_events_v2` | Creación, materialización, acciones, evidencia y cierre de revisión registrados; presentación histórica transversal pendiente |
+| Eventos transversales de ejecución | `workflow_execution_events_v2` | Creación, materialización, acciones, evidencia y cierre de revisión registrados; presentación transversal implementada en Historial |
 
 ## 6. Compatibilidad y transición
 

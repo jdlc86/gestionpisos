@@ -27,6 +27,7 @@ scheduled_once='supabase/migrations/20260919190000_workflow_scheduled_once.sql'
 scheduled_exact='supabase/migrations/20260919190050_workflow_scheduled_exact_time.sql'
 recurring='supabase/migrations/20260919193000_workflow_recurring.sql'
 web_push='supabase/migrations/20260919203000_web_push_notifications.sql'
+task_card_removal='supabase/migrations/20260919210000_task_card_removal.sql'
 scheduled_cron='supabase/migrations/20260919190100_workflow_schedule_cron.sql'
 checklist='supabase/migrations/20260919103000_workflow_checklist_step.sql'
 
@@ -56,11 +57,13 @@ test -s "$scheduled_once"
 test -s "$scheduled_exact"
 test -s "$recurring"
 test -s "$web_push"
+test -s "$task_card_removal"
 test -s "$scheduled_cron"
 test -s tests/workflow-notifications-regression.sql
 test -s tests/workflow-scheduled-once-regression.sql
 test -s tests/workflow-recurring-regression.sql
 test -s tests/web-push-regression.sql
+test -s tests/task-card-removal-regression.sql
 test -s tests/local-property-staff-v3-alignment.sql
 test -s tests/workflow-draft-discard-regression.sql
 test -s tests/workflow-publish-execute-lifecycle-regression.sql
@@ -397,6 +400,15 @@ grep -Fq 'X-Allaiso-Push-Secret' supabase/functions/web-push/index.ts
 test -s .github/workflows/web-push-function.yml
 grep -Fq -- '--no-verify-jwt' .github/workflows/web-push-function.yml
 grep -Fq 'supabase functions deploy web-push' .github/workflows/web-push-function.yml
+
+# Tareas: eliminar retira la tarjeta pero conserva trazabilidad.
+grep -Fq 'add column if not exists removed_at timestamptz' "$task_card_removal"
+grep -Fq 'add column if not exists removed_by uuid' "$task_card_removal"
+grep -Fq 'create or replace function public.delete_task_card_v1' "$task_card_removal"
+grep -Fq 'task_delete_requires_terminal' "$task_card_removal"
+grep -Fq 'task_delete_execution_not_terminal' "$task_card_removal"
+grep -Fq 'revoke all on function public.delete_task_card_v1(uuid)' "$task_card_removal"
+grep -Fq 'grant execute on function public.delete_task_card_v1(uuid)' "$task_card_removal"
 
 # Fecha concreta: scheduler transversal, instante exacto e idempotencia.
 grep -Fq 'create table public.workflow_application_schedules_v2' "$scheduled_once"

@@ -1,21 +1,53 @@
 # Sistema visual de GestionPisos
 
-La referencia visual de la aplicación es la pantalla **Configuración y Recursos**.
+La referencia vigente es el patrón validado en Creador de Flujos: navegación discreta, contexto mínimo y acciones operativas claramente separadas.
 
-## Reglas
+## Jerarquía
 
-- El bloque principal/hero conserva fondo negro o casi negro tanto en tema claro como oscuro.
-- Las superficies de contenido usan dos niveles: `--ui-surface` y `--ui-subtle`, con borde fino y sin sombras decorativas pesadas.
-- Radio principal: 8–12 px. No se apilan capas de overrides para conseguir el aspecto final.
-- La iconografía de navegación y módulos usa el mismo lenguaje que **Configuración y Recursos**: pictogramas de color tipo emoji, compactos, sin cajas de color, sin bordes decorativos y mediante la clase compartida `ui-nav-icon`.
-- El dashboard principal no debe introducir una segunda familia de iconos SVG lineales para los módulos. Los SVG quedan reservados para controles funcionales específicos cuando sean necesarios (por ejemplo, cámara o herramientas de edición), no para sustituir la familia visual de navegación.
-- Los botones primarios son negros/blancos según tema; los secundarios son grises; las acciones destructivas usan rojo semántico.
-- Los modales críticos usan fondo negro, contraste alto y backdrop oscuro.
-- El tema oscuro se controla con `html[data-theme="dark"]`; no debe coexistir una segunda capa visual basada en `prefers-color-scheme` dentro de los CSS de módulos.
-- Los CSS de módulo consumen los tokens de `app.css` y solo definen layout o componentes propios. No deben duplicar una segunda paleta global.
+- Navegación global: Inicio / Cartera / Flujos / Tareas / Más en la barra inferior móvil.
+- Navegación contextual: volver a la pantalla padre mediante icono de flecha, sin convertirlo en CTA.
+- Acción operativa principal: azul consistente mediante --ui-action.
+- Acción secundaria: borde neutro, fondo transparente; no debe competir con la acción principal.
+- Peligro / rechazo: rojo semántico.
+- Estado: badges, texto o avisos; nunca se presenta como si fuera una acción.
 
-## Tokens compartidos
+## Cabeceras y ruido visual
 
-Los tokens canónicos viven en `docs/app.css`: `--ui-bg`, `--ui-surface`, `--ui-subtle`, `--ui-border`, `--ui-text`, `--ui-muted`, `--ui-hero`, `--ui-primary`, `--ui-danger`, `--ui-success`, `--ui-warning` y `--ui-info`.
+- Las pantallas de trabajo muestran título y únicamente el contexto necesario.
+- Los antiguos heroes grandes se sustituyen por contexto compacto cuando realmente aporta información.
+- No se duplica Inicio en móvil: la navegación global inferior ya cumple esa función.
+- En escritorio puede existir un acceso Home discreto como fallback cuando la barra inferior no se muestra.
+- El control de tema/iluminación, MFA y Salir aparecen solo en Inicio.
+- Cámara y Editor de siluetas siguen siendo experiencias fullscreen y no muestran la bottom navigation.
 
-Cuando se añada una nueva pantalla, se debe partir de estos tokens y de los componentes base (`topbar`, `hero`, `card`, `status`, `primary`, `secondary`, `danger-soft`, `global-icon`, `ui-nav-icon`) antes de crear estilos específicos.
+## Botones
+
+- .primary: acción positiva/principal, azul.
+- .secondary: acción secundaria neutra, outline.
+- .ghost: acción de baja prominencia.
+- .danger-soft: destructiva o peligrosa.
+- Los textos deben ser breves y preferiblemente ocupar una sola línea.
+- Tamaño táctil mínimo objetivo: 42–44 px en controles operativos.
+
+## Superficies
+
+- --ui-surface y --ui-subtle son los niveles principales.
+- Borde fino y sombras mínimas.
+- Radio principal de 8–12 px.
+- Los módulos consumen los tokens de app.css; no deben crear una segunda paleta global.
+
+## Tema
+
+- html[data-theme="dark"] es la única autoridad visual de tema.
+- La elección se realiza desde Inicio y se persiste globalmente.
+- Los módulos no deben ofrecer toggles propios ni depender de una paleta paralela basada solo en prefers-color-scheme.
+
+## Accesibilidad
+
+- Los controles icon-only requieren aria-label y, cuando aporte valor en escritorio, title.
+- Mantener focus-visible, contraste, safe areas y objetivos táctiles suficientes.
+- Un icono decorativo usa aria-hidden="true".
+
+## Componentes compartidos
+
+Los tokens y componentes canónicos viven en docs/app.css: topbar, context-heading, context-back, page-subtitle, hero/page-context, card, status, primary, secondary, danger-soft, global-icon y badge.

@@ -29,34 +29,40 @@ node --check docs/workflow-applications.js
 node --check docs/workflow-tasks.js
 
 grep -Fq 'href="./workflows.html"' docs/index.html
-grep -Fq '>🔄</span>Flujos de Trabajo' docs/index.html
+grep -Fq 'Flujos de Trabajo' docs/index.html
 
 grep -Fq 'data-workflow-module="builder"' docs/workflows.html
-grep -Fq '>➕</span>Creador de Flujos' docs/workflows.html
+grep -Fq 'Creador de Flujos' docs/workflows.html
 grep -Fq 'href="./workflow-builder.html"' docs/workflows.html
 grep -Fq 'data-workflow-module="definitions"' docs/workflows.html
-grep -Fq '>🧩</span>Mis Flujos' docs/workflows.html
+grep -Fq 'Mis Flujos' docs/workflows.html
 grep -Fq 'href="./workflow-definitions.html"' docs/workflows.html
 grep -Fq 'data-workflow-module="photo-bank"' docs/workflows.html
-grep -Fq '>📷</span>Banco Fotográfico' docs/workflows.html
+grep -Fq 'Banco Fotográfico' docs/workflows.html
 grep -Fq 'href="./photo-patterns.html?from=workflows"' docs/workflows.html
 grep -Fq 'data-workflow-module="tasks"' docs/workflows.html
-grep -Fq '>📋</span>Tareas' docs/workflows.html
+grep -Fq 'Tareas' docs/workflows.html
 grep -Fq 'href="./workflow-tasks.html"' docs/workflows.html
 grep -Fq 'data-workflow-module="history"' docs/workflows.html
-grep -Fq '>🕘</span>Historial' docs/workflows.html
+grep -Fq 'Historial' docs/workflows.html
 
 grep -Fq './auth-guard.js' docs/workflows.html
 grep -Fq './auth-guard.js' docs/workflow-builder.html
 grep -Fq './auth-guard.js' docs/workflow-definitions.html
 grep -Fq './auth-guard.js' docs/workflow-applications.html
 grep -Fq './auth-guard.js' docs/workflow-tasks.html
-grep -Fq 'data-theme-toggle' docs/workflows.html
-grep -Fq 'data-theme-toggle' docs/workflow-builder.html
-grep -Fq 'data-theme-toggle' docs/workflow-definitions.html
-grep -Fq 'data-theme-toggle' docs/workflow-applications.html
-grep -Fq 'data-theme-toggle' docs/workflow-tasks.html
+! grep -Fq 'data-theme-toggle' docs/workflows.html
+! grep -Fq 'data-theme-toggle' docs/workflow-builder.html
+! grep -Fq 'data-theme-toggle' docs/workflow-definitions.html
+! grep -Fq 'data-theme-toggle' docs/workflow-applications.html
+! grep -Fq 'data-theme-toggle' docs/workflow-tasks.html
+grep -Fq 'data-theme-toggle' docs/index.html
 grep -Fq 'class="ui-nav-icon"' docs/workflows.html
+grep -Fq '<svg viewBox="0 0 24 24">' docs/workflows.html
+! grep -Fq '➕' docs/workflows.html
+! grep -Fq '🧩' docs/workflows.html
+! grep -Fq '📷' docs/workflows.html
+! grep -Fq '📋' docs/workflows.html
 
 grep -Fq 'id="builderDraftsView"' docs/workflow-builder.html
 grep -Fq 'id="builderEditorView"' docs/workflow-builder.html
@@ -100,9 +106,9 @@ grep -Fq '.builder-action--neutral{' docs/workflow-builder.css
 grep -Fq 'grid-template-columns:auto minmax(0,1fr) auto' docs/workflow-builder.css
 grep -Fq 'builder-action builder-action--primary' docs/workflow-builder.html
 grep -Fq 'body.builder-editor-active .topbar{display:none}' docs/workflow-builder.css
-grep -Fq 'background:var(--ui-info)' docs/workflow-builder.css
+grep -Fq 'background:var(--ui-action)' docs/workflow-builder.css
 grep -Fq 'document.body.classList.toggle("builder-editor-active",editorRequested)' docs/workflow-builder.js
-! grep -Fq 'href="./" aria-label="Inicio"' docs/workflow-builder.html
+grep -Fq 'desktop-home-link' docs/workflow-builder.html
 ! grep -Fq '<section class="hero">' docs/workflow-builder.html
 ! grep -Fq 'Autoría y operación están separadas' docs/workflow-builder.html
 grep -Fq 'id="builderSave" type="button" class="builder-action">Guardar</button>' docs/workflow-builder.html
@@ -149,7 +155,7 @@ grep -Fq 'Continuar nueva versión' docs/workflow-definitions.js
 grep -Fq 'workflow-applications.html?definition=' docs/workflow-definitions.js
 grep -Fq './workflow-definitions.js?v=2026091901' docs/workflow-definitions.html
 grep -Fq './workflow-definitions.css?v=2026091901' docs/workflow-definitions.html
-grep -Fq 'Mis Flujos muestra únicamente recetas con una versión publicada' docs/workflow-definitions.html
+grep -Fq 'Solo recetas publicadas; los borradores se gestionan en el Creador.' docs/workflow-definitions.html
 ! grep -Fq 'Completar borrador' docs/workflow-definitions.js
 ! grep -Fq 'Publicar versión' docs/workflow-definitions.js
 ! grep -Fq 'publish_workflow_definition_v1' docs/workflow-definitions.js

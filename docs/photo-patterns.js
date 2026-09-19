@@ -1,3 +1,23 @@
+const patternsBackLink = document.getElementById("patternsBackLink");
+const patternsSource = new URLSearchParams(window.location.search).get("from");
+if (patternsBackLink) {
+  if (patternsSource === "workflows") {
+    patternsBackLink.href = "./workflows.html";
+    patternsBackLink.setAttribute("aria-label", "Volver a Flujos");
+    patternsBackLink.title = "Volver a Flujos";
+  } else if (patternsSource === "workflow-builder") {
+    patternsBackLink.href = "./workflow-builder.html";
+    patternsBackLink.setAttribute("aria-label", "Volver al Creador");
+    patternsBackLink.title = "Volver al Creador";
+    patternsBackLink.addEventListener("click", event => {
+      if (window.history.length > 1) {
+        event.preventDefault();
+        window.history.back();
+      }
+    });
+  }
+}
+
 import { supabase, getCurrentUser } from "./supabase-client.js";
 
 const propertySelect = document.getElementById("propertySelect");

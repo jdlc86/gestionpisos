@@ -20,7 +20,8 @@ const backLink = document.getElementById("reviewBackLink");
 const initialParams = new URLSearchParams(window.location.search);
 if (backLink && initialParams.get("workflow_execution_id")) {
   backLink.href = "./workflow-tasks.html";
-  backLink.textContent = "Volver a Tareas";
+  backLink.setAttribute("aria-label", "Volver a Tareas");
+  backLink.title = "Volver a Tareas";
 }
 
 let currentRun = null;

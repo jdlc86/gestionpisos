@@ -1,10 +1,4 @@
 .operations-shell{padding-bottom:48px}
-.back-link{text-decoration:none;color:inherit}
-.ops-hero{margin:26px 0 20px;padding:25px;border:1px solid #25272b;border-radius:12px;background:var(--ui-hero);color:var(--ui-hero-text)}
-.ops-hero h2{margin:12px 0 8px;font-size:clamp(26px,6vw,40px);line-height:1.05;letter-spacing:-.04em}
-.ops-hero p{margin:0;color:var(--ui-hero-muted);line-height:1.55}
-.ops-hero .ops-hero__action{margin-top:16px}
-.ops-hero__action .primary{display:inline-flex;background:#fff;border-color:#fff;color:#111214}
 .segmented{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:5px;border:1px solid var(--ui-border);border-radius:8px;background:var(--ui-subtle)}
 .segment{min-height:40px;border:0;border-radius:6px;padding:9px 8px;background:transparent;color:var(--ui-muted);font:inherit;font-weight:650;cursor:pointer}
 .segment.is-active{background:var(--ui-surface);color:var(--ui-text);box-shadow:var(--ui-shadow)}

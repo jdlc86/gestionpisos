@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#ffffff">
-  <link rel="stylesheet" href="./app.css?v=202609152">
+  <link rel="stylesheet" href="./app.css?v=2026091904">
   <link rel="stylesheet" href="./portfolio.css?v=202609157">
   <title>Allaiso · Cartera</title>
 </head>
@@ -15,19 +15,9 @@
         <p class="eyebrow">ALLAISO</p>
         <h1>Cartera</h1>
       </div>
-      <div class="toolbar-actions">
-        <button id="themeToggle" class="theme-toggle" type="button" aria-label="Cambiar tema" title="Cambiar tema"><span id="themeIcon" aria-hidden="true">☾</span></button>
-        <a class="global-icon" href="./" aria-label="Inicio" title="Inicio">⌂</a>
-      </div>
+      <div class="toolbar-actions"><a class="global-icon desktop-home-link" href="./" aria-label="Inicio" title="Inicio"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 10.5 12 3l8.5 7.5v9a1.5 1.5 0 0 1-1.5 1.5h-5v-6H10v6H5a1.5 1.5 0 0 1-1.5-1.5z"/></svg></a></div>
     </header>
-
-    <section class="portfolio-hero">
-      <span class="badge">Beta 0 · datos reales</span>
-      <h2>Propietarios, pisos, habitaciones e inquilinos</h2>
-      <p>La estructura central de la cartera de Allaiso. Las bajas conservan histórico y las relaciones nunca se pierden.</p>
-    </section>
-
-    <nav class="segmented" aria-label="Secciones de cartera">
+<nav class="segmented" aria-label="Secciones de cartera">
       <button class="segment is-active" data-view="owners">Propietarios</button>
       <button class="segment" data-view="properties">Pisos</button>
       <button class="segment" data-view="rooms">Habitaciones</button>
@@ -138,6 +128,7 @@
   </main>
   <script type="module" src="./portfolio.js?v=2026091802"></script>
   <script type="module" src="./portfolio-onboarding.js?v=2026091803"></script>
+  <script src="./app.js?v=202609152" defer></script>
   <script type="module" src="./auth-guard.js"></script>
 </body>
 </html>

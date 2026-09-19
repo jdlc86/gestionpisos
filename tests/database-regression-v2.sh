@@ -87,6 +87,7 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -v "$repo_path:/w
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260919190000_workflow_scheduled_once.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260919190050_workflow_scheduled_exact_time.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260919193000_workflow_recurring.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260919203000_web_push_notifications.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/database-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/photo-verification-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-definition-regression.sql
@@ -97,6 +98,7 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -v "$repo_path:/w
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-notifications-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-scheduled-once-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-recurring-regression.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/web-push-regression.sql
 
     trap - EXIT
     cleanup

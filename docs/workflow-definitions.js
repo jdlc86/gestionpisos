@@ -2,14 +2,34 @@ import { supabase } from "./supabase-client.js";
 
 const list=document.getElementById("workflowDefinitions");
 const status=document.getElementById("definitionsStatus");
+
+const topbar=document.getElementById("definitionsTopbar");
+const normalHeader=document.getElementById("definitionsNormalHeader");
+const searchHeader=document.getElementById("definitionsSearchHeader");
+const selectionHeader=document.getElementById("definitionsSelectionHeader");
+
+const searchToggle=document.getElementById("workflowSearchToggle");
 const searchInput=document.getElementById("workflowSearch");
+const searchClose=document.getElementById("workflowSearchClose");
+const searchClear=document.getElementById("workflowSearchClear");
+const activeFilter=document.getElementById("workflowActiveFilter");
+const activeFilterText=document.getElementById("workflowActiveFilterText");
+
 const selectionToggle=document.getElementById("workflowSelectionToggle");
-const bulkBar=document.getElementById("workflowBulkBar");
-const selectVisible=document.getElementById("workflowSelectVisible");
+const selectionClose=document.getElementById("workflowSelectionClose");
 const selectionSummary=document.getElementById("workflowSelectionSummary");
+const selectionMenuToggle=document.getElementById("workflowSelectionMenuToggle");
+const selectionMenu=document.getElementById("workflowSelectionMenu");
+const selectVisible=document.getElementById("workflowSelectVisible");
+const deselectVisible=document.getElementById("workflowDeselectVisible");
+
+const bulkDock=document.getElementById("workflowBulkDock");
 const bulkExecute=document.getElementById("workflowBulkExecute");
 const bulkDelete=document.getElementById("workflowBulkDelete");
 const bulkArchive=document.getElementById("workflowBulkArchive");
+const bulkExecuteCount=document.getElementById("workflowBulkExecuteCount");
+const bulkDeleteCount=document.getElementById("workflowBulkDeleteCount");
+const bulkArchiveCount=document.getElementById("workflowBulkArchiveCount");
 
 const params=new URLSearchParams(window.location.search);
 const highlightedDefinition=params.get("published")||"";
@@ -24,6 +44,7 @@ let occupancyById=new Map();
 let publishedRows=[];
 let filteredRows=[];
 let selectionMode=false;
+let searchMode=false;
 const selectedIds=new Set();
 
 const BATCH_EXECUTION_PREFIX="workflow-batch-execution:";

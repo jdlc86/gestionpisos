@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#ffffff">
   <meta name="description" content="Tareas de Flujos de Trabajo de GestionPisos">
   <link rel="stylesheet" href="./app.css?v=2026091906">
-  <link rel="stylesheet" href="./workflow-tasks.css?v=2026091922">
+  <link rel="stylesheet" href="./workflow-tasks.css?v=2026091923">
   <title>Allaiso · Tareas</title>
 </head>
 <body>
@@ -47,6 +47,7 @@
           <option value="open">Abiertas</option>
           <option value="all">Todas</option>
           <option value="mine">Asignadas a mí</option>
+          <option id="taskHiddenFilterOption" value="hidden">Ocultas</option>
         </select>
       </label>
     </section>
@@ -62,17 +63,17 @@
 
     <section id="taskBulkDock" class="tasks-bulk-dock" hidden aria-label="Acciones para tareas seleccionadas">
       <div class="tasks-bulk-dock-inner">
-        <button id="taskBulkDelete" type="button" class="tasks-bulk-action tasks-bulk-action--danger" disabled>
-          <span class="tasks-bulk-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg></span>
-          <span>Eliminar</span>
-          <span id="taskBulkDeleteCount" class="tasks-bulk-count">0</span>
+        <button id="taskBulkAction" type="button" class="tasks-bulk-action" disabled>
+          <span id="taskBulkActionIcon" class="tasks-bulk-icon" aria-hidden="true"></span>
+          <span id="taskBulkActionLabel">Eliminar</span>
+          <span id="taskBulkActionCount" class="tasks-bulk-count">0</span>
         </button>
       </div>
     </section>
   </main>
 
   <script src="./app.js?v=2026091902" defer></script>
-  <script type="module" src="./workflow-tasks.js?v=2026091922"></script>
+  <script type="module" src="./workflow-tasks.js?v=2026091923"></script>
   <script type="module" src="./auth-guard.js"></script>
 </body>
 </html>

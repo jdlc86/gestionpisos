@@ -14,8 +14,11 @@ const selectionMenu=document.getElementById("taskSelectionMenu");
 const selectVisible=document.getElementById("taskSelectVisible");
 const deselectVisible=document.getElementById("taskDeselectVisible");
 const bulkDock=document.getElementById("taskBulkDock");
-const bulkDelete=document.getElementById("taskBulkDelete");
-const bulkDeleteCount=document.getElementById("taskBulkDeleteCount");
+const bulkAction=document.getElementById("taskBulkAction");
+const bulkActionIcon=document.getElementById("taskBulkActionIcon");
+const bulkActionLabel=document.getElementById("taskBulkActionLabel");
+const bulkActionCount=document.getElementById("taskBulkActionCount");
+const hiddenFilterOption=document.getElementById("taskHiddenFilterOption");
 
 let currentUser=null;
 let tasks=[];
@@ -28,6 +31,7 @@ let rootManager=false;
 let photoResourcesByExecution=new Map();
 let documentsByExecution=new Map();
 let workflowExecutionsById=new Map();
+let hiddenTaskIds=new Set();
 let selectionMode=false;
 const selectedTaskIds=new Set();
 
@@ -85,10 +89,19 @@ function assigneeLabel(task){
   const profile=profiles.get(task.assigned_user_id);
   return profile?.display_name||profile?.email||"Usuario asignado";
 }
+function isManager(){
+  return rootManager||managerOrganizationIds.size>0;
+}
+function isPersonallyHidden(task){
+  return Boolean(task?.id&&hiddenTaskIds.has(task.id));
+}
 function visibleTasks(){
-  if(filter.value==="all")return tasks;
-  if(filter.value==="mine")return tasks.filter(task=>task.assigned_user_id===currentUser?.id);
-  return tasks.filter(task=>!["completed","cancelled","rejected","refunded","held"].includes(task.status));
+  if(filter.value==="hidden")return tasks.filter(isPersonallyHidden);
+
+  const active=tasks.filter(task=>!isPersonallyHidden(task));
+  if(filter.value==="all")return active;
+  if(filter.value==="mine")return active.filter(task=>task.assigned_user_id===currentUser?.id);
+  return active.filter(task=>!TERMINAL_TASK_STATUSES.has(task.status));
 }
 
 function selectedTasks(){
@@ -102,8 +115,57 @@ function canDeleteTask(task){
   }
   return true;
 }
-function selectedDeletableTasks(){
-  return selectedTasks().filter(canDeleteTask);
+function canHideTask(task){
+  if(
+    !task
+    || isManager()
+    || isPersonallyHidden(task)
+    || task.assigned_user_id!==currentUser?.id
+    || !TERMINAL_TASK_STATUSES.has(task.status)
+  )return false;
+  if(task.source_kind==="workflow_execution"){
+    const execution=executionForTask(task);
+    return Boolean(execution&&TERMINAL_EXECUTION_STATUSES.has(execution.status));
+  }
+  return true;
+}
+function canRestoreTask(task){
+  return Boolean(task&&!isManager()&&isPersonallyHidden(task));
+}
+function selectionOperation(){
+  if(isManager())return "delete";
+  return filter.value==="hidden"?"restore":"hide";
+}
+function canApplySelectionOperation(task){
+  const operation=selectionOperation();
+  if(operation==="delete")return canDeleteTask(task);
+  if(operation==="restore")return canRestoreTask(task);
+  return canHideTask(task);
+}
+function selectedActionableTasks(){
+  return selectedTasks().filter(canApplySelectionOperation);
+}
+function selectionActionMeta(){
+  const operation=selectionOperation();
+  if(operation==="delete"){
+    return {
+      label:"Eliminar",
+      icon:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg>',
+      danger:true
+    };
+  }
+  if(operation==="restore"){
+    return {
+      label:"Restaurar",
+      icon:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3L4.5 9"/><path d="M4.5 4.5V9H9"/></svg>',
+      danger:false
+    };
+  }
+  return {
+    label:"Ocultar",
+    icon:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 10.7a2 2 0 0 0 2.7 2.7"/><path d="M9.9 4.3A10.7 10.7 0 0 1 12 4c5.5 0 9 6 9 6a14.2 14.2 0 0 1-2.2 3"/><path d="M6.6 6.6C4.4 8.1 3 10 3 10s3.5 6 9 6c1 0 2-.2 2.8-.5"/></svg>',
+    danger:false
+  };
 }
 function closeSelectionMenu(){
   if(!selectionMenu||!selectionMenuToggle)return;
@@ -118,8 +180,8 @@ function setHeaderMode(mode){
 }
 function syncSelectionAvailability(){
   if(!selectionToggle)return;
-  const manager=rootManager||managerOrganizationIds.size>0;
-  selectionToggle.hidden=selectionMode||!manager||tasks.length===0;
+  const actionable=visibleTasks().some(canApplySelectionOperation);
+  selectionToggle.hidden=selectionMode||!actionable;
 }
 function setSelectionMode(enabled,{selectId=null}={}){
   selectionMode=enabled;
@@ -136,13 +198,21 @@ function setSelectionMode(enabled,{selectId=null}={}){
 }
 function updateBulkState(){
   const selected=selectedTasks();
-  const deletable=selected.filter(canDeleteTask);
+  const actionable=selected.filter(canApplySelectionOperation);
+  const meta=selectionActionMeta();
+
   if(selectionSummary){
     selectionSummary.textContent=selected.length+" seleccionada"+(selected.length===1?"":"s");
   }
   if(bulkDock)bulkDock.hidden=!selectionMode||selected.length===0;
-  if(bulkDelete)bulkDelete.disabled=deletable.length===0;
-  if(bulkDeleteCount)bulkDeleteCount.textContent=String(deletable.length);
+  if(bulkAction){
+    bulkAction.disabled=actionable.length===0;
+    bulkAction.classList.toggle("tasks-bulk-action--danger",meta.danger);
+    bulkAction.classList.toggle("tasks-bulk-action--personal",!meta.danger);
+  }
+  if(bulkActionLabel)bulkActionLabel.textContent=meta.label;
+  if(bulkActionIcon)bulkActionIcon.innerHTML=meta.icon;
+  if(bulkActionCount)bulkActionCount.textContent=String(actionable.length);
 
   const visibleIds=visibleTasks().map(task=>task.id);
   const selectedVisible=visibleIds.filter(id=>selectedTaskIds.has(id)).length;
@@ -173,7 +243,7 @@ function bindTaskLongPress(article,task){
   };
 
   article.addEventListener("pointerdown",event=>{
-    if(selectionMode||event.button!==0||!canManageTask(task))return;
+    if(selectionMode||event.button!==0||!canApplySelectionOperation(task))return;
     if(event.target.closest("a,button,input,select,textarea,label,summary"))return;
     longPressed=false;
     startX=event.clientX;
@@ -204,6 +274,9 @@ function clearSelection(){
 function errorText(error){
   const message=String(error?.message||"");
   if(message.includes("aal2_required"))return "Esta operación requiere MFA. Vuelve a autenticarte y repite la acción.";
+  if(message.includes("task_hide_requires_terminal"))return "Solo puedes ocultar de tu bandeja tareas que ya estén cerradas.";
+  if(message.includes("task_hide_execution_not_terminal"))return "El workflow asociado todavía sigue abierto; esta tarjeta no se puede ocultar.";
+  if(message.includes("task_hide_forbidden"))return "Esta tarea no se puede ocultar de tu bandeja.";
   if(message.includes("task_delete_forbidden"))return "No tienes permiso para eliminar esta tarjeta.";
   if(message.includes("task_delete_requires_terminal"))return "Solo se pueden eliminar de Tareas las tarjetas que ya están cerradas.";
   if(message.includes("task_delete_execution_not_terminal"))return "La ejecución asociada sigue abierta y no se puede retirar de Tareas.";
@@ -765,6 +838,12 @@ function render(){
     }
     const state=document.createElement("span");state.className="task-badge";state.textContent=statusLabels[task.status]||task.status;
     badges.append(state);
+    if(isPersonallyHidden(task)){
+      const hidden=document.createElement("span");
+      hidden.className="task-badge task-badge--personal-hidden";
+      hidden.textContent="Oculta para ti";
+      badges.append(hidden);
+    }
     head.append(title,badges);
 
     article.append(head);
@@ -868,6 +947,52 @@ async function loadManagerAccess(){
     if(row.role==="root")rootManager=true;
     if(row.role==="admin"&&row.organization_id)managerOrganizationIds.add(row.organization_id);
   });
+}
+
+async function loadPersonalHidden(){
+  hiddenTaskIds=new Set();
+  if(!currentUser?.id||isManager())return;
+
+  const pageSize=500;
+  for(let from=0;;from+=pageSize){
+    const {data,error}=await supabase
+      .rpc("list_my_hidden_task_cards_v1")
+      .range(from,from+pageSize-1);
+    if(error)throw error;
+
+    const rows=data||[];
+    rows.forEach(row=>{
+      if(row?.task_id)hiddenTaskIds.add(row.task_id);
+    });
+    if(rows.length<pageSize)break;
+  }
+}
+
+async function loadHiddenTaskRows(){
+  if(isManager()||!hiddenTaskIds.size)return;
+
+  const loadedIds=new Set(tasks.map(task=>task.id));
+  const missing=[...hiddenTaskIds].filter(id=>!loadedIds.has(id));
+  if(!missing.length)return;
+
+  const chunkSize=100;
+  for(let index=0;index<missing.length;index+=chunkSize){
+    const ids=missing.slice(index,index+chunkSize);
+    const {data,error}=await supabase
+      .from("tenant_tasks_v2")
+      .select("id,organization_id,tenant_id,property_id,room_id,task_type,origin,title,description,status,due_at,assigned_user_id,source_kind,source_id,created_at,removed_at")
+      .in("id",ids)
+      .is("removed_at",null);
+    if(error)throw error;
+    (data||[]).forEach(task=>{
+      if(!loadedIds.has(task.id)){
+        tasks.push(task);
+        loadedIds.add(task.id);
+      }
+    });
+  }
+
+  tasks.sort((a,b)=>String(b.created_at||"").localeCompare(String(a.created_at||"")));
 }
 
 async function loadRelated(){
@@ -1009,7 +1134,14 @@ async function load(preserveStatus=false){
   tasks=data||[];
 
   try{
-    await Promise.all([loadManagerAccess(),loadRelated(),loadActions(),loadWorkflowExecutions(),loadPhotoResources(),loadDocuments()]);
+    await loadManagerAccess();
+    if(isManager()){
+      hiddenTaskIds=new Set();
+    }else{
+      await loadPersonalHidden();
+      await loadHiddenTaskRows();
+    }
+    await Promise.all([loadRelated(),loadActions(),loadWorkflowExecutions(),loadPhotoResources(),loadDocuments()]);
   }catch{
     list.replaceChildren();
     const empty=document.createElement("article");empty.className="task-empty";
@@ -1019,36 +1151,59 @@ async function load(preserveStatus=false){
     return;
   }
 
+  if(hiddenFilterOption)hiddenFilterOption.hidden=isManager();
+  if(isManager()&&filter.value==="hidden")filter.value="open";
+
   render();
 
-  const workflowCount=tasks.filter(task=>task.source_kind==="workflow_execution").length;
+  const shown=visibleTasks();
+  const workflowCount=shown.filter(task=>task.source_kind==="workflow_execution").length;
   if(!preserveStatus){
-    setStatus(tasks.length+" tarea"+(tasks.length===1?"":"s")+" visible"+(tasks.length===1?"":"s")+(workflowCount?" · "+workflowCount+" generada"+(workflowCount===1?"":"s")+" por workflow.":"."));
+    if(filter.value==="hidden"){
+      setStatus(shown.length+" tarea"+(shown.length===1?" oculta":"s ocultas")+" para ti.");
+    }else{
+      setStatus(shown.length+" tarea"+(shown.length===1?"":"s")+" visible"+(shown.length===1?"":"s")+(workflowCount?" · "+workflowCount+" generada"+(workflowCount===1?"":"s")+" por workflow.":"."));
+    }
   }
 }
 
-async function bulkDeleteSelected(){
+async function bulkSelectionAction(){
+  const operation=selectionOperation();
   const selected=selectedTasks();
-  const eligible=selectedDeletableTasks();
+  const eligible=selectedActionableTasks();
   const skipped=selected.length-eligible.length;
+
   if(!eligible.length){
-    setStatus("Las tareas seleccionadas siguen abiertas o no pueden ser gestionadas por tu usuario.",true);
+    const message=operation==="delete"
+      ?"Las tareas seleccionadas siguen abiertas o no pueden ser gestionadas por tu usuario."
+      :operation==="restore"
+        ?"No hay tareas ocultas seleccionadas que puedas restaurar."
+        :"Solo puedes ocultar de tu bandeja tareas cerradas que estén asignadas a ti.";
+    setStatus(message,true);
     return;
   }
 
-  const message="Se eliminarán de Tareas "+eligible.length+" tarjeta"+(eligible.length===1?"":"s")+" ya cerrada"+(eligible.length===1?"":"s")+". "
-    +"El historial, la ejecución y sus evidencias se conservarán."
-    +(skipped?" "+skipped+" seleccionada"+(skipped===1?" se omitirá":"s se omitirán")+" porque sigue abierta o no es gestionable.":"")
-    +" ¿Continuar?";
-  if(!window.confirm(message))return;
+  if(operation==="delete"){
+    const message="Se eliminarán de Tareas "+eligible.length+" tarjeta"+(eligible.length===1?"":"s")+" ya cerrada"+(eligible.length===1?"":"s")+". "
+      +"El historial, la ejecución y sus evidencias se conservarán."
+      +(skipped?" "+skipped+" seleccionada"+(skipped===1?" se omitirá":"s se omitirán")+" porque sigue abierta o no es gestionable.":"")
+      +" ¿Continuar?";
+    if(!window.confirm(message))return;
+  }
 
-  bulkDelete.disabled=true;
-  setStatus("Eliminando "+eligible.length+" tarjeta"+(eligible.length===1?"":"s")+"…");
+  bulkAction.disabled=true;
+  const verb=operation==="delete"?"Eliminando":operation==="restore"?"Restaurando":"Ocultando";
+  setStatus(verb+" "+eligible.length+" tarjeta"+(eligible.length===1?"":"s")+"…");
 
   let ok=0;
   const failures=[];
   for(const task of eligible){
-    const {error}=await supabase.rpc("delete_task_card_v1",{p_task_id:task.id});
+    const rpc=operation==="delete"
+      ?"delete_task_card_v1"
+      :operation==="restore"
+        ?"unhide_my_task_card_v1"
+        :"hide_my_task_card_v1";
+    const {error}=await supabase.rpc(rpc,{p_task_id:task.id});
     if(error)failures.push({task,error});
     else{
       ok++;
@@ -1059,10 +1214,19 @@ async function bulkDeleteSelected(){
   await load(true);
   if(!selectedTaskIds.size)setSelectionMode(false);
 
+  const noun=ok===1?" tarjeta":" tarjetas";
   if(failures.length){
-    setStatus(ok+" eliminada"+(ok===1?"":"s")+" · "+failures.length+" no se pudieron eliminar. "+errorText(failures[0].error),true);
+    const actionWord=operation==="delete"?"eliminada":operation==="restore"?"restaurada":"ocultada";
+    setStatus(ok+noun+" "+actionWord+(ok===1?"":"s")+" · "+failures.length+" no se pudieron procesar. "+errorText(failures[0].error),true);
+    return;
+  }
+
+  if(operation==="delete"){
+    setStatus(ok+noun+(ok===1?" eliminada.":" eliminadas."));
+  }else if(operation==="restore"){
+    setStatus(ok+noun+(ok===1?" restaurada.":" restauradas."));
   }else{
-    setStatus(ok+" tarjeta"+(ok===1?" eliminada.":"s eliminadas."));
+    setStatus(ok+noun+(ok===1?" oculta.":" ocultas.")+" Puedes recuperarlas desde Mostrar → Ocultas.");
   }
 }
 
@@ -1097,10 +1261,14 @@ document.addEventListener("keydown",event=>{
   }
   if(selectionMode)clearSelection();
 });
-bulkDelete?.addEventListener("click",bulkDeleteSelected);
+bulkAction?.addEventListener("click",bulkSelectionAction);
 
 filter.addEventListener("change",()=>{
   if(selectionMode)selectedTaskIds.clear();
   render();
+  const shown=visibleTasks();
+  if(filter.value==="hidden"){
+    setStatus(shown.length+" tarea"+(shown.length===1?" oculta":"s ocultas")+" para ti.");
+  }
 });
 load();

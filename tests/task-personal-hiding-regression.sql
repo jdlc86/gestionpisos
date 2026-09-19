@@ -103,7 +103,7 @@ insert into public.tenant_tasks_v2(
   current_setting('gestionpisos.personal_hide.org')::uuid,
   current_setting('gestionpisos.personal_hide.tenant')::uuid,
   'generic','manual','Tenant terminal task','completed',
-  null,
+  current_setting('gestionpisos.personal_hide.tenant_user')::uuid,
   current_setting('gestionpisos.personal_hide.root')::uuid
 ),
 (
@@ -224,7 +224,7 @@ $owner_isolated$;
 
 reset role;
 
--- INQUILINO: puede ocultar una tarea terminal de su propia ficha aunque no esté asignada.
+-- INQUILINO: puede ocultar una tarea terminal asignada a su identidad.
 set local role authenticated;
 select set_config(
   'request.jwt.claims',

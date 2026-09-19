@@ -126,6 +126,14 @@
 .builder-action--neutral:hover,.builder-action--neutral:active{
   background:var(--ui-subtle);
 }
+.builder-action--danger{
+  border-color:var(--ui-danger);
+  background:transparent;
+  color:var(--ui-danger);
+}
+.builder-action--danger:hover,.builder-action--danger:active{
+  background:var(--ui-danger-soft);
+}
 .builder-action:disabled{
   opacity:.48;
   cursor:not-allowed;
@@ -237,3 +245,7 @@ body.builder-editor-active .builder-actions{
   .builder-checklist-item{grid-template-columns:1fr}
   .builder-checklist-item-actions{justify-content:flex-end}
 }
+
+.builder-draft-status{margin:0}
+.builder-draft-status[data-tone="success"]{border-color:var(--ui-success);color:var(--ui-text)}
+.builder-draft-status[data-tone="error"]{border-color:var(--ui-danger);background:var(--ui-danger-soft);color:var(--ui-text)}

@@ -23,8 +23,10 @@ grep -Fq 'Gestión de Permisos' docs/configuration-resources.html
 ! grep -Fq 'mfa-setup.html?next=configuration-resources.html' docs/configuration-resources.html
 ! grep -Fq '🛡️' docs/configuration-resources.html
 grep -Fq 'data-theme-toggle' docs/index.html
-grep -Fq 'button.textContent = "MFA"' docs/auth-guard.js
-grep -Fq 'if (isHomePage && requiresPrivilegedMfa(session)) addMfaSecurityAction();' docs/auth-guard.js
+grep -Fq 'setupHomeAccountMenu(session)' docs/auth-guard.js
+grep -Fq 'mfaAction.hidden = !requiresPrivilegedMfa(session)' docs/auth-guard.js
+grep -Fq 'if (isHomePage) setupHomeAccountMenu(session);' docs/auth-guard.js
+grep -Fq 'Seguridad MFA' docs/index.html
 grep -Fq 'Operadores de emergencia' docs/configuration-resources.html
 grep -Fq 'factory-reset.html' docs/configuration-resources.html
 

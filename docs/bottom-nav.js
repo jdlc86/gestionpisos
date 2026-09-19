@@ -14,6 +14,7 @@ const FLOW_PAGES=new Set([
   "workflow-builder.html",
   "workflow-definitions.html",
   "workflow-applications.html",
+  "workflow-history.html",
   "photo-patterns.html",
   "photo-verifications.html"
 ]);

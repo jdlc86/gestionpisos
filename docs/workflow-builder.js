@@ -121,7 +121,10 @@ function goToDrafts(){
 }
 
 function clearLocalDraftCache(){
-  clearLocalDraftCache();
+  try{
+    sessionStorage.removeItem(DRAFT_KEY);
+    sessionStorage.removeItem(LEGACY_DRAFT_KEY);
+  }catch{}
 }
 
 async function requestExitEditor(){

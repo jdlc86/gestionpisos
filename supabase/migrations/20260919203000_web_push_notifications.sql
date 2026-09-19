@@ -135,7 +135,16 @@ begin
       failure_count=0,
       last_error_code=null,
       updated_at=now()
+  where public.web_push_subscriptions_v1.user_id=excluded.user_id
+     or (
+       public.web_push_subscriptions_v1.p256dh=excluded.p256dh
+       and public.web_push_subscriptions_v1.auth_secret=excluded.auth_secret
+     )
   returning id into v_id;
+
+  if v_id is null then
+    raise exception 'web_push_subscription_conflict' using errcode='42501';
+  end if;
 
   return v_id;
 end;

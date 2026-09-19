@@ -62,7 +62,9 @@ declare
   v_draft record;
   v_published record;
   v_application record;
-  v_execution record;
+  v_execution_id uuid;
+  v_execution_status text;
+  v_execution_assigned_user_id uuid;
   v_existing_photo_ids uuid[];
   v_scope text;
 begin
@@ -145,7 +147,8 @@ begin
     end if;
 
     if p_execute then
-      select * into v_execution
+      select execution_id,status,assigned_user_id
+      into v_execution_id,v_execution_status,v_execution_assigned_user_id
       from public.execute_workflow_application_now_v1(
         v_existing_application.id,
         p_idempotency_key,
@@ -160,9 +163,9 @@ begin
       v_existing_version.id,
       v_existing_version.version,
       v_existing_application.id,
-      case when p_execute then v_execution.execution_id else null::uuid end,
-      case when p_execute then v_execution.status else null::text end,
-      case when p_execute then v_execution.assigned_user_id else null::uuid end,
+      v_execution_id,
+      v_execution_status,
+      v_execution_assigned_user_id,
       v_existing_version.published_at;
     return;
   end if;
@@ -193,7 +196,8 @@ begin
   limit 1;
 
   if p_execute then
-    select * into v_execution
+    select execution_id,status,assigned_user_id
+    into v_execution_id,v_execution_status,v_execution_assigned_user_id
     from public.execute_workflow_application_now_v1(
       v_application.application_id,
       p_idempotency_key,
@@ -212,7 +216,7 @@ begin
     jsonb_build_object(
       'version_id',v_published.version_id,
       'application_id',v_application.application_id,
-      'execution_id',case when p_execute then v_execution.execution_id else null end,
+      'execution_id',v_execution_id,
       'request_key',v_request_key
     )
   from public.workflow_definitions_v2 wd
@@ -224,9 +228,9 @@ begin
     v_published.version_id,
     v_published.version,
     v_application.application_id,
-    case when p_execute then v_execution.execution_id else null::uuid end,
-    case when p_execute then v_execution.status else null::text end,
-    case when p_execute then v_execution.assigned_user_id else null::uuid end,
+    v_execution_id,
+    v_execution_status,
+    v_execution_assigned_user_id,
     v_published.published_at;
 end;
 $$;
@@ -267,7 +271,9 @@ declare
   v_spec jsonb;
   v_new_revision bigint;
   v_application record;
-  v_execution record;
+  v_execution_id uuid;
+  v_execution_status text;
+  v_execution_assigned_user_id uuid;
 begin
   if v_actor is null then
     raise exception 'not_authenticated' using errcode='42501';
@@ -369,7 +375,8 @@ begin
   limit 1;
 
   if p_execute then
-    select * into v_execution
+    select execution_id,status,assigned_user_id
+    into v_execution_id,v_execution_status,v_execution_assigned_user_id
     from public.execute_workflow_application_now_v1(
       v_application.application_id,
       p_idempotency_key,
@@ -389,7 +396,7 @@ begin
       'version',v_version.version,
       'revision',v_new_revision,
       'application_id',v_application.application_id,
-      'execution_id',case when p_execute then v_execution.execution_id else null end
+      'execution_id',v_execution_id
     )
   );
 
@@ -399,9 +406,9 @@ begin
     v_version.id,
     v_version.version,
     v_application.application_id,
-    case when p_execute then v_execution.execution_id else null::uuid end,
-    case when p_execute then v_execution.status else null::text end,
-    case when p_execute then v_execution.assigned_user_id else null::uuid end,
+    v_execution_id,
+    v_execution_status,
+    v_execution_assigned_user_id,
     v_new_revision;
 end;
 $$;
@@ -439,7 +446,9 @@ declare
   v_definition public.workflow_definitions_v2;
   v_published record;
   v_application record;
-  v_execution record;
+  v_execution_id uuid;
+  v_execution_status text;
+  v_execution_assigned_user_id uuid;
 begin
   if v_actor is null then
     raise exception 'not_authenticated' using errcode='42501';
@@ -493,7 +502,8 @@ begin
   limit 1;
 
   if p_execute then
-    select * into v_execution
+    select execution_id,status,assigned_user_id
+    into v_execution_id,v_execution_status,v_execution_assigned_user_id
     from public.execute_workflow_application_now_v1(
       v_application.application_id,
       p_idempotency_key,
@@ -512,7 +522,7 @@ begin
       'version_id',v_published.version_id,
       'version',v_published.version,
       'application_id',v_application.application_id,
-      'execution_id',case when p_execute then v_execution.execution_id else null end
+      'execution_id',v_execution_id
     )
   );
 
@@ -522,9 +532,9 @@ begin
     v_published.version_id,
     v_published.version,
     v_application.application_id,
-    case when p_execute then v_execution.execution_id else null::uuid end,
-    case when p_execute then v_execution.status else null::text end,
-    case when p_execute then v_execution.assigned_user_id else null::uuid end,
+    v_execution_id,
+    v_execution_status,
+    v_execution_assigned_user_id,
     v_published.published_at;
 end;
 $$;

@@ -5,6 +5,7 @@ import {
   privilegedMfaRoute,
   requiresPrivilegedMfa
 } from "./mfa-common.js?v=2026091701";
+import { mountBottomNavigation } from "./bottom-nav.js?v=2026091901";
 
 const loginUrl = new URL("./login.html", window.location.href);
 loginUrl.searchParams.set("next", window.location.pathname.split("/").pop() || "index.html");
@@ -66,6 +67,9 @@ async function requireSession() {
     }
 
     document.documentElement.removeAttribute("data-auth-pending");
+    mountBottomNavigation({ supabase, session }).catch(error => {
+      console.error("bottom_navigation_failed", error);
+    });
 
     if (requiresPrivilegedMfa(session)) addMfaSecurityAction();
 

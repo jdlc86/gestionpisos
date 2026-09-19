@@ -171,6 +171,7 @@ function errorText(error){
   if(message.includes("workflow_property_responsible_unavailable"))return "Este piso no tiene un responsable operativo vigente para ejecutar el flujo.";
   if(message.includes("workflow_schedule_must_be_future"))return "La fecha programada debe estar en el futuro.";
   if(message.includes("workflow_schedule_timezone_invalid")||message.includes("workflow_schedule_timezone_conflict"))return "No se pudo validar la zona horaria de esta programación. Vuelve al Creador y revisa la fecha.";
+  if(message.includes("workflow_schedule_local_time_ambiguous"))return "Esa hora se repite por el cambio horario. Vuelve al Creador y elige otra hora.";
   if(message.includes("workflow_scheduled_utc_invalid")||message.includes("workflow_schedule_time_mismatch"))return "La fecha y hora programadas no representan un instante válido. Vuelve al Creador y selecciónalas de nuevo.";
   if(message.includes("workflow_schedule_assignment_not_supported"))return "Esta regla de asignación todavía no admite programación automática.";
   if(message.includes("workflow_scheduled_execute_now_forbidden")||message.includes("workflow_scheduled_manual_execution_forbidden"))return "Los flujos de Fecha concreta se programan; no se ejecutan manualmente desde este paso.";

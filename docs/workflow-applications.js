@@ -230,14 +230,16 @@ function configurePresentation(){
 
   if(executionIntent){
     document.body.classList.add("workflow-execution-assist");
-    if(pageTitle)pageTitle.textContent="Ejecutar flujo";
+    if(pageTitle)pageTitle.textContent=batchQueue?"Ejecutar flujos":"Ejecutar flujo";
     if(contextBackLink){
       contextBackLink.href="./workflow-definitions.html";
-      contextBackLink.setAttribute("aria-label","Cancelar ejecución");
-      contextBackLink.title="Cancelar ejecución";
+      const cancelLabel=batchQueue?"Cancelar ejecución masiva":"Cancelar ejecución";
+      contextBackLink.setAttribute("aria-label",cancelLabel);
+      contextBackLink.title=cancelLabel;
+      if(batchQueue)contextBackLink.addEventListener("click",clearBatchQueue,{once:true});
     }
     if(formCard)formCard.classList.toggle("execution-attention",!guidedApplicationId);
-    if(formEyebrow)formEyebrow.textContent="Ejecución · Destino";
+    if(formEyebrow)formEyebrow.textContent=batchQueue?batchProgressLabel()+" · Destino":"Ejecución · Destino";
     if(formTitle)formTitle.textContent="Completa lo necesario para ejecutar";
     if(formDescription)formDescription.textContent="Falta información del destino. Completa únicamente los campos resaltados para continuar.";
     if(versionRow)versionRow.hidden=true;

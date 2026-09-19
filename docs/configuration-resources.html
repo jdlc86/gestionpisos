@@ -18,10 +18,10 @@
 <div class="configuration-toolbar"><div><strong id="organizationName">—</strong><div class="configuration-note">Organización activa · <span id="organizationStatus">—</span></div></div><button id="refreshResources" class="secondary" type="button">Actualizar</button></div>
 
   <section class="configuration-grid" aria-label="Recursos del proyecto">
-    <article class="configuration-card"><h3>Base de datos</h3><div id="databaseMetric" class="resource-metric">—</div><div class="resource-detail">Tamaño total del proyecto Supabase dedicado a GestionPisos.</div></article>
-    <article class="configuration-card"><h3>Storage</h3><div id="storageMetric" class="resource-metric">—</div><div id="storageDetail" class="resource-detail">—</div></article>
-    <article class="configuration-card"><h3>Usuarios Auth</h3><div id="authMetric" class="resource-metric">—</div><div class="resource-detail">Identidades de acceso existentes actualmente en Authentication.</div></article>
-    <article class="configuration-card"><h3>Recuperación ROOT</h3><div id="recoveryMetric" class="resource-metric">—</div><div id="recoveryDetail" class="resource-detail">—</div></article>
+    <article class="configuration-card"><h3 class="premium-section-heading"><span class="premium-icon" data-premium-icon="database" aria-hidden="true"></span>Base de datos</h3><div id="databaseMetric" class="resource-metric">—</div><div class="resource-detail">Tamaño total del proyecto Supabase dedicado a GestionPisos.</div></article>
+    <article class="configuration-card"><h3 class="premium-section-heading"><span class="premium-icon" data-premium-icon="storage" aria-hidden="true"></span>Storage</h3><div id="storageMetric" class="resource-metric">—</div><div id="storageDetail" class="resource-detail">—</div></article>
+    <article class="configuration-card"><h3 class="premium-section-heading"><span class="premium-icon" data-premium-icon="users" aria-hidden="true"></span>Usuarios Auth</h3><div id="authMetric" class="resource-metric">—</div><div class="resource-detail">Identidades de acceso existentes actualmente en Authentication.</div></article>
+    <article class="configuration-card"><h3 class="premium-section-heading"><span class="premium-icon" data-premium-icon="recovery" aria-hidden="true"></span>Recuperación ROOT</h3><div id="recoveryMetric" class="resource-metric">—</div><div id="recoveryDetail" class="resource-detail">—</div></article>
   </section>
 
   <section class="configuration-section">
@@ -43,9 +43,9 @@
   <section class="configuration-section">
     <p class="eyebrow">SEGURIDAD Y ACCESO</p><h3>Configuración global</h3>
     <div class="configuration-links">
-      <a class="configuration-link" href="./permissions.html"><strong><span class="ui-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></svg></span>Gestión de Permisos</strong><span>Administradores, empleados, viviendas asignadas, control administrativo y operadores de emergencia.</span></a>
-<a class="configuration-link" href="./permissions.html#emergencyOperatorsPanel"><strong><span class="ui-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h16v13H4zM8 7V4h8v3M8 12h8M12 9v6"/></svg></span>Operadores de emergencia</strong><span>Autoriza y revisa las identidades técnicas capaces de ejecutar recuperación privilegiada.</span></a>
-      <div class="configuration-link"><strong><span class="ui-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 5h18v14H3zM3 7l9 7 9-7"/></svg></span>Correo de autenticación</strong><span>Entrega transaccional externa para invitaciones y recuperación de contraseña.</span><span id="emailDeliveryStatus" class="status-pill">—</span></div>
+      <a class="configuration-link premium-nav-card" href="./permissions.html"><strong><span class="premium-icon" data-premium-icon="permissions" aria-hidden="true"></span>Gestión de Permisos</strong><span>Administradores, empleados, viviendas asignadas, control administrativo y operadores de emergencia.</span></a>
+<a class="configuration-link premium-nav-card" href="./permissions.html#emergencyOperatorsPanel"><strong><span class="premium-icon" data-premium-icon="emergency" aria-hidden="true"></span>Operadores de emergencia</strong><span>Autoriza y revisa las identidades técnicas capaces de ejecutar recuperación privilegiada.</span></a>
+      <div class="configuration-link premium-nav-card"><strong><span class="premium-icon" data-premium-icon="mail" aria-hidden="true"></span>Correo de autenticación</strong><span>Entrega transaccional externa para invitaciones y recuperación de contraseña.</span><span id="emailDeliveryStatus" class="status-pill">—</span></div>
     </div>
     <div class="configuration-note" style="margin-top:12px">Sesión ROOT actual: <span id="mfaStatus" class="status-pill">—</span></div>
   </section>

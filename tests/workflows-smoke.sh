@@ -174,7 +174,7 @@ grep -Fq 'id="photoBankLink"' docs/workflow-builder.html
 grep -Fq 'href="./photo-patterns.html?from=workflow-builder" hidden' docs/workflow-builder.html
 grep -Fq 'function updatePhotoResource()' docs/workflow-builder.js
 grep -Fq 'photoBankLink.hidden=!checked("stepPhoto")' docs/workflow-builder.js
-grep -Fq './workflow-builder.js?v=2026091919' docs/workflow-builder.html
+grep -Fq './workflow-builder.js?v=2026091921' docs/workflow-builder.html
 
 grep -Fq 'workflow_definitions_v2' docs/workflow-definitions.js
 grep -Fq '.eq("status","published")' docs/workflow-definitions.js

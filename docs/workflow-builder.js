@@ -113,6 +113,7 @@ function updateEditorTitle(){
 function showWorkspaceView(){
   draftsView.hidden=editorRequested;
   editorView.hidden=!editorRequested;
+  document.body.classList.toggle("builder-editor-active",editorRequested);
 }
 
 function goToDrafts(){
@@ -419,20 +420,14 @@ function showStep(next,shouldScroll=false){
   });
   backButton.disabled=currentStep===0;
   if(currentStep===panels.length-1){
-    nextButton.textContent="Borrador revisado";
+    nextButton.textContent="Revisión completa";
     nextButton.disabled=true;
-    nextButton.classList.remove("primary");
-    nextButton.classList.add("secondary");
-    saveButton.classList.remove("secondary");
-    saveButton.classList.add("primary");
+    nextButton.classList.remove("builder-action--primary");
     renderSummary();
   }else{
     nextButton.textContent="Continuar";
     nextButton.disabled=false;
-    nextButton.classList.remove("secondary");
-    nextButton.classList.add("primary");
-    saveButton.classList.remove("primary");
-    saveButton.classList.add("secondary");
+    nextButton.classList.add("builder-action--primary");
   }
   updateCompletionUI();
   saveLocalDraft();
@@ -493,14 +488,14 @@ async function saveServerDraft(){
   const noChanges=wasExisting&&Number.isFinite(previousRevision)&&currentRevision===previousRevision;
   setServerStatus(
     noChanges
-      ?"Sin cambios · revisión "+currentRevision+". No se creó una revisión nueva."
+      ?"Sin cambios · revisión "+currentRevision
       :serverComplete
-        ?"Borrador guardado · revisión "+currentRevision+" · configuración completa. Todavía no está publicado."
-        :"Borrador guardado · revisión "+currentRevision+" · incompleto ("+state.completed+"/"+state.total+" apartados). Puedes retomarlo aquí en el Creador.",
+        ?"Guardado · revisión "+currentRevision+" · listo para publicar."
+        :"Guardado · revisión "+currentRevision+" · "+state.completed+"/"+state.total+" apartados completos.",
     noChanges||serverComplete?"success":"neutral"
   );
   saveButton.disabled=false;
-  saveButton.textContent="Guardar borrador";
+  saveButton.textContent="Guardar";
   updateCompletionUI();
   if(currentStep===panels.length-1)renderSummary();
   markSavedSnapshot();
@@ -565,7 +560,7 @@ function draftWorkspaceCard(item){
   meta.textContent=versionText+" · revisión "+item.revision+" · "+draftDate(item.updated_at);
 
   const actions=document.createElement("div");actions.className="builder-draft-actions";
-  const edit=document.createElement("a");edit.className="primary";
+  const edit=document.createElement("a");edit.className="builder-action builder-action--primary";
   edit.href="./workflow-builder.html?id="+encodeURIComponent(item.definition_id)+(item.is_revision?"&revision=1":"");
   edit.textContent="Editar";
   actions.append(edit);
@@ -765,5 +760,5 @@ window.addEventListener("beforeunload",event=>{
   updateTriggerFields();
   showStep(currentStep);
   const state=completion();
-  setServerStatus("Flujo nuevo · "+state.completed+"/"+state.total+" apartados configurados. Guarda el borrador cuando quieras conservarlo en el servidor.");
+  setServerStatus("Nuevo flujo · "+state.completed+"/"+state.total+" apartados completos.");
 })();

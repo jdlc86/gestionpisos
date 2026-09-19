@@ -826,6 +826,12 @@ function render(){
     }
     const state=document.createElement("span");state.className="task-badge";state.textContent=statusLabels[task.status]||task.status;
     badges.append(state);
+    if(isPersonallyHidden(task)){
+      const hidden=document.createElement("span");
+      hidden.className="task-badge task-badge--personal-hidden";
+      hidden.textContent="Oculta para ti";
+      badges.append(hidden);
+    }
     head.append(title,badges);
 
     article.append(head);
@@ -928,6 +934,18 @@ async function loadManagerAccess(){
   (data||[]).forEach(row=>{
     if(row.role==="root")rootManager=true;
     if(row.role==="admin"&&row.organization_id)managerOrganizationIds.add(row.organization_id);
+  });
+}
+
+async function loadPersonalHidden(){
+  hiddenTaskIds=new Set();
+  if(!currentUser?.id)return;
+
+  const {data,error}=await supabase.rpc("list_my_hidden_task_cards_v1");
+  if(error)throw error;
+
+  (data||[]).forEach(row=>{
+    if(row?.task_id)hiddenTaskIds.add(row.task_id);
   });
 }
 
@@ -1070,7 +1088,7 @@ async function load(preserveStatus=false){
   tasks=data||[];
 
   try{
-    await Promise.all([loadManagerAccess(),loadRelated(),loadActions(),loadWorkflowExecutions(),loadPhotoResources(),loadDocuments()]);
+    await Promise.all([loadManagerAccess(),loadPersonalHidden(),loadRelated(),loadActions(),loadWorkflowExecutions(),loadPhotoResources(),loadDocuments()]);
   }catch{
     list.replaceChildren();
     const empty=document.createElement("article");empty.className="task-empty";
@@ -1080,36 +1098,59 @@ async function load(preserveStatus=false){
     return;
   }
 
+  if(hiddenFilterOption)hiddenFilterOption.hidden=isManager();
+  if(isManager()&&filter.value==="hidden")filter.value="open";
+
   render();
 
-  const workflowCount=tasks.filter(task=>task.source_kind==="workflow_execution").length;
+  const shown=visibleTasks();
+  const workflowCount=shown.filter(task=>task.source_kind==="workflow_execution").length;
   if(!preserveStatus){
-    setStatus(tasks.length+" tarea"+(tasks.length===1?"":"s")+" visible"+(tasks.length===1?"":"s")+(workflowCount?" · "+workflowCount+" generada"+(workflowCount===1?"":"s")+" por workflow.":"."));
+    if(filter.value==="hidden"){
+      setStatus(shown.length+" tarea"+(shown.length===1?" oculta":"s ocultas")+" para ti.");
+    }else{
+      setStatus(shown.length+" tarea"+(shown.length===1?"":"s")+" visible"+(shown.length===1?"":"s")+(workflowCount?" · "+workflowCount+" generada"+(workflowCount===1?"":"s")+" por workflow.":"."));
+    }
   }
 }
 
-async function bulkDeleteSelected(){
+async function bulkSelectionAction(){
+  const operation=selectionOperation();
   const selected=selectedTasks();
-  const eligible=selectedDeletableTasks();
+  const eligible=selectedActionableTasks();
   const skipped=selected.length-eligible.length;
+
   if(!eligible.length){
-    setStatus("Las tareas seleccionadas siguen abiertas o no pueden ser gestionadas por tu usuario.",true);
+    const message=operation==="delete"
+      ?"Las tareas seleccionadas siguen abiertas o no pueden ser gestionadas por tu usuario."
+      :operation==="restore"
+        ?"No hay tareas ocultas seleccionadas que puedas restaurar."
+        :"Solo puedes ocultar de tu bandeja tareas cerradas que te correspondan.";
+    setStatus(message,true);
     return;
   }
 
-  const message="Se eliminarán de Tareas "+eligible.length+" tarjeta"+(eligible.length===1?"":"s")+" ya cerrada"+(eligible.length===1?"":"s")+". "
-    +"El historial, la ejecución y sus evidencias se conservarán."
-    +(skipped?" "+skipped+" seleccionada"+(skipped===1?" se omitirá":"s se omitirán")+" porque sigue abierta o no es gestionable.":"")
-    +" ¿Continuar?";
-  if(!window.confirm(message))return;
+  if(operation==="delete"){
+    const message="Se eliminarán de Tareas "+eligible.length+" tarjeta"+(eligible.length===1?"":"s")+" ya cerrada"+(eligible.length===1?"":"s")+". "
+      +"El historial, la ejecución y sus evidencias se conservarán."
+      +(skipped?" "+skipped+" seleccionada"+(skipped===1?" se omitirá":"s se omitirán")+" porque sigue abierta o no es gestionable.":"")
+      +" ¿Continuar?";
+    if(!window.confirm(message))return;
+  }
 
-  bulkDelete.disabled=true;
-  setStatus("Eliminando "+eligible.length+" tarjeta"+(eligible.length===1?"":"s")+"…");
+  bulkAction.disabled=true;
+  const verb=operation==="delete"?"Eliminando":operation==="restore"?"Restaurando":"Ocultando";
+  setStatus(verb+" "+eligible.length+" tarjeta"+(eligible.length===1?"":"s")+"…");
 
   let ok=0;
   const failures=[];
   for(const task of eligible){
-    const {error}=await supabase.rpc("delete_task_card_v1",{p_task_id:task.id});
+    const rpc=operation==="delete"
+      ?"delete_task_card_v1"
+      :operation==="restore"
+        ?"unhide_my_task_card_v1"
+        :"hide_my_task_card_v1";
+    const {error}=await supabase.rpc(rpc,{p_task_id:task.id});
     if(error)failures.push({task,error});
     else{
       ok++;
@@ -1120,10 +1161,19 @@ async function bulkDeleteSelected(){
   await load(true);
   if(!selectedTaskIds.size)setSelectionMode(false);
 
+  const noun=ok===1?" tarjeta":" tarjetas";
   if(failures.length){
-    setStatus(ok+" eliminada"+(ok===1?"":"s")+" · "+failures.length+" no se pudieron eliminar. "+errorText(failures[0].error),true);
+    const actionWord=operation==="delete"?"eliminada":operation==="restore"?"restaurada":"ocultada";
+    setStatus(ok+noun+" "+actionWord+(ok===1?"":"s")+" · "+failures.length+" no se pudieron procesar. "+errorText(failures[0].error),true);
+    return;
+  }
+
+  if(operation==="delete"){
+    setStatus(ok+noun+(ok===1?" eliminada.":" eliminadas."));
+  }else if(operation==="restore"){
+    setStatus(ok+noun+(ok===1?" restaurada.":" restauradas."));
   }else{
-    setStatus(ok+" tarjeta"+(ok===1?" eliminada.":"s eliminadas."));
+    setStatus(ok+noun+(ok===1?" oculta.":" ocultas.")+" Puedes recuperarlas desde Mostrar → Ocultas.");
   }
 }
 
@@ -1158,10 +1208,14 @@ document.addEventListener("keydown",event=>{
   }
   if(selectionMode)clearSelection();
 });
-bulkDelete?.addEventListener("click",bulkDeleteSelected);
+bulkAction?.addEventListener("click",bulkSelectionAction);
 
 filter.addEventListener("change",()=>{
   if(selectionMode)selectedTaskIds.clear();
   render();
+  const shown=visibleTasks();
+  if(filter.value==="hidden"){
+    setStatus(shown.length+" tarea"+(shown.length===1?" oculta":"s ocultas")+" para ti.");
+  }
 });
 load();

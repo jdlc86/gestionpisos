@@ -10,8 +10,21 @@ const backButton=document.getElementById("builderBack");
 const nextButton=document.getElementById("builderNext");
 const clearButton=document.getElementById("builderClear");
 const saveButton=document.getElementById("builderSave");
+const saveExitButton=document.getElementById("builderSaveExitInline");
 const publishButton=document.getElementById("builderPublish");
+const draftsView=document.getElementById("builderDraftsView");
+const editorView=document.getElementById("builderEditorView");
+const editorTitle=document.getElementById("builderEditorTitle");
+const exitEditorButton=document.getElementById("builderExitEditor");
+const exitDialog=document.getElementById("builderExitDialog");
+const exitSaveButton=document.getElementById("builderExitSave");
+const exitDiscardButton=document.getElementById("builderExitDiscard");
+const exitCancelButton=document.getElementById("builderExitCancel");
 const draftsList=document.getElementById("builderDrafts");
+const draftSearch=document.getElementById("builderDraftSearch");
+const draftFilter=document.getElementById("builderDraftFilter");
+const draftCount=document.getElementById("builderDraftCount");
+const draftLoadMore=document.getElementById("builderDraftLoadMore");
 const triggerType=document.getElementById("triggerType");
 const recurrenceRow=document.getElementById("recurrenceRow");
 const customRecurrenceRow=document.getElementById("customRecurrenceRow");
@@ -21,6 +34,8 @@ const summary=document.getElementById("workflowSummary");
 const serverStatus=document.getElementById("builderServerStatus");
 const builderBadge=document.getElementById("builderBadge");
 const initialParams=new URLSearchParams(window.location.search);
+const newDraftMode=initialParams.get("new")==="1";
+const editorRequested=Boolean(initialParams.get("id"))||newDraftMode;
 let currentStep=0;
 let currentDefinitionId=initialParams.get("id")||null;
 let revisionMode=initialParams.get("revision")==="1";
@@ -28,6 +43,10 @@ let currentRevision=null;
 let currentBaseVersion=null;
 let loadingServerDraft=false;
 let legacyDraftNeedsReview=false;
+let savedSnapshot=null;
+let allowNavigation=false;
+let draftItems=[];
+let draftVisibleLimit=12;
 
 const labels={
   flowType:{cleaning:"Limpieza",inspection:"Inspección",maintenance:"Mantenimiento",checkin:"Check-in",checkout:"Check-out",custom:"Personalizado"},
@@ -69,6 +88,52 @@ function serverDraft(){
   const data=draft();
   delete data.currentStep;
   return data;
+}
+
+function specSnapshot(){
+  return JSON.stringify(serverDraft());
+}
+
+function markSavedSnapshot(){
+  savedSnapshot=specSnapshot();
+}
+
+function hasUnsavedChanges(){
+  return editorRequested&&savedSnapshot!==null&&specSnapshot()!==savedSnapshot;
+}
+
+function updateEditorTitle(){
+  if(!editorTitle)return;
+  const name=value("flowName")||"Nuevo flujo";
+  editorTitle.textContent=revisionMode&&currentBaseVersion
+    ?"Nueva v"+(currentBaseVersion+1)+" · "+name
+    :name;
+}
+
+function showWorkspaceView(){
+  draftsView.hidden=editorRequested;
+  editorView.hidden=!editorRequested;
+}
+
+function goToDrafts(){
+  allowNavigation=true;
+  window.location.href="./workflow-builder.html";
+}
+
+function clearLocalDraftCache(){
+  clearLocalDraftCache();
+}
+
+async function requestExitEditor(){
+  if(!hasUnsavedChanges()){
+    goToDrafts();
+    return;
+  }
+  if(exitDialog?.showModal){
+    exitDialog.showModal();
+    return;
+  }
+  if(window.confirm("Hay cambios sin guardar. ¿Salir sin guardarlos?"))goToDrafts();
 }
 
 function completion(data=draft()){
@@ -200,6 +265,7 @@ function updateCompletionUI(){
     button.classList.toggle("is-pending",Boolean(section&&!section.complete));
     if(section)button.title=section.complete?section.label+": configurado":section.label+": pendiente";
   });
+  updateEditorTitle();
   if(builderBadge){
     builderBadge.textContent=state.complete
       ?(revisionMode&&currentBaseVersion?"Nueva v"+(currentBaseVersion+1)+" preparada":"Configuración completa")
@@ -273,6 +339,7 @@ async function loadServerDraft(){
       state.complete?"success":"neutral"
     );
   }
+  markSavedSnapshot();
 }
 
 function validateBeforeSave(){
@@ -405,6 +472,7 @@ async function saveServerDraft(){
   legacyDraftNeedsReview=false;
   const url=new URL(window.location.href);
   url.searchParams.set("id",currentDefinitionId);
+  url.searchParams.delete("new");
   if(revisionMode)url.searchParams.set("revision","1");else url.searchParams.delete("revision");
   window.history.replaceState({},"",url);
   try{
@@ -432,7 +500,7 @@ async function saveServerDraft(){
   saveButton.textContent="Guardar borrador";
   updateCompletionUI();
   if(currentStep===panels.length-1)renderSummary();
-  await loadDraftWorkspace();
+  markSavedSnapshot();
   return true;
 }
 
@@ -480,13 +548,11 @@ async function publishCurrentDraft(){
 function draftWorkspaceCard(item){
   const article=document.createElement("article");
   article.className="builder-draft-card";
-  const isCurrent=item.definition_id===currentDefinitionId&&Boolean(item.is_revision)===revisionMode;
-  if(isCurrent)article.classList.add("is-current");
 
   const head=document.createElement("div");head.className="builder-draft-head";
   const title=document.createElement("h3");title.textContent=item.name||"Borrador";
   const badge=document.createElement("span");badge.className="builder-draft-badge "+(item.authoring_complete?"is-complete":"is-pending");
-  badge.textContent=item.authoring_complete?"Configurado":"Incompleto";
+  badge.textContent=item.authoring_complete?"Listo para publicar":"Incompleto";
   head.append(title,badge);
 
   const meta=document.createElement("div");meta.className="builder-draft-meta";
@@ -496,26 +562,55 @@ function draftWorkspaceCard(item){
   meta.textContent=versionText+" · revisión "+item.revision+" · "+draftDate(item.updated_at);
 
   const actions=document.createElement("div");actions.className="builder-draft-actions";
-  const edit=document.createElement("a");edit.className="secondary";
+  const edit=document.createElement("a");edit.className="primary";
   edit.href="./workflow-builder.html?id="+encodeURIComponent(item.definition_id)+(item.is_revision?"&revision=1":"");
-  edit.textContent=isCurrent?"Editando":"Editar";
+  edit.textContent="Editar";
   actions.append(edit);
-
-  if(item.authoring_complete){
-    const publish=document.createElement("button");publish.type="button";publish.className="primary";
-    publish.textContent=item.is_revision?"Publicar v"+(Number(item.base_version)+1):"Publicar";
-    publish.addEventListener("click",()=>{
-      if(isCurrent){
-        publishCurrentDraft();
-      }else{
-        publishDefinition(item.definition_id,Number(item.revision),{isRevision:item.is_revision,button:publish});
-      }
-    });
-    actions.append(publish);
-  }
 
   article.append(head,meta,actions);
   return article;
+}
+
+function filteredDraftItems(){
+  const term=String(draftSearch?.value||"").trim().toLocaleLowerCase("es");
+  const filter=String(draftFilter?.value||"all");
+  return draftItems.filter(item=>{
+    const matchesTerm=!term||String(item.name||"").toLocaleLowerCase("es").includes(term);
+    const matchesFilter=
+      filter==="all"
+      ||(filter==="ready"&&item.authoring_complete)
+      ||(filter==="incomplete"&&!item.authoring_complete)
+      ||(filter==="revision"&&item.is_revision);
+    return matchesTerm&&matchesFilter;
+  });
+}
+
+function renderDraftWorkspace(){
+  if(!draftsList)return;
+  const filtered=filteredDraftItems();
+  const visible=filtered.slice(0,draftVisibleLimit);
+  draftsList.replaceChildren();
+
+  if(draftCount){
+    draftCount.textContent=filtered.length+" borrador"+(filtered.length===1?"":"es");
+  }
+
+  if(!visible.length){
+    const empty=document.createElement("article");empty.className="builder-draft-card";
+    empty.textContent=draftItems.length
+      ?"No hay borradores que coincidan con este filtro."
+      :"No hay borradores guardados. Puedes crear un flujo nuevo.";
+    draftsList.append(empty);
+  }else{
+    visible.forEach(item=>draftsList.append(draftWorkspaceCard(item)));
+  }
+
+  if(draftLoadMore){
+    draftLoadMore.hidden=visible.length>=filtered.length;
+    if(!draftLoadMore.hidden){
+      draftLoadMore.textContent="Cargar más · "+(filtered.length-visible.length)+" pendientes";
+    }
+  }
 }
 
 async function loadDraftWorkspace(){
@@ -538,10 +633,11 @@ async function loadDraftWorkspace(){
     const error=document.createElement("article");error.className="builder-draft-card";
     error.textContent="No se pudieron cargar los borradores autorizados.";
     draftsList.append(error);
+    if(draftCount)draftCount.textContent="Error al cargar";
     return;
   }
 
-  const items=[
+  draftItems=[
     ...(initialResult.data||[]).map(row=>({
       definition_id:row.id,
       name:row.name,
@@ -561,19 +657,17 @@ async function loadDraftWorkspace(){
     }))
   ].sort((a,b)=>new Date(b.updated_at)-new Date(a.updated_at));
 
-  draftsList.replaceChildren();
-  if(!items.length){
-    const empty=document.createElement("article");empty.className="builder-draft-card";
-    empty.textContent="No hay borradores guardados. Puedes crear uno nuevo.";
-    draftsList.append(empty);
-    return;
-  }
-  items.forEach(item=>draftsList.append(draftWorkspaceCard(item)));
+  draftVisibleLimit=12;
+  renderDraftWorkspace();
 }
 
 publishButton?.addEventListener("click",publishCurrentDraft);
 
-form.addEventListener("input",()=>{saveLocalDraft();updateCompletionUI();if(currentStep===panels.length-1)renderSummary()});
+form.addEventListener("input",()=>{
+  saveLocalDraft();
+  updateCompletionUI();
+  if(currentStep===panels.length-1)renderSummary();
+});
 form.addEventListener("change",event=>{
   if(event.target===triggerType||event.target===field("recurrence"))updateTriggerFields({clearHidden:true});
   saveLocalDraft();
@@ -584,34 +678,89 @@ backButton.addEventListener("click",()=>showStep(currentStep-1,true));
 nextButton.addEventListener("click",()=>showStep(currentStep+1,true));
 stepButtons.forEach((button,index)=>button.addEventListener("click",()=>showStep(index,true)));
 saveButton.addEventListener("click",saveServerDraft);
-clearButton.addEventListener("click",()=>{
+
+async function saveAndExit(){
+  const saved=await saveServerDraft();
+  if(saved)goToDrafts();
+}
+saveExitButton?.addEventListener("click",saveAndExit);
+exitEditorButton?.addEventListener("click",requestExitEditor);
+
+exitSaveButton?.addEventListener("click",async()=>{
+  exitSaveButton.disabled=true;
+  const saved=await saveServerDraft();
+  exitSaveButton.disabled=false;
+  if(saved){
+    exitDialog?.close();
+    goToDrafts();
+  }
+});
+exitDiscardButton?.addEventListener("click",()=>{
+  clearLocalDraftCache();
+  exitDialog?.close();
+  goToDrafts();
+});
+exitCancelButton?.addEventListener("click",()=>exitDialog?.close());
+
+draftSearch?.addEventListener("input",()=>{
+  draftVisibleLimit=12;
+  renderDraftWorkspace();
+});
+draftFilter?.addEventListener("change",()=>{
+  draftVisibleLimit=12;
+  renderDraftWorkspace();
+});
+draftLoadMore?.addEventListener("click",()=>{
+  draftVisibleLimit+=12;
+  renderDraftWorkspace();
+});
+
+clearButton.addEventListener("click",async()=>{
   const message=currentDefinitionId
-    ?"¿Descartar los cambios locales? El borrador guardado en el servidor no se eliminará."
-    :"¿Borrar el borrador local de este flujo?";
+    ?"¿Descartar los cambios sin guardar y recuperar la última versión guardada del borrador?"
+    :"¿Borrar los cambios locales de este flujo nuevo?";
   if(!window.confirm(message))return;
-  try{
-    sessionStorage.removeItem(DRAFT_KEY);
-    sessionStorage.removeItem(LEGACY_DRAFT_KEY);
-  }catch{}
+
+  clearLocalDraftCache();
+  if(currentDefinitionId){
+    await loadServerDraft();
+    setServerStatus("Cambios locales descartados. Se restauró la última revisión guardada.","success");
+    return;
+  }
+
   form.reset();
   currentStep=0;
   legacyDraftNeedsReview=false;
   updateTriggerFields();
   showStep(0,true);
-  setServerStatus(currentDefinitionId
-    ?"Cambios locales descartados. El borrador guardado (revisión "+currentRevision+") sigue existiendo; recarga o selecciónalo de nuevo en Borradores."
-    :"Borrador local eliminado. Aún no existe ningún borrador guardado en el servidor.");
+  markSavedSnapshot();
+  setServerStatus("Cambios locales eliminados. El flujo nuevo vuelve a estar vacío.");
+});
+
+window.addEventListener("beforeunload",event=>{
+  if(allowNavigation||!hasUnsavedChanges())return;
+  event.preventDefault();
+  event.returnValue="";
 });
 
 (async()=>{
-  await loadDraftWorkspace();
+  showWorkspaceView();
+
+  if(!editorRequested){
+    await loadDraftWorkspace();
+    return;
+  }
+
   if(currentDefinitionId){
     await loadServerDraft();
-  }else{
-    restoreLocalDraft();
-    updateTriggerFields();
-    showStep(currentStep);
-    const state=completion();
-    setServerStatus("Aún no guardado en el servidor · "+state.completed+"/"+state.total+" apartados configurados. Puedes guardar el borrador aunque esté incompleto.");
+    return;
   }
+
+  form.reset();
+  markSavedSnapshot();
+  restoreLocalDraft();
+  updateTriggerFields();
+  showStep(currentStep);
+  const state=completion();
+  setServerStatus("Flujo nuevo · "+state.completed+"/"+state.total+" apartados configurados. Guarda el borrador cuando quieras conservarlo en el servidor.");
 })();

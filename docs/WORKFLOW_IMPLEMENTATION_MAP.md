@@ -313,7 +313,6 @@ Ya existe persistencia genérica para **identidad estable de definición y borra
 
 Falta implementar:
 
-- documento;
 - congelación explícita de otros recursos/versiones concretos;
 - notificaciones operativas genéricas de cierre/rechazo;
 - historial transversal presentado como una vista única que una definición, ejecución, tarea, evidencia, revisión y cierre.
@@ -322,7 +321,7 @@ La revisión/cierre `human_review` ya está implementada para los pasos actualme
 
 Ya existe el servicio server-side que crea de forma idempotente una ejecución manual, congela su asignación y materializa una tarea compartida sin fabricar `tenant_id`. El primer RPC de acciones sincroniza tarea + ejecución y protege la ruta legacy.
 
-Fotografía y Checklist ya son pasos operativos del motor mínimo. El **siguiente tipo de paso pendiente** es Documento.
+Fotografía, Checklist y Documento ya son pasos operativos del motor mínimo.
 
 ## 5. Mapa objetivo de reutilización
 
@@ -331,6 +330,7 @@ Fotografía y Checklist ya son pasos operativos del motor mínimo. El **siguient
 | Banco Fotográfico | `photo_patterns_v2` + editor/cámara | Reutilizar |
 | Evidencia fotográfica | `photo_verification_runs_v2` + `photo_verification_items_v2` | Integrada con snapshots y cierre transaccional |
 | Checklist | `workflow_executions_v2.checklist_state` + `set_workflow_checklist_item_v1` | Snapshot por ejecución; usa la tarea común y bloquea cierre hasta obligatorios |
+| Documento | `workflow_execution_documents_v2` + bucket privado `workflow-documents-v2` | Evidencia ligada a ejecución; un submitted satisface v1 y coordina cierre con Foto/Checklist |
 | Tarea de usuario | `tenant_tasks_v2` | Generalización aditiva implementada para `source_kind=workflow_execution` |
 | Acciones de tarea | `tenant_task_actions_v2` | Reutilizar |
 | Histórico de tarea | `tenant_task_history_v2` | Reutilizar |

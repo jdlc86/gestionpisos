@@ -158,8 +158,8 @@ grep -Fq 'start_workflow_definition_revision_v1' docs/workflow-definitions.js
 ! grep -Fq 'Crear nueva versión' docs/workflow-definitions.js
 ! grep -Fq 'Continuar nueva versión' docs/workflow-definitions.js
 grep -Fq 'workflow-applications.html?definition=' docs/workflow-definitions.js
-grep -Fq './workflow-definitions.js?v=2026091920' docs/workflow-definitions.html
-grep -Fq './workflow-definitions.css?v=2026091910' docs/workflow-definitions.html
+grep -Fq './workflow-definitions.js?v=2026091921' docs/workflow-definitions.html
+grep -Fq './workflow-definitions.css?v=2026091911' docs/workflow-definitions.html
 grep -Fq 'Tus flujos terminados. Ejecuta, edita y elimina o archiva según exista historial.' docs/workflow-definitions.html
 ! grep -Fq 'Completar borrador' docs/workflow-definitions.js
 ! grep -Fq 'Publicar versión' docs/workflow-definitions.js
@@ -389,13 +389,40 @@ grep -Fq 'id="workflowBulkDelete"' docs/workflow-definitions.html
 grep -Fq 'id="workflowBulkArchive"' docs/workflow-definitions.html
 grep -Fq 'function rowMatchesSearch(row)' docs/workflow-definitions.js
 grep -Fq 'function executionMeta(row)' docs/workflow-definitions.js
-grep -Fq 'last.textContent="Última: "' docs/workflow-definitions.js
+grep -Fq 'value.textContent=String(count)+" · "+(latest?"última "' docs/workflow-definitions.js
 grep -Fq 'function bulkDeleteSelected()' docs/workflow-definitions.js
 grep -Fq 'function bulkArchiveSelected()' docs/workflow-definitions.js
 grep -Fq 'function startBulkExecution()' docs/workflow-definitions.js
 grep -Fq 'workflow-batch-execution:' docs/workflow-definitions.js
-grep -Fq '.definitions-bulk-bar' docs/workflow-definitions.css
+grep -Fq '.definitions-bulk-dock' docs/workflow-definitions.css
 grep -Fq '.definitions-list.is-selecting .definition-actions{display:none}' docs/workflow-definitions.css
+
+# Mis Flujos moderno: búsqueda contextual y selección touch-first.
+grep -Fq 'id="workflowSearchToggle"' docs/workflow-definitions.html
+grep -Fq 'id="definitionsSearchHeader"' docs/workflow-definitions.html
+grep -Fq 'id="workflowSearchClear"' docs/workflow-definitions.html
+grep -Fq 'id="definitionsSelectionHeader"' docs/workflow-definitions.html
+grep -Fq 'id="workflowSelectionMenuToggle"' docs/workflow-definitions.html
+grep -Fq 'id="workflowDeselectVisible"' docs/workflow-definitions.html
+grep -Fq 'id="workflowActiveFilter"' docs/workflow-definitions.html
+grep -Fq 'id="workflowBulkDock"' docs/workflow-definitions.html
+! grep -Fq 'class="definitions-controls"' docs/workflow-definitions.html
+! grep -Fq 'class="definitions-bulk-bar"' docs/workflow-definitions.html
+! grep -Fq 'workflowSelectVisible" type="checkbox"' docs/workflow-definitions.html
+grep -Fq 'function openSearch()' docs/workflow-definitions.js
+grep -Fq 'function closeSearch({clear=false}={})' docs/workflow-definitions.js
+grep -Fq 'function setSelectionMode(enabled,{selectId=null}={})' docs/workflow-definitions.js
+grep -Fq 'function bindLongPress(article,row)' docs/workflow-definitions.js
+grep -Fq '},520);' docs/workflow-definitions.js
+grep -Fq 'definition-select-indicator' docs/workflow-definitions.js
+grep -Fq 'definitions-selection-active' docs/workflow-definitions.js
+grep -Fq 'selectionMenuToggle.setAttribute("aria-expanded"' docs/workflow-definitions.js
+grep -Fq '.definitions-search-mode{' docs/workflow-definitions.css
+grep -Fq '.definitions-selection-mode{' docs/workflow-definitions.css
+grep -Fq '.definition-select-indicator{' docs/workflow-definitions.css
+grep -Fq '.definitions-bulk-dock{' docs/workflow-definitions.css
+grep -Fq 'bottom:calc(76px + env(safe-area-inset-bottom))' docs/workflow-definitions.css
+grep -Fq '@keyframes definitions-dock-in' docs/workflow-definitions.css
 
 # Ejecución múltiple: cola asistida y navegación secuencial.
 grep -Fq 'const batchToken=params.get("batch")||""' docs/workflow-applications.js

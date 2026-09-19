@@ -1147,5 +1147,5 @@ window.addEventListener("beforeunload",event=>{
   updateTriggerFields();
   showStep(currentStep);
   const state=completion();
-  setServerStatus("Nuevo flujo · "+state.completed+"/"+state.total+" apartados completos. Nada se guarda hasta Publicar o Ejecutar.");
+  setServerStatus("Nuevo flujo · "+state.completed+"/"+state.total+" apartados completos. Nada se guarda hasta completar Listo.");
 })();

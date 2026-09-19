@@ -68,7 +68,10 @@ const premiumIcons = {
   home: '<path d="M4 20V9.5L12 4l8 5.5V20"/><path d="M8 20v-6h8v6"/>',
   admins: '<path d="M12 3 5 6v5c0 4.6 2.8 7.9 7 10 4.2-2.1 7-5.4 7-10V6l-7-3Z"/><path d="M9.5 12 11 13.5l3.5-3.5"/>',
   employees: '<circle cx="9" cy="8" r="3"/><path d="M3.5 19c.8-3.5 2.8-5 5.5-5s4.7 1.5 5.5 5"/><path d="M16 8h4M18 6v4"/>',
-  capabilities: '<circle cx="8" cy="12" r="3"/><path d="M11 12h9M17 12v3M14 12v2"/>'
+  capabilities: '<circle cx="8" cy="12" r="3"/><path d="M11 12h9M17 12v3M14 12v2"/>',
+  rooms: '<path d="M4 5h16v14H4z"/><path d="M8 5v14M8 12h12"/><circle cx="11" cy="9" r=".7"/>',
+  edit: '<path d="m5 19 3.5-.8L18 8.7 15.3 6 5.8 15.5 5 19Z"/><path d="m13.8 7.5 2.7 2.7"/>',
+  archive: '<path d="M5 8h14v11H5z"/><path d="M4 5h16v3H4z"/><path d="M9 12h6"/>'
 };
 
 function renderPremiumIcons(root = document) {

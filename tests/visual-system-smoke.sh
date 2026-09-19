@@ -75,7 +75,7 @@ grep -Fq 'href="./legal.html"' docs/index.html
 grep -Fq 'href="./privacy.html"' docs/index.html
 grep -Fq 'new Date().getFullYear()' docs/index.html
 test -s docs/app-version.json
-grep -Fq '"version": "0.5.3-beta"' docs/app-version.json
+grep -Fq '"version": "0.6.0-beta"' docs/app-version.json
 grep -Fq 'Stamp release metadata' .github/workflows/pages.yml
 grep -Fq 'GITHUB_RUN_NUMBER' .github/workflows/pages.yml
 grep -Fq 'GITHUB_SHA' .github/workflows/pages.yml

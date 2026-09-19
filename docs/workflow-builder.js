@@ -615,17 +615,26 @@ function showStep(next,shouldScroll=false){
     button.classList.toggle("is-active",index===currentStep);
     if(index===currentStep)button.setAttribute("aria-current","step");else button.removeAttribute("aria-current");
   });
+
+  const finalStep=currentStep===panels.length-1;
+  backButton.hidden=finalStep;
+  nextButton.hidden=finalStep;
+  publishButton.hidden=!finalStep;
+  clearButton.hidden=!finalStep;
+
   backButton.disabled=currentStep===0;
-  if(currentStep===panels.length-1){
-    nextButton.textContent="Revisión completa";
-    nextButton.disabled=true;
-    nextButton.classList.remove("builder-action--primary");
-    renderSummary();
-  }else{
-    nextButton.textContent="Continuar";
-    nextButton.disabled=false;
-    nextButton.classList.add("builder-action--primary");
-  }
+  nextButton.textContent="Siguiente";
+  nextButton.disabled=false;
+  nextButton.classList.add("builder-action--primary");
+
+  clearButton.textContent=revisionMode
+    ?"Descartar edición"
+    :editPublishedMode
+      ?"Descartar cambios"
+      :"Descartar todo";
+
+  if(finalStep)renderSummary();
+
   updateCompletionUI();
   saveLocalDraft();
   if(shouldScroll)document.querySelector(".builder-card")?.scrollIntoView({block:"start",behavior:"smooth"});

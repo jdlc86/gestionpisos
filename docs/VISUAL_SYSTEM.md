@@ -19,6 +19,7 @@ La referencia vigente es el patrón validado en Creador de Flujos: navegación d
 - En escritorio puede existir un acceso Home discreto como fallback cuando la barra inferior no se muestra.
 - El control de tema/iluminación, MFA y Salir aparecen solo en Inicio.
 - Cámara y Editor de siluetas siguen siendo experiencias fullscreen y no muestran la bottom navigation.
+- Inicio es una excepción deliberada de marca: las tarjetas principales pueden usar pictogramas de color de mayor presencia visual; la bottom navigation y la navegación contextual mantienen SVG monocromos.
 
 ## Botones
 
@@ -35,6 +36,13 @@ La referencia vigente es el patrón validado en Creador de Flujos: navegación d
 - Borde fino y sombras mínimas.
 - Radio principal de 8–12 px.
 - Los módulos consumen los tokens de app.css; no deben crear una segunda paleta global.
+
+## Inicio y pie institucional
+
+- El claim de Inicio comunica el valor del producto, no decisiones internas de UX.
+- El pie de Inicio muestra copyright con año calculado en tiempo de ejecución, versión de producto desde `docs/app-version.json` y build real estampada por el despliegue de GitHub Pages.
+- La versión solo cambia mediante una modificación explícita del archivo de versión; cada despliegue genera un build `YYYY.MM.DD.GITHUB_RUN_NUMBER` y registra el commit corto.
+- Aviso legal y Política de privacidad deben apuntar a páginas reales, nunca a enlaces vacíos.
 
 ## Tema
 

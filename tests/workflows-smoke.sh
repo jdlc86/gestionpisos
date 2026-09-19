@@ -528,3 +528,20 @@ grep -Fq 'function zonedMinuteString(date,timezone)' docs/workflow-builder.js
 grep -Fq 'function scheduledMinuteIsAmbiguous(date,local,timezone)' docs/workflow-builder.js
 grep -Fq 'Esta hora se repite por el cambio horario. Elige otra hora.' docs/workflow-builder.js
 grep -Fq 'workflow_schedule_local_time_ambiguous' docs/workflow-applications.js
+
+
+# Recurrente: primera ejecución explícita, Programar y sin ejecución manual.
+grep -Fq 'id="scheduledAtLabel"' docs/workflow-builder.html
+grep -Fq 'scheduledAtLabel.textContent=recurring?"Primera ejecución":"Fecha y hora"' docs/workflow-builder.js
+grep -Fq 'const automatic=scheduled||recurring' docs/workflow-builder.js
+grep -Fq 'if(data.triggerType==="recurring")' docs/workflow-builder.js
+grep -Fq 'function isAutomaticTrigger(spec)' docs/workflow-applications.js
+grep -Fq 'function recurrenceDisplay(spec)' docs/workflow-applications.js
+grep -Fq '¿Quién realizará las tareas de este flujo recurrente?' docs/workflow-applications.js
+grep -Fq 'El responsable operativo se resolverá de nuevo en cada ejecución recurrente.' docs/workflow-applications.js
+grep -Fq 'execute.hidden=automatic' docs/workflow-applications.js
+grep -Fq 'Programar guarda el flujo sin crear una tarea ahora.' docs/workflow-applications.js
+grep -Fq '["scheduled_once","recurring"].includes' docs/workflow-definitions.js
+grep -Fq 'schedule.schedule_kind==="recurring"' docs/workflow-definitions.js
+grep -Fq 'next_occurrence_index,execution_count,last_scheduled_for' docs/workflow-definitions.js
+grep -Fq '"Próxima · "+next' docs/workflow-definitions.js

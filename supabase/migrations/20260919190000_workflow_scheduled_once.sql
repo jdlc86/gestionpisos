@@ -466,7 +466,6 @@ grant execute on function public.execute_workflow_application_now_v1(uuid,text,u
 
 create or replace function private.workflow_configure_application_schedule_v1(
   p_application_id uuid,
-  p_schedule_timezone text,
   p_scheduled_assigned_user_id uuid,
   p_actor_user_id uuid
 )
@@ -481,10 +480,10 @@ declare
   v_trigger_type text;
   v_assignment_type text;
   v_local_text text;
-  v_local timestamp;
   v_run_at timestamptz;
-  v_roundtrip timestamp;
-  v_timezone text:=nullif(btrim(p_schedule_timezone),'');
+  v_roundtrip_text text;
+  v_timezone text;
+  v_utc_text text;
   v_resolved uuid;
   v_schedule public.workflow_application_schedules_v2;
 begin
@@ -514,6 +513,7 @@ begin
     raise exception 'workflow_schedule_actor_required' using errcode='22023';
   end if;
 
+  v_timezone:=nullif(btrim(v_spec->>'scheduledTimezone'),'');
   if v_timezone is null
     or not exists(select 1 from pg_catalog.pg_timezone_names where name=v_timezone) then
     raise exception 'workflow_schedule_timezone_invalid' using errcode='22023';
@@ -521,16 +521,872 @@ begin
 
   v_local_text:=nullif(btrim(v_spec->>'scheduledAt'),'');
   if v_local_text is null
-    or v_local_text !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}$' then
+    or v_local_text !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}
+
+  if v_run_at<=now() then
+    raise exception 'workflow_schedule_must_be_future' using errcode='22023';
+  end if;
+
+  v_assignment_type:=nullif(v_spec->>'assignmentType','');
+
+  if v_assignment_type='manual' then
+    v_resolved:=private.workflow_resolve_execution_assignee_v1(
+      p_application_id,p_scheduled_assigned_user_id
+    );
+  elsif v_assignment_type='property_responsible' then
+    if p_scheduled_assigned_user_id is not null then
+      raise exception 'workflow_assignee_must_be_server_resolved' using errcode='22023';
+    end if;
+    perform private.workflow_resolve_execution_assignee_v1(p_application_id,null);
+  else
+    raise exception 'workflow_schedule_assignment_not_supported' using errcode='0A000';
+  end if;
+
+  insert into public.workflow_application_schedules_v2(
+    application_id,definition_id,definition_version_id,organization_id,
+    schedule_kind,schedule_timezone,next_run_at,scheduled_assigned_user_id,
+    status,last_attempt_at,last_execution_id,last_error_code,last_error_at,
+    created_by,created_at,updated_at
+  ) values (
+    v_app.id,v_app.definition_id,v_app.definition_version_id,v_app.organization_id,
+    'scheduled_once',v_timezone,v_run_at,
+    case when v_assignment_type='manual' then v_resolved else null end,
+    'active',null,null,null,null,
+    p_actor_user_id,now(),now()
+  )
+  on conflict(application_id) do update
+  set schedule_kind=excluded.schedule_kind,
+      schedule_timezone=excluded.schedule_timezone,
+      next_run_at=excluded.next_run_at,
+      scheduled_assigned_user_id=excluded.scheduled_assigned_user_id,
+      status='active',
+      last_attempt_at=null,
+      last_execution_id=null,
+      last_error_code=null,
+      last_error_at=null,
+      updated_at=now()
+  returning * into v_schedule;
+
+  insert into public.audit_log_v2(
+    organization_id,actor_user_id,action,entity_type,entity_id,result,details
+  ) values (
+    v_app.organization_id,p_actor_user_id,'workflow_schedule_configured',
+    'workflow_application',v_app.id::text,'success',
+    jsonb_build_object(
+      'schedule_kind','scheduled_once',
+      'timezone',v_timezone,
+      'next_run_at',v_run_at,
+      'scheduled_assigned_user_id',
+        case when v_assignment_type='manual' then v_resolved else null end
+    )
+  );
+
+  return v_schedule;
+end;
+$workflow_configure_schedule$;
+
+revoke all on function private.workflow_configure_application_schedule_v1(
+  uuid,uuid,uuid
+) from public,anon,authenticated;
+
+create or replace function private.workflow_application_schedule_status_v1()
+returns trigger
+language plpgsql
+security definer
+set search_path=''
+as $workflow_schedule_app_status$
+begin
+  if old.status is distinct from new.status
+    and new.status='archived' then
+    update public.workflow_application_schedules_v2
+    set status='cancelled',
+        updated_at=now()
+    where application_id=new.id
+      and status in ('active','blocked');
+  end if;
+  return new;
+end;
+$workflow_schedule_app_status$;
+
+revoke all on function private.workflow_application_schedule_status_v1()
+  from public,anon,authenticated;
+
+drop trigger if exists workflow_application_schedule_status_v1
+  on public.workflow_applications_v2;
+
+create trigger workflow_application_schedule_status_v1
+after update of status
+on public.workflow_applications_v2
+for each row
+execute function private.workflow_application_schedule_status_v1();
+
+create or replace function private.process_due_workflow_schedules_v1(
+  p_now timestamptz default now()
+)
+returns integer
+language plpgsql
+security definer
+set search_path=''
+as $workflow_process_schedules$
+declare
+  v_schedule public.workflow_application_schedules_v2;
+  v_execution_id uuid;
+  v_execution_status text;
+  v_execution_assignee uuid;
+  v_execution_created_at timestamptz;
+  v_created_new boolean;
+  v_key text;
+  v_processed integer:=0;
+begin
+  for v_schedule in
+    select s.*
+    from public.workflow_application_schedules_v2 s
+    join public.workflow_applications_v2 a on a.id=s.application_id
+    join public.workflow_definitions_v2 d on d.id=s.definition_id
+    where s.status='active'
+      and s.schedule_kind='scheduled_once'
+      and s.next_run_at<=p_now
+      and a.status='configured'
+      and d.status='published'
+    order by s.next_run_at,s.application_id
+    for update of s skip locked
+  loop
+    update public.workflow_application_schedules_v2
+    set last_attempt_at=p_now,
+        updated_at=now()
+    where application_id=v_schedule.application_id;
+
+    v_key:='scheduled-once:'||v_schedule.application_id::text||':'||
+      extract(epoch from v_schedule.next_run_at)::bigint::text;
+
+    begin
+      select x.execution_id,x.status,x.assigned_user_id,x.created_at,x.created_new
+      into v_execution_id,v_execution_status,v_execution_assignee,
+           v_execution_created_at,v_created_new
+      from private.workflow_execute_application_internal_v1(
+        v_schedule.application_id,
+        v_key,
+        v_schedule.scheduled_assigned_user_id,
+        'scheduled_once',
+        v_schedule.created_by
+      ) x
+      limit 1;
+
+      update public.workflow_application_schedules_v2
+      set status='completed',
+          last_execution_id=v_execution_id,
+          last_error_code=null,
+          last_error_at=null,
+          updated_at=now()
+      where application_id=v_schedule.application_id;
+
+      v_processed:=v_processed+1;
+
+    exception when others then
+      update public.workflow_application_schedules_v2
+      set status='blocked',
+          last_error_code=sqlstate,
+          last_error_at=now(),
+          updated_at=now()
+      where application_id=v_schedule.application_id;
+
+      insert into public.notifications_v2(
+        organization_id,recipient_user_id,event_type,title,body,
+        status,channel_in_app,channel_email,
+        source_kind,source_id,event_key
+      ) values (
+        v_schedule.organization_id,
+        v_schedule.created_by,
+        'workflow_schedule_blocked',
+        'Programación bloqueada',
+        'No se pudo crear la tarea programada. Revisa el flujo y su destino.',
+        'pending',true,false,
+        'workflow_schedule',v_schedule.application_id,'blocked'
+      )
+      on conflict(source_kind,source_id,event_key,recipient_user_id)
+      where source_kind is not null
+        and source_id is not null
+        and event_key is not null
+      do nothing;
+
+      insert into public.audit_log_v2(
+        organization_id,actor_user_id,action,entity_type,entity_id,result,details
+      ) values (
+        v_schedule.organization_id,v_schedule.created_by,
+        'workflow_schedule_blocked','workflow_application',
+        v_schedule.application_id::text,'failure',
+        jsonb_build_object(
+          'schedule_kind',v_schedule.schedule_kind,
+          'next_run_at',v_schedule.next_run_at,
+          'sqlstate',sqlstate
+        )
+      );
+    end;
+  end loop;
+
+  return v_processed;
+end;
+$workflow_process_schedules$;
+
+revoke all on function private.process_due_workflow_schedules_v1(timestamptz)
+  from public,anon,authenticated;
+
+create or replace function public.publish_workflow_ready_v2(
+  p_spec jsonb,
+  p_property_id uuid default null,
+  p_room_id uuid default null,
+  p_occupancy_id uuid default null,
+  p_photo_pattern_ids uuid[] default '{}'::uuid[],
+  p_execute boolean default false,
+  p_request_key text default null,
+  p_idempotency_key text default null,
+  p_assigned_user_id uuid default null,
+  p_schedule_assigned_user_id uuid default null
+)
+returns table(
+  definition_id uuid,
+  version_id uuid,
+  version integer,
+  application_id uuid,
+  execution_id uuid,
+  execution_status text,
+  assigned_user_id uuid,
+  published_at timestamptz,
+  schedule_next_run_at timestamptz,
+  schedule_status text
+)
+language plpgsql
+security definer
+set search_path=''
+as $workflow_ready_v2$
+declare
+  v_actor uuid:=auth.uid();
+  v_result record;
+  v_schedule public.workflow_application_schedules_v2;
+begin
+  if p_execute and coalesce(p_spec->>'triggerType','')='scheduled_once' then
+    raise exception 'workflow_scheduled_execute_now_forbidden' using errcode='22023';
+  end if;
+
+  select * into v_result
+  from public.publish_workflow_ready_v1(
+    p_spec,p_property_id,p_room_id,p_occupancy_id,p_photo_pattern_ids,
+    p_execute,p_request_key,p_idempotency_key,p_assigned_user_id
+  )
+  limit 1;
+
+  v_schedule:=private.workflow_configure_application_schedule_v1(
+    v_result.application_id,
+    p_schedule_assigned_user_id,
+    v_actor
+  );
+
+  return query select
+    v_result.definition_id,v_result.version_id,v_result.version,
+    v_result.application_id,v_result.execution_id,v_result.execution_status,
+    v_result.assigned_user_id,v_result.published_at,
+    v_schedule.next_run_at,v_schedule.status;
+end;
+$workflow_ready_v2$;
+
+revoke all on function public.publish_workflow_ready_v2(
+  jsonb,uuid,uuid,uuid,uuid[],boolean,text,text,uuid,uuid
+) from public,anon;
+grant execute on function public.publish_workflow_ready_v2(
+  jsonb,uuid,uuid,uuid,uuid[],boolean,text,text,uuid,uuid
+) to authenticated;
+
+create or replace function public.update_unexecuted_workflow_v2(
+  p_definition_id uuid,
+  p_spec jsonb,
+  p_property_id uuid default null,
+  p_room_id uuid default null,
+  p_occupancy_id uuid default null,
+  p_photo_pattern_ids uuid[] default '{}'::uuid[],
+  p_expected_revision bigint default null,
+  p_execute boolean default false,
+  p_idempotency_key text default null,
+  p_assigned_user_id uuid default null,
+  p_schedule_assigned_user_id uuid default null
+)
+returns table(
+  definition_id uuid,
+  version_id uuid,
+  version integer,
+  application_id uuid,
+  execution_id uuid,
+  execution_status text,
+  assigned_user_id uuid,
+  revision bigint,
+  schedule_next_run_at timestamptz,
+  schedule_status text
+)
+language plpgsql
+security definer
+set search_path=''
+as $workflow_update_v2$
+declare
+  v_actor uuid:=auth.uid();
+  v_result record;
+  v_schedule public.workflow_application_schedules_v2;
+begin
+  if p_execute and coalesce(p_spec->>'triggerType','')='scheduled_once' then
+    raise exception 'workflow_scheduled_execute_now_forbidden' using errcode='22023';
+  end if;
+
+  select * into v_result
+  from public.update_unexecuted_workflow_v1(
+    p_definition_id,p_spec,p_property_id,p_room_id,p_occupancy_id,
+    p_photo_pattern_ids,p_expected_revision,p_execute,p_idempotency_key,
+    p_assigned_user_id
+  )
+  limit 1;
+
+  v_schedule:=private.workflow_configure_application_schedule_v1(
+    v_result.application_id,
+    p_schedule_assigned_user_id,
+    v_actor
+  );
+
+  return query select
+    v_result.definition_id,v_result.version_id,v_result.version,
+    v_result.application_id,v_result.execution_id,v_result.execution_status,
+    v_result.assigned_user_id,v_result.revision,
+    v_schedule.next_run_at,v_schedule.status;
+end;
+$workflow_update_v2$;
+
+revoke all on function public.update_unexecuted_workflow_v2(
+  uuid,jsonb,uuid,uuid,uuid,uuid[],bigint,boolean,text,uuid,uuid
+) from public,anon;
+grant execute on function public.update_unexecuted_workflow_v2(
+  uuid,jsonb,uuid,uuid,uuid,uuid[],bigint,boolean,text,uuid,uuid
+) to authenticated;
+
+create or replace function public.publish_workflow_revision_ready_v2(
+  p_definition_id uuid,
+  p_expected_revision bigint,
+  p_property_id uuid default null,
+  p_room_id uuid default null,
+  p_occupancy_id uuid default null,
+  p_photo_pattern_ids uuid[] default '{}'::uuid[],
+  p_execute boolean default false,
+  p_idempotency_key text default null,
+  p_assigned_user_id uuid default null,
+  p_schedule_assigned_user_id uuid default null
+)
+returns table(
+  definition_id uuid,
+  version_id uuid,
+  version integer,
+  application_id uuid,
+  execution_id uuid,
+  execution_status text,
+  assigned_user_id uuid,
+  published_at timestamptz,
+  schedule_next_run_at timestamptz,
+  schedule_status text
+)
+language plpgsql
+security definer
+set search_path=''
+as $workflow_revision_ready_v2$
+declare
+  v_actor uuid:=auth.uid();
+  v_result record;
+  v_schedule public.workflow_application_schedules_v2;
+  v_trigger_type text;
+begin
+  select rd.draft_spec->>'triggerType'
+  into v_trigger_type
+  from public.workflow_definition_revision_drafts_v2 rd
+  where rd.definition_id=p_definition_id
+    and rd.published_at is null;
+
+  if p_execute and coalesce(v_trigger_type,'')='scheduled_once' then
+    raise exception 'workflow_scheduled_execute_now_forbidden' using errcode='22023';
+  end if;
+
+  select * into v_result
+  from public.publish_workflow_revision_ready_v1(
+    p_definition_id,p_expected_revision,p_property_id,p_room_id,p_occupancy_id,
+    p_photo_pattern_ids,p_execute,p_idempotency_key,p_assigned_user_id
+  )
+  limit 1;
+
+  v_schedule:=private.workflow_configure_application_schedule_v1(
+    v_result.application_id,
+    p_schedule_assigned_user_id,
+    v_actor
+  );
+
+  return query select
+    v_result.definition_id,v_result.version_id,v_result.version,
+    v_result.application_id,v_result.execution_id,v_result.execution_status,
+    v_result.assigned_user_id,v_result.published_at,
+    v_schedule.next_run_at,v_schedule.status;
+end;
+$workflow_revision_ready_v2$;
+
+revoke all on function public.publish_workflow_revision_ready_v2(
+  uuid,bigint,uuid,uuid,uuid,uuid[],boolean,text,uuid,uuid
+) from public,anon;
+grant execute on function public.publish_workflow_revision_ready_v2(
+  uuid,bigint,uuid,uuid,uuid,uuid[],boolean,text,uuid,uuid
+) to authenticated;
+
+comment on table public.workflow_application_schedules_v2 is
+  'Estado operativo de activaciones automáticas por aplicación/version. scheduled_once es el primer tipo habilitado.';
+comment on function private.workflow_execute_application_internal_v1(uuid,text,uuid,text,uuid) is
+  'Núcleo único de ejecución para manual_now y scheduled_once. No es invocable por clientes.';
+comment on function private.process_due_workflow_schedules_v1(timestamptz) is
+  'Procesa programaciones due con SKIP LOCKED, una ejecución idempotente por fecha y bloqueo explícito ante error.';
+ then
     raise exception 'workflow_scheduled_at_invalid' using errcode='22023';
   end if;
 
-  v_local:=replace(v_local_text,'T',' ')::timestamp;
-  v_run_at:=v_local at time zone v_timezone;
-  v_roundtrip:=v_run_at at time zone v_timezone;
+  v_utc_text:=nullif(btrim(v_spec->>'scheduledAtUtc'),'');
+  if v_utc_text is null
+    or v_utc_text !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{3})?Z
 
-  if date_trunc('minute',v_roundtrip) is distinct from date_trunc('minute',v_local) then
-    raise exception 'workflow_schedule_local_time_invalid' using errcode='22023';
+  if v_run_at<=now() then
+    raise exception 'workflow_schedule_must_be_future' using errcode='22023';
+  end if;
+
+  v_assignment_type:=nullif(v_spec->>'assignmentType','');
+
+  if v_assignment_type='manual' then
+    v_resolved:=private.workflow_resolve_execution_assignee_v1(
+      p_application_id,p_scheduled_assigned_user_id
+    );
+  elsif v_assignment_type='property_responsible' then
+    if p_scheduled_assigned_user_id is not null then
+      raise exception 'workflow_assignee_must_be_server_resolved' using errcode='22023';
+    end if;
+    perform private.workflow_resolve_execution_assignee_v1(p_application_id,null);
+  else
+    raise exception 'workflow_schedule_assignment_not_supported' using errcode='0A000';
+  end if;
+
+  insert into public.workflow_application_schedules_v2(
+    application_id,definition_id,definition_version_id,organization_id,
+    schedule_kind,schedule_timezone,next_run_at,scheduled_assigned_user_id,
+    status,last_attempt_at,last_execution_id,last_error_code,last_error_at,
+    created_by,created_at,updated_at
+  ) values (
+    v_app.id,v_app.definition_id,v_app.definition_version_id,v_app.organization_id,
+    'scheduled_once',v_timezone,v_run_at,
+    case when v_assignment_type='manual' then v_resolved else null end,
+    'active',null,null,null,null,
+    p_actor_user_id,now(),now()
+  )
+  on conflict(application_id) do update
+  set schedule_kind=excluded.schedule_kind,
+      schedule_timezone=excluded.schedule_timezone,
+      next_run_at=excluded.next_run_at,
+      scheduled_assigned_user_id=excluded.scheduled_assigned_user_id,
+      status='active',
+      last_attempt_at=null,
+      last_execution_id=null,
+      last_error_code=null,
+      last_error_at=null,
+      updated_at=now()
+  returning * into v_schedule;
+
+  insert into public.audit_log_v2(
+    organization_id,actor_user_id,action,entity_type,entity_id,result,details
+  ) values (
+    v_app.organization_id,p_actor_user_id,'workflow_schedule_configured',
+    'workflow_application',v_app.id::text,'success',
+    jsonb_build_object(
+      'schedule_kind','scheduled_once',
+      'timezone',v_timezone,
+      'next_run_at',v_run_at,
+      'scheduled_assigned_user_id',
+        case when v_assignment_type='manual' then v_resolved else null end
+    )
+  );
+
+  return v_schedule;
+end;
+$workflow_configure_schedule$;
+
+revoke all on function private.workflow_configure_application_schedule_v1(
+  uuid,text,uuid,uuid
+) from public,anon,authenticated;
+
+create or replace function private.workflow_application_schedule_status_v1()
+returns trigger
+language plpgsql
+security definer
+set search_path=''
+as $workflow_schedule_app_status$
+begin
+  if old.status is distinct from new.status
+    and new.status='archived' then
+    update public.workflow_application_schedules_v2
+    set status='cancelled',
+        updated_at=now()
+    where application_id=new.id
+      and status in ('active','blocked');
+  end if;
+  return new;
+end;
+$workflow_schedule_app_status$;
+
+revoke all on function private.workflow_application_schedule_status_v1()
+  from public,anon,authenticated;
+
+drop trigger if exists workflow_application_schedule_status_v1
+  on public.workflow_applications_v2;
+
+create trigger workflow_application_schedule_status_v1
+after update of status
+on public.workflow_applications_v2
+for each row
+execute function private.workflow_application_schedule_status_v1();
+
+create or replace function private.process_due_workflow_schedules_v1(
+  p_now timestamptz default now()
+)
+returns integer
+language plpgsql
+security definer
+set search_path=''
+as $workflow_process_schedules$
+declare
+  v_schedule public.workflow_application_schedules_v2;
+  v_execution_id uuid;
+  v_execution_status text;
+  v_execution_assignee uuid;
+  v_execution_created_at timestamptz;
+  v_created_new boolean;
+  v_key text;
+  v_processed integer:=0;
+begin
+  for v_schedule in
+    select s.*
+    from public.workflow_application_schedules_v2 s
+    join public.workflow_applications_v2 a on a.id=s.application_id
+    join public.workflow_definitions_v2 d on d.id=s.definition_id
+    where s.status='active'
+      and s.schedule_kind='scheduled_once'
+      and s.next_run_at<=p_now
+      and a.status='configured'
+      and d.status='published'
+    order by s.next_run_at,s.application_id
+    for update of s skip locked
+  loop
+    update public.workflow_application_schedules_v2
+    set last_attempt_at=p_now,
+        updated_at=now()
+    where application_id=v_schedule.application_id;
+
+    v_key:='scheduled-once:'||v_schedule.application_id::text||':'||
+      extract(epoch from v_schedule.next_run_at)::bigint::text;
+
+    begin
+      select x.execution_id,x.status,x.assigned_user_id,x.created_at,x.created_new
+      into v_execution_id,v_execution_status,v_execution_assignee,
+           v_execution_created_at,v_created_new
+      from private.workflow_execute_application_internal_v1(
+        v_schedule.application_id,
+        v_key,
+        v_schedule.scheduled_assigned_user_id,
+        'scheduled_once',
+        v_schedule.created_by
+      ) x
+      limit 1;
+
+      update public.workflow_application_schedules_v2
+      set status='completed',
+          last_execution_id=v_execution_id,
+          last_error_code=null,
+          last_error_at=null,
+          updated_at=now()
+      where application_id=v_schedule.application_id;
+
+      v_processed:=v_processed+1;
+
+    exception when others then
+      update public.workflow_application_schedules_v2
+      set status='blocked',
+          last_error_code=left(sqlstate||':'||sqlerrm,240),
+          last_error_at=now(),
+          updated_at=now()
+      where application_id=v_schedule.application_id;
+
+      insert into public.notifications_v2(
+        organization_id,recipient_user_id,event_type,title,body,
+        status,channel_in_app,channel_email,
+        source_kind,source_id,event_key
+      ) values (
+        v_schedule.organization_id,
+        v_schedule.created_by,
+        'workflow_schedule_blocked',
+        'Programación bloqueada',
+        'No se pudo crear la tarea programada. Revisa el flujo y su destino.',
+        'pending',true,false,
+        'workflow_schedule',v_schedule.application_id,'blocked'
+      )
+      on conflict(source_kind,source_id,event_key,recipient_user_id)
+      where source_kind is not null
+        and source_id is not null
+        and event_key is not null
+      do nothing;
+
+      insert into public.audit_log_v2(
+        organization_id,actor_user_id,action,entity_type,entity_id,result,details
+      ) values (
+        v_schedule.organization_id,v_schedule.created_by,
+        'workflow_schedule_blocked','workflow_application',
+        v_schedule.application_id::text,'failure',
+        jsonb_build_object(
+          'schedule_kind',v_schedule.schedule_kind,
+          'next_run_at',v_schedule.next_run_at,
+          'sqlstate',sqlstate
+        )
+      );
+    end;
+  end loop;
+
+  return v_processed;
+end;
+$workflow_process_schedules$;
+
+revoke all on function private.process_due_workflow_schedules_v1(timestamptz)
+  from public,anon,authenticated;
+
+create or replace function public.publish_workflow_ready_v2(
+  p_spec jsonb,
+  p_property_id uuid default null,
+  p_room_id uuid default null,
+  p_occupancy_id uuid default null,
+  p_photo_pattern_ids uuid[] default '{}'::uuid[],
+  p_execute boolean default false,
+  p_request_key text default null,
+  p_idempotency_key text default null,
+  p_assigned_user_id uuid default null,
+  p_schedule_timezone text default null,
+  p_schedule_assigned_user_id uuid default null
+)
+returns table(
+  definition_id uuid,
+  version_id uuid,
+  version integer,
+  application_id uuid,
+  execution_id uuid,
+  execution_status text,
+  assigned_user_id uuid,
+  published_at timestamptz,
+  schedule_next_run_at timestamptz,
+  schedule_status text
+)
+language plpgsql
+security definer
+set search_path=''
+as $workflow_ready_v2$
+declare
+  v_actor uuid:=auth.uid();
+  v_result record;
+  v_schedule public.workflow_application_schedules_v2;
+begin
+  if p_execute and coalesce(p_spec->>'triggerType','')='scheduled_once' then
+    raise exception 'workflow_scheduled_execute_now_forbidden' using errcode='22023';
+  end if;
+
+  select * into v_result
+  from public.publish_workflow_ready_v1(
+    p_spec,p_property_id,p_room_id,p_occupancy_id,p_photo_pattern_ids,
+    p_execute,p_request_key,p_idempotency_key,p_assigned_user_id
+  )
+  limit 1;
+
+  v_schedule:=private.workflow_configure_application_schedule_v1(
+    v_result.application_id,
+    p_schedule_assigned_user_id,
+    v_actor
+  );
+
+  return query select
+    v_result.definition_id,v_result.version_id,v_result.version,
+    v_result.application_id,v_result.execution_id,v_result.execution_status,
+    v_result.assigned_user_id,v_result.published_at,
+    v_schedule.next_run_at,v_schedule.status;
+end;
+$workflow_ready_v2$;
+
+revoke all on function public.publish_workflow_ready_v2(
+  jsonb,uuid,uuid,uuid,uuid[],boolean,text,text,uuid,text,uuid
+) from public,anon;
+grant execute on function public.publish_workflow_ready_v2(
+  jsonb,uuid,uuid,uuid,uuid[],boolean,text,text,uuid,text,uuid
+) to authenticated;
+
+create or replace function public.update_unexecuted_workflow_v2(
+  p_definition_id uuid,
+  p_spec jsonb,
+  p_property_id uuid default null,
+  p_room_id uuid default null,
+  p_occupancy_id uuid default null,
+  p_photo_pattern_ids uuid[] default '{}'::uuid[],
+  p_expected_revision bigint default null,
+  p_execute boolean default false,
+  p_idempotency_key text default null,
+  p_assigned_user_id uuid default null,
+  p_schedule_timezone text default null,
+  p_schedule_assigned_user_id uuid default null
+)
+returns table(
+  definition_id uuid,
+  version_id uuid,
+  version integer,
+  application_id uuid,
+  execution_id uuid,
+  execution_status text,
+  assigned_user_id uuid,
+  revision bigint,
+  schedule_next_run_at timestamptz,
+  schedule_status text
+)
+language plpgsql
+security definer
+set search_path=''
+as $workflow_update_v2$
+declare
+  v_actor uuid:=auth.uid();
+  v_result record;
+  v_schedule public.workflow_application_schedules_v2;
+begin
+  if p_execute and coalesce(p_spec->>'triggerType','')='scheduled_once' then
+    raise exception 'workflow_scheduled_execute_now_forbidden' using errcode='22023';
+  end if;
+
+  select * into v_result
+  from public.update_unexecuted_workflow_v1(
+    p_definition_id,p_spec,p_property_id,p_room_id,p_occupancy_id,
+    p_photo_pattern_ids,p_expected_revision,p_execute,p_idempotency_key,
+    p_assigned_user_id
+  )
+  limit 1;
+
+  v_schedule:=private.workflow_configure_application_schedule_v1(
+    v_result.application_id,
+    p_schedule_assigned_user_id,
+    v_actor
+  );
+
+  return query select
+    v_result.definition_id,v_result.version_id,v_result.version,
+    v_result.application_id,v_result.execution_id,v_result.execution_status,
+    v_result.assigned_user_id,v_result.revision,
+    v_schedule.next_run_at,v_schedule.status;
+end;
+$workflow_update_v2$;
+
+revoke all on function public.update_unexecuted_workflow_v2(
+  uuid,jsonb,uuid,uuid,uuid,uuid[],bigint,boolean,text,uuid,text,uuid
+) from public,anon;
+grant execute on function public.update_unexecuted_workflow_v2(
+  uuid,jsonb,uuid,uuid,uuid,uuid[],bigint,boolean,text,uuid,text,uuid
+) to authenticated;
+
+create or replace function public.publish_workflow_revision_ready_v2(
+  p_definition_id uuid,
+  p_expected_revision bigint,
+  p_property_id uuid default null,
+  p_room_id uuid default null,
+  p_occupancy_id uuid default null,
+  p_photo_pattern_ids uuid[] default '{}'::uuid[],
+  p_execute boolean default false,
+  p_idempotency_key text default null,
+  p_assigned_user_id uuid default null,
+  p_schedule_timezone text default null,
+  p_schedule_assigned_user_id uuid default null
+)
+returns table(
+  definition_id uuid,
+  version_id uuid,
+  version integer,
+  application_id uuid,
+  execution_id uuid,
+  execution_status text,
+  assigned_user_id uuid,
+  published_at timestamptz,
+  schedule_next_run_at timestamptz,
+  schedule_status text
+)
+language plpgsql
+security definer
+set search_path=''
+as $workflow_revision_ready_v2$
+declare
+  v_actor uuid:=auth.uid();
+  v_result record;
+  v_schedule public.workflow_application_schedules_v2;
+  v_trigger_type text;
+begin
+  select rd.draft_spec->>'triggerType'
+  into v_trigger_type
+  from public.workflow_definition_revision_drafts_v2 rd
+  where rd.definition_id=p_definition_id
+    and rd.published_at is null;
+
+  if p_execute and coalesce(v_trigger_type,'')='scheduled_once' then
+    raise exception 'workflow_scheduled_execute_now_forbidden' using errcode='22023';
+  end if;
+
+  select * into v_result
+  from public.publish_workflow_revision_ready_v1(
+    p_definition_id,p_expected_revision,p_property_id,p_room_id,p_occupancy_id,
+    p_photo_pattern_ids,p_execute,p_idempotency_key,p_assigned_user_id
+  )
+  limit 1;
+
+  v_schedule:=private.workflow_configure_application_schedule_v1(
+    v_result.application_id,
+    p_schedule_assigned_user_id,
+    v_actor
+  );
+
+  return query select
+    v_result.definition_id,v_result.version_id,v_result.version,
+    v_result.application_id,v_result.execution_id,v_result.execution_status,
+    v_result.assigned_user_id,v_result.published_at,
+    v_schedule.next_run_at,v_schedule.status;
+end;
+$workflow_revision_ready_v2$;
+
+revoke all on function public.publish_workflow_revision_ready_v2(
+  uuid,bigint,uuid,uuid,uuid,uuid[],boolean,text,uuid,text,uuid
+) from public,anon;
+grant execute on function public.publish_workflow_revision_ready_v2(
+  uuid,bigint,uuid,uuid,uuid,uuid[],boolean,text,uuid,text,uuid
+) to authenticated;
+
+comment on table public.workflow_application_schedules_v2 is
+  'Estado operativo de activaciones automáticas por aplicación/version. scheduled_once es el primer tipo habilitado.';
+comment on function private.workflow_execute_application_internal_v1(uuid,text,uuid,text,uuid) is
+  'Núcleo único de ejecución para manual_now y scheduled_once. No es invocable por clientes.';
+comment on function private.process_due_workflow_schedules_v1(timestamptz) is
+  'Procesa programaciones due con SKIP LOCKED, una ejecución idempotente por fecha y bloqueo explícito ante error.';
+ then
+    raise exception 'workflow_scheduled_utc_invalid' using errcode='22023';
+  end if;
+
+  begin
+    v_run_at:=v_utc_text::timestamptz;
+  exception when others then
+    raise exception 'workflow_scheduled_utc_invalid' using errcode='22023';
+  end;
+
+  v_roundtrip_text:=to_char(
+    v_run_at at time zone v_timezone,
+    'YYYY-MM-DD"T"HH24:MI'
+  );
+
+  if v_roundtrip_text is distinct from v_local_text then
+    raise exception 'workflow_schedule_time_mismatch' using errcode='22023';
   end if;
 
   if v_run_at<=now() then
@@ -788,7 +1644,6 @@ begin
 
   v_schedule:=private.workflow_configure_application_schedule_v1(
     v_result.application_id,
-    p_schedule_timezone,
     p_schedule_assigned_user_id,
     v_actor
   );
@@ -857,7 +1712,6 @@ begin
 
   v_schedule:=private.workflow_configure_application_schedule_v1(
     v_result.application_id,
-    p_schedule_timezone,
     p_schedule_assigned_user_id,
     v_actor
   );
@@ -931,7 +1785,6 @@ begin
 
   v_schedule:=private.workflow_configure_application_schedule_v1(
     v_result.application_id,
-    p_schedule_timezone,
     p_schedule_assigned_user_id,
     v_actor
   );

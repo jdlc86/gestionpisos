@@ -87,6 +87,15 @@ La publicación de una nueva versión:
 
 **Mis Flujos** deja de ser zona de autoría: solo muestra recetas publicadas. Si existe una futura versión en borrador, la tarjeta lo indica y enlaza de vuelta al Creador.
 
+### UX del Creador: Borradores y Editor separados
+
+Para evitar que una lista creciente obligue a desplazarse hasta el formulario, el Creador usa dos vistas exclusivas:
+
+- **Borradores**: buscador, filtro por estado, tarjetas compactas y carga progresiva de 12 elementos;
+- **Editor**: únicamente el asistente de siete pasos y una cabecera con `← Borradores`.
+
+Salir del Editor con cambios sin guardar ofrece **Guardar y salir / Salir sin guardar / Cancelar**. También existe **Guardar y salir** como acción directa. En un borrador persistido, **Descartar cambios locales** restaura la última revisión guardada en servidor en vez de vaciar el formulario.
+
 ### Borradores parciales y decisiones explícitas
 
 El Creador permite guardar un borrador con solo un nombre y continuar más tarde. Las opciones de tipo, ámbito, activación, asignación, pasos y cierre ya no tienen decisiones de negocio preseleccionadas.

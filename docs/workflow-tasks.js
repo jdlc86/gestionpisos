@@ -118,7 +118,8 @@ function setHeaderMode(mode){
 }
 function syncSelectionAvailability(){
   if(!selectionToggle)return;
-  selectionToggle.hidden=selectionMode||!visibleTasks().some(canDeleteTask);
+  const manager=rootManager||managerOrganizationIds.size>0;
+  selectionToggle.hidden=selectionMode||!manager||tasks.length===0;
 }
 function setSelectionMode(enabled,{selectId=null}={}){
   selectionMode=enabled;
@@ -172,7 +173,7 @@ function bindTaskLongPress(article,task){
   };
 
   article.addEventListener("pointerdown",event=>{
-    if(selectionMode||event.button!==0)return;
+    if(selectionMode||event.button!==0||!canManageTask(task))return;
     if(event.target.closest("a,button,input,select,textarea,label,summary"))return;
     longPressed=false;
     startX=event.clientX;

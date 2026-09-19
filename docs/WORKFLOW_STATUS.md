@@ -380,9 +380,9 @@ Orden recomendado:
 2. validar combinaciones Foto + Checklist + Documento en órdenes distintos;
 3. validar la vista de Historial transversal con ejecuciones reales;
 4. validar notificaciones operativas de creación/cierre/rechazo en producción;
-5. después habilitar recurrencias automáticas.
+5. implementar el scheduler automático sobre el contrato temporal ya cerrado.
 
-La recurrencia automática permanece posterior a estos E2E para no automatizar un ciclo transversal antes de validar sus pasos genéricos en producción.
+La ejecución automática todavía no está activa. La autoría temporal sí queda cerrada: Fecha concreta/Recurrente requieren ancla local, zona IANA y asignación `property_responsible` sobre un ámbito con piso. Los temporales legacy incompletos no se ejecutan por inferencia.
 
 ## 13. Reglas de no regresión
 
@@ -430,3 +430,18 @@ Los workflows reutilizan `notifications_v2` mediante una correlación genérica 
 - el canal inicial es únicamente in-app; email permanece desactivado hasta disponer de autoría explícita de canal.
 
 No se crea un segundo motor de notificaciones.
+
+
+### Incremento — Autoría temporal segura
+
+La configuración temporal ya distingue de forma explícita:
+
+- fecha/hora local;
+- zona horaria IANA;
+- primera ejecución para recurrencias;
+- cadencia;
+- asignación resoluble sin operador.
+
+`scheduled_once` y `recurring` solo se consideran completos con `property_responsible` y ámbito property/room/occupancy. Las versiones publicadas anteriores no se reescriben; al editarlas deberán completar el nuevo contrato.
+
+El scheduler automático permanece como siguiente incremento y no se activa en esta migración.

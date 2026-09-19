@@ -251,8 +251,8 @@ grep -Fq 'id="taskBulkDock"' docs/workflow-tasks.html
 grep -Fq 'id="taskBulkAction"' docs/workflow-tasks.html
 grep -Fq 'const selectedTaskIds=new Set()' docs/workflow-tasks.js
 grep -Fq 'function bindTaskLongPress(article,task)' docs/workflow-tasks.js
-grep -Fq 'function selectedDeletableTasks()' docs/workflow-tasks.js
-grep -Fq 'supabase.rpc("delete_task_card_v1"' docs/workflow-tasks.js
+grep -Fq 'function selectedActionableTasks()' docs/workflow-tasks.js
+grep -Fq '"delete_task_card_v1"' docs/workflow-tasks.js
 grep -Fq '.is("removed_at",null)' docs/workflow-tasks.js
 grep -Fq 'id="taskHiddenFilterOption"' docs/workflow-tasks.html
 grep -Fq '>Ocultas</option>' docs/workflow-tasks.html

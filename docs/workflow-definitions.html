@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#ffffff">
   <meta name="description" content="Definiciones de Flujos de Trabajo de GestionPisos">
   <link rel="stylesheet" href="./app.css?v=2026091906">
-  <link rel="stylesheet" href="./workflow-definitions.css?v=2026091903">
+  <link rel="stylesheet" href="./workflow-definitions.css?v=2026091910">
   <title>Allaiso · Mis Flujos</title>
 </head>
 <body>
@@ -21,6 +21,29 @@
       <a class="primary definitions-create" href="./workflow-builder.html">Crear flujo</a>
     </section>
 
+    <section class="definitions-controls" aria-label="Buscar y seleccionar flujos">
+      <label class="definitions-search">
+        <span>Buscar</span>
+        <input id="workflowSearch" type="search" autocomplete="off" placeholder="Nombre, destino, tipo o asignación">
+      </label>
+      <button id="workflowSelectionToggle" type="button" class="secondary">Seleccionar</button>
+    </section>
+
+    <section id="workflowBulkBar" class="definitions-bulk-bar" hidden aria-live="polite">
+      <div class="definitions-bulk-head">
+        <label class="definitions-select-all">
+          <input id="workflowSelectVisible" type="checkbox">
+          <span>Seleccionar visibles</span>
+        </label>
+        <strong id="workflowSelectionSummary">0 seleccionados</strong>
+      </div>
+      <div class="definitions-bulk-actions">
+        <button id="workflowBulkExecute" type="button" class="primary" disabled>Ejecutar selección</button>
+        <button id="workflowBulkDelete" type="button" class="danger-soft" disabled>Eliminar</button>
+        <button id="workflowBulkArchive" type="button" class="secondary" disabled>Archivar</button>
+      </div>
+    </section>
+
     <section id="workflowDefinitions" class="definitions-list" aria-live="polite">
       <article class="definition-card definition-card--loading">Cargando definiciones…</article>
     </section>
@@ -29,7 +52,7 @@
   </main>
 
   <script src="./app.js?v=2026091902" defer></script>
-  <script type="module" src="./workflow-definitions.js?v=2026091917"></script>
+  <script type="module" src="./workflow-definitions.js?v=2026091920"></script>
   <script type="module" src="./auth-guard.js"></script>
 </body>
 </html>

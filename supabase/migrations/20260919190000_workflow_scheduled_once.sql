@@ -488,7 +488,7 @@ declare
   v_resolved uuid;
   v_schedule public.workflow_application_schedules_v2;
 begin
-  select wa.*,wv.spec
+  select wa,wv.spec
   into v_app,v_spec
   from public.workflow_applications_v2 wa
   join public.workflow_definition_versions_v2 wv

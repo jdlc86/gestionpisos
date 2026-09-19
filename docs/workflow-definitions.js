@@ -608,18 +608,57 @@ function startBulkExecution(){
   window.location.href=url.href;
 }
 
-searchInput?.addEventListener("input",renderDefinitions);
-selectionToggle?.addEventListener("click",()=>{
-  selectionMode=!selectionMode;
-  if(!selectionMode)selectedIds.clear();
+searchToggle?.addEventListener("click",openSearch);
+searchInput?.addEventListener("input",()=>{
+  renderDefinitions();
+  syncFilterChip();
+});
+searchClose?.addEventListener("click",()=>closeSearch({clear:false}));
+searchClear?.addEventListener("click",()=>closeSearch({clear:true}));
+activeFilter?.addEventListener("click",()=>{
+  if(searchInput)searchInput.value="";
+  renderDefinitions();
+  syncFilterChip();
+});
+
+selectionToggle?.addEventListener("click",()=>setSelectionMode(true));
+selectionClose?.addEventListener("click",clearSelection);
+selectionMenuToggle?.addEventListener("click",event=>{
+  event.stopPropagation();
+  const open=selectionMenu.hidden;
+  selectionMenu.hidden=!open;
+  selectionMenuToggle.setAttribute("aria-expanded",String(open));
+});
+selectionMenu?.addEventListener("click",event=>event.stopPropagation());
+
+selectVisible?.addEventListener("click",()=>{
+  filteredRows.forEach(row=>selectedIds.add(row.id));
+  closeSelectionMenu();
   renderDefinitions();
 });
-selectVisible?.addEventListener("change",()=>{
-  filteredRows.forEach(row=>{
-    if(selectVisible.checked)selectedIds.add(row.id);else selectedIds.delete(row.id);
-  });
+deselectVisible?.addEventListener("click",()=>{
+  filteredRows.forEach(row=>selectedIds.delete(row.id));
+  closeSelectionMenu();
   renderDefinitions();
 });
+
+document.addEventListener("click",event=>{
+  if(!selectionMenu?.hidden&&!event.target.closest(".definitions-selection-menu-wrap"))closeSelectionMenu();
+});
+document.addEventListener("keydown",event=>{
+  if(event.key!=="Escape")return;
+  if(selectionMenu&&!selectionMenu.hidden){
+    closeSelectionMenu();
+    selectionMenuToggle?.focus();
+    return;
+  }
+  if(selectionMode){
+    clearSelection();
+    return;
+  }
+  if(searchMode)closeSearch({clear:false});
+});
+
 bulkExecute?.addEventListener("click",startBulkExecution);
 bulkDelete?.addEventListener("click",bulkDeleteSelected);
 bulkArchive?.addEventListener("click",bulkArchiveSelected);

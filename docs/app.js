@@ -35,13 +35,42 @@ if ("serviceWorker" in navigator) {
     if (meta) meta.content = theme === "dark" ? "#0d1117" : "#ffffff";
   };
 
-  apply(localStorage.getItem(key) || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
-  document.addEventListener("click", event => {
-    if (!event.target.closest("[data-theme-toggle]")) return;
+  const persist = theme => {
+    try {
+      localStorage.setItem(key, theme);
+    } catch (error) {
+      console.warn("theme_persist_failed", error);
+    }
+  };
+
+  const toggle = () => {
     const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
-    localStorage.setItem(key, next);
+    persist(next);
     apply(next);
-  });
+    return next;
+  };
+
+  const bind = (root = document) => {
+    root.querySelectorAll("[data-theme-toggle]").forEach(button => {
+      if (button.dataset.themeBound === "1") return;
+      button.dataset.themeBound = "1";
+      button.addEventListener("click", event => {
+        event.preventDefault();
+        toggle();
+      });
+    });
+  };
+
+  let initialTheme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  try {
+    initialTheme = localStorage.getItem(key) || initialTheme;
+  } catch (error) {
+    console.warn("theme_read_failed", error);
+  }
+
+  apply(initialTheme);
+  bind();
+  window.AllaisoTheme = { apply, toggle, bind };
 })();
 
 const premiumIcons = {

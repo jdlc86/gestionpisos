@@ -70,7 +70,12 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -v "$repo_path:/w
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260918234456_workflow_authoring_operational_separation.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260919103000_workflow_checklist_step.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260919141500_workflow_draft_discard.sql
+
+    # Reproduce Supabase public-schema function default privileges for late RPCs.
+    psql -v ON_ERROR_STOP=1 -U postgres -c "alter default privileges for role postgres in schema public grant execute on functions to anon, authenticated, service_role"
+
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260919143208_workflow_publish_execute_lifecycle.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260919170500_workflow_lifecycle_anon_execute_hardening.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260919163000_workflow_document_step.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260919164500_workflow_document_indexes.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/database-regression.sql

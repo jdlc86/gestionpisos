@@ -18,11 +18,11 @@
 .record-card h4{margin:0;font-size:17px;letter-spacing:-.015em}
 .record-card p{margin:6px 0 0;color:var(--ui-muted);line-height:1.45}
 .record-heading{display:flex;align-items:center;gap:10px}
-.record-type-icon{display:grid;flex:0 0 32px;width:32px;height:32px;place-items:center;border:1px solid var(--ui-accent-border);border-radius:10px;background:var(--ui-accent-soft);color:var(--ui-text);font-size:15px}
+.premium-icon--record{flex-basis:32px;width:32px;height:32px;border-radius:10px}.premium-icon--record svg{width:18px;height:18px}
 .record-actions{display:flex;flex-wrap:wrap;align-content:start;justify-content:end;gap:7px}
 .record-actions button{min-height:32px;padding:6px 9px;border-radius:7px;font-size:12px}
 .action-label{display:inline-flex;align-items:center;gap:6px}
-.action-icon{width:14px;text-align:center;font-size:14px;line-height:1}
+.action-icon{display:grid;width:15px;height:15px;place-items:center;color:currentColor}.action-icon svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .record-meta,.relation-chips{display:flex;flex-wrap:wrap;align-items:center;gap:0;margin-top:8px}
 .status-pill,.relation-chip{display:inline-flex;align-items:center;min-height:auto;padding:0;border:0;background:transparent;color:var(--ui-muted);font-size:12px;font-weight:500;line-height:1.4}
 .status-pill{font-weight:650}
@@ -37,7 +37,7 @@
 .empty-state{padding:34px 22px;border:1px dashed var(--ui-border-strong);border-radius:var(--ui-radius);background:color-mix(in srgb,var(--ui-surface) 78%,transparent);text-align:center}
 .empty-state h4{margin:12px 0 6px;font-size:17px}
 .empty-state p{max-width:430px;margin:0 auto;color:var(--ui-muted);line-height:1.5}
-.empty-icon{display:grid;width:44px;height:44px;margin:auto;place-items:center;border:1px solid var(--ui-border);border-radius:8px;background:var(--ui-subtle);font-size:21px}
+.empty-state>.premium-icon{margin:auto}
 dialog{width:min(560px,calc(100% - 24px));border:1px solid var(--ui-border);border-radius:12px;padding:0;background:var(--ui-surface);color:var(--ui-text);box-shadow:0 24px 80px rgba(0,0,0,.24)}
 dialog::backdrop{background:rgba(9,10,12,.62)}
 .editor{padding:22px}

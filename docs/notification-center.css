@@ -15,7 +15,7 @@ html[data-theme="dark"] .notification-sheet-card{box-shadow:0 28px 72px rgba(0,0
 .notification-sheet-close:focus-visible{outline:3px solid color-mix(in srgb,var(--ui-info) 35%,transparent);outline-offset:2px}
 .notification-sheet-close svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round}
 
-.notification-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 16px 10px;border-bottom:1px solid var(--ui-border)}
+.notification-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 16px 10px;border-bottom:1px solid var(--ui-border)}\n.notification-toolbar-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap}\n.notification-push-action{padding:5px 8px;border:1px solid var(--ui-border);border-radius:999px;background:var(--ui-surface);color:var(--ui-muted);font-size:10px;font-weight:800;cursor:pointer}\n.notification-push-action:hover,.notification-push-action:active{border-color:var(--ui-action);color:var(--ui-action)}\n.notification-push-action.is-active{border-color:color-mix(in srgb,var(--ui-action) 45%,var(--ui-border));background:var(--ui-info-soft);color:var(--ui-action)}\n.notification-push-action:disabled{opacity:.6;cursor:default}
 .notification-summary{color:var(--ui-muted);font-size:11px;font-weight:750}
 .notification-mark-all{padding:5px 0;border:0;background:transparent;color:var(--ui-action);font-size:11px;font-weight:800;cursor:pointer}
 .notification-mark-all[hidden]{display:none!important}
@@ -37,7 +37,7 @@ html[data-theme="dark"] .notification-sheet-card{box-shadow:0 28px 72px rgba(0,0
 .notification-empty strong{color:var(--ui-text);font-size:13px}
 .notification-empty p{margin:0;font-size:11px;line-height:1.45}
 
-@media(max-width:620px){
+@media(max-width:620px){\n  .notification-toolbar{align-items:flex-start}\n  .notification-toolbar-actions{max-width:68%}\n  .notification-push-action{font-size:9px;padding:5px 7px}
   .notification-sheet{position:fixed;inset:auto 8px calc(8px + env(safe-area-inset-bottom));width:calc(100vw - 16px);max-height:min(72vh,680px);margin:0;border-radius:22px}
   .notification-sheet-card{max-height:min(72vh,680px);border-radius:22px}
   .notification-list{max-height:calc(72vh - 132px)}

@@ -601,7 +601,7 @@ async function saveServerDraft(){
     noChanges
       ?"Sin cambios · revisión "+currentRevision
       :serverComplete
-        ?"Guardado · revisión "+currentRevision+" · listo para publicar."
+        ?"Guardado · revisión "+currentRevision+" · listo para continuar."
         :"Guardado · revisión "+currentRevision+" · "+state.completed+"/"+state.total+" apartados completos.",
     noChanges||serverComplete?"success":"neutral"
   );
@@ -621,11 +621,11 @@ function draftDate(value){
 
 async function publishDefinition(definitionId,revision,{isRevision=false,button=null}={}){
   if(!window.confirm(isRevision
-    ?"¿Publicar esta nueva versión? La versión actualmente operativa y sus aplicaciones conservarán su historial."
-    :"¿Publicar esta receta? Se creará su primera versión inmutable y pasará a Mis Flujos."))return false;
+    ?"¿Publicar esta nueva versión? La versión actualmente operativa conservará su historial y después podrás revisar dónde utilizar la nueva."
+    :"¿Continuar para usar este flujo? Se publicará una versión estable y después elegirás directamente dónde utilizarla."))return false;
   const original=button?.textContent;
-  if(button){button.disabled=true;button.textContent="Publicando…"}
-  setServerStatus("Validando y publicando la receta…");
+  if(button){button.disabled=true;button.textContent="Preparando…"}
+  setServerStatus("Publicando una versión estable antes de elegir el destino…");
   const rpc=isRevision
     ?"publish_workflow_definition_revision_v1"
     :"publish_workflow_definition_v1";
@@ -639,7 +639,12 @@ async function publishDefinition(definitionId,revision,{isRevision=false,button=
     return false;
   }
   const published=Array.isArray(data)?data[0]:null;
-  window.location.href="./workflow-definitions.html?published="+encodeURIComponent(definitionId)+"&version="+encodeURIComponent(published?.version||"");
+  const next=new URL("./workflow-applications.html",window.location.href);
+  next.searchParams.set("definition",definitionId);
+  if(published?.version)next.searchParams.set("version",String(published.version));
+  if(isRevision)next.searchParams.set("published","1");
+  else next.searchParams.set("setup","1");
+  window.location.href=next.href;
   return true;
 }
 
@@ -721,7 +726,7 @@ function draftWorkspaceCard(item){
   const head=document.createElement("div");head.className="builder-draft-head";
   const title=document.createElement("h3");title.textContent=item.name||"Borrador";
   const badge=document.createElement("span");badge.className="builder-draft-badge "+(item.authoring_complete?"is-complete":"is-pending");
-  badge.textContent=item.authoring_complete?"Listo para publicar":"Incompleto";
+  badge.textContent=item.authoring_complete?"Listo para continuar":"Incompleto";
   head.append(title,badge);
 
   const meta=document.createElement("div");meta.className="builder-draft-meta";

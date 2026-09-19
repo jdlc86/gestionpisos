@@ -147,13 +147,13 @@ begin
     end if;
 
     if p_execute then
-      select execution_id,status,assigned_user_id
+      select x.execution_id,x.status,x.assigned_user_id
       into v_execution_id,v_execution_status,v_execution_assigned_user_id
       from public.execute_workflow_application_now_v1(
         v_existing_application.id,
         p_idempotency_key,
         p_assigned_user_id
-      )
+      ) as x
       limit 1;
     end if;
 
@@ -196,13 +196,13 @@ begin
   limit 1;
 
   if p_execute then
-    select execution_id,status,assigned_user_id
+    select x.execution_id,x.status,x.assigned_user_id
     into v_execution_id,v_execution_status,v_execution_assigned_user_id
     from public.execute_workflow_application_now_v1(
       v_application.application_id,
       p_idempotency_key,
       p_assigned_user_id
-    )
+    ) as x
     limit 1;
   end if;
 
@@ -375,13 +375,13 @@ begin
   limit 1;
 
   if p_execute then
-    select execution_id,status,assigned_user_id
+    select x.execution_id,x.status,x.assigned_user_id
     into v_execution_id,v_execution_status,v_execution_assigned_user_id
     from public.execute_workflow_application_now_v1(
       v_application.application_id,
       p_idempotency_key,
       p_assigned_user_id
-    )
+    ) as x
     limit 1;
   end if;
 
@@ -502,13 +502,13 @@ begin
   limit 1;
 
   if p_execute then
-    select execution_id,status,assigned_user_id
+    select x.execution_id,x.status,x.assigned_user_id
     into v_execution_id,v_execution_status,v_execution_assigned_user_id
     from public.execute_workflow_application_now_v1(
       v_application.application_id,
       p_idempotency_key,
       p_assigned_user_id
-    )
+    ) as x
     limit 1;
   end if;
 

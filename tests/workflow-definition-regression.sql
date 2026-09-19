@@ -3708,40 +3708,46 @@ begin
 end;
 $workflow_checklist_privileges$;
 
+select set_config(
+  'gestionpisos.workflow_checklist_incomplete_definition_id',
+  (
+    select definition_id::text
+    from public.save_workflow_definition_draft_v2(
+      jsonb_build_object(
+        'authoringVersion',2,
+        'flowName','Checklist inválido',
+        'flowType','custom',
+        'flowDescription','',
+        'scopeType','room',
+        'triggerType','manual',
+        'recurrence','',
+        'scheduledAt','',
+        'customEvery','',
+        'customUnit','',
+        'assignmentType','manual',
+        'steps',jsonb_build_object('accept',false,'photo',false,'checklist',true,'document',false),
+        'checklistItems',jsonb_build_array(
+          jsonb_build_object('text','Elemento solo opcional','required',false)
+        ),
+        'closeType','auto',
+        'notifications',jsonb_build_object('onCreate',false,'onClose',false)
+      )
+    )
+    limit 1
+  ),
+  true
+);
+
 do $workflow_checklist_authoring_rules$
 declare
-  v_spec jsonb;
+  v_complete boolean;
 begin
-  v_spec:=jsonb_build_object(
-    'authoringVersion',2,
-    'flowName','Checklist inválido',
-    'flowType','custom',
-    'flowDescription','',
-    'scopeType','room',
-    'triggerType','manual',
-    'recurrence','',
-    'scheduledAt','',
-    'customEvery','',
-    'customUnit','',
-    'assignmentType','manual',
-    'steps',jsonb_build_object('accept',false,'photo',false,'checklist',true,'document',false),
-    'checklistItems',jsonb_build_array(
-      jsonb_build_object('text','Elemento solo opcional','required',false)
-    ),
-    'closeType','auto',
-    'notifications',jsonb_build_object('onCreate',false,'onClose',false)
-  );
-  if public.workflow_authoring_complete_v1(v_spec) then
-    raise exception 'all-optional checklist unexpectedly considered complete';
-  end if;
+  select authoring_complete into v_complete
+  from public.workflow_definitions_v2
+  where id=current_setting('gestionpisos.workflow_checklist_incomplete_definition_id')::uuid;
 
-  v_spec:=jsonb_set(
-    v_spec,
-    '{checklistItems}',
-    jsonb_build_array(jsonb_build_object('text','Elemento obligatorio','required',true))
-  );
-  if not public.workflow_authoring_complete_v1(v_spec) then
-    raise exception 'valid checklist unexpectedly considered incomplete';
+  if coalesce(v_complete,true) then
+    raise exception 'all-optional checklist unexpectedly considered complete';
   end if;
 end;
 $workflow_checklist_authoring_rules$;

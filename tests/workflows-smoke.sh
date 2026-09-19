@@ -134,7 +134,7 @@ grep -Fq 'Decisión Aceptar / Rechazar' docs/workflow-builder.js
 grep -Fq 'id="scheduledAt"' docs/workflow-builder.html
 grep -Fq 'id="customRecurrenceRow"' docs/workflow-builder.html
 grep -Fq '.builder-panel [hidden]{display:none!important}' docs/workflow-builder.css
-grep -Fq './workflow-builder.css?v=2026091910' docs/workflow-builder.html
+grep -Fq './workflow-builder.css?v=2026091911' docs/workflow-builder.html
 grep -Fq 'name="customEvery"' docs/workflow-builder.html
 grep -Fq 'name="customUnit"' docs/workflow-builder.html
 grep -Fq 'toggleDependentRow' docs/workflow-builder.js
@@ -149,7 +149,7 @@ grep -Fq 'id="photoBankLink"' docs/workflow-builder.html
 grep -Fq 'href="./photo-patterns.html?from=workflow-builder" hidden' docs/workflow-builder.html
 grep -Fq 'function updatePhotoResource()' docs/workflow-builder.js
 grep -Fq 'photoBankLink.hidden=!checked("stepPhoto")' docs/workflow-builder.js
-grep -Fq './workflow-builder.js?v=2026091910' docs/workflow-builder.html
+grep -Fq './workflow-builder.js?v=2026091911' docs/workflow-builder.html
 
 grep -Fq 'workflow_definitions_v2' docs/workflow-definitions.js
 grep -Fq '.eq("status","published")' docs/workflow-definitions.js
@@ -274,3 +274,11 @@ grep -Fq 'set_workflow_checklist_item_v1' docs/workflow-tasks.js
 grep -Fq 'workflow_executions_v2' docs/workflow-tasks.js
 grep -Fq '.task-checklist{' docs/workflow-tasks.css
 grep -Fq '20260919103000_workflow_checklist_step.sql' tests/database-regression-v2.sh
+
+grep -Fq 'id="builderDraftStatus"' docs/workflow-builder.html
+grep -Fq 'function discardDraft(item,button)' docs/workflow-builder.js
+grep -Fq 'discard_workflow_definition_draft_v1' docs/workflow-builder.js
+grep -Fq 'discard_workflow_definition_revision_draft_v1' docs/workflow-builder.js
+grep -Fq 'Eliminar borrador' docs/workflow-builder.js
+grep -Fq '.builder-action--danger{' docs/workflow-builder.css
+grep -Fq '20260919141500_workflow_draft_discard.sql' tests/database-regression-v2.sh

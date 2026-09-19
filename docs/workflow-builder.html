@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#ffffff">
   <meta name="description" content="Creador de Flujos de GestionPisos">
   <link rel="stylesheet" href="./app.css?v=2026091907">
-  <link rel="stylesheet" href="./workflow-builder.css?v=2026091910">
+  <link rel="stylesheet" href="./workflow-builder.css?v=2026091911">
   <title>Allaiso · Creador de Flujos</title>
 </head>
 <body>
@@ -43,6 +43,7 @@
         <div class="builder-draft-results-head">
           <span id="builderDraftCount">Cargando borradores…</span>
         </div>
+        <div id="builderDraftStatus" class="status builder-draft-status" role="status" aria-live="polite" hidden></div>
 
         <div id="builderDrafts" class="builder-drafts-list" aria-live="polite">
           <article class="builder-draft-card builder-draft-card--loading">Cargando borradores…</article>
@@ -232,7 +233,7 @@
   </main>
 
   <script src="./app.js?v=2026091902" defer></script>
-  <script type="module" src="./workflow-builder.js?v=2026091910"></script>
+  <script type="module" src="./workflow-builder.js?v=2026091911"></script>
   <script type="module" src="./auth-guard.js"></script>
 </body>
 </html>

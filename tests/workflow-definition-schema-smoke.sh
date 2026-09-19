@@ -17,6 +17,7 @@ human_review='supabase/migrations/20260918233000_workflow_human_review.sql'
 review_access='supabase/migrations/20260918234500_workflow_review_actor_visibility_hardening.sql'
 photo_review_hardening='supabase/migrations/20260919001000_photo_review_read_authorization_hardening.sql'
 authoring_separation='supabase/migrations/20260918234456_workflow_authoring_operational_separation.sql'
+draft_discard='supabase/migrations/20260919141500_workflow_draft_discard.sql'
 checklist='supabase/migrations/20260919103000_workflow_checklist_step.sql'
 
 test -s "$migration"
@@ -35,6 +36,8 @@ test -s "$human_review"
 test -s "$review_access"
 test -s "$photo_review_hardening"
 test -s "$authoring_separation"
+test -s "$draft_discard"
+test -s tests/workflow-draft-discard-regression.sql
 test -s "$checklist"
 test -s tests/workflow-definition-regression.sql
 test -s tests/workflow-authoring-separation-regression.sql
@@ -252,3 +255,11 @@ grep -Fq 'workflow_checklist_accept_required' "$checklist"
 grep -Fq "event_type='checklist_item_changed'" "$checklist"
 grep -Fq 'jsonb_array_length(v_execution.checklist_state)=0' "$checklist"
 grep -Fq 'grant execute on function public.set_workflow_checklist_item_v1' "$checklist"
+
+grep -Fq 'create or replace function public.discard_workflow_definition_draft_v1' "$draft_discard"
+grep -Fq 'create or replace function public.discard_workflow_definition_revision_draft_v1' "$draft_discard"
+grep -Fq "workflow_draft_discard_requires_unpublished" "$draft_discard"
+grep -Fq "workflow_draft_has_dependencies" "$draft_discard"
+grep -Fq "workflow_definition_revision_draft_discarded" "$draft_discard"
+grep -Fq 'grant execute on function public.discard_workflow_definition_draft_v1' "$draft_discard"
+grep -Fq 'grant execute on function public.discard_workflow_definition_revision_draft_v1' "$draft_discard"

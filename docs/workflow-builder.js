@@ -30,6 +30,9 @@ const recurrenceRow=document.getElementById("recurrenceRow");
 const customRecurrenceRow=document.getElementById("customRecurrenceRow");
 const scheduledAtRow=document.getElementById("scheduledAtRow");
 const photoBankLink=document.getElementById("photoBankLink");
+const checklistEditor=document.getElementById("checklistEditor");
+const checklistItemsBox=document.getElementById("checklistItems");
+const addChecklistItemButton=document.getElementById("addChecklistItem");
 const summary=document.getElementById("workflowSummary");
 const serverStatus=document.getElementById("builderServerStatus");
 const builderBadge=document.getElementById("builderBadge");
@@ -64,6 +67,99 @@ function value(name){return String(field(name)?.value||"").trim()}
 function label(group,key){return labels[group]?.[key]||key||"Pendiente"}
 function setChecked(name,next){const node=field(name);if(node)node.checked=Boolean(next)}
 
+function checklistItemsDraft(){
+  if(!checklistItemsBox)return [];
+  return [...checklistItemsBox.querySelectorAll(".builder-checklist-item")].map(row=>({
+    text:String(row.querySelector("[data-checklist-text]")?.value||"").trim(),
+    required:Boolean(row.querySelector("[data-checklist-required]")?.checked)
+  }));
+}
+
+function notifyChecklistChanged(){
+  saveLocalDraft();
+  updateCompletionUI();
+  if(currentStep===panels.length-1)renderSummary();
+}
+
+function addChecklistItem(item={text:"",required:true},{focus=false}={}){
+  if(!checklistItemsBox)return;
+  if(checklistItemsBox.children.length>=30){
+    setServerStatus("El checklist admite un máximo de 30 elementos.","warning");
+    return;
+  }
+  const row=document.createElement("div");
+  row.className="builder-checklist-item";
+
+  const main=document.createElement("div");
+  main.className="builder-checklist-item-main";
+
+  const input=document.createElement("input");
+  input.type="text";
+  input.maxLength=160;
+  input.placeholder="Ej. Comprobar que las ventanas quedan cerradas";
+  input.value=String(item?.text||"");
+  input.setAttribute("data-checklist-text","1");
+  input.setAttribute("aria-label","Texto del elemento de checklist");
+
+  const requiredLabel=document.createElement("label");
+  requiredLabel.className="builder-checklist-required";
+  const required=document.createElement("input");
+  required.type="checkbox";
+  required.checked=item?.required!==false;
+  required.setAttribute("data-checklist-required","1");
+  requiredLabel.append(required,document.createTextNode("Obligatorio"));
+
+  main.append(input,requiredLabel);
+
+  const actions=document.createElement("div");
+  actions.className="builder-checklist-item-actions";
+  const up=document.createElement("button");
+  up.type="button";up.className="builder-checklist-icon-button";up.textContent="↑";up.title="Subir";up.setAttribute("aria-label","Subir elemento");
+  const down=document.createElement("button");
+  down.type="button";down.className="builder-checklist-icon-button";down.textContent="↓";down.title="Bajar";down.setAttribute("aria-label","Bajar elemento");
+  const remove=document.createElement("button");
+  remove.type="button";remove.className="builder-checklist-icon-button builder-checklist-icon-button--danger";remove.textContent="×";remove.title="Eliminar";remove.setAttribute("aria-label","Eliminar elemento");
+
+  up.addEventListener("click",()=>{
+    const previous=row.previousElementSibling;
+    if(previous){checklistItemsBox.insertBefore(row,previous);notifyChecklistChanged()}
+  });
+  down.addEventListener("click",()=>{
+    const next=row.nextElementSibling;
+    if(next){checklistItemsBox.insertBefore(next,row);notifyChecklistChanged()}
+  });
+  remove.addEventListener("click",()=>{row.remove();notifyChecklistChanged()});
+
+  actions.append(up,down,remove);
+  row.append(main,actions);
+  checklistItemsBox.append(row);
+  if(focus)input.focus();
+}
+
+function renderChecklistItems(items=[]){
+  if(!checklistItemsBox)return;
+  checklistItemsBox.replaceChildren();
+  (Array.isArray(items)?items:[]).slice(0,30).forEach(item=>addChecklistItem(item));
+}
+
+function updateChecklistEditor(){
+  if(!checklistEditor)return;
+  const enabled=checked("stepChecklist");
+  checklistEditor.hidden=!enabled;
+  if(enabled&&!checklistItemsBox.children.length){
+    addChecklistItem({text:"",required:true});
+  }
+}
+
+function checklistConfigurationComplete(data){
+  if(!data.steps?.checklist)return true;
+  const items=Array.isArray(data.checklistItems)?data.checklistItems:[];
+  return items.length>0
+    && items.length<=30
+    && items.every(item=>String(item?.text||"").trim().length>=1&&String(item?.text||"").trim().length<=160)
+    && items.some(item=>item?.required!==false);
+}
+
 function draft(){
   return {
     authoringVersion:AUTHORING_VERSION,
@@ -78,6 +174,7 @@ function draft(){
     customUnit:value("customUnit"),
     assignmentType:value("assignmentType"),
     steps:{accept:checked("stepAccept"),photo:checked("stepPhoto"),checklist:checked("stepChecklist"),document:checked("stepDocument")},
+    checklistItems:checked("stepChecklist")?checklistItemsDraft():[],
     closeType:value("closeType"),
     notifications:{onCreate:checked("notifyOnCreate"),onClose:checked("notifyOnClose")},
     currentStep
@@ -146,7 +243,7 @@ function completion(data=draft()){
     {key:"scope",label:"Ámbito",complete:Boolean(data.scopeType)},
     {key:"trigger",label:"Activación",complete:triggerComplete(data)},
     {key:"assignment",label:"Asignación",complete:Boolean(data.assignmentType)},
-    {key:"steps",label:"Pasos y recursos",complete:Object.values(data.steps||{}).some(Boolean)},
+    {key:"steps",label:"Pasos y recursos",complete:Object.values(data.steps||{}).some(Boolean)&&checklistConfigurationComplete(data)},
     {key:"close",label:"Cierre",complete:Boolean(data.closeType)}
   ];
   const completed=sections.filter(section=>section.complete).length;
@@ -181,6 +278,8 @@ function applyDraft(saved,{restoreStep=true}={}){
   setChecked("stepPhoto",saved.steps?.photo);
   setChecked("stepChecklist",saved.steps?.checklist);
   setChecked("stepDocument",saved.steps?.document);
+  renderChecklistItems(saved.checklistItems||[]);
+  updateChecklistEditor();
   setChecked("notifyOnCreate",saved.notifications?.onCreate);
   setChecked("notifyOnClose",saved.notifications?.onClose);
   if(restoreStep&&Number.isInteger(saved.currentStep))currentStep=Math.max(0,Math.min(panels.length-1,saved.currentStep));
@@ -220,6 +319,9 @@ function errorMessage(error){
   if(text.includes("workflow_revision_base_version_conflict"))return "La versión publicada cambió mientras editabas. Vuelve a Mis Flujos y crea una nueva revisión.";
   if(text.includes("workflow_revision_requires_published_definition"))return "Solo una receta publicada puede generar una nueva versión.";
   if(text.includes("workflow_definition_not_found"))return "No se encontró este borrador o ya no pertenece a tu ámbito.";
+  if(text.includes("workflow_checklist_too_many_items"))return "El checklist admite un máximo de 30 elementos.";
+  if(text.includes("workflow_checklist_item_text_invalid"))return "Cada elemento del checklist admite hasta 160 caracteres.";
+  if(text.includes("workflow_checklist_item_invalid")||text.includes("workflow_checklist_item_required_invalid"))return "Hay un elemento de checklist con formato no válido.";
   if(text.includes("workflow_name_invalid"))return "El borrador necesita un nombre de al menos 3 caracteres para poder guardarse.";
   if(text.includes("not_authenticated"))return "La sesión ya no es válida. Vuelve a iniciar sesión.";
   if(text.includes("organization_selection_required"))return "No se puede determinar de forma inequívoca la organización del borrador.";
@@ -262,6 +364,7 @@ function updatePhotoResource(){
 
 function updateCompletionUI(){
   updatePhotoResource();
+  updateChecklistEditor();
   const state=completion();
   stepButtons.forEach((button,index)=>{
     const section=state.sections[index];
@@ -393,7 +496,11 @@ function renderSummary(){
   const stepNames=[];
   if(data.steps.accept)stepNames.push("Decisión Aceptar / Rechazar");
   if(data.steps.photo)stepNames.push("Evidencia fotográfica");
-  if(data.steps.checklist)stepNames.push("Checklist / formulario");
+  if(data.steps.checklist){
+    const items=Array.isArray(data.checklistItems)?data.checklistItems:[];
+    const required=items.filter(item=>item?.required!==false).length;
+    stepNames.push("Checklist · "+items.length+" elemento"+(items.length===1?"":"s")+" ("+required+" obligatorio"+(required===1?"":"s")+")");
+  }
   if(data.steps.document)stepNames.push("Documento");
   const notificationNames=[];
   if(data.notifications.onCreate)notificationNames.push("al crear tarea");
@@ -458,7 +565,7 @@ async function saveServerDraft(){
 
   const rpc=revisionMode
     ?"save_workflow_definition_revision_draft_v1"
-    :"save_workflow_definition_draft_v1";
+    :"save_workflow_definition_draft_v2";
   const {data,error}=await supabase.rpc(rpc,args);
   if(error||!Array.isArray(data)||!data[0]){
     setServerStatus(errorMessage(error),"error");
@@ -663,6 +770,10 @@ async function loadDraftWorkspace(){
 }
 
 publishButton?.addEventListener("click",publishCurrentDraft);
+addChecklistItemButton?.addEventListener("click",()=>{
+  addChecklistItem({text:"",required:true},{focus:true});
+  notifyChecklistChanged();
+});
 
 form.addEventListener("input",()=>{
   saveLocalDraft();
@@ -671,6 +782,7 @@ form.addEventListener("input",()=>{
 });
 form.addEventListener("change",event=>{
   if(event.target===triggerType||event.target===field("recurrence"))updateTriggerFields({clearHidden:true});
+  if(event.target===field("stepChecklist"))updateChecklistEditor();
   saveLocalDraft();
   updateCompletionUI();
   if(currentStep===panels.length-1)renderSummary();
@@ -730,6 +842,7 @@ clearButton.addEventListener("click",async()=>{
   }
 
   form.reset();
+  renderChecklistItems([]);
   currentStep=0;
   legacyDraftNeedsReview=false;
   updateTriggerFields();
@@ -758,6 +871,7 @@ window.addEventListener("beforeunload",event=>{
   }
 
   form.reset();
+  renderChecklistItems([]);
   markSavedSnapshot();
   restoreLocalDraft();
   updateTriggerFields();

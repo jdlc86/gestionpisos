@@ -185,6 +185,7 @@ function configurePresentation(){
       contextBackLink.setAttribute("aria-label","Cancelar ejecución");
       contextBackLink.title="Cancelar ejecución";
     }
+    if(formCard)formCard.classList.toggle("execution-attention",!guidedApplicationId);
     if(formEyebrow)formEyebrow.textContent="Ejecución · Destino";
     if(formTitle)formTitle.textContent="Completa lo necesario para ejecutar";
     if(formDescription)formDescription.textContent="Falta información del destino. Completa únicamente los campos resaltados para continuar.";
@@ -1611,7 +1612,9 @@ form.addEventListener("submit",async event=>{
     applicationsSection.hidden=false;
     setSetupStage("ready");
     await loadApplications();
-    setStatus("Destino preparado. Revisa quién realizará la tarea y pulsa Ejecutar ahora.");
+    setStatus(executionIntent
+      ?"Destino preparado. Completa únicamente los apartados abiertos para ejecutar."
+      :"Destino preparado. Revisa quién realizará la tarea y pulsa Ejecutar ahora.");
     window.scrollTo({top:0,behavior:"smooth"});
     return;
   }

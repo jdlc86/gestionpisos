@@ -519,6 +519,9 @@ function renderTransientReady(){
     meta("Qué hará",stepsSummary({spec})),
     meta("Asignación",assignmentLabels[String(spec.assignmentType||"")]||"Configurada")
   );
+  if(String(spec.triggerType||"")==="scheduled_once"){
+    details.append(meta("Programada para",scheduledDisplay(spec)));
+  }
   if(versionNeedsPhoto({spec})){
     const names=transientTarget.photo_pattern_ids.map(id=>photoPatternById.get(id)?.name||photoPatternById.get(id)?.target_key||"Patrón");
     details.append(meta("Fotografías",names.join(" · ")));

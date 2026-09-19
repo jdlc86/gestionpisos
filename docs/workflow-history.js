@@ -15,7 +15,6 @@ const filterButtons=[...document.querySelectorAll("[data-history-filter]")];
 
 const DOCUMENT_BUCKET="workflow-documents-v2";
 const OPEN_STATUSES=new Set(["pending","active","waiting_review"]);
-const REJECTED_STATUSES=new Set(["rejected","cancelled","failed"]);
 const statusLabels={
   pending:"Pendiente",
   active:"En curso",
@@ -103,7 +102,7 @@ function filteredExecutions(){
   return executions.filter(execution=>{
     if(activeFilter==="open"&&!OPEN_STATUSES.has(execution.status))return false;
     if(activeFilter==="completed"&&execution.status!=="completed")return false;
-    if(activeFilter==="rejected"&&!REJECTED_STATUSES.has(execution.status))return false;
+    if(activeFilter==="rejected"&&execution.status!=="rejected")return false;
     if(!query)return true;
     const task=taskFor(execution);
     const haystack=[
@@ -211,9 +210,18 @@ function eventDetail(event){
     return d.all_photos_complete?"Todas las fotografías requeridas quedaron enviadas.":"Evidencia fotográfica registrada.";
   }
   if(event.event_type==="workflow_review_applied"){
+    const rejected=Number(d.rejected_photo_count||0)>0;
+    const historyNote=taskHistoryNote(
+      d.task_id,
+      rejected?"review_reject":"review_approve",
+      event.created_at
+    );
+    if(historyNote)return historyNote;
+
     const run=reviewRunForEvent(event);
     if(run?.rejection_reason)return run.rejection_reason;
-    return Number(d.rejected_photo_count||0)>0
+
+    return rejected
       ?"La revisión contiene evidencia rechazada."
       :"La revisión fue aprobada.";
   }

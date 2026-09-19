@@ -379,7 +379,7 @@ function applyDraft(saved,{restoreStep=true}={}){
   updateChecklistEditor();
   setChecked("notifyOnCreate",saved.notifications?.onCreate);
   setChecked("notifyOnClose",saved.notifications?.onClose);
-  if(saved.triggerType==="scheduled_once")syncScheduledInstant({force:false});
+  if(["scheduled_once","recurring"].includes(saved.triggerType))syncScheduledInstant({force:false});
   if(restoreStep&&Number.isInteger(saved.currentStep))currentStep=Math.max(0,Math.min(panels.length-1,saved.currentStep));
 }
 
@@ -655,11 +655,23 @@ function summaryRow(title,text){
 
 function activationSummary(data){
   if(data.triggerType==="recurring"){
+    const first=(()=>{
+      if(!data.scheduledAtUtc||!data.scheduledTimezone)return "Primera ejecución pendiente";
+      const parsed=new Date(data.scheduledAtUtc);
+      if(Number.isNaN(parsed.getTime()))return data.scheduledAt||"Primera ejecución pendiente";
+      try{
+        return new Intl.DateTimeFormat("es-ES",{
+          dateStyle:"medium",
+          timeStyle:"short",
+          timeZone:data.scheduledTimezone
+        }).format(parsed)+" · "+data.scheduledTimezone;
+      }catch{return data.scheduledAt||"Primera ejecución pendiente"}
+    })();
     if(data.recurrence==="custom"){
       const every=data.customEvery||"—";
-      return "Recurrente · Cada "+every+" "+label("customUnit",data.customUnit);
+      return "Recurrente · Cada "+every+" "+label("customUnit",data.customUnit)+" · desde "+first;
     }
-    return label("triggerType",data.triggerType)+" · "+label("recurrence",data.recurrence);
+    return label("triggerType",data.triggerType)+" · "+label("recurrence",data.recurrence)+" · desde "+first;
   }
   if(data.triggerType==="scheduled_once"){
     if(!data.scheduledAt||!data.scheduledTimezone)return "Fecha concreta · Pendiente";

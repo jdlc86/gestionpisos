@@ -399,3 +399,10 @@ grep -Fq 'workflow_schedule_local_time_ambiguous' "$scheduled_exact"
 grep -Fq 'generate_series(-180,180)' "$scheduled_exact"
 grep -Fq 'reprogramming did not preserve version and exact schedule' tests/workflow-scheduled-once-regression.sql
 grep -Fq 'ambiguous DST wall time unexpectedly published' tests/workflow-scheduled-once-regression.sql
+
+
+# Fecha concreta: ningún RPC v1 puede dejar una aplicación scheduled sin programación.
+grep -Fq 'create constraint trigger workflow_scheduled_application_requires_schedule_v1' "$scheduled_exact"
+grep -Fq 'deferrable initially deferred' "$scheduled_exact"
+grep -Fq 'workflow_scheduled_configuration_required' "$scheduled_exact"
+grep -Fq 'scheduled v1 bypass unexpectedly committed application' tests/workflow-scheduled-once-regression.sql

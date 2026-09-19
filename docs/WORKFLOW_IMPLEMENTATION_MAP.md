@@ -350,6 +350,7 @@ Fotografía, Checklist y Documento ya son pasos operativos del motor mínimo.
 | Binding aplicación→foto | `workflow_application_photo_resources_v2` | Implementado con patrones reales del piso |
 | Snapshot ejecución→foto | `workflow_execution_photo_resources_v2` | Implementado; congela versión y silueta |
 | Eventos transversales de ejecución | `workflow_execution_events_v2` | Creación, materialización, acciones, evidencia y cierre de revisión registrados; presentación transversal implementada en Historial |
+| Notificaciones | `notifications_v2` + trigger de `workflow_executions_v2` | onCreate al asignado; onClose a creador+asignado; dedupe por source/event/recipient |
 
 ## 6. Compatibilidad y transición
 

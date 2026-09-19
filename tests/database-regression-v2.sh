@@ -38,6 +38,10 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -v "$repo_path:/w
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/fixtures/20260913_remote_baseline.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/local-regression-fixture.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260913205141_close_owners_and_occupancy_blockers.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260913225216_beta0_notifications_tables.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260913225223_beta0_notifications_rls.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260913225231_beta0_notifications_mark_read.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260914123439_beta0_notification_read_invoker.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260914064353_beta0_photo_verification_tables.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260914064402_beta0_photo_verification_rls.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260914074246_beta0_photo_verification_write_policies.sql
@@ -78,6 +82,7 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -v "$repo_path:/w
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260919170500_workflow_lifecycle_anon_execute_hardening.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260919163000_workflow_document_step.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260919164500_workflow_document_indexes.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260919174500_workflow_notifications.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/database-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/photo-verification-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-definition-regression.sql
@@ -85,6 +90,7 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -v "$repo_path:/w
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-draft-discard-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-publish-execute-lifecycle-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-document-step-regression.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-notifications-regression.sql
 
     trap - EXIT
     cleanup

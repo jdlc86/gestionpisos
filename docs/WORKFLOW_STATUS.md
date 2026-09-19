@@ -379,7 +379,7 @@ Orden recomendado:
 1. validar E2E humano Checklist y Documento en producción;
 2. validar combinaciones Foto + Checklist + Documento en órdenes distintos;
 3. validar la vista de Historial transversal con ejecuciones reales;
-4. añadir notificaciones operativas específicas de cierre/rechazo;
+4. validar notificaciones operativas de creación/cierre/rechazo en producción;
 5. después habilitar recurrencias automáticas.
 
 La recurrencia automática permanece posterior a estos E2E para no automatizar un ciclo transversal antes de validar sus pasos genéricos en producción.
@@ -416,3 +416,17 @@ El criterio inicial quedó demostrado el 18/09/2026 para el recorrido manual con
 Por tanto, **una definición publicada y aplicada ya puede representar un proceso operativo real dentro de los pasos implementados**.
 
 Esto no debe generalizarse a capacidades aún pendientes. Checklist y Documento ya tienen contrato, implementación y regresión automatizada; sus E2E humanos se validan después del despliegue. La recurrencia automática no puede considerarse completa hasta que tenga contrato, implementación y E2E propios. `human_review` ya tiene contrato, implementación y validación E2E real.
+
+
+### Incremento — Notificaciones operativas
+
+Los workflows reutilizan `notifications_v2` mediante una correlación genérica por fuente:
+
+- `onCreate` avisa al asignado;
+- `onClose` avisa a creador + asignado sin duplicados;
+- cierre `completed` y `rejected` tienen eventos diferenciados;
+- la emisión es transaccional con el cambio de `workflow_executions_v2`;
+- reintentos no duplican notificaciones;
+- el canal inicial es únicamente in-app; email permanece desactivado hasta disponer de autoría explícita de canal.
+
+No se crea un segundo motor de notificaciones.

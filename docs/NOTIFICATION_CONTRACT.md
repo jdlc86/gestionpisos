@@ -29,3 +29,28 @@ Ejemplos:
 - contratos próximos a vencer.
 
 Las reglas deben evitar duplicados y permitir trazabilidad.
+
+
+## Flujos de Trabajo
+
+Los workflows reutilizan `notifications_v2`; no crean otra tabla de notificaciones.
+
+La receta publicada conserva dos flags:
+
+- `notifications.onCreate=true`: crea una notificación interna para la persona asignada cuando nace la ejecución/tarea.
+- `notifications.onClose=true`: crea una notificación interna para creador y asignado cuando la ejecución termina en `completed` o `rejected`. Si ambos son la misma persona, solo existe una notificación.
+
+Tipos de evento:
+
+- `workflow_task_created`
+- `workflow_completed`
+- `workflow_rejected`
+
+La correlación se guarda en `notifications_v2.source_kind/source_id/event_key` y tiene unicidad por destinatario, de modo que reintentos idempotentes no duplican avisos.
+
+En esta primera integración:
+
+- `channel_in_app=true`;
+- `channel_email=false`.
+
+Email no se activa implícitamente: debe existir una opción explícita de autoría/canal antes de enviar correos por workflows.

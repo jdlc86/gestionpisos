@@ -371,7 +371,7 @@ grep -Fq 'Flujo publicado sin tareas.' docs/workflow-applications.js
 # Mis Flujos oculta la mecanica de versiones y deriva acciones del historial.
 grep -Fq 'function hasHistory(row)' docs/workflow-definitions.js
 grep -Fq 'execute.textContent="Ejecutar"' docs/workflow-definitions.js
-grep -Fq 'edit.textContent="Editar"' docs/workflow-definitions.js
+grep -Fq 'edit.textContent=needsSchedule?"Editar programación":"Editar"' docs/workflow-definitions.js
 grep -Fq 'remove.textContent="Eliminar"' docs/workflow-definitions.js
 grep -Fq 'archive.textContent="Archivar"' docs/workflow-definitions.js
 grep -Fq 'delete_unexecuted_workflow_v1' docs/workflow-definitions.js

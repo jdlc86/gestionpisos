@@ -32,6 +32,7 @@ const recurrenceRow=document.getElementById("recurrenceRow");
 const customRecurrenceRow=document.getElementById("customRecurrenceRow");
 const scheduledAtRow=document.getElementById("scheduledAtRow");
 const scheduledTimezoneHint=document.getElementById("scheduledTimezoneHint");
+const scheduledAtLabel=document.getElementById("scheduledAtLabel");
 const photoBankLink=document.getElementById("photoBankLink");
 const checklistEditor=document.getElementById("checklistEditor");
 const checklistItemsBox=document.getElementById("checklistItems");
@@ -349,7 +350,9 @@ function triggerComplete(data){
     return Number.isFinite(runAt)&&runAt>Date.now();
   }
   if(data.triggerType==="recurring"){
-    if(!data.recurrence)return false;
+    if(!data.recurrence||!data.scheduledAt||!data.scheduledTimezone||!data.scheduledAtUtc)return false;
+    const runAt=Date.parse(data.scheduledAtUtc);
+    if(!Number.isFinite(runAt)||runAt<=Date.now())return false;
     if(data.recurrence!=="custom")return true;
     const every=Number(data.customEvery);
     return Number.isInteger(every)&&every>=1&&every<=365&&["day","week","month"].includes(data.customUnit);
@@ -436,11 +439,13 @@ function updateTriggerFields({clearHidden=false}={}){
   const customUnit=field("customUnit");
   const recurring=type==="recurring";
   const scheduled=type==="scheduled_once";
+  const automatic=scheduled||recurring;
   const custom=recurring&&value("recurrence")==="custom";
 
   toggleDependentRow(recurrenceRow,recurring);
   toggleDependentRow(customRecurrenceRow,custom);
-  toggleDependentRow(scheduledAtRow,scheduled);
+  toggleDependentRow(scheduledAtRow,automatic);
+  if(scheduledAtLabel)scheduledAtLabel.textContent=recurring?"Primera ejecución":"Fecha y hora";
 
   if(clearHidden){
     if(!recurring&&recurrence)recurrence.value="";
@@ -448,7 +453,7 @@ function updateTriggerFields({clearHidden=false}={}){
       if(customEvery)customEvery.value="";
       if(customUnit)customUnit.value="";
     }
-    if(!scheduled){
+    if(!automatic){
       if(scheduledAt)scheduledAt.value="";
       if(scheduledTimezone)scheduledTimezone.value="";
       if(scheduledAtUtc)scheduledAtUtc.value="";
@@ -456,7 +461,7 @@ function updateTriggerFields({clearHidden=false}={}){
     }
   }
 
-  if(scheduled)syncScheduledInstant({force:false});
+  if(automatic)syncScheduledInstant({force:false});
 }
 
 function updatePhotoResource(){

@@ -31,6 +31,7 @@ const triggerType=document.getElementById("triggerType");
 const recurrenceRow=document.getElementById("recurrenceRow");
 const customRecurrenceRow=document.getElementById("customRecurrenceRow");
 const scheduledAtRow=document.getElementById("scheduledAtRow");
+const scheduledTimezoneHint=document.getElementById("scheduledTimezoneHint");
 const photoBankLink=document.getElementById("photoBankLink");
 const checklistEditor=document.getElementById("checklistEditor");
 const checklistItemsBox=document.getElementById("checklistItems");
@@ -69,6 +70,48 @@ function checked(name){return Boolean(field(name)?.checked)}
 function value(name){return String(field(name)?.value||"").trim()}
 function label(group,key){return labels[group]?.[key]||key||"Pendiente"}
 function setChecked(name,next){const node=field(name);if(node)node.checked=Boolean(next)}
+
+function browserTimezone(){
+  try{return Intl.DateTimeFormat().resolvedOptions().timeZone||""}catch{return ""}
+}
+function localMinuteString(date){
+  const pad=value=>String(value).padStart(2,"0");
+  return date.getFullYear()+"-"+pad(date.getMonth()+1)+"-"+pad(date.getDate())
+    +"T"+pad(date.getHours())+":"+pad(date.getMinutes());
+}
+function syncScheduledInstant({force=false}={}){
+  const localField=field("scheduledAt");
+  const timezoneField=field("scheduledTimezone");
+  const utcField=field("scheduledAtUtc");
+  if(!localField||!timezoneField||!utcField)return false;
+
+  const local=String(localField.value||"").trim();
+  if(!local){
+    timezoneField.value="";
+    utcField.value="";
+    if(scheduledTimezoneHint)scheduledTimezoneHint.textContent="";
+    return false;
+  }
+
+  if(!force&&timezoneField.value&&utcField.value){
+    if(scheduledTimezoneHint)scheduledTimezoneHint.textContent="Zona horaria · "+timezoneField.value;
+    return true;
+  }
+
+  const timezone=browserTimezone();
+  const parsed=new Date(local);
+  if(!timezone||Number.isNaN(parsed.getTime())||localMinuteString(parsed)!==local){
+    timezoneField.value="";
+    utcField.value="";
+    if(scheduledTimezoneHint)scheduledTimezoneHint.textContent="La fecha/hora local no es válida en este dispositivo.";
+    return false;
+  }
+
+  timezoneField.value=timezone;
+  utcField.value=parsed.toISOString();
+  if(scheduledTimezoneHint)scheduledTimezoneHint.textContent="Zona horaria · "+timezone;
+  return true;
+}
 
 function checklistItemsDraft(){
   if(!checklistItemsBox)return [];
@@ -173,6 +216,8 @@ function draft(){
     triggerType:value("triggerType"),
     recurrence:value("recurrence"),
     scheduledAt:value("scheduledAt"),
+    scheduledTimezone:value("scheduledTimezone"),
+    scheduledAtUtc:value("scheduledAtUtc"),
     customEvery:value("customEvery"),
     customUnit:value("customUnit"),
     assignmentType:value("assignmentType"),
@@ -270,7 +315,11 @@ function completion(data=draft()){
 function triggerComplete(data){
   if(!data.triggerType)return false;
   if(data.triggerType==="manual"||data.triggerType==="event")return true;
-  if(data.triggerType==="scheduled_once")return Boolean(data.scheduledAt);
+  if(data.triggerType==="scheduled_once"){
+    if(!data.scheduledAt||!data.scheduledTimezone||!data.scheduledAtUtc)return false;
+    const runAt=Date.parse(data.scheduledAtUtc);
+    return Number.isFinite(runAt)&&runAt>Date.now();
+  }
   if(data.triggerType==="recurring"){
     if(!data.recurrence)return false;
     if(data.recurrence!=="custom")return true;
@@ -287,7 +336,7 @@ function saveLocalDraft(){
 
 function applyDraft(saved,{restoreStep=true}={}){
   if(!saved||typeof saved!=="object")return;
-  for(const name of ["flowName","flowType","flowDescription","scopeType","triggerType","recurrence","scheduledAt","customEvery","customUnit","assignmentType","closeType"]){
+  for(const name of ["flowName","flowType","flowDescription","scopeType","triggerType","recurrence","scheduledAt","scheduledTimezone","scheduledAtUtc","customEvery","customUnit","assignmentType","closeType"]){
     const node=field(name);
     if(node&&typeof saved[name]==="string")node.value=saved[name];
   }
@@ -350,6 +399,8 @@ function updateTriggerFields({clearHidden=false}={}){
   const type=value("triggerType");
   const recurrence=field("recurrence");
   const scheduledAt=field("scheduledAt");
+  const scheduledTimezone=field("scheduledTimezone");
+  const scheduledAtUtc=field("scheduledAtUtc");
   const customEvery=field("customEvery");
   const customUnit=field("customUnit");
   const recurring=type==="recurring";
@@ -366,8 +417,15 @@ function updateTriggerFields({clearHidden=false}={}){
       if(customEvery)customEvery.value="";
       if(customUnit)customUnit.value="";
     }
-    if(!scheduled&&scheduledAt)scheduledAt.value="";
+    if(!scheduled){
+      if(scheduledAt)scheduledAt.value="";
+      if(scheduledTimezone)scheduledTimezone.value="";
+      if(scheduledAtUtc)scheduledAtUtc.value="";
+      if(scheduledTimezoneHint)scheduledTimezoneHint.textContent="";
+    }
   }
+
+  if(scheduled)syncScheduledInstant({force:false});
 }
 
 function updatePhotoResource(){
@@ -568,10 +626,16 @@ function activationSummary(data){
     return label("triggerType",data.triggerType)+" · "+label("recurrence",data.recurrence);
   }
   if(data.triggerType==="scheduled_once"){
-    if(!data.scheduledAt)return "Fecha concreta · Pendiente";
-    const parsed=new Date(data.scheduledAt);
-    const shown=Number.isNaN(parsed.getTime())?data.scheduledAt:new Intl.DateTimeFormat("es-ES",{dateStyle:"medium",timeStyle:"short"}).format(parsed);
-    return "Fecha concreta · "+shown;
+    if(!data.scheduledAt||!data.scheduledTimezone)return "Fecha concreta · Pendiente";
+    const parsed=new Date(data.scheduledAtUtc||data.scheduledAt);
+    const shown=Number.isNaN(parsed.getTime())
+      ?data.scheduledAt
+      :new Intl.DateTimeFormat("es-ES",{
+          dateStyle:"medium",
+          timeStyle:"short",
+          timeZone:data.scheduledTimezone
+        }).format(parsed);
+    return "Fecha concreta · "+shown+" · "+data.scheduledTimezone;
   }
   return label("triggerType",data.triggerType);
 }
@@ -969,7 +1033,8 @@ addChecklistItemButton?.addEventListener("click",()=>{
   notifyChecklistChanged();
 });
 
-form.addEventListener("input",()=>{
+form.addEventListener("input",event=>{
+  if(event.target===field("scheduledAt"))syncScheduledInstant({force:true});
   saveLocalDraft();
   updateCompletionUI();
   if(currentStep===panels.length-1)renderSummary();

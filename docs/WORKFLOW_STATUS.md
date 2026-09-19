@@ -380,7 +380,8 @@ Orden recomendado:
 2. validar combinaciones Foto + Checklist + Documento en órdenes distintos;
 3. validar la vista de Historial transversal con ejecuciones reales;
 4. validar notificaciones operativas de creación/cierre/rechazo en producción;
-5. después habilitar recurrencias automáticas.
+5. validar Fecha concreta automática en producción;
+6. definir la primera fecha/hora de Recurrente y después habilitar recurrencias automáticas.
 
 La recurrencia automática permanece posterior a estos E2E para no automatizar un ciclo transversal antes de validar sus pasos genéricos en producción.
 
@@ -433,3 +434,21 @@ No se crea un segundo motor de notificaciones.
 
 
 La campanita personal de Inicio consume `notifications_v2` directamente bajo RLS, muestra contador de no leídas y permite marcar avisos como leídos. Los eventos de workflow enlazan a Tareas o Historial según corresponda. No se crea una bandeja paralela.
+
+
+### Incremento — Fecha concreta automática
+
+`triggerType=scheduled_once` dispone de scheduler transversal:
+
+- la receta conserva `scheduledAt`, `scheduledTimezone` y `scheduledAtUtc`;
+- Listo usa **Programar** y no crea tarea inmediatamente;
+- asignación manual queda fijada al programar;
+- responsable operativo se resuelve al llegar la fecha;
+- `workflow_application_schedules_v2` conserva el estado operativo;
+- `pg_cron` revisa vencimientos cada minuto;
+- el disparo reutiliza el núcleo común de ejecución y `tenant_tasks_v2`;
+- una clave idempotente evita duplicados;
+- un fallo pasa a `blocked`, no deja ejecución parcial y avisa al creador;
+- Fecha concreta no ofrece ejecución manual ni entra en lotes de Ejecutar.
+
+**Recurrente todavía no está automatizado**: antes debe añadirse una primera fecha/hora explícita. No se usará la hora de publicación como ancla implícita.

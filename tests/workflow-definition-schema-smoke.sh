@@ -407,6 +407,7 @@ grep -Fq 'add column if not exists removed_by uuid' "$task_card_removal"
 grep -Fq 'create or replace function public.delete_task_card_v1' "$task_card_removal"
 grep -Fq 'task_delete_requires_terminal' "$task_card_removal"
 grep -Fq 'task_delete_execution_not_terminal' "$task_card_removal"
+grep -Fq 'task_delete_execution_missing' "$task_card_removal"
 grep -Fq 'revoke all on function public.delete_task_card_v1(uuid)' "$task_card_removal"
 grep -Fq 'grant execute on function public.delete_task_card_v1(uuid)' "$task_card_removal"
 

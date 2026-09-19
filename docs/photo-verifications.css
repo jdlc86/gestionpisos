@@ -3,7 +3,7 @@
 .review-toolbar select{width:100%;min-width:0;border:1px solid var(--ui-border);border-radius:var(--ui-radius-sm);padding:10px;background:var(--ui-surface);color:var(--ui-text)}
 .review-message{margin:8px 0 12px;color:var(--ui-muted);font-size:12px}
 .review-list{display:grid;gap:10px}
-.review-card{padding:15px;border:1px solid var(--ui-border);border-radius:var(--ui-radius);background:var(--ui-surface);box-shadow:var(--ui-shadow)}
+.review-card{padding:15px;border:1px solid var(--ui-border);border-radius:14px;background:var(--ui-surface);box-shadow:var(--ui-card-shadow)}
 .review-card__top{display:flex;justify-content:space-between;gap:12px}
 .review-card h3{margin:0;font-size:17px}
 .review-card p{margin:6px 0 0;color:var(--ui-muted);font-size:12px}

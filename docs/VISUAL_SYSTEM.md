@@ -19,7 +19,7 @@ La referencia vigente es el patrón validado en Creador de Flujos: navegación d
 - En escritorio puede existir un acceso Home discreto como fallback cuando la barra inferior no se muestra.
 - El control de tema/iluminación, MFA y Salir aparecen solo en Inicio.
 - Cámara y Editor de siluetas siguen siendo experiencias fullscreen y no muestran la bottom navigation.
-- Inicio es una excepción deliberada de marca: las tarjetas principales pueden usar pictogramas de color de mayor presencia visual; la bottom navigation y la navegación contextual mantienen SVG monocromos.
+- Inicio y los submenús de navegación usan una familia propia de iconos SVG premium, con el mismo trazo y una placa champagne muy contenida. La bottom navigation y la navegación contextual permanecen monocromas y funcionales.
 
 ## Botones
 
@@ -33,9 +33,15 @@ La referencia vigente es el patrón validado en Creador de Flujos: navegación d
 ## Superficies
 
 - --ui-surface y --ui-subtle son los niveles principales.
-- Borde fino y sombras mínimas.
-- Radio principal de 8–12 px.
+- Las tarjetas de navegación premium usan fondo uniforme, borde fino, radio de 14 px y una sombra de baja intensidad.
+- El acento champagne (--ui-accent) identifica marca e iconografía; nunca sustituye al azul de las acciones.
+- Los estados bloqueados mantienen legibilidad y muestran una etiqueta explícita como “Próximamente” o “En preparación”.
 - Los módulos consumen los tokens de app.css; no deben crear una segunda paleta global.
+
+## Hero de marca
+
+- El hero principal de Inicio usa fondo grafito/negro, texto blanco y subtítulo gris suave.
+- Ese tratamiento oscuro se reserva para marca y modales realmente especiales; las pantallas operativas mantienen superficies claras/oscuras neutras según el tema.
 
 ## Inicio y pie institucional
 

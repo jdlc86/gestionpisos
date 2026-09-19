@@ -5,8 +5,8 @@
 .toolbar{display:flex;align-items:end;justify-content:space-between;gap:16px;margin:24px 0 12px}
 .toolbar h3{margin:4px 0 0;font-size:21px;letter-spacing:-.02em}
 .cards-3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.metric{padding:16px;border:1px solid var(--ui-border);border-radius:var(--ui-radius);background:var(--ui-surface);box-shadow:var(--ui-shadow)}
-.metric:nth-child(even){background:var(--ui-subtle)}
+.metric{padding:16px;border:1px solid color-mix(in srgb,var(--ui-border) 84%,var(--ui-accent) 16%);border-radius:14px;background:var(--ui-surface);box-shadow:var(--ui-card-shadow)}
+
 .metric span{display:block;color:var(--ui-muted);font-size:12px}
 .metric strong{display:block;margin-top:5px;font-size:27px;letter-spacing:-.03em}
 .empty-state{margin-top:12px;padding:30px 20px;border:1px dashed var(--ui-border-strong);border-radius:var(--ui-radius);background:color-mix(in srgb,var(--ui-surface) 78%,transparent);text-align:center}

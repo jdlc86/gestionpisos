@@ -9,6 +9,8 @@ test -s docs/sw.js
 test -s docs/bottom-nav.js
 test -s docs/bottom-nav.css
 node --check docs/bottom-nav.js
+node --check docs/app.js
+node --check docs/portfolio.js
 test -s docs/operations.html
 test -s docs/operations.css
 test -s docs/operations.js
@@ -20,7 +22,7 @@ grep -q 'photo-verifications.html?v=2026091501' docs/operations.html
 grep -q 'review-photo-verification' docs/photo-verifications.js
 grep -q 'Fotoverificación aprobada correctamente' docs/photo-verifications.js
 grep -q 'photo-verifications.js?v=2026091801' docs/photo-verifications.html
-grep -q 'photo-verifications.css?v=2026091901' docs/photo-verifications.html
+grep -q 'photo-verifications.css?v=2026091902' docs/photo-verifications.html
 grep -q 'id="reviewToast"' docs/photo-verifications.html
 grep -q 'id="propertyFilter"' docs/photo-verifications.html
 grep -q 'reviewed_by' docs/photo-verifications.js
@@ -52,7 +54,7 @@ grep -q 'serviceWorker' docs/app.js
 grep -q 'GestionPisos' docs/manifest.webmanifest
 grep -Fq "'./legal.html'" docs/sw.js
 grep -Fq "'./privacy.html'" docs/sw.js
-grep -q 'gestionpisos-shell-v16' docs/sw.js
+grep -q 'gestionpisos-shell-v17' docs/sw.js
 grep -Fq "'./bottom-nav.js'" docs/sw.js
 grep -Fq "'./bottom-nav.css'" docs/sw.js
 grep -Fq 'mountBottomNavigation' docs/auth-guard.js
@@ -93,6 +95,17 @@ grep -q 'Pagos' docs/operations.html
 grep -q 'Estadísticas' docs/operations.html
 grep -q 'operations.css' docs/operations.html
 grep -q 'operations.js' docs/operations.html
+grep -Fq 'hero hero--brand' docs/index.html
+grep -Fq 'data-premium-icon="portfolio"' docs/index.html
+grep -Fq 'data-premium-icon="workflows"' docs/index.html
+grep -Fq 'data-premium-icon="builder"' docs/workflows.html
+grep -Fq 'data-premium-icon="permissions"' docs/configuration-resources.html
+grep -Fq 'data-premium-icon="users"' docs/permissions.html
+grep -Fq 'AllaisoPremiumIcons' docs/app.js
+grep -Fq -- '--ui-accent:#a9854f' docs/app.css
+grep -Fq '.premium-nav-card{' docs/app.css
+grep -Fq '.premium-icon{' docs/app.css
+grep -Fq 'window.AllaisoPremiumIcons?.render(records)' docs/portfolio.js
 
 bash tests/portfolio-smoke.sh
 
@@ -106,7 +119,7 @@ if grep -q 'photo-patterns.html' docs/portfolio.html; then
   exit 1
 fi
 grep -q 'photo-patterns.js?v=2026091502' docs/photo-patterns.html
-grep -q 'photo-patterns.css?v=2026091901' docs/photo-patterns.html
+grep -q 'photo-patterns.css?v=2026091902' docs/photo-patterns.html
 grep -q 'photo_patterns_v2' docs/photo-patterns.js
 grep -q 'mode", "pattern"' docs/photo-patterns.js
 grep -q 'zone_label' docs/photo-patterns.js

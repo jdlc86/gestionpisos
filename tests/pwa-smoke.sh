@@ -20,7 +20,7 @@ grep -q 'photo-verifications.html?v=2026091501' docs/operations.html
 grep -q 'review-photo-verification' docs/photo-verifications.js
 grep -q 'Fotoverificación aprobada correctamente' docs/photo-verifications.js
 grep -q 'photo-verifications.js?v=2026091801' docs/photo-verifications.html
-grep -q 'photo-verifications.css?v=2026091505' docs/photo-verifications.html
+grep -q 'photo-verifications.css?v=2026091901' docs/photo-verifications.html
 grep -q 'id="reviewToast"' docs/photo-verifications.html
 grep -q 'id="propertyFilter"' docs/photo-verifications.html
 grep -q 'reviewed_by' docs/photo-verifications.js
@@ -50,7 +50,7 @@ grep -q 'app.css' docs/index.html
 grep -q 'app.js' docs/index.html
 grep -q 'serviceWorker' docs/app.js
 grep -q 'GestionPisos' docs/manifest.webmanifest
-grep -q 'gestionpisos-shell-v14' docs/sw.js
+grep -q 'gestionpisos-shell-v15' docs/sw.js
 grep -Fq "'./bottom-nav.js'" docs/sw.js
 grep -Fq "'./bottom-nav.css'" docs/sw.js
 grep -Fq 'mountBottomNavigation' docs/auth-guard.js
@@ -70,6 +70,17 @@ grep -Fq '.app-bottom-nav-item.is-active' docs/bottom-nav.css
 grep -Fq 'color:var(--ui-info)' docs/bottom-nav.css
 grep -Fq 'background:var(--ui-info-soft)' docs/bottom-nav.css
 grep -Fq 'const isHomePage = currentPage === "index.html"' docs/auth-guard.js
+grep -Fq 'homeActionHost' docs/auth-guard.js
+grep -Fq 'button.textContent = "MFA"' docs/auth-guard.js
+grep -Fq 'data-theme-toggle' docs/index.html
+for non_home_screen in docs/portfolio.html docs/operations.html docs/workflows.html docs/workflow-builder.html docs/workflow-definitions.html docs/workflow-applications.html docs/workflow-tasks.html docs/cleaning.html docs/incidents.html docs/permissions.html docs/configuration-resources.html docs/photo-verifications.html docs/photo-patterns.html; do
+  ! grep -Fq 'data-theme-toggle' "$non_home_screen"
+done
+! grep -Fq 'id="themeToggle"' docs/portfolio.html
+grep -Fq '.desktop-home-link{display:none!important}' docs/app.css
+grep -Fq '.context-back{' docs/app.css
+grep -Fq -- '--ui-action:#0969da' docs/app.css
+grep -Fq '.primary{border:1px solid var(--ui-action)' docs/app.css
 grep -Fq 'visualViewport' docs/bottom-nav.js
 grep -Fq 'Gestion de Permisos' docs/bottom-nav.js || grep -Fq 'Gestión de Permisos' docs/bottom-nav.js
 grep -Fq 'Configuración y Recursos' docs/bottom-nav.js
@@ -92,7 +103,7 @@ if grep -q 'photo-patterns.html' docs/portfolio.html; then
   exit 1
 fi
 grep -q 'photo-patterns.js?v=2026091502' docs/photo-patterns.html
-grep -q 'photo-patterns.css?v=2026091502' docs/photo-patterns.html
+grep -q 'photo-patterns.css?v=2026091901' docs/photo-patterns.html
 grep -q 'photo_patterns_v2' docs/photo-patterns.js
 grep -q 'mode", "pattern"' docs/photo-patterns.js
 grep -q 'zone_label' docs/photo-patterns.js
@@ -108,6 +119,7 @@ node --check docs/photo-pattern-editor.js
 grep -q 'photo-pattern-editor.html' docs/photo-patterns.js
 grep -q 'url.searchParams.set("v", "2026091406")' docs/photo-patterns.js
 grep -q 'photo-pattern-editor.html?v=2026091406' docs/photo-pattern-persistence.js
+grep -q 'photo-pattern-editor.css?v=2026091901' docs/photo-pattern-editor.html
 grep -q 'Editar silueta' docs/photo-patterns.js
 grep -q 'Dibujar silueta' docs/photo-patterns.js
 grep -q 'contour_data' docs/photo-pattern-editor.js

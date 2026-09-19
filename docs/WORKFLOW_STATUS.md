@@ -202,7 +202,7 @@ Se conservan:
 - solicitudes fotográficas;
 - `cleaning.html`.
 
-El motor ya puede publicar y ejecutar definiciones manuales reales. Limpieza sigue siendo el primer adaptador de dominio previsto, pero su migración debe esperar a que revisión humana, checklist/documento e historial transversal estén suficientemente cerrados para no degradar el flujo legacy.
+El motor ya puede publicar y ejecutar definiciones manuales reales. Limpieza sigue siendo el primer adaptador de dominio previsto, pero su migración debe esperar a que Documento e historial transversal estén suficientemente cerrados para no degradar el flujo legacy.
 
 ## 9. Seguridad y pruebas de la persistencia
 
@@ -311,7 +311,7 @@ Se cerraron dos recorridos manuales completos sobre el motor persistente:
    - una captura válida completa recurso + tarea + ejecución;
    - un único run/ítem/objeto de Storage.
 
-Estas pruebas demuestran que el primer flujo manual con evidencia fotográfica **sí es operativo dentro del alcance implementado**. No implican que checklist, documento, revisión humana genérica o recurrencias estén completos.
+Estas pruebas demuestran que el primer flujo manual con evidencia fotográfica **sí es operativo dentro del alcance implementado**. Checklist y revisión humana genérica ya tienen implementación propia; Documento y recurrencias siguen fuera del alcance operativo completo.
 
 ### PR #216 + #217 — Evidencia fotográfica y decisión del asignado
 
@@ -339,7 +339,7 @@ Este incremento está implementado y cubierto por regresión automatizada. Adem�
 - una ejecución fue aprobada: run `approved`, tarea + ejecución `completed`, revisor/fecha, histórico, evento y auditoría únicos;
 - dos ejecuciones independientes fueron rechazadas con motivos distintos: run/tarea/ejecución `rejected`, motivo conservado y exactamente un histórico/evento/auditoría por ejecución.
 
-Queda pendiente el E2E real de `human_review` **sin Foto** y con revisor ADMIN distinto del asignado.
+El E2E real de `human_review` **sin Foto** y con revisor ADMIN distinto del asignado también fue validado manualmente. Ese hueco queda cerrado.
 
 
 ### Incremento — Separación Creador / Mis Flujos
@@ -355,14 +355,32 @@ La autoría queda separada de la operación:
 
 La regresión específica demuestra v1 → aplicación v1 → borrador v2 → publicación v2 manteniendo la aplicación vinculada a v1.
 
+
+### Incremento — Checklist operativo
+
+Checklist se implementa como un paso del motor común, no como un subsistema de tareas paralelo:
+
+- el Creador persiste una lista ordenada de hasta 30 elementos, cada uno con texto y obligatoriedad;
+- una receta con Checklist solo es publicable cuando tiene al menos un elemento válido y al menos uno obligatorio;
+- la versión publicada congela la configuración y cada ejecución inicializa su propio `checklist_state`;
+- solo el usuario asignado puede marcar o desmarcar mientras la tarea está en `pending`/`active`;
+- si la receta exige Aceptar, el checklist queda bloqueado hasta esa decisión;
+- el último obligatorio solo cierra cuando los demás pasos operativos también están satisfechos;
+- `closeType=auto` lleva tarea + ejecución a `completed`;
+- `closeType=human_review` lleva tarea + ejecución a `waiting_review`;
+- Foto + Checklist funcionan en cualquier orden de finalización;
+- cada cambio registra histórico de tarea, evento de ejecución y auditoría, con clave de reintento idempotente.
+
+La primera versión no convierte Checklist en un constructor de formularios: no incluye texto libre, firma, adjuntos propios ni lógica condicional.
+
 ## 12. Próximo incremento técnico
 
-El paso **Fotografía** y el cierre **human_review** ya están conectados a la infraestructura existente. El siguiente trabajo debe empezar por **validar E2E real la revisión humana** y después avanzar a los tipos de paso restantes.
+Los pasos **Fotografía** y **Checklist**, junto con el cierre **human_review**, ya están conectados a la infraestructura existente. Checklist congela sus ítems por ejecución y bloquea el cierre hasta completar los obligatorios.
 
 Orden recomendado:
 
-1. validar un workflow sin Foto que llegue a `waiting_review` y sea revisado por un ADMIN distinto del asignado;
-2. implementar checklist/documento con el mismo principio de bloqueo de cierre;
+1. validar E2E humano el nuevo paso Checklist en producción;
+2. implementar Documento con el mismo principio de bloqueo de cierre;
 3. completar la vista de Historial transversal ejecución → tarea → evidencia → revisión → cierre;
 4. añadir notificaciones operativas específicas de cierre/rechazo;
 5. después habilitar recurrencias automáticas.
@@ -400,4 +418,4 @@ El criterio inicial quedó demostrado el 18/09/2026 para el recorrido manual con
 
 Por tanto, **una definición publicada y aplicada ya puede representar un proceso operativo real dentro de los pasos implementados**.
 
-Esto no debe generalizarse a capacidades aún pendientes. Un flujo que incluya checklist, documento o recurrencia automática no puede considerarse completo hasta que esos componentes tengan contrato, implementación y E2E propios. `human_review` ya tiene contrato e implementación; falta cerrar su validación E2E real.
+Esto no debe generalizarse a capacidades aún pendientes. Checklist ya tiene contrato, implementación y regresión automatizada; su E2E humano se valida después del despliegue. Documento y recurrencia automática no pueden considerarse completos hasta que tengan contrato, implementación y E2E propios. `human_review` ya tiene contrato, implementación y validación E2E real.

@@ -66,6 +66,10 @@ grep -Fq 'env(safe-area-inset-bottom)' docs/bottom-nav.css
 grep -Fq 'position:fixed' docs/bottom-nav.css
 grep -Fq 'grid-template-columns:repeat(5,minmax(0,1fr))' docs/bottom-nav.css
 grep -Fq 'font-size:12px' docs/bottom-nav.css
+grep -Fq '.app-bottom-nav-item.is-active' docs/bottom-nav.css
+grep -Fq 'color:var(--ui-info)' docs/bottom-nav.css
+grep -Fq 'background:var(--ui-info-soft)' docs/bottom-nav.css
+grep -Fq 'const isHomePage = currentPage === "index.html"' docs/auth-guard.js
 grep -Fq 'visualViewport' docs/bottom-nav.js
 grep -Fq 'Gestion de Permisos' docs/bottom-nav.js || grep -Fq 'Gestión de Permisos' docs/bottom-nav.js
 grep -Fq 'Configuración y Recursos' docs/bottom-nav.js

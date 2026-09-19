@@ -285,48 +285,90 @@ create or replace function private.web_push_recipient_active_v1(
   p_user_id uuid
 )
 returns boolean
-language sql
+language plpgsql
 stable
 security definer
 set search_path=''
 as $web_push_recipient_active$
+declare
+  v_auth_active boolean:=false;
+  v_operational_active boolean:=false;
+begin
+  select exists(
+    select 1 from auth.users u where u.id=p_user_id
+  ) into v_auth_active;
+
+  if not v_auth_active then
+    return false;
+  end if;
+
+  if exists(
+    select 1
+    from information_schema.columns
+    where table_schema='auth'
+      and table_name='users'
+      and column_name='banned_until'
+  ) then
+    execute
+      'select coalesce(banned_until is null or banned_until<=now(),false)
+       from auth.users where id=$1'
+    into v_auth_active
+    using p_user_id;
+
+    if not coalesce(v_auth_active,false) then
+      return false;
+    end if;
+  end if;
+
+  if exists(
+    select 1
+    from information_schema.columns
+    where table_schema='auth'
+      and table_name='users'
+      and column_name='deleted_at'
+  ) then
+    execute
+      'select deleted_at is null from auth.users where id=$1'
+    into v_auth_active
+    using p_user_id;
+
+    if not coalesce(v_auth_active,false) then
+      return false;
+    end if;
+  end if;
+
   select
     exists(
       select 1
-      from auth.users u
-      where u.id=p_user_id
-        and u.deleted_at is null
-        and (u.banned_until is null or u.banned_until<=now())
+      from public.profiles p
+      where p.user_id=p_user_id
+        and p.status='active'
+        and p.archived_at is null
+        and exists(
+          select 1
+          from public.user_roles ur
+          where ur.user_id=p_user_id
+            and ur.revoked_at is null
+        )
     )
-    and (
-      exists(
-        select 1
-        from public.profiles p
-        where p.user_id=p_user_id
-          and p.status='active'
-          and p.archived_at is null
-          and exists(
-            select 1
-            from public.user_roles ur
-            where ur.user_id=p_user_id
-              and ur.revoked_at is null
-          )
-      )
-      or exists(
-        select 1
-        from public.owners o
-        where o.user_id=p_user_id
-          and o.status='active'
-          and o.archived_at is null
-      )
-      or exists(
-        select 1
-        from public.tenants_v2 t
-        where t.user_id=p_user_id
-          and t.status='active'
-          and t.archived_at is null
-      )
-    );
+    or exists(
+      select 1
+      from public.owners o
+      where o.user_id=p_user_id
+        and o.status='active'
+        and o.archived_at is null
+    )
+    or exists(
+      select 1
+      from public.tenants_v2 t
+      where t.user_id=p_user_id
+        and t.status='active'
+        and t.archived_at is null
+    )
+  into v_operational_active;
+
+  return coalesce(v_operational_active,false);
+end;
 $web_push_recipient_active$;
 
 revoke all on function private.web_push_recipient_active_v1(uuid)

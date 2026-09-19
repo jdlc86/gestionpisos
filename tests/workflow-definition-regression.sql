@@ -408,7 +408,7 @@ set local role authenticated;
 select set_config(
   'gestionpisos.workflow_scheduled_id',
   (select definition_id::text
-   from public.save_workflow_definition_draft_v1(
+   from public.save_workflow_definition_draft_v2(
      jsonb_build_object(
        'authoringVersion',2,
        'flowName','Inspeccion puntual',
@@ -418,6 +418,8 @@ select set_config(
        'triggerType','scheduled_once',
        'recurrence','weekly',
        'scheduledAt','2026-10-20T10:30',
+       'scheduledTimezone','Europe/Madrid',
+       'scheduledAtUtc','2026-10-20T08:30:00Z',
        'customEvery','9',
        'customUnit','day',
        'assignmentType','manual',
@@ -445,6 +447,10 @@ begin
   end if;
   if v_spec ->> 'scheduledAt' <> '2026-10-20T10:30' then
     raise exception 'scheduled workflow lost scheduledAt';
+  end if;
+  if v_spec ->> 'scheduledTimezone' <> 'Europe/Madrid'
+    or v_spec ->> 'scheduledAtUtc' <> '2026-10-20T08:30:00Z' then
+    raise exception 'scheduled workflow lost exact timezone/UTC';
   end if;
   if coalesce(v_spec ->> 'recurrence','') <> ''
     or coalesce(v_spec ->> 'customEvery','') <> ''

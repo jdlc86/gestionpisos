@@ -223,42 +223,147 @@ function selectedDeletableRows(){
 function selectedArchivableRows(){
   return selectedRows().filter(row=>hasHistory(row));
 }
-function updateBulkState(){
-  if(!bulkBar)return;
-  bulkBar.hidden=!selectionMode;
-  list.classList.toggle("is-selecting",selectionMode);
-  selectionToggle.textContent=selectionMode?"Cancelar selección":"Seleccionar";
 
+function closeSelectionMenu(){
+  if(!selectionMenu||!selectionMenuToggle)return;
+  selectionMenu.hidden=true;
+  selectionMenuToggle.setAttribute("aria-expanded","false");
+}
+
+function setHeaderMode(mode){
+  searchMode=mode==="search";
+  normalHeader.hidden=mode!=="normal";
+  searchHeader.hidden=mode!=="search";
+  selectionHeader.hidden=mode!=="selection";
+  topbar?.classList.toggle("is-searching",mode==="search");
+  topbar?.classList.toggle("is-selecting",mode==="selection");
+  if(mode!=="selection")closeSelectionMenu();
+}
+
+function syncFilterChip(){
+  const query=String(searchInput?.value||"").trim();
+  if(activeFilterText)activeFilterText.textContent=query;
+  if(activeFilter)activeFilter.hidden=!query||searchMode;
+}
+
+function openSearch(){
+  if(selectionMode)return;
+  setHeaderMode("search");
+  syncFilterChip();
+  requestAnimationFrame(()=>{
+    searchInput?.focus({preventScroll:true});
+    searchInput?.select();
+  });
+}
+
+function closeSearch({clear=false}={}){
+  if(clear&&searchInput){
+    searchInput.value="";
+    renderDefinitions();
+  }
+  setHeaderMode(selectionMode?"selection":"normal");
+  syncFilterChip();
+}
+
+function setSelectionMode(enabled,{selectId=null}={}){
+  selectionMode=enabled;
+  document.body.classList.toggle("definitions-selection-active",enabled);
+  list.classList.toggle("is-selecting",enabled);
+
+  if(enabled){
+    searchMode=false;
+    if(selectId)selectedIds.add(selectId);
+    setHeaderMode("selection");
+  }else{
+    selectedIds.clear();
+    setHeaderMode("normal");
+  }
+
+  renderDefinitions();
+}
+
+function updateBulkState(){
   const selected=selectedRows();
   const deletable=selected.filter(row=>!hasHistory(row));
   const archivable=selected.filter(row=>hasHistory(row));
 
-  selectionSummary.textContent=selected.length
-    +" seleccionado"+(selected.length===1?"":"s")
-    +" · "+deletable.length+" eliminable"+(deletable.length===1?"":"s")
-    +" · "+archivable.length+" archivable"+(archivable.length===1?"":"s");
+  if(selectionSummary){
+    selectionSummary.textContent=selected.length
+      +" seleccionado"+(selected.length===1?"":"s");
+  }
 
+  if(bulkDock)bulkDock.hidden=!selectionMode||selected.length===0;
   bulkExecute.disabled=selected.length===0;
   bulkDelete.disabled=deletable.length===0;
-  bulkDelete.textContent=deletable.length?"Eliminar ("+deletable.length+")":"Eliminar";
   bulkArchive.disabled=archivable.length===0;
-  bulkArchive.textContent=archivable.length?"Archivar ("+archivable.length+")":"Archivar";
+
+  if(bulkExecuteCount)bulkExecuteCount.textContent=String(selected.length);
+  if(bulkDeleteCount)bulkDeleteCount.textContent=String(deletable.length);
+  if(bulkArchiveCount)bulkArchiveCount.textContent=String(archivable.length);
 
   const visibleIds=filteredRows.map(row=>row.id);
   const selectedVisible=visibleIds.filter(id=>selectedIds.has(id)).length;
-  selectVisible.checked=visibleIds.length>0&&selectedVisible===visibleIds.length;
-  selectVisible.indeterminate=selectedVisible>0&&selectedVisible<visibleIds.length;
-  selectVisible.disabled=visibleIds.length===0;
+  if(selectVisible)selectVisible.disabled=visibleIds.length===0||selectedVisible===visibleIds.length;
+  if(deselectVisible)deselectVisible.disabled=selectedVisible===0;
+
+  syncFilterChip();
 }
-function toggleRowSelection(row,checked,article){
-  if(checked)selectedIds.add(row.id);else selectedIds.delete(row.id);
-  article.classList.toggle("is-selected",checked);
+
+function toggleRowSelection(row,article,force){
+  const next=typeof force==="boolean"?force:!selectedIds.has(row.id);
+  if(next)selectedIds.add(row.id);else selectedIds.delete(row.id);
+
+  article?.classList.toggle("is-selected",next);
+  const indicator=article?.querySelector(".definition-select-indicator");
+  if(indicator){
+    indicator.setAttribute("aria-pressed",String(next));
+    indicator.setAttribute("aria-label",(next?"Deseleccionar ":"Seleccionar ")+(publishedSpec(row).flowName||row.name||"flujo"));
+  }
   updateBulkState();
 }
+
+function bindLongPress(article,row){
+  let timer=null;
+  let startX=0;
+  let startY=0;
+  let longPressed=false;
+
+  const clear=()=>{
+    if(timer)clearTimeout(timer);
+    timer=null;
+  };
+
+  article.addEventListener("pointerdown",event=>{
+    if(selectionMode||event.button!==0)return;
+    if(event.target.closest("a,button,input,select,textarea,label,summary"))return;
+
+    longPressed=false;
+    startX=event.clientX;
+    startY=event.clientY;
+    timer=setTimeout(()=>{
+      longPressed=true;
+      article.dataset.longPressed="1";
+      setSelectionMode(true,{selectId:row.id});
+    },520);
+  });
+
+  article.addEventListener("pointermove",event=>{
+    if(!timer)return;
+    if(Math.abs(event.clientX-startX)>10||Math.abs(event.clientY-startY)>10)clear();
+  });
+  article.addEventListener("pointerup",clear);
+  article.addEventListener("pointercancel",clear);
+  article.addEventListener("pointerleave",clear);
+  article.addEventListener("contextmenu",event=>{
+    if(longPressed||article.dataset.longPressed==="1"){
+      event.preventDefault();
+      article.dataset.longPressed="";
+    }
+  });
+}
+
 function clearSelection(){
-  selectedIds.clear();
-  selectionMode=false;
-  renderDefinitions();
+  setSelectionMode(false);
 }
 
 function card(row){

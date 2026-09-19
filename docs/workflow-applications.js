@@ -353,13 +353,26 @@ function transientAssignmentControls(app){
     finalizeTransient(true,assignee,execute);
   });
 
+  const changeTarget=document.createElement("button");
+  changeTarget.type="button";
+  changeTarget.className="secondary";
+  changeTarget.textContent="Cambiar destino";
+  changeTarget.addEventListener("click",()=>{
+    transientTarget=null;
+    applicationsSection.hidden=true;
+    formCard.hidden=false;
+    setSetupStage("destination");
+    setStatus("Ajusta el destino y pulsa Continuar cuando esté listo.");
+    window.scrollTo({top:0,behavior:"smooth"});
+  });
+
   const discard=document.createElement("button");
   discard.type="button";
   discard.className="danger-soft";
   discard.textContent="Descartar";
   discard.addEventListener("click",discardTransient);
 
-  actions.append(publish,execute,discard);
+  actions.append(publish,execute,changeTarget,discard);
   wrap.append(actions);
   return wrap;
 }
@@ -938,8 +951,20 @@ function buildExecutionControls(app,{guided=false}={}){
   return controls;
 }
 
+function assignedUserLabel(userId,app){
+  if(!userId)return "Asignada";
+  const candidate=executionCandidates(app).find(item=>item.user_id===userId);
+  if(candidate)return candidateLabel(candidate);
+  if(currentUser?.id===userId)return currentUser.user_metadata?.display_name||currentUser.email||"Usuario asignado";
+  const person=(permissionContext?.people||[]).find(item=>item.user_id===userId);
+  return person?.display_name||person?.email||"Usuario asignado";
+}
+
 function renderGuidedReady(app){
   const version=versionForApplication(app);
+  const guidedExecution=guidedExecutionId
+    ?executions.find(item=>item.id===guidedExecutionId&&item.application_id===app.id)||null
+    :null;
   const article=document.createElement("article");
   article.className="application-card application-ready-card";
 
@@ -952,7 +977,7 @@ function renderGuidedReady(app){
   details.append(
     meta("Destino",targetLabel(app)),
     meta("Qué hará",stepsSummary(version)),
-    meta("Asignación",assignmentLabels[String(version?.spec?.assignmentType||"")]||"Configurada"),
+    meta("Asignación",guidedExecution?assignedUserLabel(guidedExecution.assigned_user_id,app):(assignmentLabels[String(version?.spec?.assignmentType||"")]||"Configurada")),
     meta("Versión","v"+(version?.version||"?"))
   );
   if(versionNeedsPhoto(version))details.append(meta("Fotografías",applicationPhotoLabel(app)));

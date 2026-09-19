@@ -60,7 +60,9 @@ grep -Fq 'mfaAction.hidden = !requiresPrivilegedMfa(session)' docs/auth-guard.js
 grep -Fq 'Seguridad MFA' docs/index.html
 grep -Fq 'authFlowUrl(mfa.route' docs/auth-guard.js
 grep -Fq 'const isHomePage = currentPage === "index.html"' docs/auth-guard.js
-grep -Fq 'if (isHomePage) setupHomeAccountMenu(session);' docs/auth-guard.js
+grep -Fq 'if (isHomePage) {' docs/auth-guard.js
+grep -Fq 'setupHomeAccountMenu(session);' docs/auth-guard.js
+grep -Fq 'mountNotificationCenter({ supabase, session })' docs/auth-guard.js
 grep -Fq 'id="homeAccountAction"' docs/index.html
 grep -Fq 'id="logoutBtn"' docs/index.html
 grep -Fq 'privilegedMfaRoute(supabase, session, { requireEnrollment: true })' docs/login.js

@@ -360,5 +360,5 @@ grep -Fq 'nextButton.hidden=finalStep' docs/workflow-builder.js
 grep -Fq 'publishButton.hidden=!finalStep' docs/workflow-builder.js
 grep -Fq 'clearButton.hidden=!finalStep' docs/workflow-builder.js
 grep -Fq 'nextButton.textContent="Siguiente"' docs/workflow-builder.js
-grep -Fq '?"Descartar todo"' docs/workflow-builder.js
+grep -Fq ':"Descartar todo";' docs/workflow-builder.js
 grep -Fq 'justify-content:space-between' docs/workflow-builder.css

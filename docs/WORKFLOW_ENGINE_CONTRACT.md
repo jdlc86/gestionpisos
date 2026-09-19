@@ -142,7 +142,17 @@ La receta guarda una lista ordenada `checklistItems` de hasta 30 elementos. La p
 
 El checklist no crea una tabla de tareas paralela. Solo el asignado modifica su estado mediante RPC y el cierre se evalúa junto con los demás pasos configurados.
 
-No se introducirá una segunda cámara, bucket, notificador ni sistema de tareas para implementar un tipo de paso.
+### Documento v1
+
+La receta activa Documento con `steps.document=true`. La evidencia privada se conserva en `workflow_execution_documents_v2` y en el bucket privado `workflow-documents-v2`.
+
+El asignado prepara y confirma la carga mediante RPC. Un documento `submitted` satisface el paso en esta primera versión. El cierre se calcula junto con Foto y Checklist, sin depender del orden en que se completen.
+
+Documento no reutiliza `tenant_documents_v2`, porque esa tabla pertenece al expediente documental de un inquilino y no representa evidencia transversal de una ejecución.
+
+Véase `WORKFLOW_DOCUMENT_EVIDENCE_CONTRACT.md`.
+
+No se introducirá una segunda cámara, notificador ni sistema de tareas para implementar un tipo de paso. Cada almacenamiento adicional debe tener alcance explícito y RLS propia.
 
 ## 7. Recursos
 
@@ -206,7 +216,7 @@ La infraestructura fotográfica existente se reutiliza:
 - captura fullscreen y alineación local;
 - revisión humana existente.
 
-Otros tipos de evidencia se incorporarán como recursos/pasos compatibles, no como un segundo motor.
+La evidencia documental de workflow se incorpora mediante `workflow_execution_documents_v2` + Storage privado, manteniendo la tarea común y el histórico de ejecución. Otros tipos de evidencia se incorporarán como recursos/pasos compatibles, no como un segundo motor.
 
 ## 11. Cierre y revisión
 

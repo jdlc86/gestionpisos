@@ -158,7 +158,7 @@ grep -Fq 'start_workflow_definition_revision_v1' docs/workflow-definitions.js
 ! grep -Fq 'Crear nueva versión' docs/workflow-definitions.js
 ! grep -Fq 'Continuar nueva versión' docs/workflow-definitions.js
 grep -Fq 'workflow-applications.html?definition=' docs/workflow-definitions.js
-grep -Fq './workflow-definitions.js?v=2026091916' docs/workflow-definitions.html
+grep -Fq './workflow-definitions.js?v=2026091917' docs/workflow-definitions.html
 grep -Fq './workflow-definitions.css?v=2026091903' docs/workflow-definitions.html
 grep -Fq 'Tus flujos terminados. Ejecuta, edita y elimina o archiva según exista historial.' docs/workflow-definitions.html
 ! grep -Fq 'Completar borrador' docs/workflow-definitions.js
@@ -170,8 +170,8 @@ grep -Fq 'properties_v2' docs/workflow-applications.js
 grep -Fq 'rooms_v2' docs/workflow-applications.js
 grep -Fq 'occupancies_v2' docs/workflow-applications.js
 grep -Fq '.application-card [hidden]{display:none!important}' docs/workflow-applications.css
-grep -Fq './workflow-applications.css?v=2026091913' docs/workflow-applications.html
-grep -Fq './workflow-applications.js?v=2026091918' docs/workflow-applications.html
+grep -Fq './workflow-applications.css?v=2026091914' docs/workflow-applications.html
+grep -Fq './workflow-applications.js?v=2026091919' docs/workflow-applications.html
 grep -Fq '¿Dónde quieres utilizarlo?' docs/workflow-applications.html
 grep -Fq 'Definición → Versión publicada → Aplicación concreta' docs/WORKFLOW_APPLICATIONS_CONTRACT.md
 grep -Fq 'workflow_applications_v2' docs/WORKFLOW_APPLICATIONS_CONTRACT.md
@@ -362,3 +362,19 @@ grep -Fq 'clearButton.hidden=!finalStep' docs/workflow-builder.js
 grep -Fq 'nextButton.textContent="Siguiente"' docs/workflow-builder.js
 grep -Fq ':"Descartar todo";' docs/workflow-builder.js
 grep -Fq 'justify-content:space-between' docs/workflow-builder.css
+
+
+# Ejecutar desde Mis Flujos entra en modo asistido y muestra solo requisitos pendientes.
+grep -Fq '&setup=1&intent=execute&from=mis-flujos' docs/workflow-definitions.js
+grep -Fq 'const executionIntent=guidedSetup&&params.get("intent")==="execute"' docs/workflow-applications.js
+grep -Fq 'const executionFromFlows=executionIntent&&params.get("from")==="mis-flujos"' docs/workflow-applications.js
+grep -Fq 'function renderExecutionAssist(app)' docs/workflow-applications.js
+grep -Fq 'function executionReviewCard' docs/workflow-applications.js
+grep -Fq 'Falta información para ejecutar' docs/workflow-applications.js
+grep -Fq 'Completa únicamente los apartados abiertos para continuar.' docs/workflow-applications.js
+grep -Fq 'cancel.textContent="Cancelar ejecución"' docs/workflow-applications.js
+grep -Fq 'firstPending.scrollIntoView' docs/workflow-applications.js
+grep -Fq 'execution-field-missing' docs/workflow-applications.js
+grep -Fq '.execution-review-card.is-pending' docs/workflow-applications.css
+grep -Fq '.execution-field-missing' docs/workflow-applications.css
+! grep -Fq 'Gestionar destinos' docs/workflow-applications.js

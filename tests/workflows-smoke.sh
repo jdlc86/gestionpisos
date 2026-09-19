@@ -356,7 +356,7 @@ grep -Fq 'const transientSetup=guidedSetup&&Boolean(handoffToken)' docs/workflow
 grep -Fq 'function consumeTransientHandoff()' docs/workflow-applications.js
 grep -Fq 'sessionStorage.removeItem(HANDOFF_KEY_PREFIX+handoffToken)' docs/workflow-applications.js
 grep -Fq 'renderTransientReady' docs/workflow-applications.js
-grep -Fq 'publish.textContent=scheduled?"Programar":"Publicar"' docs/workflow-applications.js
+grep -Fq 'publish.textContent=automatic?"Programar":"Publicar"' docs/workflow-applications.js
 grep -Fq 'execute.textContent="Ejecutar"' docs/workflow-applications.js
 grep -Fq 'discard.textContent="Descartar todo"' docs/workflow-applications.js
 grep -Fq 'changeTarget.textContent="Cambiar destino"' docs/workflow-applications.js
@@ -509,9 +509,9 @@ grep -Fq 'scheduledAtUtc:value("scheduledAtUtc")' docs/workflow-builder.js
 grep -Fq 'runAt>Date.now()' docs/workflow-builder.js
 grep -Fq 'Zona horaria · ' docs/workflow-builder.js
 grep -Fq 'function scheduledDisplay(spec)' docs/workflow-applications.js
-grep -Fq 'title.textContent=scheduled?"Programación":"Decisión final"' docs/workflow-applications.js
+grep -Fq 'title.textContent=automatic?"Programación":"Decisión final"' docs/workflow-applications.js
 grep -Fq 'publish.textContent=scheduled?"Programar":"Publicar"' docs/workflow-applications.js
-grep -Fq 'execute.hidden=scheduled' docs/workflow-applications.js
+grep -Fq 'execute.hidden=automatic' docs/workflow-applications.js
 grep -Fq 'common.p_schedule_timezone=spec.scheduledTimezone||null' docs/workflow-applications.js
 grep -Fq 'common.p_schedule_assigned_user_id=' docs/workflow-applications.js
 grep -Fq 'Flujo programado.' docs/workflow-applications.js

@@ -78,6 +78,7 @@ html[data-theme="dark"] .tasks-selection-menu{box-shadow:0 20px 48px rgba(0,0,0,
 .tasks-bulk-icon svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .tasks-bulk-count{position:absolute;top:5px;right:calc(50% - 31px);display:grid;min-width:17px;height:17px;place-items:center;padding:0 4px;border-radius:999px;background:var(--ui-subtle);color:var(--ui-text);font-size:9px;font-weight:850;line-height:1}
 body.tasks-selection-active .shell{padding-bottom:130px}
+body.tasks-selection-active .task-toolbar{display:none}
 
 @keyframes tasks-header-in{from{opacity:.45;transform:translateY(-2px)}to{opacity:1;transform:none}}
 @keyframes tasks-dock-in{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}

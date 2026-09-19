@@ -63,6 +63,9 @@ grep -Fq 'privilegedMfaRoute(supabase, session, { requireEnrollment: true })' do
 grep -Fq '🛡️ MFA' docs/auth-guard.js
 ! grep -Fq 'Seguridad MFA' docs/auth-guard.js
 grep -Fq 'authFlowUrl(mfa.route' docs/auth-guard.js
+grep -Fq 'const isHomePage = currentPage === "index.html"' docs/auth-guard.js
+grep -Fq 'if (isHomePage && requiresPrivilegedMfa(session)) addMfaSecurityAction();' docs/auth-guard.js
+grep -Fq 'if (isHomePage && topbar && !document.getElementById("logoutBtn"))' docs/auth-guard.js
 
 grep -Fq 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/+esm' docs/supabase-client.js
 grep -Fq 'https://esm.sh/@supabase/supabase-js@2.116.0' docs/supabase-client.js

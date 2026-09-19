@@ -579,4 +579,58 @@ $timezone_mismatch$;
 
 reset role;
 
+-- 5. Una hora local repetida por cambio DST no puede programarse silenciosamente.
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub','22222222-2222-4222-8222-222222222222',
+    'role','authenticated',
+    'aal','aal2'
+  )::text,
+  true
+);
+
+do $ambiguous_dst$
+begin
+  perform *
+  from public.publish_workflow_ready_v2(
+    jsonb_build_object(
+      'authoringVersion',2,
+      'flowName','Programada DST ambigua',
+      'flowType','custom',
+      'flowDescription','Hora repetida Europe/Madrid',
+      'scopeType','organization',
+      'triggerType','scheduled_once',
+      'recurrence','',
+      'scheduledAt','2026-10-25T02:30',
+      'scheduledTimezone','Europe/Madrid',
+      'scheduledAtUtc','2026-10-25T00:30:00Z',
+      'customEvery','',
+      'customUnit','',
+      'assignmentType','manual',
+      'steps',jsonb_build_object('accept',true,'photo',false,'checklist',false,'document',false),
+      'checklistItems','[]'::jsonb,
+      'closeType','auto',
+      'notifications',jsonb_build_object('onCreate',false,'onClose',false)
+    ),
+    null,null,null,'{}'::uuid[],
+    false,
+    'regression-scheduled-dst-ambiguous',
+    null,
+    null,
+    'Europe/Madrid',
+    '22222222-2222-4222-8222-222222222222'::uuid
+  );
+  raise exception 'ambiguous DST wall time unexpectedly published';
+exception
+  when sqlstate '22023' then
+    if sqlerrm<>'workflow_schedule_local_time_ambiguous' then
+      raise;
+    end if;
+end;
+$ambiguous_dst$;
+
+reset role;
+
 rollback;

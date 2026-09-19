@@ -15,14 +15,15 @@ function setMessage(text) {
 
 function configureWorkflowCameraUi() {
   if (!workflowResourceId) return;
-  const back = document.querySelector(".topbar a.ghost");
+  const back = document.getElementById("cameraBackLink");
   const title = document.querySelector("h1");
   const heroTitle = document.querySelector(".hero h2");
   const heroText = document.querySelector(".hero p");
 
   if (back) {
     back.href = "./workflow-tasks.html";
-    back.textContent = "Volver a Tareas";
+    back.setAttribute("aria-label", "Volver a Tareas");
+    back.title = "Volver a Tareas";
   }
   if (title) title.textContent = "Evidencia fotográfica";
   if (heroTitle) heroTitle.textContent = "Completa la fotografía requerida por la tarea.";

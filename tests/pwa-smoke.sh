@@ -354,7 +354,7 @@ grep -Fq 'window.AllaisoTheme = { apply, toggle, bind }' docs/app.js
 ! grep -Fq 'document.addEventListener("click", event =>' docs/app.js
 grep -Fq 'id="homeThemeAction"' docs/index.html
 
-grep -Fq "const backLink = $('cameraBackLink');" docs/photo-camera.js
+grep -Fq "const backLink = \$('cameraBackLink');" docs/photo-camera.js
 grep -Fq "return './workflow-tasks.html';" docs/photo-camera.js
 grep -Fq "'./cleaning.html?task_id='" docs/photo-camera.js
 grep -Fq "return './photo-patterns.html';" docs/photo-camera.js

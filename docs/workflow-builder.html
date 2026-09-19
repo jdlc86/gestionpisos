@@ -147,6 +147,9 @@
 
           <label id="scheduledAtRow" hidden>Fecha y hora
             <input id="scheduledAt" name="scheduledAt" type="datetime-local" disabled>
+            <input name="scheduledTimezone" type="hidden" disabled>
+            <input name="scheduledAtUtc" type="hidden" disabled>
+            <span id="scheduledTimezoneHint" class="builder-note"></span>
           </label>
           <div class="builder-note">Los campos necesarios aparecen según el tipo de activación.</div>
         </section>
@@ -241,7 +244,7 @@
   </main>
 
   <script src="./app.js?v=2026091902" defer></script>
-  <script type="module" src="./workflow-builder.js?v=2026091918"></script>
+  <script type="module" src="./workflow-builder.js?v=2026091919"></script>
   <script type="module" src="./auth-guard.js"></script>
 </body>
 </html>

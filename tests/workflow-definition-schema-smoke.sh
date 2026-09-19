@@ -23,6 +23,7 @@ lifecycle_anon_hardening='supabase/migrations/20260919170500_workflow_lifecycle_
 document_step='supabase/migrations/20260919163000_workflow_document_step.sql'
 document_indexes='supabase/migrations/20260919164500_workflow_document_indexes.sql'
 workflow_notifications='supabase/migrations/20260919174500_workflow_notifications.sql'
+temporal_authoring='supabase/migrations/20260919181500_workflow_temporal_authoring.sql'
 checklist='supabase/migrations/20260919103000_workflow_checklist_step.sql'
 
 test -s "$migration"
@@ -47,7 +48,9 @@ test -s "$lifecycle_anon_hardening"
 test -s "$document_step"
 test -s "$document_indexes"
 test -s "$workflow_notifications"
+test -s "$temporal_authoring"
 test -s tests/workflow-notifications-regression.sql
+test -s tests/workflow-temporal-authoring-regression.sql
 test -s tests/workflow-draft-discard-regression.sql
 test -s tests/workflow-publish-execute-lifecycle-regression.sql
 test -s tests/workflow-document-step-regression.sql
@@ -358,3 +361,15 @@ grep -Fq "channel_email" "$workflow_notifications"
 grep -Fq "false," "$workflow_notifications"
 grep -Fq 'revoke all on function private.workflow_execution_notifications_v1()' "$workflow_notifications"
 grep -Fq 'create trigger workflow_execution_notifications_v1' "$workflow_notifications"
+
+
+# Autoría temporal: ancla local + zona IANA + asignación resoluble por servidor.
+grep -Fq "v_schedule_timezone text;" "$temporal_authoring"
+grep -Fq "p_spec->>'scheduleTimeZone'" "$temporal_authoring"
+grep -Fq "pg_catalog.pg_timezone_names" "$temporal_authoring"
+grep -Fq "workflow_schedule_timezone_invalid" "$temporal_authoring"
+grep -Fq "v_trigger_type not in ('scheduled_once','recurring')" "$temporal_authoring"
+grep -Fq "'scheduleTimeZone',coalesce(v_schedule_timezone,'')" "$temporal_authoring"
+grep -Fq "(p_spec->>'assignmentType')<>'property_responsible'" "$temporal_authoring"
+grep -Fq "(p_spec->>'scopeType') not in ('property','room','occupancy')" "$temporal_authoring"
+grep -Fq "set authoring_complete=public.workflow_authoring_complete_v1(draft_spec)" "$temporal_authoring"

@@ -108,6 +108,8 @@ Al completar el paso 7, **Continuar para usarlo** guarda el borrador, publica un
 
 Después de guardar el destino, la misma experiencia muestra **Listo para usar**, resuelve la asignación permitida y ofrece **Ejecutar ahora** sin obligar a volver a Mis Flujos ni buscar manualmente la aplicación recién creada.
 
+Cuando esa ejecución guiada ya se creó, su `execution_id` queda en el estado de navegación y se valida contra `workflow_executions_v2` al recargar. Refrescar la pantalla conserva **Tarea creada** y no vuelve a ofrecer accidentalmente **Ejecutar ahora** por haber perdido un estado exclusivamente en memoria.
+
 Las nuevas versiones publicadas mantienen un tratamiento conservador: se llega a la gestión de destinos sin migrar silenciosamente las aplicaciones existentes de versiones anteriores.
 
 ### Borradores parciales y decisiones explícitas

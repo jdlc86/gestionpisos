@@ -171,7 +171,7 @@ grep -Fq 'rooms_v2' docs/workflow-applications.js
 grep -Fq 'occupancies_v2' docs/workflow-applications.js
 grep -Fq '.application-card [hidden]{display:none!important}' docs/workflow-applications.css
 grep -Fq './workflow-applications.css?v=2026091913' docs/workflow-applications.html
-grep -Fq './workflow-applications.js?v=2026091913' docs/workflow-applications.html
+grep -Fq './workflow-applications.js?v=2026091915' docs/workflow-applications.html
 grep -Fq '¿Dónde quieres utilizarlo?' docs/workflow-applications.html
 grep -Fq 'Definición → Versión publicada → Aplicación concreta' docs/WORKFLOW_APPLICATIONS_CONTRACT.md
 grep -Fq 'workflow_applications_v2' docs/WORKFLOW_APPLICATIONS_CONTRACT.md
@@ -307,3 +307,9 @@ grep -Fq 'Tarea creada' docs/workflow-applications.js
 grep -Fq '.application-ready-card{' docs/workflow-applications.css
 grep -Fq '.workflow-journey{' docs/workflow-builder.css
 grep -Fq '.workflow-journey{' docs/workflow-applications.css
+
+grep -Fq 'let guidedExecutionId=params.get("execution")||null' docs/workflow-applications.js
+grep -Fq 'url.searchParams.set("execution",result.execution_id)' docs/workflow-applications.js
+grep -Fq 'item.id===guidedExecutionId&&item.application_id===guidedApplicationId' docs/workflow-applications.js
+grep -Fq 'url.searchParams.delete("execution")' docs/workflow-applications.js
+grep -Fq 'Tarea creada. Puedes abrir Tareas o volver a Mis Flujos.' docs/workflow-applications.js

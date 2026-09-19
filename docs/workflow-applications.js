@@ -34,7 +34,7 @@ const guidedSetup=params.get("setup")==="1";
 const revisionPublished=params.get("published")==="1";
 const setupVersionNumber=Number(params.get("version")||0);
 let guidedApplicationId=params.get("application")||null;
-let guidedExecutionId=null;
+let guidedExecutionId=params.get("execution")||null;
 let definition=null;
 let versions=[];
 let properties=[];
@@ -632,6 +632,19 @@ async function loadApplications(){
     executions=executionData||[];
   }
 
+  if(guidedSetup&&guidedExecutionId){
+    const belongsToGuidedApplication=executions.some(item=>item.id===guidedExecutionId&&item.application_id===guidedApplicationId);
+    if(belongsToGuidedApplication){
+      setSetupStage("done");
+    }else{
+      guidedExecutionId=null;
+      const url=new URL(window.location.href);
+      url.searchParams.delete("execution");
+      window.history.replaceState({},"",url);
+      setSetupStage(guidedApplicationId?"ready":"destination");
+    }
+  }
+
   const roomIds=[...new Set(applications.map(x=>x.room_id).filter(Boolean))];
   if(roomIds.length){
     const {data}=await supabase.from("rooms_v2").select("id,property_id,label,status,archived_at").in("id",roomIds);
@@ -679,6 +692,11 @@ async function executeNow(app,assigneeId,button){
   const result=Array.isArray(data)?data[0]:null;
   if(guidedSetup){
     guidedExecutionId=result?.execution_id||"created";
+    if(result?.execution_id){
+      const url=new URL(window.location.href);
+      url.searchParams.set("execution",result.execution_id);
+      window.history.replaceState({},"",url);
+    }
     setSetupStage("done");
     setStatus(result?.created_new===false
       ?"La ejecución ya existía y se recuperó sin crear un duplicado."
@@ -757,6 +775,8 @@ form.addEventListener("submit",async event=>{
     guidedApplicationId=result.application_id;
     const url=new URL(window.location.href);
     url.searchParams.set("application",guidedApplicationId);
+    url.searchParams.delete("execution");
+    guidedExecutionId=null;
     window.history.replaceState({},"",url);
     formCard.hidden=true;
     applicationsSection.hidden=false;
@@ -836,7 +856,9 @@ async function load(){
 
   if(guidedSetup){
     setStatus(guidedApplicationId
-      ?"Destino preparado. Revisa la asignación y pulsa Ejecutar ahora."
+      ?(guidedExecutionId
+        ?"Tarea creada. Puedes abrir Tareas o volver a Mis Flujos."
+        :"Destino preparado. Revisa la asignación y pulsa Ejecutar ahora.")
       :"Diseño completado. Elige dónde quieres utilizar este flujo.");
   }else if(revisionPublished){
     setStatus("Nueva versión publicada. Revisa los destinos existentes o prepara uno nuevo para esta versión.");

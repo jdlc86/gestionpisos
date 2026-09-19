@@ -13,7 +13,7 @@ node --check docs/root-home-modules.js
 
 grep -Fq 'id="configurationResourcesCard"' docs/index.html
 grep -Fq 'configuration-resources.html' docs/index.html
-grep -Fq 'id="configurationResourcesCard" class="card card--soft"' docs/index.html
+grep -Fq 'id="configurationResourcesCard" class="card premium-nav-card"' docs/index.html
 grep -Fq 'hidden' docs/index.html
 grep -Fq 'app_metadata?.role' docs/root-home-modules.js
 

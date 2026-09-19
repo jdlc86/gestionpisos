@@ -530,6 +530,7 @@ async function bulkDeleteSelected(){
   }
 
   await load({preserveSelection:true});
+  if(!selectedIds.size)setSelectionMode(false);
   if(failures.length){
     setStatus(ok+" eliminado"+(ok===1?"":"s")+" · "+failures.length+" no se pudieron eliminar. "+errorText(failures[0].error),true);
   }else{
@@ -561,6 +562,7 @@ async function bulkArchiveSelected(){
   }
 
   await load({preserveSelection:true});
+  if(!selectedIds.size)setSelectionMode(false);
   if(failures.length){
     setStatus(ok+" archivado"+(ok===1?"":"s")+" · "+failures.length+" no se pudieron archivar. "+errorText(failures[0].error),true);
   }else{

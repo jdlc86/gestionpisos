@@ -174,7 +174,7 @@ grep -Fq 'id="photoBankLink"' docs/workflow-builder.html
 grep -Fq 'href="./photo-patterns.html?from=workflow-builder" hidden' docs/workflow-builder.html
 grep -Fq 'function updatePhotoResource()' docs/workflow-builder.js
 grep -Fq 'photoBankLink.hidden=!checked("stepPhoto")' docs/workflow-builder.js
-grep -Fq './workflow-builder.js?v=2026091918' docs/workflow-builder.html
+grep -Fq './workflow-builder.js?v=2026091919' docs/workflow-builder.html
 
 grep -Fq 'workflow_definitions_v2' docs/workflow-definitions.js
 grep -Fq '.eq("status","published")' docs/workflow-definitions.js
@@ -183,8 +183,8 @@ grep -Fq 'start_workflow_definition_revision_v1' docs/workflow-definitions.js
 ! grep -Fq 'Crear nueva versión' docs/workflow-definitions.js
 ! grep -Fq 'Continuar nueva versión' docs/workflow-definitions.js
 grep -Fq 'workflow-applications.html?definition=' docs/workflow-definitions.js
-grep -Fq './workflow-definitions.js?v=2026091921' docs/workflow-definitions.html
-grep -Fq './workflow-definitions.css?v=2026091911' docs/workflow-definitions.html
+grep -Fq './workflow-definitions.js?v=2026091922' docs/workflow-definitions.html
+grep -Fq './workflow-definitions.css?v=2026091912' docs/workflow-definitions.html
 grep -Fq 'Tus flujos terminados. Ejecuta, edita y elimina o archiva según exista historial.' docs/workflow-definitions.html
 ! grep -Fq 'Completar borrador' docs/workflow-definitions.js
 ! grep -Fq 'Publicar versión' docs/workflow-definitions.js
@@ -196,7 +196,7 @@ grep -Fq 'rooms_v2' docs/workflow-applications.js
 grep -Fq 'occupancies_v2' docs/workflow-applications.js
 grep -Fq '.application-card [hidden]{display:none!important}' docs/workflow-applications.css
 grep -Fq './workflow-applications.css?v=2026091915' docs/workflow-applications.html
-grep -Fq './workflow-applications.js?v=2026091920' docs/workflow-applications.html
+grep -Fq './workflow-applications.js?v=2026091921' docs/workflow-applications.html
 grep -Fq '¿Dónde quieres utilizarlo?' docs/workflow-applications.html
 grep -Fq 'Definición → Versión publicada → Aplicación concreta' docs/WORKFLOW_APPLICATIONS_CONTRACT.md
 grep -Fq 'workflow_applications_v2' docs/WORKFLOW_APPLICATIONS_CONTRACT.md
@@ -345,7 +345,7 @@ grep -Fq 'const editorRequested=true' docs/workflow-builder.js
 grep -Fq 'const editPublishedMode=initialParams.get("edit")==="1"' docs/workflow-builder.js
 grep -Fq 'gestionpisos.workflow-builder.handoff.' docs/workflow-builder.js
 grep -Fq 'mode:revisionMode?"revision":editPublishedMode?"edit_unexecuted":"create"' docs/workflow-builder.js
-grep -Fq 'Nada se guarda hasta Publicar o Ejecutar.' docs/workflow-builder.js
+grep -Fq 'Nada se guarda hasta completar Listo.' docs/workflow-builder.js
 grep -Fq 'id="builderDraftsView" class="builder-view" aria-labelledby="builderDraftsTitle" hidden' docs/workflow-builder.html
 grep -Fq 'id="builderEditorView" class="builder-view" aria-labelledby="builderEditorTitle"' docs/workflow-builder.html
 grep -Fq 'title="Configuración en curso">En edición</span>' docs/workflow-builder.html
@@ -356,13 +356,16 @@ grep -Fq 'const transientSetup=guidedSetup&&Boolean(handoffToken)' docs/workflow
 grep -Fq 'function consumeTransientHandoff()' docs/workflow-applications.js
 grep -Fq 'sessionStorage.removeItem(HANDOFF_KEY_PREFIX+handoffToken)' docs/workflow-applications.js
 grep -Fq 'renderTransientReady' docs/workflow-applications.js
-grep -Fq 'publish.textContent="Publicar"' docs/workflow-applications.js
+grep -Fq 'publish.textContent=scheduled?"Programar":"Publicar"' docs/workflow-applications.js
 grep -Fq 'execute.textContent="Ejecutar"' docs/workflow-applications.js
 grep -Fq 'discard.textContent="Descartar todo"' docs/workflow-applications.js
 grep -Fq 'changeTarget.textContent="Cambiar destino"' docs/workflow-applications.js
-grep -Fq 'rpc="publish_workflow_ready_v1"' docs/workflow-applications.js
-grep -Fq 'rpc="update_unexecuted_workflow_v1"' docs/workflow-applications.js
-grep -Fq 'rpc="publish_workflow_revision_ready_v1"' docs/workflow-applications.js
+grep -Fq '"publish_workflow_ready_v1"' docs/workflow-applications.js
+grep -Fq '"update_unexecuted_workflow_v1"' docs/workflow-applications.js
+grep -Fq '"publish_workflow_revision_ready_v1"' docs/workflow-applications.js
+grep -Fq '"publish_workflow_ready_v2"' docs/workflow-applications.js
+grep -Fq '"update_unexecuted_workflow_v2"' docs/workflow-applications.js
+grep -Fq '"publish_workflow_revision_ready_v2"' docs/workflow-applications.js
 grep -Fq 'Flujo publicado sin tareas.' docs/workflow-applications.js
 
 # Mis Flujos oculta la mecanica de versiones y deriva acciones del historial.
@@ -494,3 +497,27 @@ grep -Fq 'const historyNote=taskHistoryNote(' docs/workflow-history.js
 grep -Fq 'rejected?"review_reject":"review_approve"' docs/workflow-history.js
 grep -Fq 'if(historyNote)return historyNote;' docs/workflow-history.js
 grep -Fq './workflow-history.js?v=2026091911' docs/workflow-history.html
+
+
+# Fecha concreta: instante exacto + Programar + sin ejecución manual.
+grep -Fq 'name="scheduledTimezone"' docs/workflow-builder.html
+grep -Fq 'name="scheduledAtUtc"' docs/workflow-builder.html
+grep -Fq 'id="scheduledTimezoneHint"' docs/workflow-builder.html
+grep -Fq 'function syncScheduledInstant({force=false}={})' docs/workflow-builder.js
+grep -Fq 'scheduledTimezone:value("scheduledTimezone")' docs/workflow-builder.js
+grep -Fq 'scheduledAtUtc:value("scheduledAtUtc")' docs/workflow-builder.js
+grep -Fq 'runAt>Date.now()' docs/workflow-builder.js
+grep -Fq 'Zona horaria · ' docs/workflow-builder.js
+grep -Fq 'function scheduledDisplay(spec)' docs/workflow-applications.js
+grep -Fq 'title.textContent=scheduled?"Programación":"Decisión final"' docs/workflow-applications.js
+grep -Fq 'publish.textContent=scheduled?"Programar":"Publicar"' docs/workflow-applications.js
+grep -Fq 'execute.hidden=scheduled' docs/workflow-applications.js
+grep -Fq 'common.p_schedule_timezone=spec.scheduledTimezone||null' docs/workflow-applications.js
+grep -Fq 'common.p_schedule_assigned_user_id=' docs/workflow-applications.js
+grep -Fq 'Flujo programado.' docs/workflow-applications.js
+grep -Fq 'function isScheduledAutomatic(row)' docs/workflow-definitions.js
+grep -Fq 'if(!isScheduledAutomatic(row))' docs/workflow-definitions.js
+grep -Fq 'Los flujos seleccionados de Fecha concreta se ejecutarán automáticamente' docs/workflow-definitions.js
+grep -Fq 'Ejecución automática' docs/workflow-definitions.js
+grep -Fq 'scheduledDateTime(spec)' docs/workflow-definitions.js
+grep -Fq 'workflow_schedule_blocked:"./workflow-definitions.html"' docs/notification-center.js

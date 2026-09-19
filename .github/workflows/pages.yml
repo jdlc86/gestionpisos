@@ -25,6 +25,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Stamp release metadata
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from datetime import datetime
+          from pathlib import Path
+          from zoneinfo import ZoneInfo
+
+          version = json.loads(Path("docs/app-version.json").read_text(encoding="utf-8"))["version"]
+          now = datetime.now(ZoneInfo("Europe/Madrid"))
+          build = f"{now:%Y.%m.%d}.{os.environ['GITHUB_RUN_NUMBER']}"
+          commit = os.environ["GITHUB_SHA"][:7]
+
+          path = Path("docs/index.html")
+          html = path.read_text(encoding="utf-8")
+          html = html.replace("__APP_VERSION__", version)
+          html = html.replace("__APP_BUILD__", build)
+          html = html.replace("__APP_COMMIT__", commit)
+          if "__APP_" in html:
+              raise SystemExit("Unresolved app metadata token")
+          path.write_text(html, encoding="utf-8")
+
+          print(f"Stamped GestionPisos v{version} · Build {build} · {commit}")
+          PY
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:

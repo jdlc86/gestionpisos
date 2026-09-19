@@ -2,14 +2,34 @@ import { supabase } from "./supabase-client.js";
 
 const list=document.getElementById("workflowDefinitions");
 const status=document.getElementById("definitionsStatus");
+
+const topbar=document.getElementById("definitionsTopbar");
+const normalHeader=document.getElementById("definitionsNormalHeader");
+const searchHeader=document.getElementById("definitionsSearchHeader");
+const selectionHeader=document.getElementById("definitionsSelectionHeader");
+
+const searchToggle=document.getElementById("workflowSearchToggle");
 const searchInput=document.getElementById("workflowSearch");
+const searchClose=document.getElementById("workflowSearchClose");
+const searchClear=document.getElementById("workflowSearchClear");
+const activeFilter=document.getElementById("workflowActiveFilter");
+const activeFilterText=document.getElementById("workflowActiveFilterText");
+
 const selectionToggle=document.getElementById("workflowSelectionToggle");
-const bulkBar=document.getElementById("workflowBulkBar");
-const selectVisible=document.getElementById("workflowSelectVisible");
+const selectionClose=document.getElementById("workflowSelectionClose");
 const selectionSummary=document.getElementById("workflowSelectionSummary");
+const selectionMenuToggle=document.getElementById("workflowSelectionMenuToggle");
+const selectionMenu=document.getElementById("workflowSelectionMenu");
+const selectVisible=document.getElementById("workflowSelectVisible");
+const deselectVisible=document.getElementById("workflowDeselectVisible");
+
+const bulkDock=document.getElementById("workflowBulkDock");
 const bulkExecute=document.getElementById("workflowBulkExecute");
 const bulkDelete=document.getElementById("workflowBulkDelete");
 const bulkArchive=document.getElementById("workflowBulkArchive");
+const bulkExecuteCount=document.getElementById("workflowBulkExecuteCount");
+const bulkDeleteCount=document.getElementById("workflowBulkDeleteCount");
+const bulkArchiveCount=document.getElementById("workflowBulkArchiveCount");
 
 const params=new URLSearchParams(window.location.search);
 const highlightedDefinition=params.get("published")||"";
@@ -24,6 +44,7 @@ let occupancyById=new Map();
 let publishedRows=[];
 let filteredRows=[];
 let selectionMode=false;
+let searchMode=false;
 const selectedIds=new Set();
 
 const BATCH_EXECUTION_PREFIX="workflow-batch-execution:";
@@ -93,10 +114,9 @@ function executionMeta(row){
   const box=document.createElement("div");
   box.className="definition-meta-item";
   const strong=document.createElement("strong");strong.textContent="Ejecuciones";
-  const value=document.createElement("span");value.className="definition-execution-value";
-  const countLine=document.createElement("span");countLine.textContent=String(count);
-  const last=document.createElement("small");last.textContent="Última: "+(latest?dateTime(latest.created_at):"Nunca");
-  value.append(countLine,last);
+  const value=document.createElement("span");
+  value.className="definition-execution-value";
+  value.textContent=String(count)+" · "+(latest?"última "+dateTime(latest.created_at):"nunca ejecutado");
   box.append(strong,value);
   return box;
 }
@@ -202,42 +222,147 @@ function selectedDeletableRows(){
 function selectedArchivableRows(){
   return selectedRows().filter(row=>hasHistory(row));
 }
-function updateBulkState(){
-  if(!bulkBar)return;
-  bulkBar.hidden=!selectionMode;
-  list.classList.toggle("is-selecting",selectionMode);
-  selectionToggle.textContent=selectionMode?"Cancelar selección":"Seleccionar";
 
+function closeSelectionMenu(){
+  if(!selectionMenu||!selectionMenuToggle)return;
+  selectionMenu.hidden=true;
+  selectionMenuToggle.setAttribute("aria-expanded","false");
+}
+
+function setHeaderMode(mode){
+  searchMode=mode==="search";
+  normalHeader.hidden=mode!=="normal";
+  searchHeader.hidden=mode!=="search";
+  selectionHeader.hidden=mode!=="selection";
+  topbar?.classList.toggle("is-searching",mode==="search");
+  topbar?.classList.toggle("is-selecting",mode==="selection");
+  if(mode!=="selection")closeSelectionMenu();
+}
+
+function syncFilterChip(){
+  const query=String(searchInput?.value||"").trim();
+  if(activeFilterText)activeFilterText.textContent=query;
+  if(activeFilter)activeFilter.hidden=!query||searchMode;
+}
+
+function openSearch(){
+  if(selectionMode)return;
+  setHeaderMode("search");
+  syncFilterChip();
+  requestAnimationFrame(()=>{
+    searchInput?.focus({preventScroll:true});
+    searchInput?.select();
+  });
+}
+
+function closeSearch({clear=false}={}){
+  if(clear&&searchInput){
+    searchInput.value="";
+    renderDefinitions();
+  }
+  setHeaderMode(selectionMode?"selection":"normal");
+  syncFilterChip();
+}
+
+function setSelectionMode(enabled,{selectId=null}={}){
+  selectionMode=enabled;
+  document.body.classList.toggle("definitions-selection-active",enabled);
+  list.classList.toggle("is-selecting",enabled);
+
+  if(enabled){
+    searchMode=false;
+    if(selectId)selectedIds.add(selectId);
+    setHeaderMode("selection");
+  }else{
+    selectedIds.clear();
+    setHeaderMode("normal");
+  }
+
+  renderDefinitions();
+}
+
+function updateBulkState(){
   const selected=selectedRows();
   const deletable=selected.filter(row=>!hasHistory(row));
   const archivable=selected.filter(row=>hasHistory(row));
 
-  selectionSummary.textContent=selected.length
-    +" seleccionado"+(selected.length===1?"":"s")
-    +" · "+deletable.length+" eliminable"+(deletable.length===1?"":"s")
-    +" · "+archivable.length+" archivable"+(archivable.length===1?"":"s");
+  if(selectionSummary){
+    selectionSummary.textContent=selected.length
+      +" seleccionado"+(selected.length===1?"":"s");
+  }
 
+  if(bulkDock)bulkDock.hidden=!selectionMode||selected.length===0;
   bulkExecute.disabled=selected.length===0;
   bulkDelete.disabled=deletable.length===0;
-  bulkDelete.textContent=deletable.length?"Eliminar ("+deletable.length+")":"Eliminar";
   bulkArchive.disabled=archivable.length===0;
-  bulkArchive.textContent=archivable.length?"Archivar ("+archivable.length+")":"Archivar";
+
+  if(bulkExecuteCount)bulkExecuteCount.textContent=String(selected.length);
+  if(bulkDeleteCount)bulkDeleteCount.textContent=String(deletable.length);
+  if(bulkArchiveCount)bulkArchiveCount.textContent=String(archivable.length);
 
   const visibleIds=filteredRows.map(row=>row.id);
   const selectedVisible=visibleIds.filter(id=>selectedIds.has(id)).length;
-  selectVisible.checked=visibleIds.length>0&&selectedVisible===visibleIds.length;
-  selectVisible.indeterminate=selectedVisible>0&&selectedVisible<visibleIds.length;
-  selectVisible.disabled=visibleIds.length===0;
+  if(selectVisible)selectVisible.disabled=visibleIds.length===0||selectedVisible===visibleIds.length;
+  if(deselectVisible)deselectVisible.disabled=selectedVisible===0;
+
+  syncFilterChip();
 }
-function toggleRowSelection(row,checked,article){
-  if(checked)selectedIds.add(row.id);else selectedIds.delete(row.id);
-  article.classList.toggle("is-selected",checked);
+
+function toggleRowSelection(row,article,force){
+  const next=typeof force==="boolean"?force:!selectedIds.has(row.id);
+  if(next)selectedIds.add(row.id);else selectedIds.delete(row.id);
+
+  article?.classList.toggle("is-selected",next);
+  const indicator=article?.querySelector(".definition-select-indicator");
+  if(indicator){
+    indicator.setAttribute("aria-pressed",String(next));
+    indicator.setAttribute("aria-label",(next?"Deseleccionar ":"Seleccionar ")+(publishedSpec(row).flowName||row.name||"flujo"));
+  }
   updateBulkState();
 }
+
+function bindLongPress(article,row){
+  let timer=null;
+  let startX=0;
+  let startY=0;
+  let longPressed=false;
+
+  const clear=()=>{
+    if(timer)clearTimeout(timer);
+    timer=null;
+  };
+
+  article.addEventListener("pointerdown",event=>{
+    if(selectionMode||event.button!==0)return;
+    if(event.target.closest("a,button,input,select,textarea,label,summary"))return;
+
+    longPressed=false;
+    startX=event.clientX;
+    startY=event.clientY;
+    timer=setTimeout(()=>{
+      longPressed=true;
+      article.dataset.longPressed="1";
+      setSelectionMode(true,{selectId:row.id});
+    },520);
+  });
+
+  article.addEventListener("pointermove",event=>{
+    if(!timer)return;
+    if(Math.abs(event.clientX-startX)>10||Math.abs(event.clientY-startY)>10)clear();
+  });
+  article.addEventListener("pointerup",clear);
+  article.addEventListener("pointercancel",clear);
+  article.addEventListener("pointerleave",clear);
+  article.addEventListener("contextmenu",event=>{
+    if(longPressed||article.dataset.longPressed==="1"){
+      event.preventDefault();
+      article.dataset.longPressed="";
+    }
+  });
+}
+
 function clearSelection(){
-  selectedIds.clear();
-  selectionMode=false;
-  renderDefinitions();
+  setSelectionMode(false);
 }
 
 function card(row){
@@ -252,18 +377,22 @@ function card(row){
   if(row.id===highlightedDefinition)article.classList.add("is-highlighted");
   if(selectedIds.has(row.id))article.classList.add("is-selected");
 
+  const selector=document.createElement("button");
+  selector.type="button";
+  selector.className="definition-select-indicator";
+  selector.setAttribute("aria-pressed",String(selectedIds.has(row.id)));
+  selector.setAttribute("aria-label",(selectedIds.has(row.id)?"Deseleccionar ":"Seleccionar ")+String(spec.flowName||row.name||"flujo"));
+  selector.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6.5 12.5 3.2 3.2L17.8 8"/></svg>';
+  selector.addEventListener("click",event=>{
+    event.stopPropagation();
+    toggleRowSelection(row,article);
+  });
+  article.append(selector);
+
   const head=document.createElement("div");head.className="definition-card-head";
   const headMain=document.createElement("div");headMain.className="definition-card-head-main";
-
-  const selector=document.createElement("label");selector.className="definition-select";
-  const checkbox=document.createElement("input");checkbox.type="checkbox";checkbox.checked=selectedIds.has(row.id);
-  checkbox.setAttribute("aria-label","Seleccionar "+String(spec.flowName||row.name||"flujo"));
-  const selectorText=document.createElement("span");selectorText.textContent="Seleccionar";
-  selector.append(checkbox,selectorText);
-  checkbox.addEventListener("change",()=>toggleRowSelection(row,checkbox.checked,article));
-
   const title=document.createElement("h3");title.textContent=String(spec.flowName||row.name||"Flujo");
-  headMain.append(selector,title);
+  headMain.append(title);
 
   const badge=document.createElement("span");
   badge.className="definition-badge "+(history?"definition-badge--complete":"definition-badge--incomplete");
@@ -336,6 +465,15 @@ function card(row){
   }
 
   article.append(actions);
+
+  article.addEventListener("click",event=>{
+    if(!selectionMode)return;
+    if(event.target.closest(".definition-select-indicator"))return;
+    event.preventDefault();
+    toggleRowSelection(row,article);
+  });
+  bindLongPress(article,row);
+
   return article;
 }
 
@@ -392,6 +530,7 @@ async function bulkDeleteSelected(){
   }
 
   await load({preserveSelection:true});
+  if(!selectedIds.size)setSelectionMode(false);
   if(failures.length){
     setStatus(ok+" eliminado"+(ok===1?"":"s")+" · "+failures.length+" no se pudieron eliminar. "+errorText(failures[0].error),true);
   }else{
@@ -423,6 +562,7 @@ async function bulkArchiveSelected(){
   }
 
   await load({preserveSelection:true});
+  if(!selectedIds.size)setSelectionMode(false);
   if(failures.length){
     setStatus(ok+" archivado"+(ok===1?"":"s")+" · "+failures.length+" no se pudieron archivar. "+errorText(failures[0].error),true);
   }else{
@@ -470,18 +610,57 @@ function startBulkExecution(){
   window.location.href=url.href;
 }
 
-searchInput?.addEventListener("input",renderDefinitions);
-selectionToggle?.addEventListener("click",()=>{
-  selectionMode=!selectionMode;
-  if(!selectionMode)selectedIds.clear();
+searchToggle?.addEventListener("click",openSearch);
+searchInput?.addEventListener("input",()=>{
+  renderDefinitions();
+  syncFilterChip();
+});
+searchClose?.addEventListener("click",()=>closeSearch({clear:false}));
+searchClear?.addEventListener("click",()=>closeSearch({clear:true}));
+activeFilter?.addEventListener("click",()=>{
+  if(searchInput)searchInput.value="";
+  renderDefinitions();
+  syncFilterChip();
+});
+
+selectionToggle?.addEventListener("click",()=>setSelectionMode(true));
+selectionClose?.addEventListener("click",clearSelection);
+selectionMenuToggle?.addEventListener("click",event=>{
+  event.stopPropagation();
+  const open=selectionMenu.hidden;
+  selectionMenu.hidden=!open;
+  selectionMenuToggle.setAttribute("aria-expanded",String(open));
+});
+selectionMenu?.addEventListener("click",event=>event.stopPropagation());
+
+selectVisible?.addEventListener("click",()=>{
+  filteredRows.forEach(row=>selectedIds.add(row.id));
+  closeSelectionMenu();
   renderDefinitions();
 });
-selectVisible?.addEventListener("change",()=>{
-  filteredRows.forEach(row=>{
-    if(selectVisible.checked)selectedIds.add(row.id);else selectedIds.delete(row.id);
-  });
+deselectVisible?.addEventListener("click",()=>{
+  filteredRows.forEach(row=>selectedIds.delete(row.id));
+  closeSelectionMenu();
   renderDefinitions();
 });
+
+document.addEventListener("click",event=>{
+  if(!selectionMenu?.hidden&&!event.target.closest(".definitions-selection-menu-wrap"))closeSelectionMenu();
+});
+document.addEventListener("keydown",event=>{
+  if(event.key!=="Escape")return;
+  if(selectionMenu&&!selectionMenu.hidden){
+    closeSelectionMenu();
+    selectionMenuToggle?.focus();
+    return;
+  }
+  if(selectionMode){
+    clearSelection();
+    return;
+  }
+  if(searchMode)closeSearch({clear:false});
+});
+
 bulkExecute?.addEventListener("click",startBulkExecution);
 bulkDelete?.addEventListener("click",bulkDeleteSelected);
 bulkArchive?.addEventListener("click",bulkArchiveSelected);

@@ -6,12 +6,57 @@
   <meta name="theme-color" content="#ffffff">
   <meta name="description" content="Definiciones de Flujos de Trabajo de GestionPisos">
   <link rel="stylesheet" href="./app.css?v=2026091906">
-  <link rel="stylesheet" href="./workflow-definitions.css?v=2026091910">
+  <link rel="stylesheet" href="./workflow-definitions.css?v=2026091911">
   <title>Allaiso · Mis Flujos</title>
 </head>
 <body>
   <main class="shell">
-    <header class="topbar"><div class="context-heading"><a class="context-back" href="./workflows.html" aria-label="Volver a Flujos" title="Volver a Flujos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></a><div><p class="eyebrow">ALLAISO</p><h1>Mis Flujos</h1></div></div><a class="global-icon desktop-home-link" href="./" aria-label="Inicio" title="Inicio"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 10.5 12 3l8.5 7.5v9a1.5 1.5 0 0 1-1.5 1.5h-5v-6H10v6H5a1.5 1.5 0 0 1-1.5-1.5z"/></svg></a></header>
+    <header id="definitionsTopbar" class="topbar definitions-topbar">
+      <div id="definitionsNormalHeader" class="definitions-header-mode definitions-header-normal">
+        <div class="context-heading">
+          <a class="context-back" href="./workflows.html" aria-label="Volver a Flujos" title="Volver a Flujos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></a>
+          <div><p class="eyebrow">ALLAISO</p><h1>Mis Flujos</h1></div>
+        </div>
+        <div class="definitions-header-actions">
+          <button id="workflowSearchToggle" type="button" class="definitions-icon-button" aria-label="Buscar flujos" title="Buscar">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
+          </button>
+          <button id="workflowSelectionToggle" type="button" class="definitions-icon-button" aria-label="Seleccionar varios flujos" title="Seleccionar">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 7 1.5 1.5L9 6"/><path d="M11.5 7h7"/><path d="m5 13 1.5 1.5L9 12"/><path d="M11.5 13h7"/><path d="M5 19h13.5"/></svg>
+          </button>
+          <a class="global-icon desktop-home-link" href="./" aria-label="Inicio" title="Inicio"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 10.5 12 3l8.5 7.5v9a1.5 1.5 0 0 1-1.5 1.5h-5v-6H10v6H5a1.5 1.5 0 0 1-1.5-1.5z"/></svg></a>
+        </div>
+      </div>
+
+      <div id="definitionsSearchHeader" class="definitions-header-mode definitions-search-mode" hidden>
+        <button id="workflowSearchClose" type="button" class="definitions-icon-button" aria-label="Cerrar búsqueda" title="Cerrar búsqueda">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <label class="definitions-search-box">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
+          <input id="workflowSearch" type="search" autocomplete="off" aria-label="Buscar flujos" placeholder="Buscar flujos…">
+        </label>
+        <button id="workflowSearchClear" type="button" class="definitions-icon-button" aria-label="Limpiar y cerrar búsqueda" title="Limpiar y cerrar">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"/></svg>
+        </button>
+      </div>
+
+      <div id="definitionsSelectionHeader" class="definitions-header-mode definitions-selection-mode" hidden>
+        <button id="workflowSelectionClose" type="button" class="definitions-icon-button" aria-label="Salir de selección" title="Salir de selección">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"/></svg>
+        </button>
+        <strong id="workflowSelectionSummary">0 seleccionados</strong>
+        <div class="definitions-selection-menu-wrap">
+          <button id="workflowSelectionMenuToggle" type="button" class="definitions-icon-button" aria-label="Opciones de selección" aria-haspopup="menu" aria-expanded="false" title="Opciones">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg>
+          </button>
+          <div id="workflowSelectionMenu" class="definitions-selection-menu" role="menu" hidden>
+            <button id="workflowSelectVisible" type="button" role="menuitem">Seleccionar visibles</button>
+            <button id="workflowDeselectVisible" type="button" role="menuitem">Deseleccionar visibles</button>
+          </div>
+        </div>
+      </div>
+    </header>
     <p class="page-subtitle">Tus flujos terminados. Ejecuta, edita y elimina o archiva según exista historial.</p>
 <section class="definitions-toolbar">
       <div>
@@ -21,38 +66,41 @@
       <a class="primary definitions-create" href="./workflow-builder.html">Crear flujo</a>
     </section>
 
-    <section class="definitions-controls" aria-label="Buscar y seleccionar flujos">
-      <label class="definitions-search">
-        <span>Buscar</span>
-        <input id="workflowSearch" type="search" autocomplete="off" placeholder="Nombre, destino, tipo o asignación">
-      </label>
-      <button id="workflowSelectionToggle" type="button" class="secondary">Seleccionar</button>
-    </section>
-
-    <section id="workflowBulkBar" class="definitions-bulk-bar" hidden aria-live="polite">
-      <div class="definitions-bulk-head">
-        <label class="definitions-select-all">
-          <input id="workflowSelectVisible" type="checkbox">
-          <span>Seleccionar visibles</span>
-        </label>
-        <strong id="workflowSelectionSummary">0 seleccionados</strong>
-      </div>
-      <div class="definitions-bulk-actions">
-        <button id="workflowBulkExecute" type="button" class="primary" disabled>Ejecutar selección</button>
-        <button id="workflowBulkDelete" type="button" class="danger-soft" disabled>Eliminar</button>
-        <button id="workflowBulkArchive" type="button" class="secondary" disabled>Archivar</button>
-      </div>
-    </section>
+    <button id="workflowActiveFilter" type="button" class="definitions-filter-chip" hidden aria-label="Quitar filtro de búsqueda">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
+      <span id="workflowActiveFilterText"></span>
+      <span class="definitions-filter-chip-close" aria-hidden="true">×</span>
+    </button>
 
     <section id="workflowDefinitions" class="definitions-list" aria-live="polite">
       <article class="definition-card definition-card--loading">Cargando definiciones…</article>
     </section>
 
     <section id="definitionsStatus" class="status"><span class="dot"></span><span>Consultando definiciones autorizadas por RLS.</span></section>
+
+    <section id="workflowBulkDock" class="definitions-bulk-dock" hidden aria-label="Acciones para flujos seleccionados">
+      <div class="definitions-bulk-dock-inner">
+        <button id="workflowBulkExecute" type="button" class="definitions-bulk-action definitions-bulk-action--primary" disabled>
+          <span class="definitions-bulk-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7z"/></svg></span>
+          <span>Ejecutar</span>
+          <span id="workflowBulkExecuteCount" class="definitions-bulk-count">0</span>
+        </button>
+        <button id="workflowBulkArchive" type="button" class="definitions-bulk-action" disabled>
+          <span class="definitions-bulk-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v13H4zM3 4h18v3H3zM9 11h6"/></svg></span>
+          <span>Archivar</span>
+          <span id="workflowBulkArchiveCount" class="definitions-bulk-count">0</span>
+        </button>
+        <button id="workflowBulkDelete" type="button" class="definitions-bulk-action definitions-bulk-action--danger" disabled>
+          <span class="definitions-bulk-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg></span>
+          <span>Eliminar</span>
+          <span id="workflowBulkDeleteCount" class="definitions-bulk-count">0</span>
+        </button>
+      </div>
+    </section>
   </main>
 
   <script src="./app.js?v=2026091902" defer></script>
-  <script type="module" src="./workflow-definitions.js?v=2026091920"></script>
+  <script type="module" src="./workflow-definitions.js?v=2026091921"></script>
   <script type="module" src="./auth-guard.js"></script>
 </body>
 </html>

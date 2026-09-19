@@ -55,7 +55,7 @@
 
     <section id="builderEditorView" class="builder-view" hidden aria-labelledby="builderEditorTitle">
       <div class="builder-editor-bar">
-        <button id="builderExitEditor" type="button" class="builder-back-link" aria-label="Volver a borradores" title="Volver a borradores"><svg class="builder-back-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <button id="builderExitEditor" type="button" class="builder-back-link" aria-label="Salir del Creador" title="Salir del Creador"><svg class="builder-back-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>
         <div class="builder-editor-heading">
           <p class="eyebrow">Editor</p>
           <h2 id="builderEditorTitle">Nuevo flujo</h2>
@@ -97,7 +97,7 @@
             <option value="custom">Personalizado</option>
           </select></label>
           <label>Descripción<textarea id="flowDescription" name="flowDescription" rows="4" maxlength="400" placeholder="Qué objetivo tiene este flujo"></textarea></label>
-          <div class="builder-note">Puedes guardar el borrador desde este primer paso.</div>
+          <div class="builder-note">La creación solo se guardará cuando termines el recorrido y elijas Publicar o Ejecutar.</div>
         </section>
 
         <section class="builder-panel" data-step="1">
@@ -206,18 +206,18 @@
 
         <section class="builder-panel" data-step="6">
           <p class="eyebrow">Paso 7 de 7</p>
-          <h2>Revisión del borrador</h2>
+          <h2>Revisión del flujo</h2>
           <div id="workflowSummary" class="builder-summary"></div>
-          <div class="builder-warning"><strong>Guardar mantiene un borrador.</strong> Continuar para usarlo publicará una versión estable y te llevará directamente a elegir dónde se utilizará.</div>
+          <div class="builder-warning"><strong>Todavía no se ha guardado nada.</strong> Continuar para usarlo te llevará a elegir el destino. En el paso Listo podrás Publicar sin crear tareas o Ejecutar y crear la tarea.</div>
         </section>
 
         <div id="builderServerStatus" class="builder-note builder-server-status" role="status" aria-live="polite">Comprobando estado del borrador…</div>
 
         <div class="builder-actions">
           <button id="builderBack" type="button" class="builder-action builder-action--neutral" disabled>Atrás</button>
-          <button id="builderClear" type="button" class="builder-action builder-action--neutral">Descartar cambios</button>
-          <button id="builderSave" type="button" class="builder-action">Guardar</button>
-          <button id="builderSaveExitInline" type="button" class="builder-action">Guardar y salir</button>
+          <button id="builderClear" type="button" class="builder-action builder-action--neutral">Descartar</button>
+          <button id="builderSave" type="button" class="builder-action" hidden>Guardar</button>
+          <button id="builderSaveExitInline" type="button" class="builder-action" hidden>Guardar y salir</button>
           <button id="builderPublish" type="button" class="builder-action builder-action--primary" disabled>Continuar para usarlo</button>
           <button id="builderNext" type="button" class="builder-action builder-action--primary">Continuar</button>
         </div>
@@ -227,13 +227,13 @@
 
     <dialog id="builderExitDialog" class="builder-exit-dialog" aria-labelledby="builderExitDialogTitle">
       <div class="builder-exit-dialog-body">
-        <p class="eyebrow">Cambios sin guardar</p>
-        <h2 id="builderExitDialogTitle">¿Qué quieres hacer antes de volver a Borradores?</h2>
-        <p>El borrador guardado no se eliminará. Puedes guardar los cambios actuales, salir sin guardarlos o continuar editando.</p>
+        <p class="eyebrow">Salir del Creador</p>
+        <h2 id="builderExitDialogTitle">¿Quieres salir?</h2>
+        <p id="builderExitDialogText">Si sales ahora perderás los cambios realizados en esta creación.</p>
         <div class="builder-exit-dialog-actions">
-          <button id="builderExitSave" type="button" class="builder-action builder-action--primary">Guardar y salir</button>
-          <button id="builderExitDiscard" type="button" class="builder-action builder-action--neutral">Salir sin guardar</button>
-          <button id="builderExitCancel" type="button" class="builder-action builder-action--neutral">Cancelar</button>
+          <button id="builderExitSave" type="button" class="builder-action builder-action--primary" hidden>Guardar edición y salir</button>
+          <button id="builderExitDiscard" type="button" class="builder-action builder-action--danger">Salir y perder cambios</button>
+          <button id="builderExitCancel" type="button" class="builder-action builder-action--neutral">Seguir editando</button>
         </div>
       </div>
     </dialog>
@@ -241,7 +241,7 @@
   </main>
 
   <script src="./app.js?v=2026091902" defer></script>
-  <script type="module" src="./workflow-builder.js?v=2026091913"></script>
+  <script type="module" src="./workflow-builder.js?v=2026091916"></script>
   <script type="module" src="./auth-guard.js"></script>
 </body>
 </html>

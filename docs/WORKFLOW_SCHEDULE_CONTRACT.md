@@ -39,7 +39,7 @@ La programación vive en:
 Existe como máximo una programación operativa por aplicación/version y conserva:
 
 - definición/version/aplicación/organización;
-- tipo `scheduled_once`;
+- tipo `scheduled_once` o `recurring`;
 - zona horaria;
 - `next_run_at` en `timestamptz`;
 - asignado fijado, solo cuando la regla es manual;
@@ -124,8 +124,66 @@ Una revisión de un flujo con historial crea una nueva versión/aplicación y su
 
 ## 8. Recurrencias
 
-Este contrato no habilita todavía `triggerType=recurring`.
+`triggerType=recurring` reutiliza la misma infraestructura de Fecha concreta.
 
-La frecuencia ya puede definirse en el Creador, pero falta una **primera fecha/hora explícita** que actúe como ancla. No se usará la hora de publicación ni otra hora implícita.
+### Primera ejecución
 
-Recurrente reutilizará esta misma infraestructura cuando esa semántica esté definida.
+Toda recurrencia exige una primera fecha/hora explícita. El Creador conserva:
+
+- `scheduledAt`: hora local mostrada al autor;
+- `scheduledTimezone`: zona IANA;
+- `scheduledAtUtc`: instante UTC exacto.
+
+No se usa la hora de publicación ni otra ancla implícita.
+
+### Frecuencias
+
+Se soportan:
+
+- semanal;
+- cada 2 semanas;
+- mensual;
+- personalizada cada N días, semanas o meses, con N entre 1 y 365.
+
+Cada ocurrencia se calcula **desde el ancla local original**, no desde la fecha ajustada anterior. Así una recurrencia mensual iniciada un día 31 puede ejecutar el último día de febrero y volver al día 31 en marzo, sin deriva permanente.
+
+### Hora local y DST
+
+La recurrencia conserva la hora local en su zona IANA a través de cambios de horario.
+
+Si una ocurrencia futura cae en una hora local inexistente o ambigua por DST:
+
+- la tarea de la ocurrencia actual, si ya fue creada válidamente, se conserva;
+- el futuro de la programación pasa a `blocked`;
+- se conserva solo el `SQLSTATE`;
+- el creador recibe `workflow_schedule_blocked`;
+- no se elige silenciosamente otro instante.
+
+### Asignación
+
+Para `manual`, la persona queda fijada al pulsar **Programar** y se revalida en cada ocurrencia.
+
+Para `property_responsible`, no se congela una persona: el responsable operativo vigente se resuelve de nuevo en **cada ejecución recurrente**. Un cambio de responsable entre dos ocurrencias se respeta automáticamente.
+
+### Catch-up
+
+Si el scheduler estuvo detenido y ya pasaron varias ocurrencias:
+
+- una pasada crea como máximo una obligación vencida;
+- las ocurrencias intermedias que ya quedaron en el pasado no generan una tormenta de tareas;
+- el número omitido queda auditado como `workflow_recurring_occurrences_skipped`;
+- `next_run_at` avanza a la primera ocurrencia futura.
+
+Esta política evita inundar a usuarios con tareas atrasadas sin ocultar que hubo ocurrencias omitidas.
+
+### Estado operativo
+
+La misma tabla `workflow_application_schedules_v2` conserva además:
+
+- `next_occurrence_index`;
+- `execution_count`;
+- `last_scheduled_for`.
+
+Después de cada ejecución válida, la programación sigue `active` con su próxima fecha. Archivar o sustituir una aplicación cancela su programación anterior, evitando dos recurrencias simultáneas de versiones distintas.
+
+Recurrente no ofrece **Ejecutar** manual ni entra en ejecución masiva; usa `trigger_kind=recurring` y el mismo núcleo privado de ejecución/materialización de tareas.

@@ -254,6 +254,8 @@ grep -Fq 'function bindTaskLongPress(article,task)' docs/workflow-tasks.js
 grep -Fq 'function selectedDeletableTasks()' docs/workflow-tasks.js
 grep -Fq 'supabase.rpc("delete_task_card_v1"' docs/workflow-tasks.js
 grep -Fq '.is("removed_at",null)' docs/workflow-tasks.js
+grep -Fq 'aal2_required' docs/workflow-tasks.js
+grep -Fq '.is("removed_at",null)' docs/portfolio.js
 grep -Fq 'El historial, la ejecución y sus evidencias se conservarán.' docs/workflow-tasks.js
 grep -Fq '.task-select-indicator{' docs/workflow-tasks.css
 grep -Fq '.tasks-bulk-dock{' docs/workflow-tasks.css

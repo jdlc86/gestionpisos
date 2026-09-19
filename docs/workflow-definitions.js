@@ -113,9 +113,17 @@ function scheduleFor(row){
   const app=currentApplication(row);
   return app?schedulesByApplication.get(app.id)||null:null;
 }
+function needsScheduleConfiguration(row){
+  if(!isScheduledAutomatic(row))return false;
+  const spec=publishedSpec(row);
+  return !scheduleFor(row)
+    || !String(spec.scheduledAt||"").trim()
+    || !String(spec.scheduledTimezone||"").trim()
+    || !String(spec.scheduledAtUtc||"").trim();
+}
 function scheduleStatusText(row){
   const schedule=scheduleFor(row);
-  if(!schedule)return null;
+  if(!schedule)return needsScheduleConfiguration(row)?"Necesita programación":null;
   if(schedule.status==="blocked")return "Programación bloqueada";
   if(schedule.status==="cancelled")return "Programación cancelada";
   if(schedule.status==="completed")return "Programación completada";
@@ -443,9 +451,10 @@ function card(row){
   const title=document.createElement("h3");title.textContent=String(spec.flowName||row.name||"Flujo");
   headMain.append(title);
 
+  const needsSchedule=needsScheduleConfiguration(row);
   const badge=document.createElement("span");
-  badge.className="definition-badge "+(history?"definition-badge--complete":"definition-badge--incomplete");
-  badge.textContent=history?"Con historial":"Sin ejecuciones";
+  badge.className="definition-badge "+(needsSchedule||!history?"definition-badge--incomplete":"definition-badge--complete");
+  badge.textContent=needsSchedule?"Necesita programación":history?"Con historial":"Sin ejecuciones";
   head.append(headMain,badge);
 
   const details=document.createElement("div");details.className="definition-meta";
@@ -460,7 +469,7 @@ function card(row){
   const scheduleStatus=scheduleStatusText(row);
   if(scheduleStatus){
     details.append(meta("Programación",scheduleStatus,{
-      className:scheduleFor(row)?.status==="blocked"?"definition-meta-item--warning":""
+      className:(needsSchedule||scheduleFor(row)?.status==="blocked")?"definition-meta-item--warning":""
     }));
   }
 
@@ -482,7 +491,7 @@ function card(row){
       +"&setup=1&intent=execute&from=mis-flujos"
       +(app?"&application="+encodeURIComponent(app.id):"");
     actions.append(execute);
-  }else{
+  }else if(!needsSchedule){
     const automatic=document.createElement("span");
     automatic.className="definition-action-note";
     automatic.textContent="Ejecución automática";
@@ -492,15 +501,15 @@ function card(row){
   if(history){
     if(draft){
       const edit=document.createElement("a");
-      edit.className="secondary";
+      edit.className=needsSchedule?"primary":"secondary";
       edit.href="./workflow-builder.html?id="+encodeURIComponent(row.id)+"&revision=1";
-      edit.textContent="Editar";
+      edit.textContent=needsSchedule?"Continuar programación":"Editar";
       actions.append(edit);
     }else{
       const edit=document.createElement("button");
       edit.type="button";
-      edit.className="secondary";
-      edit.textContent="Editar";
+      edit.className=needsSchedule?"primary":"secondary";
+      edit.textContent=needsSchedule?"Editar programación":"Editar";
       edit.addEventListener("click",()=>startRevision(row,edit));
       actions.append(edit);
     }
@@ -513,9 +522,9 @@ function card(row){
     actions.append(archive);
   }else{
     const edit=document.createElement("a");
-    edit.className="secondary";
+    edit.className=needsSchedule?"primary":"secondary";
     edit.href="./workflow-builder.html?id="+encodeURIComponent(row.id)+"&edit=1";
-    edit.textContent="Editar";
+    edit.textContent=needsSchedule?"Editar programación":"Editar";
     actions.append(edit);
 
     const remove=document.createElement("button");

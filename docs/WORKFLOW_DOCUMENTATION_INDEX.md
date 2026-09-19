@@ -14,7 +14,7 @@ Usar estos documentos en este orden:
 10. **`WORKFLOW_CHECKLIST_CONTRACT.md`** — contrato específico del primer checklist genérico: autoría, snapshot, permisos, idempotencia y cierre.
 11. **`WORKFLOW_DOCUMENT_EVIDENCE_CONTRACT.md`** — contrato del paso Documento: Storage privado, permisos, idempotencia y cierre coordinado con Foto/Checklist.
 12. **`WORKFLOW_HISTORY_CONTRACT.md`** — contrato de la vista Historial: fuentes de verdad, RLS, eventos, evidencias e inmutabilidad.
-13. **`WORKFLOW_SCHEDULE_CONTRACT.md`** — contrato de Fecha concreta automática: tiempo exacto, asignación, scheduler, idempotencia y bloqueos.
+13. **`WORKFLOW_SCHEDULE_CONTRACT.md`** — contrato de programación automática: Fecha concreta y Recurrente, tiempo exacto, asignación, scheduler, idempotencia, catch-up y bloqueos.
 
 ## Regla de mantenimiento
 

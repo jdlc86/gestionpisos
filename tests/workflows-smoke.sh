@@ -105,7 +105,7 @@ grep -Fq 'class="builder-back-link"' docs/workflow-builder.html
 grep -Fq 'class="builder-back-icon"' docs/workflow-builder.html
 ! grep -Fq '← Volver' docs/workflow-builder.html
 grep -Fq 'aria-label="Salir del Creador"' docs/workflow-builder.html
-grep -Fq 'id="builderClear" type="button" class="builder-action builder-action--neutral">Descartar</button>' docs/workflow-builder.html
+grep -Fq 'id="builderClear" type="button" class="builder-action builder-action--danger" hidden>Descartar todo</button>' docs/workflow-builder.html
 ! grep -Fq 'Descartar cambios locales' docs/workflow-builder.html
 grep -Fq '.builder-action--neutral{' docs/workflow-builder.css
 grep -Fq 'grid-template-columns:auto minmax(0,1fr) auto' docs/workflow-builder.css
@@ -134,7 +134,7 @@ grep -Fq 'Decisión Aceptar / Rechazar' docs/workflow-builder.js
 grep -Fq 'id="scheduledAt"' docs/workflow-builder.html
 grep -Fq 'id="customRecurrenceRow"' docs/workflow-builder.html
 grep -Fq '.builder-panel [hidden]{display:none!important}' docs/workflow-builder.css
-grep -Fq './workflow-builder.css?v=2026091913' docs/workflow-builder.html
+grep -Fq './workflow-builder.css?v=2026091914' docs/workflow-builder.html
 grep -Fq 'name="customEvery"' docs/workflow-builder.html
 grep -Fq 'name="customUnit"' docs/workflow-builder.html
 grep -Fq 'toggleDependentRow' docs/workflow-builder.js
@@ -149,7 +149,7 @@ grep -Fq 'id="photoBankLink"' docs/workflow-builder.html
 grep -Fq 'href="./photo-patterns.html?from=workflow-builder" hidden' docs/workflow-builder.html
 grep -Fq 'function updatePhotoResource()' docs/workflow-builder.js
 grep -Fq 'photoBankLink.hidden=!checked("stepPhoto")' docs/workflow-builder.js
-grep -Fq './workflow-builder.js?v=2026091916' docs/workflow-builder.html
+grep -Fq './workflow-builder.js?v=2026091918' docs/workflow-builder.html
 
 grep -Fq 'workflow_definitions_v2' docs/workflow-definitions.js
 grep -Fq '.eq("status","published")' docs/workflow-definitions.js
@@ -171,7 +171,7 @@ grep -Fq 'rooms_v2' docs/workflow-applications.js
 grep -Fq 'occupancies_v2' docs/workflow-applications.js
 grep -Fq '.application-card [hidden]{display:none!important}' docs/workflow-applications.css
 grep -Fq './workflow-applications.css?v=2026091913' docs/workflow-applications.html
-grep -Fq './workflow-applications.js?v=2026091917' docs/workflow-applications.html
+grep -Fq './workflow-applications.js?v=2026091918' docs/workflow-applications.html
 grep -Fq '¿Dónde quieres utilizarlo?' docs/workflow-applications.html
 grep -Fq 'Definición → Versión publicada → Aplicación concreta' docs/WORKFLOW_APPLICATIONS_CONTRACT.md
 grep -Fq 'workflow_applications_v2' docs/WORKFLOW_APPLICATIONS_CONTRACT.md
@@ -333,7 +333,7 @@ grep -Fq 'sessionStorage.removeItem(HANDOFF_KEY_PREFIX+handoffToken)' docs/workf
 grep -Fq 'renderTransientReady' docs/workflow-applications.js
 grep -Fq 'publish.textContent="Publicar"' docs/workflow-applications.js
 grep -Fq 'execute.textContent="Ejecutar"' docs/workflow-applications.js
-grep -Fq 'discard.textContent="Descartar"' docs/workflow-applications.js
+grep -Fq 'discard.textContent="Descartar todo"' docs/workflow-applications.js
 grep -Fq 'changeTarget.textContent="Cambiar destino"' docs/workflow-applications.js
 grep -Fq 'rpc="publish_workflow_ready_v1"' docs/workflow-applications.js
 grep -Fq 'rpc="update_unexecuted_workflow_v1"' docs/workflow-applications.js
@@ -350,3 +350,15 @@ grep -Fq 'delete_unexecuted_workflow_v1' docs/workflow-definitions.js
 grep -Fq 'archive_workflow_definition_v1' docs/workflow-definitions.js
 grep -Fq 'start_workflow_definition_revision_v1' docs/workflow-definitions.js
 ! grep -Fq 'Duplicar' docs/workflow-definitions.js
+
+
+# Jerarquía de acciones del Creador: navegar no compite con finalizar.
+grep -Fq 'id="builderNext" type="button" class="builder-action builder-action--primary">Siguiente</button>' docs/workflow-builder.html
+grep -Fq 'id="builderPublish" type="button" class="builder-action builder-action--primary" disabled hidden>Continuar para usarlo</button>' docs/workflow-builder.html
+grep -Fq 'backButton.hidden=finalStep' docs/workflow-builder.js
+grep -Fq 'nextButton.hidden=finalStep' docs/workflow-builder.js
+grep -Fq 'publishButton.hidden=!finalStep' docs/workflow-builder.js
+grep -Fq 'clearButton.hidden=!finalStep' docs/workflow-builder.js
+grep -Fq 'nextButton.textContent="Siguiente"' docs/workflow-builder.js
+grep -Fq '?"Descartar todo"' docs/workflow-builder.js
+grep -Fq 'justify-content:space-between' docs/workflow-builder.css

@@ -618,6 +618,61 @@ update public.workflow_definition_revision_drafts_v2
 set authoring_complete=public.workflow_authoring_complete_v1(draft_spec)
 where published_at is null;
 
+-- Una aplicación configured de Fecha concreta debe terminar la transacción con
+-- una programación operativa. Es diferido para permitir que publish/update v2
+-- creen primero la aplicación mediante v1 y, después, su schedule en la misma
+-- transacción. Impide publicar scheduled_once directamente por los RPC v1.
+create or replace function private.workflow_scheduled_application_requires_schedule_v1()
+returns trigger
+language plpgsql
+security definer
+set search_path=''
+as $workflow_schedule_required$
+declare
+  v_trigger_type text;
+begin
+  if new.status<>'configured' then
+    return new;
+  end if;
+
+  select nullif(v.spec->>'triggerType','')
+  into v_trigger_type
+  from public.workflow_definition_versions_v2 v
+  where v.id=new.definition_version_id
+    and v.definition_id=new.definition_id
+    and v.organization_id=new.organization_id;
+
+  if v_trigger_type='scheduled_once'
+    and not exists(
+      select 1
+      from public.workflow_application_schedules_v2 s
+      where s.application_id=new.id
+        and s.definition_id=new.definition_id
+        and s.definition_version_id=new.definition_version_id
+        and s.organization_id=new.organization_id
+        and s.schedule_kind='scheduled_once'
+        and s.status in ('active','completed','blocked')
+    ) then
+    raise exception 'workflow_scheduled_configuration_required' using errcode='55000';
+  end if;
+
+  return new;
+end;
+$workflow_schedule_required$;
+
+revoke all on function private.workflow_scheduled_application_requires_schedule_v1()
+  from public,anon,authenticated;
+
+drop trigger if exists workflow_scheduled_application_requires_schedule_v1
+  on public.workflow_applications_v2;
+
+create constraint trigger workflow_scheduled_application_requires_schedule_v1
+after insert or update
+on public.workflow_applications_v2
+deferrable initially deferred
+for each row
+execute function private.workflow_scheduled_application_requires_schedule_v1();
+
 -- Verifica que trigger_kind corresponde al trigger publicado. Evita que
 -- scheduled_once se ejecute accidentalmente como manual_now.
 create or replace function private.workflow_execution_trigger_kind_guard_v1()

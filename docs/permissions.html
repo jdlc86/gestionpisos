@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="es" data-auth-pending="1">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#ffffff"><link rel="stylesheet" href="./app.css?v=2026091904"><link rel="stylesheet" href="./permissions.css?v=202609171"><link rel="stylesheet" href="./permissions-responsibility-flow.css?v=2026091601"><title>Allaiso · Gestión de Permisos</title></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#ffffff"><link rel="stylesheet" href="./app.css?v=2026091906"><link rel="stylesheet" href="./permissions.css?v=2026091902"><link rel="stylesheet" href="./permissions-responsibility-flow.css?v=2026091601"><title>Allaiso · Gestión de Permisos</title></head>
 <body><main class="shell">
 <header class="topbar"><div><p class="eyebrow">ALLAISO</p><h1>Gestión de Permisos</h1></div><div class="global-actions"><a class="global-icon desktop-home-link" href="./" aria-label="Inicio" title="Inicio"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 10.5 12 3l8.5 7.5v9a1.5 1.5 0 0 1-1.5 1.5h-5v-6H10v6H5a1.5 1.5 0 0 1-1.5-1.5z"/></svg></a></div></header>
 <section id="permissionError" class="status error" role="alert" hidden></section>
@@ -24,7 +24,7 @@ window.addEventListener("DOMContentLoaded",()=>setTimeout(()=>{
   if(error){error.hidden=false;error.textContent="No se pudo iniciar Gestión de Permisos. Diagnóstico: MODULE_NOT_STARTED";}
   if(status)status.innerHTML="<strong>Carga detenida.</strong> El módulo de permisos no llegó a iniciarse.";
 },5000));
-</script><script src="./app.js?v=202609152" defer></script><script type="module">
+</script><script src="./app.js?v=2026091902" defer></script><script type="module">
 window.__permissionsModuleRequested=true;
 import("./permissions-onboarding.js?v=2026091601").then(()=>import("./permissions.js?v=202609170")).catch(err=>{
  const error=document.getElementById("permissionError"),status=document.getElementById("permissionStatus");

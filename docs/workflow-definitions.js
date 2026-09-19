@@ -83,6 +83,16 @@ function scheduledDateTime(spec){
   }
   return String(spec?.scheduledAt||"").trim()||"Pendiente";
 }
+function scheduledRuntimeDate(value,timezone){
+  if(!value)return "Pendiente";
+  try{
+    return new Intl.DateTimeFormat("es-ES",{
+      dateStyle:"medium",
+      timeStyle:"short",
+      timeZone:timezone||undefined
+    }).format(new Date(value))+(timezone?" · "+timezone:"");
+  }catch{return dateTime(value)}
+}
 function isScheduledAutomatic(row){
   return ["scheduled_once","recurring"].includes(String(publishedSpec(row).triggerType||""));
 }
@@ -110,7 +120,7 @@ function scheduleStatusText(row){
   if(schedule.status==="cancelled")return "Programación cancelada";
   if(schedule.status==="completed")return "Programación completada";
   if(schedule.status==="active"){
-    const next=dateTime(schedule.next_run_at);
+    const next=scheduledRuntimeDate(schedule.next_run_at,schedule.schedule_timezone);
     return schedule.schedule_kind==="recurring"
       ?"Próxima · "+next
       :"Programada · "+next;
@@ -817,7 +827,7 @@ async function load({preserveSelection=false}={}){
           .order("created_at",{ascending:false}),
         supabase
           .from("workflow_application_schedules_v2")
-          .select("application_id,schedule_kind,status,next_run_at,next_occurrence_index,execution_count,last_scheduled_for,last_error_at")
+          .select("application_id,schedule_kind,schedule_timezone,status,next_run_at,next_occurrence_index,execution_count,last_scheduled_for,last_error_at")
           .in("application_id",applicationIds)
       ]);
       if(executionResult.error||scheduleResult.error){

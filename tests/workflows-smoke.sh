@@ -82,7 +82,7 @@ grep -Fq 'id="builderPublish"' docs/workflow-builder.html
 grep -Fq '>Nuevo flujo</a>' docs/workflow-builder.html
 grep -Fq 'Paso 1 de 7' docs/workflow-builder.html
 grep -Fq 'Paso 7 de 7' docs/workflow-builder.html
-grep -Fq 'sessionStorage.setItem(DRAFT_KEY' docs/workflow-builder.js
+! grep -Fq 'sessionStorage.setItem(DRAFT_KEY' docs/workflow-builder.js
 grep -Fq 'save_workflow_definition_draft_v2' docs/workflow-builder.js
 grep -Fq 'save_workflow_definition_revision_draft_v1' docs/workflow-builder.js
 grep -Fq 'publish_workflow_definition_v1' docs/workflow-builder.js
@@ -97,15 +97,15 @@ grep -Fq 'hasUnsavedChanges' docs/workflow-builder.js
 grep -Fq 'clearLocalDraftCache' docs/workflow-builder.js
 grep -Fq 'sessionStorage.removeItem(DRAFT_KEY)' docs/workflow-builder.js
 grep -Fq 'window.addEventListener("beforeunload"' docs/workflow-builder.js
-grep -Fq 'Se restauró la última revisión guardada.' docs/workflow-builder.js
+grep -Fq 'Se restauró la edición guardada.' docs/workflow-builder.js
 grep -Fq '.builder-view[hidden]{display:none!important}' docs/workflow-builder.css
 grep -Fq '.builder-drafts-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr))' docs/workflow-builder.css
 grep -Fq '.builder-exit-dialog' docs/workflow-builder.css
 grep -Fq 'class="builder-back-link"' docs/workflow-builder.html
 grep -Fq 'class="builder-back-icon"' docs/workflow-builder.html
 ! grep -Fq '← Volver' docs/workflow-builder.html
-grep -Fq 'aria-label="Volver a borradores"' docs/workflow-builder.html
-grep -Fq 'id="builderClear" type="button" class="builder-action builder-action--neutral">Descartar cambios</button>' docs/workflow-builder.html
+grep -Fq 'aria-label="Salir del Creador"' docs/workflow-builder.html
+grep -Fq 'id="builderClear" type="button" class="builder-action builder-action--neutral">Descartar</button>' docs/workflow-builder.html
 ! grep -Fq 'Descartar cambios locales' docs/workflow-builder.html
 grep -Fq '.builder-action--neutral{' docs/workflow-builder.css
 grep -Fq 'grid-template-columns:auto minmax(0,1fr) auto' docs/workflow-builder.css
@@ -116,8 +116,8 @@ grep -Fq 'document.body.classList.toggle("builder-editor-active",editorRequested
 grep -Fq 'desktop-home-link' docs/workflow-builder.html
 ! grep -Fq '<section class="hero">' docs/workflow-builder.html
 ! grep -Fq 'Autoría y operación están separadas' docs/workflow-builder.html
-grep -Fq 'id="builderSave" type="button" class="builder-action">Guardar</button>' docs/workflow-builder.html
-grep -Fq '<strong>Guardar mantiene un borrador.</strong>' docs/workflow-builder.html
+grep -Fq 'id="builderSave" type="button" class="builder-action" hidden>Guardar</button>' docs/workflow-builder.html
+grep -Fq '<strong>Todavía no se ha guardado nada.</strong>' docs/workflow-builder.html
 grep -Fq 'Pendiente · selecciona un tipo' docs/workflow-builder.html
 grep -Fq 'Pendiente · selecciona un ámbito' docs/workflow-builder.html
 grep -Fq 'Pendiente · selecciona una activación' docs/workflow-builder.html
@@ -128,7 +128,7 @@ grep -Fq 'Pendiente · selecciona cómo termina' docs/workflow-builder.html
 grep -Fq 'const AUTHORING_VERSION=2' docs/workflow-builder.js
 grep -Fq 'gestionpisos.workflow-builder.draft.v3' docs/workflow-builder.js
 grep -Fq 'LEGACY_DRAFT_KEY' docs/workflow-builder.js
-grep -Fq 'if(loadingServerDraft||currentDefinitionId)return' docs/workflow-builder.js
+grep -Fq 'function saveLocalDraft(){' docs/workflow-builder.js
 grep -Fq 'Requerir decisión del asignado: Aceptar / Rechazar' docs/workflow-builder.html
 grep -Fq 'Decisión Aceptar / Rechazar' docs/workflow-builder.js
 grep -Fq 'id="scheduledAt"' docs/workflow-builder.html
@@ -149,18 +149,18 @@ grep -Fq 'id="photoBankLink"' docs/workflow-builder.html
 grep -Fq 'href="./photo-patterns.html?from=workflow-builder" hidden' docs/workflow-builder.html
 grep -Fq 'function updatePhotoResource()' docs/workflow-builder.js
 grep -Fq 'photoBankLink.hidden=!checked("stepPhoto")' docs/workflow-builder.js
-grep -Fq './workflow-builder.js?v=2026091913' docs/workflow-builder.html
+grep -Fq './workflow-builder.js?v=2026091916' docs/workflow-builder.html
 
 grep -Fq 'workflow_definitions_v2' docs/workflow-definitions.js
 grep -Fq '.eq("status","published")' docs/workflow-definitions.js
 grep -Fq 'workflow_definition_revision_drafts_v2' docs/workflow-definitions.js
 grep -Fq 'start_workflow_definition_revision_v1' docs/workflow-definitions.js
-grep -Fq 'Crear nueva versión' docs/workflow-definitions.js
-grep -Fq 'Continuar nueva versión' docs/workflow-definitions.js
+! grep -Fq 'Crear nueva versión' docs/workflow-definitions.js
+! grep -Fq 'Continuar nueva versión' docs/workflow-definitions.js
 grep -Fq 'workflow-applications.html?definition=' docs/workflow-definitions.js
-grep -Fq './workflow-definitions.js?v=2026091901' docs/workflow-definitions.html
+grep -Fq './workflow-definitions.js?v=2026091916' docs/workflow-definitions.html
 grep -Fq './workflow-definitions.css?v=2026091903' docs/workflow-definitions.html
-grep -Fq 'Solo recetas publicadas; los borradores se gestionan en el Creador.' docs/workflow-definitions.html
+grep -Fq 'Tus flujos terminados. Ejecuta, edita y elimina o archiva según exista historial.' docs/workflow-definitions.html
 ! grep -Fq 'Completar borrador' docs/workflow-definitions.js
 ! grep -Fq 'Publicar versión' docs/workflow-definitions.js
 ! grep -Fq 'publish_workflow_definition_v1' docs/workflow-definitions.js
@@ -171,7 +171,7 @@ grep -Fq 'rooms_v2' docs/workflow-applications.js
 grep -Fq 'occupancies_v2' docs/workflow-applications.js
 grep -Fq '.application-card [hidden]{display:none!important}' docs/workflow-applications.css
 grep -Fq './workflow-applications.css?v=2026091913' docs/workflow-applications.html
-grep -Fq './workflow-applications.js?v=2026091915' docs/workflow-applications.html
+grep -Fq './workflow-applications.js?v=2026091917' docs/workflow-applications.html
 grep -Fq '¿Dónde quieres utilizarlo?' docs/workflow-applications.html
 grep -Fq 'Definición → Versión publicada → Aplicación concreta' docs/WORKFLOW_APPLICATIONS_CONTRACT.md
 grep -Fq 'workflow_applications_v2' docs/WORKFLOW_APPLICATIONS_CONTRACT.md
@@ -256,8 +256,8 @@ grep -Fq 'Destinos cargados. Puedes preparar uno nuevo o ejecutar el flujo desde
 
 grep -Fq 'class="builder-editor-state"' docs/workflow-builder.html
 grep -Fq '.builder-editor-state::before' docs/workflow-builder.css
-grep -Fq 'builderBadge.textContent=state.complete?"Listo":"Borrador"' docs/workflow-builder.js
-grep -Fq 'builderBadge.title=state.complete?completeLabel:"Borrador incompleto"' docs/workflow-builder.js
+grep -Fq 'builderBadge.textContent=state.complete?"Listo":"En edición"' docs/workflow-builder.js
+grep -Fq 'builderBadge.title=state.complete?completeLabel:"Configuración en curso"' docs/workflow-builder.js
 
 grep -Fq 'width:max-content' docs/workflow-definitions.css
 grep -Fq 'justify-self:start' docs/workflow-definitions.css
@@ -291,7 +291,7 @@ grep -Fq '<strong>Destino</strong>' docs/workflow-builder.html
 grep -Fq '<strong>Listo</strong>' docs/workflow-builder.html
 grep -Fq 'next.searchParams.set("setup","1")' docs/workflow-builder.js
 grep -Fq 'workflow-applications.html' docs/workflow-builder.js
-grep -Fq 'applications.textContent="Usar flujo"' docs/workflow-definitions.js
+grep -Fq 'execute.textContent="Ejecutar"' docs/workflow-definitions.js
 grep -Fq 'id="workflowSetupJourney"' docs/workflow-applications.html
 grep -Fq 'id="applicationVersionRow"' docs/workflow-applications.html
 grep -Fq 'id="applicationsSection"' docs/workflow-applications.html
@@ -313,3 +313,40 @@ grep -Fq 'url.searchParams.set("execution",result.execution_id)' docs/workflow-a
 grep -Fq 'item.id===guidedExecutionId&&item.application_id===guidedApplicationId' docs/workflow-applications.js
 grep -Fq 'url.searchParams.delete("execution")' docs/workflow-applications.js
 grep -Fq 'Tarea creada. Puedes abrir Tareas o volver a Mis Flujos.' docs/workflow-applications.js
+
+
+# Nuevo ciclo de vida: las creaciones nuevas no se persisten hasta Listo.
+grep -Fq 'const editorRequested=true' docs/workflow-builder.js
+grep -Fq 'const editPublishedMode=initialParams.get("edit")==="1"' docs/workflow-builder.js
+grep -Fq 'gestionpisos.workflow-builder.handoff.' docs/workflow-builder.js
+grep -Fq 'mode:revisionMode?"revision":editPublishedMode?"edit_unexecuted":"create"' docs/workflow-builder.js
+grep -Fq 'Nada se guarda hasta Publicar o Ejecutar.' docs/workflow-builder.js
+grep -Fq 'id="builderDraftsView" class="builder-view" aria-labelledby="builderDraftsTitle" hidden' docs/workflow-builder.html
+grep -Fq 'id="builderEditorView" class="builder-view" aria-labelledby="builderEditorTitle"' docs/workflow-builder.html
+grep -Fq 'title="Configuración en curso">En edición</span>' docs/workflow-builder.html
+grep -Fq 'id="builderSaveExitInline" type="button" class="builder-action" hidden' docs/workflow-builder.html
+
+# Destino/Listo se mantienen integrados y Listo decide Publicar/Ejecutar/Descartar.
+grep -Fq 'const transientSetup=guidedSetup&&Boolean(handoffToken)' docs/workflow-applications.js
+grep -Fq 'function consumeTransientHandoff()' docs/workflow-applications.js
+grep -Fq 'sessionStorage.removeItem(HANDOFF_KEY_PREFIX+handoffToken)' docs/workflow-applications.js
+grep -Fq 'renderTransientReady' docs/workflow-applications.js
+grep -Fq 'publish.textContent="Publicar"' docs/workflow-applications.js
+grep -Fq 'execute.textContent="Ejecutar"' docs/workflow-applications.js
+grep -Fq 'discard.textContent="Descartar"' docs/workflow-applications.js
+grep -Fq 'changeTarget.textContent="Cambiar destino"' docs/workflow-applications.js
+grep -Fq 'rpc="publish_workflow_ready_v1"' docs/workflow-applications.js
+grep -Fq 'rpc="update_unexecuted_workflow_v1"' docs/workflow-applications.js
+grep -Fq 'rpc="publish_workflow_revision_ready_v1"' docs/workflow-applications.js
+grep -Fq 'Flujo publicado sin tareas.' docs/workflow-applications.js
+
+# Mis Flujos oculta la mecanica de versiones y deriva acciones del historial.
+grep -Fq 'function hasHistory(row)' docs/workflow-definitions.js
+grep -Fq 'execute.textContent="Ejecutar"' docs/workflow-definitions.js
+grep -Fq 'edit.textContent="Editar"' docs/workflow-definitions.js
+grep -Fq 'remove.textContent="Eliminar"' docs/workflow-definitions.js
+grep -Fq 'archive.textContent="Archivar"' docs/workflow-definitions.js
+grep -Fq 'delete_unexecuted_workflow_v1' docs/workflow-definitions.js
+grep -Fq 'archive_workflow_definition_v1' docs/workflow-definitions.js
+grep -Fq 'start_workflow_definition_revision_v1' docs/workflow-definitions.js
+! grep -Fq 'Duplicar' docs/workflow-definitions.js

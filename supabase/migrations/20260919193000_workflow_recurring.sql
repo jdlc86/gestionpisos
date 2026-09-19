@@ -149,132 +149,15 @@ begin
       )
       or (
         (p_spec->>'triggerType')='recurring'
-        and coalesce(p_spec->>'scheduledAt','') ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}
-    )
-    or (p_spec->>'assignmentType') not in ('property_responsible','active_occupants_rotation','fixed_person','role','manual')
-    or not (
-      coalesce(p_spec#>>'{steps,accept}','false')='true'
-      or coalesce(p_spec#>>'{steps,photo}','false')='true'
-      or coalesce(p_spec#>>'{steps,checklist}','false')='true'
-      or coalesce(p_spec#>>'{steps,document}','false')='true'
-    )
-    or (p_spec->>'closeType') not in ('auto','human_review','domain_adapter') then
-    return false;
-  end if;
-
-  if coalesce((p_spec#>>'{steps,checklist}')::boolean,false) then
-    if jsonb_typeof(p_spec->'checklistItems')<>'array'
-      or jsonb_array_length(p_spec->'checklistItems')<1
-      or jsonb_array_length(p_spec->'checklistItems')>30 then
-      return false;
-    end if;
-
-    for v_item in select value from jsonb_array_elements(p_spec->'checklistItems')
-    loop
-      if jsonb_typeof(v_item)<>'object'
-        or char_length(btrim(coalesce(v_item->>'text',''))) not between 1 and 160
-        or (v_item ? 'required' and jsonb_typeof(v_item->'required')<>'boolean') then
-        return false;
-      end if;
-      if coalesce((v_item->>'required')::boolean,true) then
-        v_has_required:=true;
-      end if;
-    end loop;
-
-    if not v_has_required then
-      return false;
-    end if;
-  end if;
-
-  return true;
-end;
-$workflow_complete$;
+        and coalesce(p_spec->>'scheduledAt','') ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}$'
         and char_length(btrim(coalesce(p_spec->>'scheduledTimezone',''))) between 1 and 80
-        and coalesce(p_spec->>'scheduledAtUtc','') ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{3})?Z
-    )
-    or (p_spec->>'assignmentType') not in ('property_responsible','active_occupants_rotation','fixed_person','role','manual')
-    or not (
-      coalesce(p_spec#>>'{steps,accept}','false')='true'
-      or coalesce(p_spec#>>'{steps,photo}','false')='true'
-      or coalesce(p_spec#>>'{steps,checklist}','false')='true'
-      or coalesce(p_spec#>>'{steps,document}','false')='true'
-    )
-    or (p_spec->>'closeType') not in ('auto','human_review','domain_adapter') then
-    return false;
-  end if;
-
-  if coalesce((p_spec#>>'{steps,checklist}')::boolean,false) then
-    if jsonb_typeof(p_spec->'checklistItems')<>'array'
-      or jsonb_array_length(p_spec->'checklistItems')<1
-      or jsonb_array_length(p_spec->'checklistItems')>30 then
-      return false;
-    end if;
-
-    for v_item in select value from jsonb_array_elements(p_spec->'checklistItems')
-    loop
-      if jsonb_typeof(v_item)<>'object'
-        or char_length(btrim(coalesce(v_item->>'text',''))) not between 1 and 160
-        or (v_item ? 'required' and jsonb_typeof(v_item->'required')<>'boolean') then
-        return false;
-      end if;
-      if coalesce((v_item->>'required')::boolean,true) then
-        v_has_required:=true;
-      end if;
-    end loop;
-
-    if not v_has_required then
-      return false;
-    end if;
-  end if;
-
-  return true;
-end;
-$workflow_complete$;
+        and coalesce(p_spec->>'scheduledAtUtc','') ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{3})?Z$'
         and (
           (p_spec->>'recurrence') in ('weekly','biweekly','monthly')
           or (
             (p_spec->>'recurrence')='custom'
             and case
-              when coalesce(p_spec->>'customEvery','') ~ '^[0-9]+
-    )
-    or (p_spec->>'assignmentType') not in ('property_responsible','active_occupants_rotation','fixed_person','role','manual')
-    or not (
-      coalesce(p_spec#>>'{steps,accept}','false')='true'
-      or coalesce(p_spec#>>'{steps,photo}','false')='true'
-      or coalesce(p_spec#>>'{steps,checklist}','false')='true'
-      or coalesce(p_spec#>>'{steps,document}','false')='true'
-    )
-    or (p_spec->>'closeType') not in ('auto','human_review','domain_adapter') then
-    return false;
-  end if;
-
-  if coalesce((p_spec#>>'{steps,checklist}')::boolean,false) then
-    if jsonb_typeof(p_spec->'checklistItems')<>'array'
-      or jsonb_array_length(p_spec->'checklistItems')<1
-      or jsonb_array_length(p_spec->'checklistItems')>30 then
-      return false;
-    end if;
-
-    for v_item in select value from jsonb_array_elements(p_spec->'checklistItems')
-    loop
-      if jsonb_typeof(v_item)<>'object'
-        or char_length(btrim(coalesce(v_item->>'text',''))) not between 1 and 160
-        or (v_item ? 'required' and jsonb_typeof(v_item->'required')<>'boolean') then
-        return false;
-      end if;
-      if coalesce((v_item->>'required')::boolean,true) then
-        v_has_required:=true;
-      end if;
-    end loop;
-
-    if not v_has_required then
-      return false;
-    end if;
-  end if;
-
-  return true;
-end;
-$workflow_complete$;
+              when coalesce(p_spec->>'customEvery','') ~ '^[0-9]+$'
                 then (p_spec->>'customEvery')::integer between 1 and 365
               else false
             end

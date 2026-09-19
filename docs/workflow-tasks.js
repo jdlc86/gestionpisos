@@ -3,6 +3,19 @@ import { supabase } from "./supabase-client.js";
 const list=document.getElementById("workflowTasks");
 const statusBox=document.getElementById("tasksStatus");
 const filter=document.getElementById("taskFilter");
+const topbar=document.getElementById("tasksTopbar");
+const normalHeader=document.getElementById("tasksNormalHeader");
+const selectionHeader=document.getElementById("tasksSelectionHeader");
+const selectionToggle=document.getElementById("taskSelectionToggle");
+const selectionClose=document.getElementById("taskSelectionClose");
+const selectionSummary=document.getElementById("taskSelectionSummary");
+const selectionMenuToggle=document.getElementById("taskSelectionMenuToggle");
+const selectionMenu=document.getElementById("taskSelectionMenu");
+const selectVisible=document.getElementById("taskSelectVisible");
+const deselectVisible=document.getElementById("taskDeselectVisible");
+const bulkDock=document.getElementById("taskBulkDock");
+const bulkDelete=document.getElementById("taskBulkDelete");
+const bulkDeleteCount=document.getElementById("taskBulkDeleteCount");
 
 let currentUser=null;
 let tasks=[];
@@ -15,6 +28,11 @@ let rootManager=false;
 let photoResourcesByExecution=new Map();
 let documentsByExecution=new Map();
 let workflowExecutionsById=new Map();
+let selectionMode=false;
+const selectedTaskIds=new Set();
+
+const TERMINAL_TASK_STATUSES=new Set(["completed","cancelled","failed","rejected","refunded","held"]);
+const TERMINAL_EXECUTION_STATUSES=new Set(["completed","cancelled","failed","rejected"]);
 
 const ACTION_KEY_PREFIX="workflow-task-action:";
 const CHECKLIST_KEY_PREFIX="workflow-checklist-action:";
@@ -72,8 +90,123 @@ function visibleTasks(){
   if(filter.value==="mine")return tasks.filter(task=>task.assigned_user_id===currentUser?.id);
   return tasks.filter(task=>!["completed","cancelled","rejected","refunded","held"].includes(task.status));
 }
+
+function selectedTasks(){
+  return tasks.filter(task=>selectedTaskIds.has(task.id));
+}
+function canDeleteTask(task){
+  if(!task||!canManageTask(task)||!TERMINAL_TASK_STATUSES.has(task.status))return false;
+  if(task.source_kind==="workflow_execution"){
+    const execution=executionForTask(task);
+    return Boolean(execution&&TERMINAL_EXECUTION_STATUSES.has(execution.status));
+  }
+  return true;
+}
+function selectedDeletableTasks(){
+  return selectedTasks().filter(canDeleteTask);
+}
+function closeSelectionMenu(){
+  if(!selectionMenu||!selectionMenuToggle)return;
+  selectionMenu.hidden=true;
+  selectionMenuToggle.setAttribute("aria-expanded","false");
+}
+function setHeaderMode(mode){
+  if(normalHeader)normalHeader.hidden=mode!=="normal";
+  if(selectionHeader)selectionHeader.hidden=mode!=="selection";
+  topbar?.classList.toggle("is-selecting",mode==="selection");
+  if(mode!=="selection")closeSelectionMenu();
+}
+function syncSelectionAvailability(){
+  if(!selectionToggle)return;
+  selectionToggle.hidden=selectionMode||!visibleTasks().some(canDeleteTask);
+}
+function setSelectionMode(enabled,{selectId=null}={}){
+  selectionMode=enabled;
+  document.body.classList.toggle("tasks-selection-active",enabled);
+  list.classList.toggle("is-selecting",enabled);
+  if(enabled){
+    if(selectId)selectedTaskIds.add(selectId);
+    setHeaderMode("selection");
+  }else{
+    selectedTaskIds.clear();
+    setHeaderMode("normal");
+  }
+  render();
+}
+function updateBulkState(){
+  const selected=selectedTasks();
+  const deletable=selected.filter(canDeleteTask);
+  if(selectionSummary){
+    selectionSummary.textContent=selected.length+" seleccionada"+(selected.length===1?"":"s");
+  }
+  if(bulkDock)bulkDock.hidden=!selectionMode||selected.length===0;
+  if(bulkDelete)bulkDelete.disabled=deletable.length===0;
+  if(bulkDeleteCount)bulkDeleteCount.textContent=String(deletable.length);
+
+  const visibleIds=visibleTasks().map(task=>task.id);
+  const selectedVisible=visibleIds.filter(id=>selectedTaskIds.has(id)).length;
+  if(selectVisible)selectVisible.disabled=visibleIds.length===0||selectedVisible===visibleIds.length;
+  if(deselectVisible)deselectVisible.disabled=selectedVisible===0;
+  syncSelectionAvailability();
+}
+function toggleTaskSelection(task,article,force){
+  const next=typeof force==="boolean"?force:!selectedTaskIds.has(task.id);
+  if(next)selectedTaskIds.add(task.id);else selectedTaskIds.delete(task.id);
+  article?.classList.toggle("is-selected",next);
+  const indicator=article?.querySelector(".task-select-indicator");
+  if(indicator){
+    indicator.setAttribute("aria-pressed",String(next));
+    indicator.setAttribute("aria-label",(next?"Deseleccionar ":"Seleccionar ")+(task.title||"tarea"));
+  }
+  updateBulkState();
+}
+function bindTaskLongPress(article,task){
+  let timer=null;
+  let startX=0;
+  let startY=0;
+  let longPressed=false;
+
+  const clear=()=>{
+    if(timer)clearTimeout(timer);
+    timer=null;
+  };
+
+  article.addEventListener("pointerdown",event=>{
+    if(selectionMode||event.button!==0)return;
+    if(event.target.closest("a,button,input,select,textarea,label,summary"))return;
+    longPressed=false;
+    startX=event.clientX;
+    startY=event.clientY;
+    timer=setTimeout(()=>{
+      longPressed=true;
+      article.dataset.longPressed="1";
+      setSelectionMode(true,{selectId:task.id});
+    },520);
+  });
+  article.addEventListener("pointermove",event=>{
+    if(!timer)return;
+    if(Math.abs(event.clientX-startX)>10||Math.abs(event.clientY-startY)>10)clear();
+  });
+  article.addEventListener("pointerup",clear);
+  article.addEventListener("pointercancel",clear);
+  article.addEventListener("pointerleave",clear);
+  article.addEventListener("contextmenu",event=>{
+    if(longPressed||article.dataset.longPressed==="1"){
+      event.preventDefault();
+      article.dataset.longPressed="";
+    }
+  });
+}
+function clearSelection(){
+  setSelectionMode(false);
+}
 function errorText(error){
   const message=String(error?.message||"");
+  if(message.includes("task_delete_forbidden"))return "No tienes permiso para eliminar esta tarjeta.";
+  if(message.includes("task_delete_requires_terminal"))return "Solo se pueden eliminar de Tareas las tarjetas que ya están cerradas.";
+  if(message.includes("task_delete_execution_not_terminal"))return "La ejecución asociada sigue abierta y no se puede retirar de Tareas.";
+  if(message.includes("task_delete_execution_missing"))return "La tarea perdió la referencia a su ejecución. No se eliminó nada.";
+  if(message.includes("task_not_found"))return "La tarea ya no existe.";
   if(message.includes("workflow_action_actor_forbidden"))return "Esta acción solo puede realizarla la persona asignada.";
   if(message.includes("workflow_action_not_allowed"))return "La acción ya no está disponible para el estado actual.";
   if(message.includes("workflow_task_execution_state_mismatch"))return "Tarea y ejecución no están sincronizadas. No se ha aplicado ningún cambio.";
@@ -600,12 +733,26 @@ function render(){
     const empty=document.createElement("article");empty.className="task-empty";
     empty.textContent=filter.value==="mine"?"No tienes tareas asignadas en este filtro.":"No hay tareas visibles con este filtro.";
     list.append(empty);
+    updateBulkState();
     return;
   }
 
   rows.forEach(task=>{
     const article=document.createElement("article");article.className="task-card";
     article.dataset.taskId=task.id;
+    if(selectedTaskIds.has(task.id))article.classList.add("is-selected");
+
+    const selector=document.createElement("button");
+    selector.type="button";
+    selector.className="task-select-indicator";
+    selector.setAttribute("aria-pressed",String(selectedTaskIds.has(task.id)));
+    selector.setAttribute("aria-label",(selectedTaskIds.has(task.id)?"Deseleccionar ":"Seleccionar ")+(task.title||"tarea"));
+    selector.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6.5 12.5 3.2 3.2L17.8 8"/></svg>';
+    selector.addEventListener("click",event=>{
+      event.stopPropagation();
+      toggleTaskSelection(task,article);
+    });
+    article.append(selector);
 
     const head=document.createElement("div");head.className="task-head";
     const title=document.createElement("h2");title.textContent=task.title;
@@ -638,8 +785,17 @@ function render(){
     renderChecklist(task,article);
     renderDocuments(task,article);
     renderActions(task,article);
+
+    article.addEventListener("click",event=>{
+      if(!selectionMode)return;
+      if(event.target.closest(".task-select-indicator"))return;
+      event.preventDefault();
+      toggleTaskSelection(task,article);
+    });
+    bindTaskLongPress(article,task);
     list.append(article);
   });
+  updateBulkState();
 }
 
 async function applyWorkflowAction(task,action,button){
@@ -834,7 +990,8 @@ async function load(preserveStatus=false){
 
   const {data,error}=await supabase
     .from("tenant_tasks_v2")
-    .select("id,organization_id,tenant_id,property_id,room_id,task_type,origin,title,description,status,due_at,assigned_user_id,source_kind,source_id,created_at")
+    .select("id,organization_id,tenant_id,property_id,room_id,task_type,origin,title,description,status,due_at,assigned_user_id,source_kind,source_id,created_at,removed_at")
+    .is("removed_at",null)
     .order("created_at",{ascending:false})
     .limit(100);
 
@@ -868,5 +1025,80 @@ async function load(preserveStatus=false){
   }
 }
 
-filter.addEventListener("change",render);
+async function bulkDeleteSelected(){
+  const selected=selectedTasks();
+  const eligible=selectedDeletableTasks();
+  const skipped=selected.length-eligible.length;
+  if(!eligible.length){
+    setStatus("Las tareas seleccionadas siguen abiertas o no pueden ser gestionadas por tu usuario.",true);
+    return;
+  }
+
+  const message="Se eliminarán de Tareas "+eligible.length+" tarjeta"+(eligible.length===1?"":"s")+" ya cerrada"+(eligible.length===1?"":"s")+". "
+    +"El historial, la ejecución y sus evidencias se conservarán."
+    +(skipped?" "+skipped+" seleccionada"+(skipped===1?" se omitirá":"s se omitirán")+" porque sigue abierta o no es gestionable.":"")
+    +" ¿Continuar?";
+  if(!window.confirm(message))return;
+
+  bulkDelete.disabled=true;
+  setStatus("Eliminando "+eligible.length+" tarjeta"+(eligible.length===1?"":"s")+"…");
+
+  let ok=0;
+  const failures=[];
+  for(const task of eligible){
+    const {error}=await supabase.rpc("delete_task_card_v1",{p_task_id:task.id});
+    if(error)failures.push({task,error});
+    else{
+      ok++;
+      selectedTaskIds.delete(task.id);
+    }
+  }
+
+  await load(true);
+  if(!selectedTaskIds.size)setSelectionMode(false);
+
+  if(failures.length){
+    setStatus(ok+" eliminada"+(ok===1?"":"s")+" · "+failures.length+" no se pudieron eliminar. "+errorText(failures[0].error),true);
+  }else{
+    setStatus(ok+" tarjeta"+(ok===1?" eliminada.":"s eliminadas."));
+  }
+}
+
+selectionToggle?.addEventListener("click",()=>setSelectionMode(true));
+selectionClose?.addEventListener("click",clearSelection);
+selectionMenuToggle?.addEventListener("click",event=>{
+  event.stopPropagation();
+  const open=selectionMenu.hidden;
+  selectionMenu.hidden=!open;
+  selectionMenuToggle.setAttribute("aria-expanded",String(open));
+});
+selectionMenu?.addEventListener("click",event=>event.stopPropagation());
+selectVisible?.addEventListener("click",()=>{
+  visibleTasks().forEach(task=>selectedTaskIds.add(task.id));
+  closeSelectionMenu();
+  render();
+});
+deselectVisible?.addEventListener("click",()=>{
+  visibleTasks().forEach(task=>selectedTaskIds.delete(task.id));
+  closeSelectionMenu();
+  render();
+});
+document.addEventListener("click",event=>{
+  if(!selectionMenu?.hidden&&!event.target.closest(".tasks-selection-menu-wrap"))closeSelectionMenu();
+});
+document.addEventListener("keydown",event=>{
+  if(event.key!=="Escape")return;
+  if(selectionMenu&&!selectionMenu.hidden){
+    closeSelectionMenu();
+    selectionMenuToggle?.focus();
+    return;
+  }
+  if(selectionMode)clearSelection();
+});
+bulkDelete?.addEventListener("click",bulkDeleteSelected);
+
+filter.addEventListener("change",()=>{
+  if(selectionMode)selectedTaskIds.clear();
+  render();
+});
 load();

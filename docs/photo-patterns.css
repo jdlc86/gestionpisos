@@ -1,12 +1,12 @@
 .pattern-shell{padding-bottom:48px}
-.pattern-form{display:grid;gap:15px;padding:16px;border:1px solid var(--ui-border);border-radius:var(--ui-radius);background:var(--ui-surface)}
+.pattern-form{display:grid;gap:15px;padding:16px;border:1px solid var(--ui-border);border-radius:14px;background:var(--ui-surface);box-shadow:var(--ui-card-shadow)}
 .pattern-form label{display:grid;gap:7px;color:var(--ui-muted);font-size:12px;font-weight:750}
 .pattern-form input,.pattern-form select{width:100%;border:1px solid var(--ui-border);border-radius:var(--ui-radius-sm);padding:11px;background:var(--ui-surface);color:var(--ui-text);font:inherit}
 .pattern-form .primary{margin-top:2px}
 .pattern-current{margin-top:20px}
 .pattern-current h3{margin:0 0 10px}
 .pattern-list{display:grid;gap:10px}
-.pattern-card{padding:14px;border:1px solid var(--ui-border);border-radius:var(--ui-radius);background:var(--ui-surface);box-shadow:var(--ui-shadow)}
+.pattern-card{padding:14px;border:1px solid var(--ui-border);border-radius:14px;background:var(--ui-surface);box-shadow:var(--ui-card-shadow)}
 .pattern-card strong,.pattern-card span{display:block}
 .pattern-card span{margin-top:4px;color:var(--ui-muted);font-size:12px}
 .pattern-card__actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}

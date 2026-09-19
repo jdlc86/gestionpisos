@@ -89,8 +89,9 @@ Tipos mínimos:
 Reglas de autoría de activación:
 
 - `manual` no usa frecuencia ni fecha programada;
-- `scheduled_once` exige una fecha/hora concreta antes de considerarse configurado;
-- `recurring` exige frecuencia; si es personalizada, además exige intervalo entero y unidad (`día`, `semana` o `mes`);
+- `scheduled_once` exige fecha/hora local + zona horaria IANA antes de considerarse configurado;
+- `recurring` exige primera fecha/hora local + zona IANA + frecuencia; si es personalizada, además exige intervalo entero y unidad (`día`, `semana` o `mes`);
+- las activaciones temporales automatizables exigen inicialmente `property_responsible` y un ámbito con piso; no dependen de selección manual al llegar la hora;
 - los campos que no corresponden al tipo seleccionado se eliminan server-side para impedir estado residual;
 - `event` no usa frecuencia temporal; la fuente concreta del evento deberá validarse antes de publicación cuando se habilite esa capacidad.
 
@@ -342,3 +343,6 @@ El primer DDL será aditivo, reversible por migración posterior y preservará �
 El primer recurso transversal ejecutable es Fotografía. La definición declara `steps.photo=true`; la Aplicación vincula patrones reales del piso y cada ejecución congela versión + silueta en `workflow_execution_photo_resources_v2`.
 
 La cámara y persistencia siguen siendo las existentes. El envío de workflow se finaliza con `submit_workflow_photo_verification_v1`, que verifica el objeto privado y mantiene recurso, tarea y ejecución coherentes en una transacción. Véase `WORKFLOW_PHOTO_EVIDENCE_CONTRACT.md`.
+
+
+La autoría temporal detallada vive en `WORKFLOW_TEMPORAL_CONTRACT.md`. Las versiones legacy no se reinterpretan ni reciben una hora implícita de publicación.

@@ -408,6 +408,9 @@ grep -Fq 'create or replace function public.delete_task_card_v1' "$task_card_rem
 grep -Fq 'task_delete_requires_terminal' "$task_card_removal"
 grep -Fq 'task_delete_execution_not_terminal' "$task_card_removal"
 grep -Fq 'task_delete_execution_missing' "$task_card_removal"
+grep -Fq "coalesce(auth.jwt()->>'aal','aal1') <> 'aal2'" "$task_card_removal"
+grep -Fq "'task_card_removed'" "$task_card_removal"
+grep -Fq "'tenant_task'" "$task_card_removal"
 grep -Fq 'revoke all on function public.delete_task_card_v1(uuid)' "$task_card_removal"
 grep -Fq 'grant execute on function public.delete_task_card_v1(uuid)' "$task_card_removal"
 

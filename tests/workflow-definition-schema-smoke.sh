@@ -25,6 +25,7 @@ document_indexes='supabase/migrations/20260919164500_workflow_document_indexes.s
 workflow_notifications='supabase/migrations/20260919174500_workflow_notifications.sql'
 scheduled_once='supabase/migrations/20260919190000_workflow_scheduled_once.sql'
 scheduled_exact='supabase/migrations/20260919190050_workflow_scheduled_exact_time.sql'
+recurring='supabase/migrations/20260919193000_workflow_recurring.sql'
 scheduled_cron='supabase/migrations/20260919190100_workflow_schedule_cron.sql'
 checklist='supabase/migrations/20260919103000_workflow_checklist_step.sql'
 
@@ -52,9 +53,11 @@ test -s "$document_indexes"
 test -s "$workflow_notifications"
 test -s "$scheduled_once"
 test -s "$scheduled_exact"
+test -s "$recurring"
 test -s "$scheduled_cron"
 test -s tests/workflow-notifications-regression.sql
 test -s tests/workflow-scheduled-once-regression.sql
+test -s tests/workflow-recurring-regression.sql
 test -s tests/local-property-staff-v3-alignment.sql
 test -s tests/workflow-draft-discard-regression.sql
 test -s tests/workflow-publish-execute-lifecycle-regression.sql
@@ -406,3 +409,24 @@ grep -Fq 'create constraint trigger workflow_scheduled_application_requires_sche
 grep -Fq 'deferrable initially deferred' "$scheduled_exact"
 grep -Fq 'workflow_scheduled_configuration_required' "$scheduled_exact"
 grep -Fq 'scheduled v1 bypass unexpectedly committed application' tests/workflow-scheduled-once-regression.sql
+
+
+# Recurrente: mismo scheduler, ancla explícita, contador y avance idempotente.
+grep -Fq "check (schedule_kind in ('scheduled_once','recurring'))" "$recurring"
+grep -Fq "check (trigger_kind in ('manual_now','scheduled_once','recurring'))" "$recurring"
+grep -Fq 'add column if not exists next_occurrence_index bigint not null default 0' "$recurring"
+grep -Fq 'add column if not exists execution_count bigint not null default 0' "$recurring"
+grep -Fq 'add column if not exists last_scheduled_for timestamptz' "$recurring"
+grep -Fq 'create or replace function private.workflow_recurring_occurrence_v1' "$recurring"
+grep -Fq "p_trigger_kind not in ('manual_now','scheduled_once','recurring')" "$recurring"
+grep -Fq "v_trigger_type in ('scheduled_once','recurring')" "$recurring"
+grep -Fq "v_spec_trigger='recurring' and new.trigger_kind<>'recurring'" "$recurring"
+grep -Fq "s.schedule_kind in ('scheduled_once','recurring')" "$recurring"
+grep -Fq "workflow_recurring_occurrences_skipped" "$recurring"
+grep -Fq "workflow_recurring_local_time_ambiguous" "$recurring"
+grep -Fq "workflow_recurring_manual_execution_forbidden" "$recurring"
+grep -Fq "coalesce(p_spec->>'scheduledAt','')" "$recurring"
+grep -Fq "coalesce(p_spec->>'scheduledAtUtc','')" "$recurring"
+! grep -Fq 'sqlerrm' "$recurring"
+test "$(grep -Fc 'create or replace function public.workflow_authoring_complete_v1' "$recurring")" -eq 1
+test "$(grep -Fc '$workflow_complete$;' "$recurring")" -eq 1

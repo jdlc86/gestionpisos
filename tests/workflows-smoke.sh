@@ -86,7 +86,7 @@ grep -Fq 'class="premium-icon"' docs/workflows.html
 grep -Fq 'class="card premium-nav-card"' docs/workflows.html
 grep -Fq 'data-premium-icon="builder"' docs/workflows.html
 grep -Fq 'data-premium-icon="camera"' docs/workflows.html
-grep -Fq 'availability-badge' docs/workflows.html
+! grep -Fq '>En preparación</span>' docs/workflows.html
 ! grep -Fq '<span class="ui-nav-icon"' docs/workflows.html
 grep -Fq 'AllaisoPremiumIcons' docs/app.js
 ! grep -Fq '➕' docs/workflows.html

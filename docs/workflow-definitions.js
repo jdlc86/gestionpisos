@@ -81,23 +81,47 @@ function currentApplication(row){
     || apps.find(app=>app.status==="configured")
     || null;
 }
+function scheduleLocalText(value){
+  const match=String(value||"").match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);
+  if(!match)return String(value||"");
+  try{
+    const fakeUtc=new Date(Date.UTC(
+      Number(match[1]),Number(match[2])-1,Number(match[3]),Number(match[4]),Number(match[5])
+    ));
+    return new Intl.DateTimeFormat("es-ES",{dateStyle:"medium",timeStyle:"short",timeZone:"UTC"}).format(fakeUtc);
+  }catch{return String(value||"")}
+}
 function activationText(row){
   const spec=publishedSpec(row);
   const trigger=String(spec.triggerType||"");
   const base=text("triggerType",trigger);
+
   if(trigger==="recurring"){
     const recurrence=String(spec.recurrence||"");
-    if(!recurrence)return base;
-    if(recurrence==="custom"){
-      const every=String(spec.customEvery||"").trim();
-      const unit=String(spec.customUnit||"");
-      return every&&unit?base+" · Cada "+every+" "+text("customUnit",unit):base+" · "+text("recurrence",recurrence);
+    const scheduledAt=String(spec.scheduledAt||"").trim();
+    const zone=String(spec.scheduleTimeZone||"").trim();
+    const autoAssignment=String(spec.assignmentType||"")==="property_responsible";
+    const cadence=recurrence==="custom"
+      ?(()=>{
+          const every=String(spec.customEvery||"").trim();
+          const unit=String(spec.customUnit||"");
+          return every&&unit?"Cada "+every+" "+text("customUnit",unit):text("recurrence",recurrence);
+        })()
+      :text("recurrence",recurrence);
+
+    if(!scheduledAt||!zone||!autoAssignment){
+      return base+" · "+cadence+" · inicio pendiente";
     }
-    return base+" · "+text("recurrence",recurrence);
+    return base+" · "+cadence+" · primera "+scheduleLocalText(scheduledAt)+" · "+zone;
   }
+
   if(trigger==="scheduled_once"){
     const scheduledAt=String(spec.scheduledAt||"").trim();
-    return scheduledAt?base+" · "+dateTime(scheduledAt):base;
+    const zone=String(spec.scheduleTimeZone||"").trim();
+    if(!scheduledAt||!zone||String(spec.assignmentType||"")!=="property_responsible"){
+      return base+" · programación pendiente";
+    }
+    return base+" · "+scheduleLocalText(scheduledAt)+" · "+zone;
   }
   return base;
 }

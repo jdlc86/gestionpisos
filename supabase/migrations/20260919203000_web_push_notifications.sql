@@ -8,7 +8,7 @@ create schema if not exists extensions;
 do $web_push_pg_net$
 begin
   if exists(select 1 from pg_available_extensions where name='pg_net') then
-    execute 'create extension if not exists pg_net with schema extensions';
+    execute 'create extension if not exists pg_net';
   end if;
 end;
 $web_push_pg_net$;

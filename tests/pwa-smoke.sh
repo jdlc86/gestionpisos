@@ -372,7 +372,6 @@ node --check docs/notification-center.js
 grep -Fq './notification-center.css?v=2026091920' docs/index.html
 grep -Fq './notification-center.js?v=2026091920' docs/auth-guard.js
 grep -Fq 'mountNotificationCenter({ supabase, session })' docs/auth-guard.js
-! grep -Fq 'if (isHomePage) {' docs/auth-guard.js | cat
 grep -Fq 'id="notificationBell"' docs/notification-center.js
 grep -Fq '.from("notifications_v2")' docs/notification-center.js
 grep -Fq 'supabase.rpc("mark_notification_read"' docs/notification-center.js

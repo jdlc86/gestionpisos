@@ -118,6 +118,55 @@ begin
 end;
 $endpoint_rebound$;
 
+-- Una suscripción no es entregable si el usuario conserva auth.users pero ya no
+-- tiene una identidad operativa activa.
+do $inactive_recipient_filtered$
+begin
+  if exists(
+    select 1
+    from public.web_push_list_subscriptions_v1(
+      '33333333-3333-4333-8333-333333333333'::uuid
+    )
+  ) then
+    raise exception 'inactive recipient still exposed push subscriptions';
+  end if;
+end;
+$inactive_recipient_filtered$;
+
+insert into public.profiles(
+  user_id,organization_id,display_name,email,status
+) values (
+  '33333333-3333-4333-8333-333333333333'::uuid,
+  '11111111-1111-4111-8111-111111111111'::uuid,
+  'Push regression recipient',
+  'push-regression@example.invalid',
+  'active'
+)
+on conflict(user_id) do update
+set status='active',archived_at=null;
+
+insert into public.user_roles(
+  user_id,organization_id,role
+) values (
+  '33333333-3333-4333-8333-333333333333'::uuid,
+  '11111111-1111-4111-8111-111111111111'::uuid,
+  'admin'
+)
+on conflict do nothing;
+
+do $active_recipient_visible$
+begin
+  if (
+    select count(*)
+    from public.web_push_list_subscriptions_v1(
+      '33333333-3333-4333-8333-333333333333'::uuid
+    )
+  )<>1 then
+    raise exception 'active recipient push subscription was filtered unexpectedly';
+  end if;
+end;
+$active_recipient_visible$;
+
 set local role authenticated;
 select set_config(
   'request.jwt.claims',

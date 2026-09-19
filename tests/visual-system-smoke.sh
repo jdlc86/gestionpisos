@@ -4,40 +4,69 @@ set -euo pipefail
 test -s docs/VISUAL_SYSTEM.md
 test -s docs/VISUAL_AUDIT_2026-09-19.md
 test -s docs/app.css
+test -s docs/app.js
+
+node --check docs/app.js
 
 grep -Fq -- '--ui-surface:#ffffff' docs/app.css
 grep -Fq -- '--ui-action:#0969da' docs/app.css
+grep -Fq -- '--ui-accent:#a9854f' docs/app.css
 grep -Fq '.primary{border:1px solid var(--ui-action)' docs/app.css
 grep -Fq '.secondary{border:1px solid var(--ui-border);background:transparent' docs/app.css
 grep -Fq '.context-back{' docs/app.css
 grep -Fq '.desktop-home-link{display:none!important}' docs/app.css
+grep -Fq '.hero--brand{' docs/app.css
+grep -Fq '.premium-icon{' docs/app.css
+grep -Fq '.premium-nav-card{' docs/app.css
+grep -Fq '.premium-nav-card.locked{' docs/app.css
+grep -Fq '.availability-badge{' docs/app.css
 
-grep -Fq 'class="ui-nav-icon home-module-icon"' docs/index.html
-grep -Fq 'class="ui-nav-icon"' docs/configuration-resources.html
-grep -Fq 'class="ui-nav-icon home-module-icon"' docs/index.html
-grep -Fq '>🏠</span>Cartera' docs/index.html
-grep -Fq '>📊</span>Centro Operativo' docs/index.html
-grep -Fq '>🚨</span>Incidencias' docs/index.html
-grep -Fq '>🔄</span>Flujos de Trabajo' docs/index.html
-grep -Fq '>🧹</span>Limpieza' docs/index.html
-grep -Fq '>🔐</span>Gestión de Permisos' docs/index.html
-grep -Fq '>⚙️</span>Configuración y Recursos' docs/index.html
-grep -Fq '<svg viewBox="0 0 24 24">' docs/configuration-resources.html
-! grep -Fq 'href="./mfa-setup.html?next=configuration-resources.html"' docs/configuration-resources.html
+grep -Fq 'class="hero hero--brand"' docs/index.html
+grep -Fq 'data-premium-icon="portfolio"' docs/index.html
+grep -Fq 'data-premium-icon="operations"' docs/index.html
+grep -Fq 'data-premium-icon="incidents"' docs/index.html
+grep -Fq 'data-premium-icon="workflows"' docs/index.html
+grep -Fq 'data-premium-icon="cleaning"' docs/index.html
+grep -Fq 'data-premium-icon="permissions"' docs/index.html
+grep -Fq 'data-premium-icon="settings"' docs/index.html
+grep -Fq 'data-premium-icon="inspections"' docs/index.html
+grep -Fq 'data-premium-icon="documents"' docs/index.html
+! grep -Eq '🏠|📊|🚨|🔄|🧹|🔐|⚙️|🔎|📄' docs/index.html
 
-if grep -Fq 'module-icon--' docs/index.html docs/app.css; then
-  echo 'No deben quedar variantes antiguas module-icon--* en el sistema principal.'
-  exit 1
-fi
+grep -Fq 'data-premium-icon="builder"' docs/workflows.html
+grep -Fq 'data-premium-icon="definitions"' docs/workflows.html
+grep -Fq 'data-premium-icon="camera"' docs/workflows.html
+grep -Fq 'data-premium-icon="tasks"' docs/workflows.html
+grep -Fq 'data-premium-icon="history"' docs/workflows.html
+grep -Fq 'data-premium-icon="database"' docs/configuration-resources.html
+grep -Fq 'data-premium-icon="storage"' docs/configuration-resources.html
+grep -Fq 'data-premium-icon="users"' docs/permissions.html
+grep -Fq 'data-premium-icon="home"' docs/permissions.html
+grep -Fq 'data-premium-icon="open"' docs/incidents.html
+grep -Fq 'data-premium-icon="cleaning"' docs/cleaning.html
+
+grep -Fq 'AllaisoPremiumIcons' docs/app.js
+grep -Fq 'premiumIcons' docs/app.js
+grep -Fq 'window.AllaisoPremiumIcons?.render(records)' docs/portfolio.js
+! grep -Fq 'const viewIcons = { owners: "♙"' docs/portfolio.js
+! grep -Fq '🏠 ' docs/portfolio.js
 
 if grep -Fq '@media(prefers-color-scheme:dark)' docs/app.css docs/operations.css docs/portfolio.css docs/photo-patterns.css docs/photo-verifications.css; then
   echo 'El sistema visual compartido usa data-theme; no se permiten paletas paralelas en los módulos auditados.'
   exit 1
 fi
 
-! grep -Fq 'theme-toggle' docs/portfolio.css
-! grep -Fq 'portfolio-hero' docs/portfolio.css
-! grep -Fq 'ops-hero' docs/operations.css
+grep -Fq 'var(--ui-card-shadow)' docs/portfolio.css
+grep -Fq 'var(--ui-card-shadow)' docs/operations.css
+grep -Fq 'var(--ui-card-shadow)' docs/configuration-resources.css
+grep -Fq 'var(--ui-card-shadow)' docs/permissions.css
+grep -Fq 'var(--ui-card-shadow)' docs/workflow-builder.css
+grep -Fq 'var(--ui-card-shadow)' docs/workflow-definitions.css
+grep -Fq 'var(--ui-card-shadow)' docs/workflow-applications.css
+grep -Fq 'var(--ui-card-shadow)' docs/workflow-tasks.css
+grep -Fq 'var(--ui-card-shadow)' docs/photo-patterns.css
+grep -Fq 'var(--ui-card-shadow)' docs/photo-verifications.css
+
 grep -Fq 'Toda la gestión diaria, en una sola aplicación.' docs/index.html
 grep -Fq '© <span id="copyrightYear"></span> Allaiso · Todos los derechos reservados.' docs/index.html
 grep -Fq 'v__APP_VERSION__ · Build __APP_BUILD__' docs/index.html
@@ -53,7 +82,5 @@ grep -Fq 'GITHUB_SHA' .github/workflows/pages.yml
 grep -Fq 'ZoneInfo("Europe/Madrid")' .github/workflows/pages.yml
 test -s docs/legal.html
 test -s docs/privacy.html
-grep -Fq 'background:#111214' docs/permissions.css
-grep -Fq 'var(--ui-border)' docs/permissions.css
 
 echo 'Visual system smoke checks passed'

@@ -281,6 +281,57 @@ revoke all on function public.web_push_store_vapid_v1(text,text)
 grant execute on function public.web_push_store_vapid_v1(text,text)
   to service_role;
 
+create or replace function private.web_push_recipient_active_v1(
+  p_user_id uuid
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path=''
+as $web_push_recipient_active$
+  select
+    exists(
+      select 1
+      from auth.users u
+      where u.id=p_user_id
+        and u.deleted_at is null
+        and (u.banned_until is null or u.banned_until<=now())
+    )
+    and (
+      exists(
+        select 1
+        from public.profiles p
+        where p.user_id=p_user_id
+          and p.status='active'
+          and p.archived_at is null
+          and exists(
+            select 1
+            from public.user_roles ur
+            where ur.user_id=p_user_id
+              and ur.revoked_at is null
+          )
+      )
+      or exists(
+        select 1
+        from public.owners o
+        where o.user_id=p_user_id
+          and o.status='active'
+          and o.archived_at is null
+      )
+      or exists(
+        select 1
+        from public.tenants_v2 t
+        where t.user_id=p_user_id
+          and t.status='active'
+          and t.archived_at is null
+      )
+    );
+$web_push_recipient_active$;
+
+revoke all on function private.web_push_recipient_active_v1(uuid)
+  from public,anon,authenticated;
+
 create or replace function public.web_push_list_subscriptions_v1(
   p_user_id uuid
 )
@@ -298,6 +349,7 @@ as $web_push_list_subscriptions$
   from public.web_push_subscriptions_v1 s
   where s.user_id=p_user_id
     and s.disabled_at is null
+    and private.web_push_recipient_active_v1(p_user_id)
   order by s.updated_at desc;
 $web_push_list_subscriptions$;
 
@@ -328,6 +380,7 @@ begin
    and s.user_id=n.recipient_user_id
    and s.disabled_at is null
   where n.id=p_notification_id
+    and private.web_push_recipient_active_v1(n.recipient_user_id)
   on conflict(notification_id,subscription_id) do nothing;
 
   get diagnostics v_count=row_count;

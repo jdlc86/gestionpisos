@@ -31,6 +31,12 @@ const triggerType=document.getElementById("triggerType");
 const recurrenceRow=document.getElementById("recurrenceRow");
 const customRecurrenceRow=document.getElementById("customRecurrenceRow");
 const scheduledAtRow=document.getElementById("scheduledAtRow");
+const scheduledAtLabel=document.getElementById("scheduledAtLabel");
+const scheduleTimezoneHint=document.getElementById("scheduleTimezoneHint");
+const assignmentNote=document.getElementById("assignmentNote");
+const browserScheduleTimeZone=(()=>{
+  try{return Intl.DateTimeFormat().resolvedOptions().timeZone||"UTC"}catch{return "UTC"}
+})();
 const photoBankLink=document.getElementById("photoBankLink");
 const checklistEditor=document.getElementById("checklistEditor");
 const checklistItemsBox=document.getElementById("checklistItems");
@@ -173,6 +179,7 @@ function draft(){
     triggerType:value("triggerType"),
     recurrence:value("recurrence"),
     scheduledAt:value("scheduledAt"),
+    scheduleTimeZone:value("scheduleTimeZone"),
     customEvery:value("customEvery"),
     customUnit:value("customUnit"),
     assignmentType:value("assignmentType"),
@@ -259,7 +266,7 @@ function completion(data=draft()){
     {key:"identity",label:"Identidad",complete:data.flowName.trim().length>=3&&Boolean(data.flowType)},
     {key:"scope",label:"Ámbito",complete:Boolean(data.scopeType)},
     {key:"trigger",label:"Activación",complete:triggerComplete(data)},
-    {key:"assignment",label:"Asignación",complete:Boolean(data.assignmentType)},
+    {key:"assignment",label:"Asignación",complete:assignmentComplete(data)},
     {key:"steps",label:"Pasos y recursos",complete:Object.values(data.steps||{}).some(Boolean)&&checklistConfigurationComplete(data)},
     {key:"close",label:"Cierre",complete:Boolean(data.closeType)}
   ];
@@ -270,14 +277,26 @@ function completion(data=draft()){
 function triggerComplete(data){
   if(!data.triggerType)return false;
   if(data.triggerType==="manual"||data.triggerType==="event")return true;
-  if(data.triggerType==="scheduled_once")return Boolean(data.scheduledAt);
+
+  const temporalReady=Boolean(data.scheduledAt&&data.scheduleTimeZone);
+  if(data.triggerType==="scheduled_once")return temporalReady;
+
   if(data.triggerType==="recurring"){
-    if(!data.recurrence)return false;
+    if(!temporalReady||!data.recurrence)return false;
     if(data.recurrence!=="custom")return true;
     const every=Number(data.customEvery);
     return Number.isInteger(every)&&every>=1&&every<=365&&["day","week","month"].includes(data.customUnit);
   }
   return false;
+}
+
+function assignmentComplete(data){
+  if(!data.assignmentType)return false;
+  if(["scheduled_once","recurring"].includes(data.triggerType)){
+    return data.assignmentType==="property_responsible"
+      && ["property","room","occupancy"].includes(data.scopeType);
+  }
+  return true;
 }
 
 function saveLocalDraft(){
@@ -287,7 +306,7 @@ function saveLocalDraft(){
 
 function applyDraft(saved,{restoreStep=true}={}){
   if(!saved||typeof saved!=="object")return;
-  for(const name of ["flowName","flowType","flowDescription","scopeType","triggerType","recurrence","scheduledAt","customEvery","customUnit","assignmentType","closeType"]){
+  for(const name of ["flowName","flowType","flowDescription","scopeType","triggerType","recurrence","scheduledAt","scheduleTimeZone","customEvery","customUnit","assignmentType","closeType"]){
     const node=field(name);
     if(node&&typeof saved[name]==="string")node.value=saved[name];
   }
@@ -334,6 +353,8 @@ function errorMessage(error){
   if(text.includes("workflow_checklist_too_many_items"))return "El checklist admite un máximo de 30 elementos.";
   if(text.includes("workflow_checklist_item_text_invalid"))return "Cada elemento del checklist admite hasta 160 caracteres.";
   if(text.includes("workflow_checklist_item_invalid")||text.includes("workflow_checklist_item_required_invalid"))return "Hay un elemento de checklist con formato no válido.";
+  if(text.includes("workflow_schedule_timezone_invalid"))return "La zona horaria detectada no es válida. Recarga la aplicación antes de continuar.";
+  if(text.includes("workflow_scheduled_at_invalid"))return "La fecha y hora de activación no son válidas.";
   if(text.includes("workflow_name_invalid"))return "El borrador necesita un nombre de al menos 3 caracteres para poder guardarse.";
   if(text.includes("not_authenticated"))return "La sesión ya no es válida. Vuelve a iniciar sesión.";
   if(text.includes("organization_selection_required"))return "No se puede determinar de forma inequívoca la organización del borrador.";
@@ -350,15 +371,35 @@ function updateTriggerFields({clearHidden=false}={}){
   const type=value("triggerType");
   const recurrence=field("recurrence");
   const scheduledAt=field("scheduledAt");
+  const scheduleTimeZone=field("scheduleTimeZone");
   const customEvery=field("customEvery");
   const customUnit=field("customUnit");
   const recurring=type==="recurring";
   const scheduled=type==="scheduled_once";
+  const temporal=recurring||scheduled;
   const custom=recurring&&value("recurrence")==="custom";
 
   toggleDependentRow(recurrenceRow,recurring);
   toggleDependentRow(customRecurrenceRow,custom);
-  toggleDependentRow(scheduledAtRow,scheduled);
+  toggleDependentRow(scheduledAtRow,temporal);
+
+  if(temporal&&scheduleTimeZone&&!scheduleTimeZone.value){
+    scheduleTimeZone.value=browserScheduleTimeZone;
+  }
+  if(scheduledAtLabel){
+    scheduledAtLabel.textContent=recurring?"Primera ejecución":"Fecha y hora";
+  }
+  if(scheduleTimezoneHint){
+    scheduleTimezoneHint.hidden=!temporal;
+    scheduleTimezoneHint.textContent=temporal
+      ?"Zona horaria · "+(scheduleTimeZone?.value||browserScheduleTimeZone)
+      :"";
+  }
+  if(assignmentNote){
+    assignmentNote.textContent=temporal
+      ?"La activación automática requiere Responsable operativo del piso. No se pedirá una persona cuando llegue la hora."
+      :"La persona final se resolverá al iniciar la ejecución.";
+  }
 
   if(clearHidden){
     if(!recurring&&recurrence)recurrence.value="";
@@ -366,7 +407,10 @@ function updateTriggerFields({clearHidden=false}={}){
       if(customEvery)customEvery.value="";
       if(customUnit)customUnit.value="";
     }
-    if(!scheduled&&scheduledAt)scheduledAt.value="";
+    if(!temporal){
+      if(scheduledAt)scheduledAt.value="";
+      if(scheduleTimeZone)scheduleTimeZone.value="";
+    }
   }
 }
 
@@ -559,19 +603,30 @@ function summaryRow(title,text){
   row.append(strong,span);return row;
 }
 
+function scheduleLocalLabel(value){
+  if(!value)return "Pendiente";
+  const match=String(value).match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);
+  if(!match)return value;
+  const fakeUtc=new Date(Date.UTC(
+    Number(match[1]),Number(match[2])-1,Number(match[3]),Number(match[4]),Number(match[5])
+  ));
+  return new Intl.DateTimeFormat("es-ES",{
+    dateStyle:"medium",timeStyle:"short",timeZone:"UTC"
+  }).format(fakeUtc);
+}
+
 function activationSummary(data){
+  const zone=data.scheduleTimeZone?" · "+data.scheduleTimeZone:"";
   if(data.triggerType==="recurring"){
-    if(data.recurrence==="custom"){
-      const every=data.customEvery||"—";
-      return "Recurrente · Cada "+every+" "+label("customUnit",data.customUnit);
-    }
-    return label("triggerType",data.triggerType)+" · "+label("recurrence",data.recurrence);
+    const cadence=data.recurrence==="custom"
+      ?"Cada "+(data.customEvery||"—")+" "+label("customUnit",data.customUnit)
+      :label("recurrence",data.recurrence);
+    const first=data.scheduledAt?" · primera "+scheduleLocalLabel(data.scheduledAt)+zone:" · primera ejecución pendiente";
+    return "Recurrente · "+cadence+first;
   }
   if(data.triggerType==="scheduled_once"){
     if(!data.scheduledAt)return "Fecha concreta · Pendiente";
-    const parsed=new Date(data.scheduledAt);
-    const shown=Number.isNaN(parsed.getTime())?data.scheduledAt:new Intl.DateTimeFormat("es-ES",{dateStyle:"medium",timeStyle:"short"}).format(parsed);
-    return "Fecha concreta · "+shown;
+    return "Fecha concreta · "+scheduleLocalLabel(data.scheduledAt)+zone;
   }
   return label("triggerType",data.triggerType);
 }

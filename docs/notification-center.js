@@ -22,12 +22,7 @@ function unread(row){
 
 function routeFor(row){
   const href=EVENT_DESTINATIONS[row.event_type]||null;
-  if(!href)return null;
-  const url=new URL(href,window.location.href);
-  if(row.source_kind==="workflow_execution"&&row.source_id){
-    url.searchParams.set("execution",row.source_id);
-  }
-  return url.href;
+  return href?new URL(href,window.location.href).href:null;
 }
 
 function bellIcon(){

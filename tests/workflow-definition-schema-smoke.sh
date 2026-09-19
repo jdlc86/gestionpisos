@@ -20,6 +20,7 @@ authoring_separation='supabase/migrations/20260918234456_workflow_authoring_oper
 draft_discard='supabase/migrations/20260919141500_workflow_draft_discard.sql'
 lifecycle='supabase/migrations/20260919143208_workflow_publish_execute_lifecycle.sql'
 document_step='supabase/migrations/20260919163000_workflow_document_step.sql'
+document_indexes='supabase/migrations/20260919164500_workflow_document_indexes.sql'
 checklist='supabase/migrations/20260919103000_workflow_checklist_step.sql'
 
 test -s "$migration"
@@ -41,6 +42,7 @@ test -s "$authoring_separation"
 test -s "$draft_discard"
 test -s "$lifecycle"
 test -s "$document_step"
+test -s "$document_indexes"
 test -s tests/workflow-draft-discard-regression.sql
 test -s tests/workflow-publish-execute-lifecycle-regression.sql
 test -s tests/workflow-document-step-regression.sql
@@ -314,3 +316,10 @@ grep -Fq 'comment on table public.workflow_execution_documents_v2' "$document_st
 grep -Fq 'from public.workflow_execution_documents_v2 d' "$document_step"
 grep -Fq 'where d.execution_id=v_execution.id' "$document_step"
 grep -Fq "and d.status='submitted'" "$document_step"
+
+
+# Hardening Documento: cubrir FK nuevas señaladas por advisors.
+grep -Fq 'workflow_execution_documents_v2_organization_idx' "$document_indexes"
+grep -Fq 'on public.workflow_execution_documents_v2(organization_id)' "$document_indexes"
+grep -Fq 'workflow_execution_documents_v2_uploaded_by_idx' "$document_indexes"
+grep -Fq 'on public.workflow_execution_documents_v2(uploaded_by)' "$document_indexes"

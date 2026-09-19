@@ -13,8 +13,10 @@ let actionsByTask=new Map();
 let managerOrganizationIds=new Set();
 let rootManager=false;
 let photoResourcesByExecution=new Map();
+let workflowExecutionsById=new Map();
 
 const ACTION_KEY_PREFIX="workflow-task-action:";
+const CHECKLIST_KEY_PREFIX="workflow-checklist-action:";
 const statusLabels={
   pending:"Pendiente",active:"En curso",waiting_review:"Esperando revisión",
   accepted:"Aceptada",in_progress:"En curso",waiting_info:"Esperando información",
@@ -68,6 +70,11 @@ function errorText(error){
   if(message.includes("workflow_review_actor_forbidden"))return "Solo un gestor autorizado puede revisar este workflow.";
   if(message.includes("workflow_photo_review_requires_photo_review_flow"))return "Este workflow debe revisarse desde Fotoverificaciones.";
   if(message.includes("workflow_review_action_not_supported"))return "La revisión ya no está disponible para el estado actual.";
+  if(message.includes("workflow_checklist_actor_forbidden"))return "Solo la persona asignada puede completar este checklist.";
+  if(message.includes("workflow_checklist_accept_required"))return "Primero debes aceptar la tarea.";
+  if(message.includes("workflow_checklist_not_actionable"))return "El checklist ya no se puede modificar en el estado actual.";
+  if(message.includes("workflow_checklist_item_not_found"))return "El elemento ya no existe en esta ejecución. Recarga la pantalla.";
+  if(message.includes("workflow_checklist_request_key_conflict"))return "El reintento pertenece a otro cambio del checklist. Recarga la pantalla.";
   if(message.includes("workflow_action_not_supported")||message.includes("workflow_action_close_rule_not_supported"))return "Esta transición todavía no está habilitada para esta receta.";
   return "No se pudo aplicar la acción. No se ha confirmado ningún cambio.";
 }
@@ -79,6 +86,20 @@ function requestKey(task,action){
     sessionStorage.setItem(storageKey,key);
   }
   return {storageKey,key};
+}
+function checklistRequestKey(task,itemKey,completed){
+  const storageKey=CHECKLIST_KEY_PREFIX+task.id+":"+itemKey+":"+(completed?"1":"0");
+  let key=sessionStorage.getItem(storageKey);
+  if(!key){
+    key=globalThis.crypto?.randomUUID?.()||("checklist-"+Date.now()+"-"+Math.random().toString(36).slice(2));
+    sessionStorage.setItem(storageKey,key);
+  }
+  return {storageKey,key};
+}
+function executionForTask(task){
+  return task.source_kind==="workflow_execution"&&task.source_id
+    ?workflowExecutionsById.get(task.source_id)||null
+    :null;
 }
 function actionNote(task){
   if(task.status==="completed")return "Tarea y ejecución completadas de forma sincronizada.";
@@ -175,6 +196,108 @@ function renderPhotoResources(task,article){
   article.append(box);
 }
 
+async function applyChecklistItem(task,item,completed,checkbox){
+  const previous=!completed;
+  const {storageKey,key}=checklistRequestKey(task,item.key,completed);
+  checkbox.disabled=true;
+  setStatus("Guardando checklist y comprobando el cierre del flujo…");
+
+  const {data,error}=await supabase.rpc("set_workflow_checklist_item_v1",{
+    p_task_id:task.id,
+    p_item_key:item.key,
+    p_completed:completed,
+    p_request_key:key
+  });
+
+  if(error){
+    checkbox.checked=previous;
+    checkbox.disabled=false;
+    const message=String(error.message||"");
+    if(message.includes("workflow_")&&!message.includes("network"))sessionStorage.removeItem(storageKey);
+    setStatus(errorText(error),true);
+    return;
+  }
+
+  sessionStorage.removeItem(storageKey);
+  const result=Array.isArray(data)?data[0]:null;
+  if(result?.applied_new===false){
+    setStatus("El reintento recuperó el cambio ya aplicado; no se duplicó el histórico.");
+  }else if(result?.execution_status==="completed"){
+    setStatus("Checklist completado. Tarea y ejecución cerradas.");
+  }else if(result?.execution_status==="waiting_review"){
+    setStatus("Checklist completado. La ejecución queda esperando revisión humana.");
+  }else{
+    setStatus("Checklist actualizado.");
+  }
+  await load(true);
+}
+
+function renderChecklist(task,article){
+  const execution=executionForTask(task);
+  if(!execution||execution.spec_snapshot?.steps?.checklist!==true)return;
+  const items=Array.isArray(execution.checklist_state)?execution.checklist_state:[];
+  if(!items.length)return;
+
+  const required=items.filter(item=>item.required!==false);
+  const completedRequired=required.filter(item=>item.completed===true).length;
+  const box=document.createElement("section");
+  box.className="task-checklist";
+
+  const head=document.createElement("div");
+  head.className="task-checklist-head";
+  const headingBox=document.createElement("div");
+  const heading=document.createElement("strong");
+  heading.textContent="Checklist";
+  const progress=document.createElement("span");
+  progress.className="task-checklist-progress";
+  progress.textContent=completedRequired+" de "+required.length+" obligatorios completados";
+  headingBox.append(heading,progress);
+  head.append(headingBox);
+  box.append(head);
+
+  const itemBox=document.createElement("div");
+  itemBox.className="task-checklist-items";
+  const requiresAccept=execution.spec_snapshot?.steps?.accept===true;
+  const assignee=task.assigned_user_id===currentUser?.id;
+  const actionable=["pending","active"].includes(task.status);
+  const blockedByAccept=requiresAccept&&task.status==="pending";
+
+  items.forEach(item=>{
+    const label=document.createElement("label");
+    label.className="task-checklist-item"+(item.completed?" is-complete":"");
+    const checkbox=document.createElement("input");
+    checkbox.type="checkbox";
+    checkbox.checked=item.completed===true;
+    checkbox.disabled=!assignee||!actionable||blockedByAccept;
+    checkbox.setAttribute("aria-label",(item.completed?"Desmarcar ":"Marcar ")+String(item.text||"elemento"));
+    checkbox.addEventListener("change",()=>applyChecklistItem(task,item,checkbox.checked,checkbox));
+
+    const textBox=document.createElement("span");
+    textBox.className="task-checklist-item-text";
+    const text=document.createElement("span");
+    text.textContent=item.text||"Elemento";
+    const kind=document.createElement("small");
+    kind.textContent=item.required===false?"Opcional":"Obligatorio";
+    textBox.append(text,kind);
+    label.append(checkbox,textBox);
+    itemBox.append(label);
+  });
+  box.append(itemBox);
+
+  if(blockedByAccept&&assignee){
+    const note=document.createElement("p");
+    note.className="task-checklist-wait";
+    note.textContent="Acepta la tarea antes de completar el checklist.";
+    box.append(note);
+  }else if(!assignee){
+    const note=document.createElement("p");
+    note.className="task-checklist-wait";
+    note.textContent="Solo la persona asignada puede modificar este checklist.";
+    box.append(note);
+  }
+  article.append(box);
+}
+
 function renderActions(task,article){
   if(task.source_kind!=="workflow_execution")return;
 
@@ -264,6 +387,7 @@ function render(){
     article.append(details);
 
     renderPhotoResources(task,article);
+    renderChecklist(task,article);
     renderActions(task,article);
     list.append(article);
   });
@@ -363,6 +487,22 @@ async function loadRelated(){
   }
 }
 
+async function loadWorkflowExecutions(){
+  workflowExecutionsById=new Map();
+  const executionIds=[...new Set(tasks
+    .filter(task=>task.source_kind==="workflow_execution"&&task.source_id)
+    .map(task=>task.source_id))];
+  if(!executionIds.length)return;
+
+  const {data,error}=await supabase
+    .from("workflow_executions_v2")
+    .select("id,status,spec_snapshot,checklist_state")
+    .in("id",executionIds);
+
+  if(error)throw error;
+  (data||[]).forEach(execution=>workflowExecutionsById.set(execution.id,execution));
+}
+
 async function loadPhotoResources(){
   photoResourcesByExecution=new Map();
   const executionIds=[...new Set(tasks
@@ -435,7 +575,7 @@ async function load(preserveStatus=false){
   tasks=data||[];
 
   try{
-    await Promise.all([loadManagerAccess(),loadRelated(),loadActions(),loadPhotoResources()]);
+    await Promise.all([loadManagerAccess(),loadRelated(),loadActions(),loadWorkflowExecutions(),loadPhotoResources()]);
   }catch{
     list.replaceChildren();
     const empty=document.createElement("article");empty.className="task-empty";

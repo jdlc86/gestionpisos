@@ -81,6 +81,12 @@ begin
     raise exception 'initial workflow draft was not deleted';
   end if;
 
+end;
+$discard_initial$;
+
+reset role;
+do $audit_initial$
+begin
   if not exists(
     select 1 from public.audit_log_v2
     where action='workflow_definition_draft_discarded'
@@ -89,7 +95,8 @@ begin
     raise exception 'initial workflow draft discard was not audited';
   end if;
 end;
-$discard_initial$;
+$audit_initial$;
+set local role authenticated;
 
 select set_config(
   'gestionpisos.discard_published_id',
@@ -182,6 +189,12 @@ begin
     raise exception 'published version was damaged while discarding revision draft';
   end if;
 
+end;
+$discard_revision$;
+
+reset role;
+do $audit_revision$
+begin
   if not exists(
     select 1 from public.audit_log_v2
     where action='workflow_definition_revision_draft_discarded'
@@ -190,7 +203,8 @@ begin
     raise exception 'revision draft discard was not audited';
   end if;
 end;
-$discard_revision$;
+$audit_revision$;
+set local role authenticated;
 
 -- Un borrado con revisión obsoleta no puede destruir cambios nuevos.
 select set_config(

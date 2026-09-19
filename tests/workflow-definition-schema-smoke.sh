@@ -425,6 +425,8 @@ grep -Fq 'create or replace function public.hide_my_task_card_v1' "$task_persona
 grep -Fq 'create or replace function public.unhide_my_task_card_v1' "$task_personal_hiding"
 grep -Fq 'create or replace function public.list_my_hidden_task_cards_v1' "$task_personal_hiding"
 grep -Fq 'task_hide_requires_terminal' "$task_personal_hiding"
+grep -Fq 'task_hide_execution_not_terminal' "$task_personal_hiding"
+grep -Fq 'p_task.assigned_user_id=p_actor' "$task_personal_hiding"
 grep -Fq 'task_hide_forbidden' "$task_personal_hiding"
 grep -Fq "ur.role in ('employee','tenant','owner')" "$task_personal_hiding"
 grep -Fq 'grant execute on function public.hide_my_task_card_v1(uuid)' "$task_personal_hiding"

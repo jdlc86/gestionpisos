@@ -38,143 +38,85 @@ Los accesos legacy funcionales, especialmente Limpieza, permanecen hasta dispone
 
 ## 3. Creador de Flujos — estado actual
 
-El Creador es un asistente de siete pasos:
+El Creador mantiene el asistente de siete pasos y la continuidad validada:
 
-1. identidad;
-2. ámbito;
-3. activación;
-4. asignación;
-5. pasos y recursos;
-6. cierre/revisión;
-7. revisión final.
+`Diseño → Destino → Listo`.
 
-### Persistencia de borradores
+### Creación nueva: sin borradores parciales
 
-El borrador ya puede guardarse en servidor mediante `save_workflow_definition_draft_v1`.
+Una creación nueva vive solo durante el recorrido actual. Los controles **Guardar** y **Guardar y salir** dejan de formar parte de esa experiencia y no se crea una definición parcial para retomarla después.
 
-La persistencia usa:
+Si el usuario intenta abandonar antes de finalizar, la interfaz advierte que perderá los cambios. Recargar/cerrar una creación incompleta tampoco la convierte en un registro persistente.
 
-- `workflow_definitions_v2` para identidad estable, especificación editable y `revision`;
-- RLS de lectura por ROOT/ADMIN activo y organización;
-- ausencia deliberada de INSERT/UPDATE/DELETE directo desde cliente;
-- RPC `SECURITY DEFINER` que resuelve usuario/organización server-side;
-- auditoría `workflow_draft_created` / `workflow_draft_updated`;
-- control de concurrencia optimista: una revisión obsoleta se rechaza con `workflow_draft_conflict`.
+Al completar Diseño, el Creador transporta temporalmente la especificación a Destino mediante un handoff de sesión de un solo uso. Elegir el destino todavía no escribe el flujo en servidor.
 
-`sessionStorage` se usa únicamente para un borrador local todavía no ligado a una definición guardada. Tras el primer guardado servidor, la caché local genérica se elimina y los flujos persistidos se reabren por `id`; así una definición publicada no reaparece como si fuera un flujo nuevo.
+### Listo: Publicar / Ejecutar / Descartar
 
-### Separación de autoría y operación
+En Listo se decide el efecto real:
 
-El **Creador de Flujos** concentra ahora toda la autoría:
+- **Publicar**: finaliza de forma atómica definición, versión, destino y recursos; aparece en Mis Flujos y crea **cero** ejecuciones/tareas.
+- **Ejecutar**: realiza la misma finalización y además valida condiciones vigentes, asignación y recursos antes de materializar una ejecución y exactamente una tarea.
+- **Descartar**: una creación nueva desaparece sin dejar registros parciales.
 
-- nuevo borrador;
-- lista de borradores guardados;
-- retomar/editar;
-- publicar la primera versión;
-- editar y publicar una futura versión.
+`publish_workflow_ready_v1` encapsula la primera finalización y usa una `creation_request_key` para que un reintento no cree duplicados.
 
-Los borradores iniciales continúan en `workflow_definitions_v2(status='draft')`.
+### Edición según exista historial
 
-Cuando una definición ya está publicada, una futura versión se prepara en `workflow_definition_revision_drafts_v2`. Ese borrador conserva `base_version`, revisión optimista y especificación separada. Mientras se edita v2, v1 y sus aplicaciones siguen intactas.
+La primera ejecución es la frontera histórica.
 
-La publicación de una nueva versión:
+Un flujo publicado que **nunca se ha ejecutado**:
 
-- exige AAL2;
-- añade una nueva fila inmutable a `workflow_definition_versions_v2`;
-- es idempotente ante reintentos;
-- actualiza la metadata canónica únicamente después de publicar;
-- no migra aplicaciones creadas con versiones anteriores.
+- se edita como la misma entidad lógica;
+- no crea una v2 solo por cambiar configuración;
+- puede cambiar su destino/recursos;
+- puede eliminarse completamente.
 
-**Mis Flujos** deja de ser zona de autoría: solo muestra recetas publicadas. Si existe una futura versión en borrador, la tarjeta lo indica y enlaza de vuelta al Creador.
+`update_unexecuted_workflow_v1` aplica ese cambio únicamente después de comprobar server-side que no existe ninguna ejecución.
 
-### UX del Creador: Borradores y Editor separados
+Un flujo que **ya tiene alguna ejecución**:
 
-Para evitar que una lista creciente obligue a desplazarse hasta el formulario, el Creador usa dos vistas exclusivas:
+- ya no puede eliminarse;
+- puede archivarse conservando versiones, aplicaciones, ejecuciones, tareas y evidencias;
+- al pulsar **Editar**, el sistema prepara automáticamente un borrador separado en `workflow_definition_revision_drafts_v2`;
+- la versión actualmente utilizada permanece intacta durante la edición;
+- al finalizar, `publish_workflow_revision_ready_v1` añade vN+1 y prepara su destino actual.
 
-- **Borradores**: buscador, filtro por estado, tarjetas compactas y carga progresiva de 12 elementos;
-- **Editor**: únicamente el asistente de siete pasos y una cabecera con `← Borradores`.
-
-Salir del Editor con cambios sin guardar ofrece **Guardar y salir / Salir sin guardar / Cancelar**. También existe **Guardar y salir** como acción directa. En un borrador persistido, **Descartar cambios locales** restaura la última revisión guardada en servidor en vez de vaciar el formulario.
-
-### Continuidad UX: Diseño → Destino → Listo
-
-La arquitectura interna continúa siendo `Definición → Versión → Aplicación → Ejecución`, pero esa terminología ya no obliga al usuario a navegar manualmente por cada capa.
-
-Para una primera publicación, el Creador presenta una continuidad operativa de tres etapas:
-
-`Diseño → Destino → Listo`
-
-Al completar el paso 7, **Continuar para usarlo** guarda el borrador, publica una versión inmutable y lleva directamente a seleccionar el destino real. La UI denomina **Destino** a la aplicación concreta, aunque internamente se conserva `workflow_applications_v2`.
-
-Después de guardar el destino, la misma experiencia muestra **Listo para usar**, resuelve la asignación permitida y ofrece **Ejecutar ahora** sin obligar a volver a Mis Flujos ni buscar manualmente la aplicación recién creada.
-
-Cuando esa ejecución guiada ya se creó, su `execution_id` queda en el estado de navegación y se valida contra `workflow_executions_v2` al recargar. Refrescar la pantalla conserva **Tarea creada** y no vuelve a ofrecer accidentalmente **Ejecutar ahora** por haber perdido un estado exclusivamente en memoria.
-
-Las nuevas versiones publicadas mantienen un tratamiento conservador: se llega a la gestión de destinos sin migrar silenciosamente las aplicaciones existentes de versiones anteriores.
-
-### Borradores parciales y decisiones explícitas
-
-El Creador permite guardar un borrador con solo un nombre y continuar más tarde. Las opciones de tipo, ámbito, activación, asignación, pasos y cierre ya no tienen decisiones de negocio preseleccionadas.
-
-`workflow_definitions_v2.authoring_complete` se calcula server-side a partir de una especificación de autoría v2. Un borrador solo pasa a **configuración completa** cuando los seis apartados requeridos contienen decisiones explícitas. Descripción y notificaciones siguen siendo opcionales.
-
-Los borradores anteriores a esta regla no se reinterpretan como completos por sus antiguos valores por defecto: permanecen incompletos hasta ser revisados en el Creador.
-
-El guardado de borradores es idempotente: pulsar **Guardar borrador** repetidamente sin modificar la especificación no incrementa `revision`, no cambia `updated_at` y no genera un evento `workflow_draft_updated`. La UI informa **Sin cambios** y conserva la revisión existente.
-
-La activación también es condicional: **Manual** y **Por evento** no muestran frecuencia; **Recurrente** muestra frecuencia y, si se elige **Personalizada**, solicita intervalo + unidad; **Fecha concreta** muestra calendario y hora. El RPC sanea cualquier campo residual que no corresponda al tipo seleccionado.
-
-### Límite intencional
-
-**Guardar no significa publicar.**
-
-Un borrador guardado todavía no:
-
-- crea una versión publicada;
-- selecciona de forma definitiva el piso/habitación/ocupación concreta;
-- genera ejecuciones;
-- crea tareas;
-- programa recurrencias;
-- dispara notificaciones operativas;
-- altera Limpieza.
+Los borradores de futura versión siguen existiendo porque protegen un flujo con historial. Lo que desaparece del producto es el almacenamiento de **creaciones nuevas incompletas**.
 
 ## 4. Mis Flujos — estado actual
 
-`workflow-definitions.html` es el **catálogo operativo** y consulta únicamente definiciones `published` mediante RLS.
+`workflow-definitions.html` muestra solo flujos terminados/publicados.
 
-Cada tarjeta se construye desde la última versión inmutable publicada y muestra:
+Cada tarjeta presenta la configuración operativa relevante, incluido el destino actual y el número de ejecuciones. La UI no expone la decisión técnica de versionar.
 
-- nombre;
-- versión publicada;
-- tipo;
-- ámbito conceptual;
-- activación;
-- asignación;
-- cierre;
-- fecha de publicación.
+Acciones:
 
-Desde aquí se accede a **Aplicaciones**. También existe **Crear nueva versión**; esa acción prepara un borrador separado y redirige al Creador. Si ese borrador ya existe, la tarjeta indica que vN sigue operativa y permite **Continuar nueva versión**.
+- siempre: **Ejecutar**;
+- siempre: **Editar**;
+- sin historial: **Eliminar**;
+- con historial: **Archivar**.
 
-Mis Flujos no edita ni publica borradores directamente.
+Al pulsar Editar, el sistema decide:
 
-## 5. Versiones publicadas y aplicaciones concretas
+- cero ejecuciones → edición en sitio;
+- una o más ejecuciones → borrador de futura versión.
 
-`workflow_definition_versions_v2` representa versiones inmutables de la receta lógica.
+Al pulsar Ejecutar se reutiliza `execute_workflow_application_now_v1`, que vuelve a comprobar estado del destino, vigencia de ocupación, asignación y recursos. La existencia de una tarjeta no garantiza por sí sola que hoy pueda ejecutarse.
 
-`publish_workflow_definition_v1`:
+## 5. Versiones, destinos y frontera histórica
 
-- exige `aal2`;
-- publica solo autoría completa;
-- no acepta INSERT cliente;
-- congela el `scopeType` lógico;
-- no selecciona todavía una entidad real;
-- es idempotente ante reintento de una definición ya publicada.
+`workflow_definition_versions_v2` sigue conservando la configuración ejecutable de una definición.
 
-`workflow_applications_v2` vincula una versión publicada con la entidad real. `create_workflow_application_v1` valida server-side organización, piso, habitación u ocupación y deja la aplicación en estado `configured`.
+La inmutabilidad se aplica estrictamente desde que existe historial operativo:
 
-`configured` no activa recurrencias. Desde la tarjeta puede crear una ejecución explícita `manual_now`; esa ejecución nace `pending` y materializa exactamente una tarea vinculada.
+- antes de la primera ejecución, la versión actual puede actualizarse mediante el RPC específico de flujo no ejecutado;
+- desde la primera ejecución, la versión referenciada queda congelada y cualquier edición futura añade vN+1;
+- una ejecución conserva su `definition_version_id`, `application_id`, `spec_snapshot`, asignación y recursos efectivos;
+- archivar nunca borra esos vínculos históricos.
 
-La semántica detallada vive en `WORKFLOW_APPLICATIONS_CONTRACT.md`.
+`workflow_applications_v2` continúa siendo la capa técnica que valida el destino real. En la UX actual, Destino forma parte del recorrido integrado antes de Publicar/Ejecutar.
+
+La publicación sola no materializa trabajo. Solo **Ejecutar** crea `workflow_executions_v2` y su tarea vinculada en `tenant_tasks_v2`.
 
 ## 6. Banco Fotográfico
 
@@ -241,11 +183,11 @@ Las pruebas se ejecutan también en PostgreSQL 17 desechable desde Schema Guard.
 | Módulo | Estado | Observación |
 | --- | --- | --- |
 | Flujos de Trabajo | Implementado | Hub transversal |
-| Creador de Flujos | Implementado como workspace de autoría | Nuevo/editar/publicar borradores y futuras versiones |
-| Mis Flujos | Implementado como catálogo operativo published-only | Aplicaciones + crear/continuar nueva versión |
-| Aplicaciones | Implementado para vincular versión publicada con entidad real | Permite `Ejecutar ahora` |
+| Creador de Flujos | Implementado como recorrido integrado | Creación nueva temporal; Diseño → Destino → Listo → Publicar/Ejecutar |
+| Mis Flujos | Implementado como catálogo operativo | Ejecutar/Editar y Eliminar o Archivar según historial |
+| Aplicaciones | Implementado como capa técnica de Destino | Validación real y recursos; integrada en la finalización |
 | Banco Fotográfico | Operativo/reutilizado | Patrones vinculables a aplicaciones y congelados por ejecución |
-| Versiones publicadas | Implementado | Publicación RPC inmutable e idempotente |
+| Versiones publicadas | Implementado | Editables solo antes de primera ejecución; después inmutables por historial |
 | Tareas | Materialización + decisión + revisión humana implementadas | `tenant_tasks_v2` reutilizada; `accept/reject` y revisión agency sincronizan tarea + ejecución |
 | Historial | Parcial avanzado | registra creación, materialización, acciones, evidencia y cierre de revisión; falta unificar la vista transversal completa |
 | Ejecución genérica | Implementada; cierre auto validado E2E y `human_review` cubierto por regresión de integración | `manual_now`, snapshots, tarea materializada, cierre automático y revisión humana para pasos implementados |
@@ -371,6 +313,22 @@ La autoría queda separada de la operación:
 
 La regresión específica demuestra v1 → aplicación v1 → borrador v2 → publicación v2 manteniendo la aplicación vinculada a v1.
 
+
+### Incremento — Publicar / Ejecutar y frontera de primera ejecución
+
+Se simplifica el modelo de autoría sin perder trazabilidad:
+
+- una creación nueva incompleta ya no se persiste ni se lista como borrador;
+- Destino sigue formando parte del recorrido integrado antes de cualquier escritura definitiva;
+- Listo ofrece **Publicar**, **Ejecutar** y **Descartar**;
+- Publicar genera flujo + destino con cero tareas;
+- Ejecutar publica y materializa una única tarea si las condiciones actuales son válidas;
+- un flujo publicado sin ejecuciones se edita en sitio y puede eliminarse;
+- la primera ejecución convierte la configuración usada en historia protegida;
+- a partir de ahí Editar crea una nueva versión y la alternativa destructiva pasa de Eliminar a Archivar;
+- Mis Flujos no muestra botones “Crear nueva versión” ni “Duplicar”: el backend decide el versionado según exista historial.
+
+La regresión `workflow-publish-execute-lifecycle-regression.sql` cubre publicación sin tarea, idempotencia, edición sin v2, eliminación antes de historial, primera ejecución con una sola tarea, prohibición de borrado posterior, creación de v2 y archivo preservando historial.
 
 ### Incremento — Checklist operativo
 

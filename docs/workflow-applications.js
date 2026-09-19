@@ -27,10 +27,13 @@ const versionRow=document.getElementById("applicationVersionRow");
 const applicationsSection=document.getElementById("applicationsSection");
 const applicationsEyebrow=document.getElementById("applicationsEyebrow");
 const applicationsTitle=document.getElementById("applicationsTitle");
+const contextBackLink=document.querySelector(".context-back");
 
 const params=new URLSearchParams(window.location.search);
 const definitionId=params.get("definition")||"";
 const guidedSetup=params.get("setup")==="1";
+const handoffToken=params.get("handoff")||"";
+const transientSetup=guidedSetup&&Boolean(handoffToken);
 const revisionPublished=params.get("published")==="1";
 const setupVersionNumber=Number(params.get("version")||0);
 let guidedApplicationId=params.get("application")||null;
@@ -47,8 +50,13 @@ let photoPatterns=[];
 let photoPatternById=new Map();
 let permissionContext=null;
 let currentUser=null;
+let transientPayload=null;
+let transientTarget=null;
+let transientFinalized=false;
+let authorOrganizationId=null;
 
 const EXECUTION_KEY_PREFIX="workflow-execute-now:";
+const HANDOFF_KEY_PREFIX="gestionpisos.workflow-builder.handoff.";
 const scopeLabels={organization:"Toda la organización",property:"Un piso",room:"Una habitación",occupancy:"Una ocupación / inquilino"};
 const executionStatusLabels={pending:"Pendiente",active:"Activa",waiting_review:"Esperando revisión",completed:"Completada",cancelled:"Cancelada",failed:"Fallida"};
 const assignmentLabels={
@@ -117,6 +125,12 @@ function errorText(error){
   if(message.includes("workflow_application_photo_resources_conflict"))return "Este destino ya tiene otros recursos fotográficos vinculados.";
   if(message.includes("workflow_application_photo_resources_locked"))return "Los recursos de este destino ya están congelados por una ejecución existente.";
   if(message.includes("workflow_execution_photo_snapshot_missing"))return "La ejecución no tiene el snapshot fotográfico requerido.";
+  if(message.includes("workflow_definition_has_history"))return "Este flujo ya tiene historial y debe editarse como una nueva versión.";
+  if(message.includes("workflow_revision_requires_history"))return "Este flujo todavía no tiene historial; debe editarse directamente.";
+  if(message.includes("workflow_creation_request_conflict"))return "Esta creación ya fue finalizada con otros datos. Vuelve a Mis Flujos antes de repetirla.";
+  if(message.includes("workflow_request_key_invalid"))return "La sesión temporal de creación ya no es válida.";
+  if(message.includes("workflow_draft_conflict"))return "El flujo cambió en otra sesión. Recarga Mis Flujos antes de continuar.";
+  if(message.includes("workflow_unexecuted_delete_instead"))return "Este flujo nunca se ha ejecutado; puede eliminarse en lugar de archivarse.";
   return "No se pudo completar la operación. No se ha modificado ningún dato.";
 }
 function meta(label,value){
@@ -159,6 +173,11 @@ function configurePresentation(){
   }
   document.body.classList.add("workflow-guided-setup");
   if(pageTitle)pageTitle.textContent="Preparar flujo";
+  if(contextBackLink&&transientSetup){
+    contextBackLink.href=transientPayload?.mode==="create"?"./workflows.html":"./workflow-definitions.html";
+    contextBackLink.setAttribute("aria-label","Salir del recorrido");
+    contextBackLink.title="Salir del recorrido";
+  }
   if(formEyebrow)formEyebrow.textContent="Paso 2 · Destino";
   if(formTitle)formTitle.textContent="¿Dónde quieres utilizarlo?";
   if(formDescription)formDescription.textContent="El diseño ya está listo. Elige ahora el destino real y los recursos que necesita.";
@@ -171,11 +190,442 @@ function configurePresentation(){
 }
 
 
+function consumeTransientHandoff(){
+  if(!transientSetup)return null;
+  let raw=null;
+  try{
+    raw=sessionStorage.getItem(HANDOFF_KEY_PREFIX+handoffToken);
+    sessionStorage.removeItem(HANDOFF_KEY_PREFIX+handoffToken);
+  }catch{}
+  if(!raw)return null;
+  try{
+    const payload=JSON.parse(raw);
+    if(!payload||typeof payload!=="object")return null;
+    if(!["create","edit_unexecuted","revision"].includes(payload.mode))return null;
+    if(!payload.spec||typeof payload.spec!=="object")return null;
+    if(!payload.requestKey)return null;
+    if(payload.createdAt&&Date.now()-Number(payload.createdAt)>2*60*60*1000)return null;
+    return payload;
+  }catch{
+    return null;
+  }
+}
+
+async function resolveAuthorOrganization(){
+  const {data:roles,error}=await supabase
+    .from("user_roles")
+    .select("role,organization_id,revoked_at")
+    .eq("user_id",currentUser.id)
+    .is("revoked_at",null);
+  if(error)throw error;
+  const active=(roles||[]).filter(row=>["root","admin"].includes(row.role));
+  if(!active.length)throw new Error("workflow_author_role_required");
+  const organizations=[...new Set(active.map(row=>row.organization_id).filter(Boolean))];
+  if(organizations.length===1)return organizations[0];
+  if(organizations.length>1)throw new Error("organization_selection_required");
+
+  const isRoot=active.some(row=>row.role==="root");
+  if(!isRoot)throw new Error("organization_missing");
+  const {data:orgs,error:orgError}=await supabase
+    .from("organizations")
+    .select("id,status,created_at")
+    .eq("status","active")
+    .order("created_at");
+  if(orgError)throw orgError;
+  if((orgs||[]).length!==1)throw new Error("organization_selection_required");
+  return orgs[0].id;
+}
+
+function transientVersionNumber(){
+  if(transientPayload?.mode==="revision"){
+    return Number(transientPayload.baseVersion||0)+1;
+  }
+  return Number(transientPayload?.baseVersion||1)||1;
+}
+
+async function preloadTransientTarget(){
+  if(!transientPayload?.definitionId)return;
+  const {data,error}=await supabase
+    .from("workflow_applications_v2")
+    .select("id,definition_version_id,scope_type,property_id,room_id,occupancy_id,status,created_at")
+    .eq("definition_id",transientPayload.definitionId)
+    .eq("status","configured")
+    .order("created_at",{ascending:false})
+    .limit(1);
+  if(error)throw error;
+  const app=(data||[])[0]||null;
+  if(!app)return;
+
+  if(app.property_id){
+    propertySelect.value=app.property_id;
+    if(versionScope()==="room")await loadRoomsFor(app.property_id);
+    if(versionScope()==="occupancy")await loadOccupanciesFor(app.property_id);
+    if(versionNeedsPhoto())await loadPhotoPatternsFor(app.property_id);
+  }
+  if(app.room_id)roomSelect.value=app.room_id;
+  if(app.occupancy_id)occupancySelect.value=app.occupancy_id;
+
+  if(versionNeedsPhoto()){
+    const {data:resources,error:resourceError}=await supabase
+      .from("workflow_application_photo_resources_v2")
+      .select("pattern_id,sort_order")
+      .eq("application_id",app.id)
+      .order("sort_order");
+    if(resourceError)throw resourceError;
+    const selected=new Set((resources||[]).map(item=>item.pattern_id));
+    photoPatternsBox.querySelectorAll('input[type="checkbox"]').forEach(input=>{
+      input.checked=selected.has(input.value);
+    });
+  }
+  refreshCreateAvailability();
+}
+
+function targetFromControls(){
+  const scope=versionScope();
+  return {
+    scope_type:scope,
+    property_id:["property","room","occupancy"].includes(scope)?propertySelect.value||null:null,
+    room_id:scope==="room"?roomSelect.value||null:null,
+    occupancy_id:scope==="occupancy"?occupancySelect.value||null:null,
+    photo_pattern_ids:versionNeedsPhoto()?selectedPhotoPatternIds():[]
+  };
+}
+
+function transientAssignmentControls(app){
+  const spec=transientPayload?.spec||{};
+  const assignmentType=String(spec.assignmentType||"");
+  const wrap=document.createElement("div");
+  wrap.className="execution-controls";
+  const title=document.createElement("strong");
+  title.textContent="Decisión final";
+  wrap.append(title);
+
+  let assigneeSelect=null;
+  let executable=true;
+  if(assignmentType==="manual"){
+    const candidates=executionCandidates(app);
+    const label=document.createElement("label");
+    label.textContent="¿Quién realizará esta tarea si eliges Ejecutar?";
+    assigneeSelect=document.createElement("select");
+    assigneeSelect.append(option("","Selecciona una persona"));
+    assigneeSelect.append(...candidates.map(person=>option(person.user_id,candidateLabel(person))));
+    label.append(assigneeSelect);
+    wrap.append(label);
+    if(!candidates.length)executable=false;
+  }else if(assignmentType==="property_responsible"){
+    const note=document.createElement("span");
+    note.className="execution-note";
+    note.textContent="Si ejecutas, se validará de nuevo el responsable operativo vigente del piso.";
+    wrap.append(note);
+  }else{
+    executable=false;
+    const note=document.createElement("span");
+    note.className="execution-note";
+    note.textContent="Puedes Publicar este flujo, pero esta regla de asignación todavía no admite ejecución manual.";
+    wrap.append(note);
+  }
+
+  const explanation=document.createElement("div");
+  explanation.className="application-note";
+  explanation.textContent="Publicar lo guarda en Mis Flujos sin crear tareas. Mientras nunca se ejecute podrás editarlo o eliminarlo. Ejecutar lo publica y crea la tarea; desde ese momento conservará historial y solo podrá archivarse.";
+  wrap.append(explanation);
+
+  const actions=document.createElement("div");
+  actions.className="application-guided-actions";
+
+  const publish=document.createElement("button");
+  publish.type="button";
+  publish.className="secondary";
+  publish.textContent="Publicar";
+  publish.addEventListener("click",()=>finalizeTransient(false,null,publish));
+
+  const execute=document.createElement("button");
+  execute.type="button";
+  execute.className="primary";
+  execute.textContent="Ejecutar";
+  execute.disabled=!executable;
+  execute.addEventListener("click",()=>{
+    const assignee=assigneeSelect?.value||null;
+    if(assignmentType==="manual"&&!assignee){
+      setStatus("Selecciona quién realizará esta tarea.",true);
+      return;
+    }
+    finalizeTransient(true,assignee,execute);
+  });
+
+  const changeTarget=document.createElement("button");
+  changeTarget.type="button";
+  changeTarget.className="secondary";
+  changeTarget.textContent="Cambiar destino";
+  changeTarget.addEventListener("click",()=>{
+    transientTarget=null;
+    applicationsSection.hidden=true;
+    formCard.hidden=false;
+    setSetupStage("destination");
+    setStatus("Ajusta el destino y pulsa Continuar cuando esté listo.");
+    window.scrollTo({top:0,behavior:"smooth"});
+  });
+
+  const discard=document.createElement("button");
+  discard.type="button";
+  discard.className="danger-soft";
+  discard.textContent="Descartar";
+  discard.addEventListener("click",discardTransient);
+
+  actions.append(publish,execute,changeTarget,discard);
+  wrap.append(actions);
+  return wrap;
+}
+
+function renderTransientReady(){
+  const spec=transientPayload.spec;
+  const app={
+    scope_type:transientTarget.scope_type,
+    property_id:transientTarget.property_id,
+    room_id:transientTarget.room_id,
+    occupancy_id:transientTarget.occupancy_id
+  };
+  applicationsList.replaceChildren();
+
+  const article=document.createElement("article");
+  article.className="application-card application-ready-card";
+  const head=document.createElement("div");head.className="application-item-head";
+  const title=document.createElement("h3");title.textContent=spec.flowName||"Flujo";
+  const badge=document.createElement("span");badge.className="application-badge";badge.textContent="Listo";
+  head.append(title,badge);
+
+  const details=document.createElement("div");details.className="application-meta application-ready-summary";
+  details.append(
+    meta("Destino",targetLabel(app)),
+    meta("Qué hará",stepsSummary({spec})),
+    meta("Asignación",assignmentLabels[String(spec.assignmentType||"")]||"Configurada")
+  );
+  if(versionNeedsPhoto({spec})){
+    const names=transientTarget.photo_pattern_ids.map(id=>photoPatternById.get(id)?.name||photoPatternById.get(id)?.target_key||"Patrón");
+    details.append(meta("Fotografías",names.join(" · ")));
+  }
+  article.append(head,details,transientAssignmentControls(app));
+  applicationsList.append(article);
+}
+
+function renderTransientResult(result,{executed=false,assigneeId=null}={}){
+  const spec=transientPayload.spec;
+  const app={
+    scope_type:transientTarget.scope_type,
+    property_id:transientTarget.property_id,
+    room_id:transientTarget.room_id,
+    occupancy_id:transientTarget.occupancy_id
+  };
+  applicationsList.replaceChildren();
+
+  const article=document.createElement("article");
+  article.className="application-card application-ready-card";
+  const head=document.createElement("div");head.className="application-item-head";
+  const title=document.createElement("h3");title.textContent=spec.flowName||"Flujo";
+  const badge=document.createElement("span");badge.className="application-badge";badge.textContent=executed?"Ejecutado":"Publicado";
+  head.append(title,badge);
+
+  const details=document.createElement("div");details.className="application-meta application-ready-summary";
+  details.append(
+    meta("Destino",targetLabel(app)),
+    meta("Qué hará",stepsSummary({spec})),
+    meta("Estado",executed?"Tarea creada":"Sin tareas")
+  );
+  if(executed&&assigneeId){
+    const person=executionCandidates(app).find(item=>item.user_id===assigneeId);
+    details.append(meta("Asignado a",person?candidateLabel(person):"Persona seleccionada"));
+  }
+  article.append(head,details);
+
+  const done=document.createElement("div");done.className="application-complete";
+  const strong=document.createElement("strong");
+  strong.textContent=executed?"Tarea creada":"Flujo publicado";
+  const p=document.createElement("p");
+  p.textContent=executed
+    ?"El flujo quedó publicado en Mis Flujos y la tarea ya está disponible para la persona asignada."
+    :"No se ha creado ninguna tarea. Mientras este flujo no se ejecute podrás editarlo o eliminarlo desde Mis Flujos.";
+  const actions=document.createElement("div");actions.className="application-guided-actions";
+  if(executed){
+    const tasks=document.createElement("a");tasks.className="primary";tasks.href="./workflow-tasks.html";tasks.textContent="Abrir Tareas";
+    actions.append(tasks);
+  }
+  const flows=document.createElement("a");flows.className=executed?"secondary":"primary";flows.href="./workflow-definitions.html?published="+encodeURIComponent(result.definition_id);flows.textContent="Abrir Mis Flujos";
+  actions.append(flows);
+  done.append(strong,p,actions);
+  article.append(done);
+  applicationsList.append(article);
+}
+
+async function finalizeTransient(execute,assigneeId,button){
+  if(!transientPayload||!transientTarget)return;
+  if(!execute){
+    const confirmed=window.confirm("Publicar guardará este flujo en Mis Flujos sin crear ninguna tarea. Mientras siga sin ejecutarse podrá editarse o eliminarse. ¿Publicar?");
+    if(!confirmed)return;
+  }
+
+  const original=button.textContent;
+  button.disabled=true;
+  button.textContent=execute?"Ejecutando…":"Publicando…";
+  setStatus(execute?"Validando condiciones, publicando y creando la tarea…":"Publicando el flujo sin crear tareas…");
+
+  const common={
+    p_property_id:transientTarget.property_id,
+    p_room_id:transientTarget.room_id,
+    p_occupancy_id:transientTarget.occupancy_id,
+    p_photo_pattern_ids:transientTarget.photo_pattern_ids,
+    p_execute:execute,
+    p_idempotency_key:execute?transientPayload.requestKey:null,
+    p_assigned_user_id:execute?assigneeId:null
+  };
+
+  let rpc="";
+  let args={};
+  if(transientPayload.mode==="create"){
+    rpc="publish_workflow_ready_v1";
+    args={
+      p_spec:transientPayload.spec,
+      ...common,
+      p_request_key:transientPayload.requestKey
+    };
+  }else if(transientPayload.mode==="edit_unexecuted"){
+    rpc="update_unexecuted_workflow_v1";
+    args={
+      p_definition_id:transientPayload.definitionId,
+      p_spec:transientPayload.spec,
+      p_expected_revision:transientPayload.expectedRevision,
+      ...common
+    };
+  }else{
+    rpc="publish_workflow_revision_ready_v1";
+    args={
+      p_definition_id:transientPayload.definitionId,
+      p_expected_revision:transientPayload.expectedRevision,
+      ...common
+    };
+  }
+
+  const {data,error}=await supabase.rpc(rpc,args);
+  button.textContent=original;
+  if(error||!Array.isArray(data)||!data[0]){
+    button.disabled=false;
+    setStatus(errorText(error),true);
+    return;
+  }
+
+  const result=data[0];
+  transientFinalized=true;
+  const url=new URL("./workflow-applications.html",window.location.href);
+  url.searchParams.set("definition",result.definition_id);
+  url.searchParams.set("setup","1");
+  url.searchParams.set("application",result.application_id);
+  if(execute&&result.execution_id)url.searchParams.set("execution",result.execution_id);
+  window.history.replaceState({},"",url);
+
+  formCard.hidden=true;
+  applicationsSection.hidden=false;
+  setSetupStage(execute?"done":"ready");
+  renderTransientResult(result,{executed:execute,assigneeId});
+  setStatus(execute
+    ?"Tarea creada. El flujo queda protegido por historial desde esta primera ejecución."
+    :"Flujo publicado sin tareas. Puedes editarlo o eliminarlo desde Mis Flujos mientras no se ejecute.");
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+async function discardTransient(){
+  if(!transientPayload)return;
+  const message=transientPayload.mode==="revision"
+    ?"¿Descartar esta nueva versión? La versión actualmente publicada seguirá intacta."
+    :"¿Descartar este recorrido? No se guardará ningún cambio.";
+  if(!window.confirm(message))return;
+
+  if(transientPayload.mode==="revision"){
+    const {error}=await supabase.rpc("discard_workflow_definition_revision_draft_v1",{
+      p_definition_id:transientPayload.definitionId,
+      p_expected_revision:transientPayload.expectedRevision
+    });
+    if(error){
+      setStatus(errorText(error),true);
+      return;
+    }
+  }
+
+  transientFinalized=true;
+  window.location.href=transientPayload.mode==="create"?"./workflows.html":"./workflow-definitions.html";
+}
+
+async function loadTransient(){
+  transientPayload=consumeTransientHandoff();
+  if(!transientPayload){
+    definitionBox.classList.remove("application-card--loading");
+    definitionBox.textContent="Esta creación temporal ya no está disponible.";
+    formCard.hidden=true;
+    applicationsSection.hidden=true;
+    setStatus("Las creaciones incompletas no se guardan. Vuelve al Creador para empezar de nuevo.",true);
+    return;
+  }
+
+  const {data:userData,error:userError}=await supabase.auth.getUser();
+  if(userError||!userData?.user){
+    setStatus("No se pudo validar la sesión.",true);
+    return;
+  }
+  currentUser=userData.user;
+
+  if(transientPayload.definitionId){
+    const {data:def,error:defError}=await supabase
+      .from("workflow_definitions_v2")
+      .select("id,organization_id,name,scope_type,status")
+      .eq("id",transientPayload.definitionId)
+      .maybeSingle();
+    if(defError||!def)throw defError||new Error("workflow_definition_not_found");
+    authorOrganizationId=def.organization_id;
+  }else{
+    authorOrganizationId=await resolveAuthorOrganization();
+  }
+
+  definition={
+    id:transientPayload.definitionId||null,
+    organization_id:authorOrganizationId,
+    name:String(transientPayload.spec.flowName||"Flujo"),
+    scope_type:String(transientPayload.spec.scopeType||""),
+    status:transientPayload.mode==="create"?"prepublish":"published"
+  };
+  versions=[{
+    id:"transient",
+    definition_id:transientPayload.definitionId||null,
+    version:transientVersionNumber(),
+    spec:transientPayload.spec,
+    published_at:null
+  }];
+
+  versionSelect.replaceChildren(option("transient","Configuración actual"));
+  versionSelect.value="transient";
+  await loadProperties();
+  const available=properties.filter(item=>item.status!=="archived"&&!item.archived_at);
+  propertySelect.replaceChildren(option("","Selecciona un piso"),...available.map(item=>option(item.id,item.name+(item.address_line?" · "+item.address_line:""))));
+
+  const {data:contextData,error:contextError}=await supabase.rpc("get_permission_management_context",{p_organization_id:authorOrganizationId});
+  permissionContext=contextError?null:contextData;
+
+  renderDefinition();
+  configurePresentation();
+  formCard.hidden=false;
+  applicationsSection.hidden=true;
+  await updateTargetControls();
+  await preloadTransientTarget();
+  setSetupStage("destination");
+  setStatus(transientPayload.mode==="create"
+    ?"El diseño sigue siendo temporal. Elige el destino; todavía no se ha guardado ningún flujo."
+    :"Elige o confirma el destino de esta edición antes de Publicar o Ejecutar.");
+}
+
 async function loadProperties(){
+  const organizationId=definition?.organization_id||authorOrganizationId;
+  if(!organizationId)throw new Error("workflow_author_organization_missing");
   const {data,error}=await supabase
     .from("properties_v2")
     .select("id,name,address_line,city,status,archived_at")
-    .eq("organization_id",definition.organization_id)
+    .eq("organization_id",organizationId)
     .order("name");
   if(error)throw error;
   properties=data||[];
@@ -347,12 +797,19 @@ async function updateTargetControls(){
 function renderDefinition(){
   definitionBox.classList.remove("application-card--loading");
   const head=document.createElement("div");
-  const eyebrow=document.createElement("p");eyebrow.className="eyebrow";eyebrow.textContent=guidedSetup?"Diseño completado":"Flujo publicado";
+  const eyebrow=document.createElement("p");eyebrow.className="eyebrow";eyebrow.textContent=transientSetup?"Diseño completado":guidedSetup?"Diseño completado":"Flujo publicado";
   const title=document.createElement("h2");title.textContent=definition.name;
   head.append(eyebrow,title);
   const info=document.createElement("div");info.className="application-meta";
   const version=activeVersion();
-  if(guidedSetup){
+  if(transientSetup){
+    info.append(
+      meta("Estado",transientPayload?.mode==="create"?"Sin publicar":"Editando"),
+      meta("Alcance",scopeLabels[String(version?.spec?.scopeType||definition.scope_type)]||definition.scope_type),
+      meta("Qué hará",stepsSummary(version)),
+      meta("Asignación",assignmentLabels[String(version?.spec?.assignmentType||"")]||"Configurada")
+    );
+  }else if(guidedSetup){
     info.append(
       meta("Versión","v"+(version?.version||"?")),
       meta("Alcance",scopeLabels[String(version?.spec?.scopeType||definition.scope_type)]||definition.scope_type),
@@ -494,8 +951,20 @@ function buildExecutionControls(app,{guided=false}={}){
   return controls;
 }
 
+function assignedUserLabel(userId,app){
+  if(!userId)return "Asignada";
+  const candidate=executionCandidates(app).find(item=>item.user_id===userId);
+  if(candidate)return candidateLabel(candidate);
+  if(currentUser?.id===userId)return currentUser.user_metadata?.display_name||currentUser.email||"Usuario asignado";
+  const person=(permissionContext?.people||[]).find(item=>item.user_id===userId);
+  return person?.display_name||person?.email||"Usuario asignado";
+}
+
 function renderGuidedReady(app){
   const version=versionForApplication(app);
+  const guidedExecution=guidedExecutionId
+    ?executions.find(item=>item.id===guidedExecutionId&&item.application_id===app.id)||null
+    :null;
   const article=document.createElement("article");
   article.className="application-card application-ready-card";
 
@@ -508,7 +977,7 @@ function renderGuidedReady(app){
   details.append(
     meta("Destino",targetLabel(app)),
     meta("Qué hará",stepsSummary(version)),
-    meta("Asignación",assignmentLabels[String(version?.spec?.assignmentType||"")]||"Configurada"),
+    meta("Asignación",guidedExecution?assignedUserLabel(guidedExecution.assigned_user_id,app):(assignmentLabels[String(version?.spec?.assignmentType||"")]||"Configurada")),
     meta("Versión","v"+(version?.version||"?"))
   );
   if(versionNeedsPhoto(version))details.append(meta("Fotografías",applicationPhotoLabel(app)));
@@ -752,6 +1221,17 @@ form.addEventListener("submit",async event=>{
     setStatus("Selecciona al menos un patrón fotográfico.",true);
     return;
   }
+  if(transientSetup){
+    transientTarget=targetFromControls();
+    formCard.hidden=true;
+    applicationsSection.hidden=false;
+    setSetupStage("ready");
+    renderTransientReady();
+    setStatus("Destino preparado. Elige Publicar o Ejecutar.");
+    window.scrollTo({top:0,behavior:"smooth"});
+    return;
+  }
+
   const args={
     p_definition_version_id:version.id,
     p_property_id:["property","room","occupancy"].includes(scope)?propertySelect.value||null:null,
@@ -796,6 +1276,11 @@ form.addEventListener("submit",async event=>{
 });
 
 async function load(){
+  if(transientSetup){
+    await loadTransient();
+    return;
+  }
+
   if(!definitionId){
     definitionBox.textContent="Falta identificar la definición.";
     applicationsList.replaceChildren();
@@ -868,3 +1353,10 @@ async function load(){
 }
 
 load().catch(()=>setStatus("No se pudieron cargar las aplicaciones del flujo.",true));
+
+
+window.addEventListener("beforeunload",event=>{
+  if(!transientSetup||!transientPayload||transientFinalized)return;
+  event.preventDefault();
+  event.returnValue="";
+});

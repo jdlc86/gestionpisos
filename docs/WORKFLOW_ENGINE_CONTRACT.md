@@ -12,28 +12,40 @@ El motor no pertenece a Limpieza, Inspecciones, Mantenimiento ni Check-in. Es in
 
 ## 1. Definición de flujo
 
-Una definición representa la receta editable. Debe tener identidad estable independiente de sus versiones.
+Una definición representa la identidad lógica estable de un flujo.
 
 Estados mínimos:
 
-- `draft`: editable, nunca ejecutable;
-- `published`: existe al menos una versión publicada ejecutable;
-- `paused`: no genera nuevas ejecuciones automáticas, pero conserva histórico y ejecuciones ya creadas;
-- `archived`: no genera nuevas ejecuciones y no aparece como activa, sin borrar histórico.
+- `draft`: estado técnico heredado y soporte de autoría de futuras versiones; una creación nueva incompleta no se persiste como borrador de producto;
+- `published`: flujo terminado disponible en **Mis Flujos**;
+- `paused`: reservado para impedir nuevas ejecuciones conservando histórico;
+- `archived`: flujo con historial retirado de nuevas ejecuciones sin borrar sus datos.
 
 Reglas:
 
-1. publicar nunca sobrescribe una versión ya utilizada;
-2. los borradores iniciales viven en el **Creador de Flujos** y no aparecen en **Mis Flujos**;
-3. editar una definición publicada crea un borrador de futura versión separado en `workflow_definition_revision_drafts_v2`; la versión publicada permanece operativa;
-4. publicar ese borrador añade la siguiente versión inmutable y consume la autoría activa sin migrar aplicaciones existentes;
-5. cada aplicación queda ligada a la versión exacta con la que fue creada; publicar vN+1 no cambia silenciosamente una aplicación de vN;
-6. archivar es soft-delete funcional;
-7. nombre, categoría y descripción no conceden permisos ni alteran autorización.
+1. una creación nueva vive solo en la sesión del Creador hasta **Listo**; abandonar antes de Publicar/Ejecutar no deja una definición parcial;
+2. **Publicar** finaliza atómicamente definición + versión + destino/recursos y no crea ejecución ni tarea;
+3. mientras una definición publicada no tenga ninguna ejecución, **Editar** modifica su configuración actual sin crear v2 y **Eliminar** puede retirarla completamente;
+4. la **primera ejecución** es la frontera histórica: desde ese momento ninguna versión utilizada puede reescribirse ni eliminarse;
+5. editar un flujo con historial crea un borrador separado en `workflow_definition_revision_drafts_v2`; publicar esa edición añade vN+1;
+6. cada ejecución conserva la versión, aplicación, asignación, recursos y snapshots efectivos con los que nació;
+7. un flujo con historial se **Archiva**, nunca se elimina para resolver cambios de negocio;
+8. nombre, categoría y descripción no conceden permisos ni alteran autorización.
 
 ## 2. Versión publicada
 
-Cada publicación produce una versión inmutable de la receta lógica. La versión congela al menos:
+Una versión publicada representa la configuración ejecutable de la definición.
+
+Antes de la primera ejecución de la definición, la versión actual puede actualizarse **en sitio** mediante el RPC específico de flujo no ejecutado. Esa excepción existe porque todavía no hay ningún hecho histórico que deba reproducirse.
+
+Desde el instante en que existe una ejecución:
+
+- la versión referenciada por esa ejecución es inmutable;
+- su `spec_snapshot` de ejecución permanece reproducible;
+- una edición futura crea una nueva fila vN+1;
+- la versión anterior nunca se reescribe para cambiar el pasado.
+
+La versión congela al menos:
 
 - tipo/categoría del flujo;
 - tipo lógico de ámbito;
@@ -274,7 +286,11 @@ La ruta legacy solo se retira cuando el recorrido equivalente esté probado extr
 
 ## 17. Creador de Flujos
 
-El Creador es una interfaz de autoría, no el motor. Debe guiar por:
+El Creador es una interfaz integrada de autoría y preparación:
+
+`Diseño → Destino → Listo`
+
+Diseño conserva los siete pasos:
 
 1. identidad;
 2. ámbito;
@@ -282,23 +298,21 @@ El Creador es una interfaz de autoría, no el motor. Debe guiar por:
 4. asignación;
 5. pasos y recursos;
 6. cierre/revisión;
-7. revisión final y publicación.
-
-El Creador puede persistir **borradores parciales**. Guardar exige únicamente una identidad mínima suficiente para recuperar el borrador; no convierte opciones por defecto del formulario en decisiones de negocio.
+7. revisión final.
 
 Reglas de autoría:
 
-- el **Creador de Flujos** es la única superficie de borradores, edición y publicación;
-- **Mis Flujos** es catálogo operativo y solo muestra definiciones con al menos una versión publicada;
-- una nueva versión se inicia desde Mis Flujos pero se edita/publica siempre en el Creador;
-- mientras existe un borrador de vN+1, vN continúa siendo la versión publicada operativa;
+- una **creación nueva incompleta no se guarda** en servidor ni en una lista de borradores para retomarla;
+- salir antes de finalizar avisa de que los cambios se perderán;
+- al pasar de Diseño a Destino, el estado se transporta temporalmente dentro de la misma sesión y todavía no se publica;
+- en Listo existen tres decisiones de producto: **Publicar**, **Ejecutar** y **Descartar**;
+- **Publicar** guarda el flujo completo con su destino y recursos en Mis Flujos, pero crea cero tareas;
+- **Ejecutar** realiza la misma finalización y, si las condiciones actuales son válidas, crea una ejecución/tarea idempotente;
+- un flujo publicado sin ejecuciones se edita como la misma entidad lógica y puede eliminarse;
+- un flujo que ya tiene historial se edita sobre un borrador separado de futura versión; abandonar esa edición no altera la versión operativa;
+- **Mis Flujos** muestra las acciones de negocio `Ejecutar / Editar / Eliminar` o `Ejecutar / Editar / Archivar`; la UI no obliga al usuario a decidir si técnicamente necesita una nueva versión;
 - ninguna selección de tipo, ámbito, activación, asignación, pasos o cierre se presupone;
-- un apartado solo se considera configurado cuando existe una decisión explícita del usuario;
-- el servidor conserva un indicador derivado de completitud de autoría; el cliente no puede autoatribuirse ese estado;
-- un borrador incompleto puede guardarse y retomarse;
-- un borrador creado antes del contrato de decisiones explícitas se trata como incompleto hasta ser revisado;
-- **configuración completa no equivale a flujo operativo**: publicar congela la receta lógica; después debe existir una aplicación concreta validada y, más adelante, el motor de ejecución;
-- ningún borrador, completo o incompleto, puede presentarse como flujo publicado ni ejecutable.
+- el backend mantiene autorización, AAL2, idempotencia y trazabilidad aunque la UX oculte las capas técnicas.
 
 ## 18. Condiciones antes del primer DDL
 

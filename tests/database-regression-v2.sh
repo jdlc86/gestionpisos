@@ -70,11 +70,13 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -v "$repo_path:/w
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260918234456_workflow_authoring_operational_separation.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260919103000_workflow_checklist_step.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260919141500_workflow_draft_discard.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260919143208_workflow_publish_execute_lifecycle.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/database-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/photo-verification-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-definition-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-authoring-separation-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-draft-discard-regression.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-publish-execute-lifecycle-regression.sql
 
     trap - EXIT
     cleanup

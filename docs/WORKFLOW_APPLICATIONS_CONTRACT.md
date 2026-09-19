@@ -23,7 +23,7 @@ Ejemplo:
 
 `scopeType=property` significa **“esta receta se ejecuta sobre un piso”**. No contiene el UUID de un piso concreto.
 
-La publicación congela esa receta lógica en `workflow_definition_versions_v2`.
+La configuración terminada se representa en `workflow_definition_versions_v2`. Mientras la definición no tenga ejecuciones puede actualizarse en sitio; desde la primera ejecución la versión utilizada queda congelada para historial.
 
 ## 2. Aplicación concreta
 
@@ -81,25 +81,29 @@ Persistencia:
 
 El servidor valida organización, pertenencia al piso y vigencia de la ocupación.
 
-## 4. Reutilización
+## 4. Flujo terminado y destino actual
 
-Una misma versión publicada puede aplicarse a muchos destinos.
+En la UX vigente el destino forma parte de la finalización del flujo:
 
-Ejemplo:
+`Diseño → Destino → Listo → Publicar/Ejecutar`.
 
-`Limpieza semanal v1`
+Por tanto, un flujo nuevo no aparece en **Mis Flujos** sin una aplicación/destino coherente con su ámbito. La tabla `workflow_applications_v2` sigue separando técnicamente receta y entidad real para mantener validación, recursos e historial.
 
-puede tener aplicaciones independientes en:
+Mientras el flujo nunca se haya ejecutado:
 
-- Piso A;
-- Piso B;
-- Piso C.
+- **Editar** conserva la misma definición lógica y la misma versión actual;
+- cambiar el destino reemplaza la aplicación configurada anterior;
+- no se crea una versión histórica solo por corregir/configurar el flujo;
+- **Eliminar** puede retirar definición, versión y aplicación porque no existe ejecución que reproducir.
 
-No se duplican tres definiciones.
+Desde la primera ejecución:
 
-La aplicación conserva para siempre su `definition_version_id` original. Si después se publica `Limpieza semanal v2`, las aplicaciones existentes de v1 **no se migran automáticamente**. Adoptar v2 en un destino debe ser una acción futura y explícita, preservando historial y trazabilidad.
+- la aplicación utilizada por esa ejecución permanece asociada a su versión original;
+- una edición futura publica vN+1 y prepara la aplicación vigente de esa nueva versión;
+- las aplicaciones anteriores se archivan, no se reinterpretan;
+- el historial siempre puede reconstruir la versión/destino exactos que generaron cada tarea.
 
-Para una misma definición y un mismo destino solo puede existir una aplicación `configured` a la vez. Archivar permite crear posteriormente otra aplicación explícita sin destruir la anterior.
+Si se necesita otro proceso lógico diferente para otro conjunto de pisos, se crea otro flujo desde el Creador; la UX no ofrece una acción genérica **Duplicar**.
 
 ## 5. Recursos concretos
 
@@ -111,19 +115,23 @@ La selección concreta de esos recursos pertenece a la configuración de la apli
 
 No se duplican patrones dentro del workflow.
 
-## 6. Publicación
+## 6. Publicar y Ejecutar desde Listo
 
-`publish_workflow_definition_v1`:
+La finalización de un flujo nuevo usa `publish_workflow_ready_v1` como operación atómica.
 
-- exige autenticación;
-- exige `aal2`;
-- valida autorización administrativa server-side;
-- solo publica una definición con `authoring_complete=true`;
-- crea una versión inmutable;
-- es idempotente ante reintentos de la misma definición ya publicada;
-- audita la publicación;
-- **no selecciona un piso/habitación/ocupación**;
-- **no crea una aplicación ni una ejecución**.
+**Publicar**:
+
+- exige autenticación y `aal2`;
+- valida autoría completa;
+- crea/publica definición + versión;
+- valida y crea el destino mediante la infraestructura de aplicaciones;
+- vincula recursos concretos, incluidos patrones fotográficos cuando corresponda;
+- es idempotente por `creation_request_key`;
+- **no crea ejecución ni tarea**.
+
+**Ejecutar** usa la misma finalización y además invoca el runner existente. Antes de materializar trabajo se vuelven a validar destino, vigencia de ocupación, asignación y recursos. El resultado es como máximo una ejecución idempotente y una tarea de `tenant_tasks_v2`.
+
+Los RPC históricos `publish_workflow_definition_v1` y `create_workflow_application_v2` se conservan como primitivas internas/compatibilidad, pero la UX integrada no obliga al usuario a recorrerlas manualmente.
 
 ## 7. Crear aplicación
 

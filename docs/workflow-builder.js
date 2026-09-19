@@ -17,6 +17,7 @@ const editorView=document.getElementById("builderEditorView");
 const editorTitle=document.getElementById("builderEditorTitle");
 const exitEditorButton=document.getElementById("builderExitEditor");
 const exitDialog=document.getElementById("builderExitDialog");
+const exitDialogText=document.getElementById("builderExitDialogText");
 const exitSaveButton=document.getElementById("builderExitSave");
 const exitDiscardButton=document.getElementById("builderExitDiscard");
 const exitCancelButton=document.getElementById("builderExitCancel");
@@ -39,10 +40,11 @@ const serverStatus=document.getElementById("builderServerStatus");
 const builderBadge=document.getElementById("builderBadge");
 const initialParams=new URLSearchParams(window.location.search);
 const newDraftMode=initialParams.get("new")==="1";
-const editorRequested=Boolean(initialParams.get("id"))||newDraftMode;
+const editorRequested=true;
 let currentStep=0;
 let currentDefinitionId=initialParams.get("id")||null;
 let revisionMode=initialParams.get("revision")==="1";
+const editPublishedMode=initialParams.get("edit")==="1";
 let currentRevision=null;
 let currentBaseVersion=null;
 let loadingServerDraft=false;
@@ -205,7 +207,9 @@ function updateEditorTitle(){
   const name=value("flowName")||"Nuevo flujo";
   editorTitle.textContent=revisionMode&&currentBaseVersion
     ?"Nueva v"+(currentBaseVersion+1)+" · "+name
-    :name;
+    :editPublishedMode
+      ?"Editar · "+name
+      :name;
 }
 
 function showWorkspaceView(){
@@ -216,7 +220,7 @@ function showWorkspaceView(){
 
 function goToDrafts(){
   allowNavigation=true;
-  window.location.href="./workflow-builder.html";
+  window.location.href=(revisionMode||editPublishedMode)?"./workflow-definitions.html":"./workflows.html";
 }
 
 function clearLocalDraftCache(){
@@ -231,11 +235,23 @@ async function requestExitEditor(){
     goToDrafts();
     return;
   }
+  if(exitSaveButton){
+    exitSaveButton.hidden=!revisionMode;
+    exitSaveButton.textContent="Guardar edición y salir";
+  }
+  if(exitDiscardButton){
+    exitDiscardButton.textContent=revisionMode?"Salir sin guardar estos cambios":"Salir y perder cambios";
+  }
+  if(exitDialogText){
+    exitDialogText.textContent=revisionMode
+      ?"La versión publicada seguirá intacta. Puedes guardar esta edición en curso o salir sin guardar los últimos cambios."
+      :"Si sales ahora perderás los cambios realizados. No se ha creado ningún flujo parcial.";
+  }
   if(exitDialog?.showModal){
     exitDialog.showModal();
     return;
   }
-  if(window.confirm("Hay cambios sin guardar. ¿Salir sin guardarlos?"))goToDrafts();
+  if(window.confirm("Si sales ahora perderás los cambios realizados. ¿Salir?"))goToDrafts();
 }
 
 function completion(data=draft()){
@@ -265,8 +281,8 @@ function triggerComplete(data){
 }
 
 function saveLocalDraft(){
-  if(loadingServerDraft||currentDefinitionId)return;
-  try{sessionStorage.setItem(DRAFT_KEY,JSON.stringify(draft()))}catch{}
+  // Las creaciones nuevas y las ediciones sin historial viven solo en memoria.
+  // No se guardan para retomarlas posteriormente.
 }
 
 function applyDraft(saved,{restoreStep=true}={}){
@@ -287,12 +303,7 @@ function applyDraft(saved,{restoreStep=true}={}){
 }
 
 function restoreLocalDraft(){
-  let saved=null;
-  try{
-    sessionStorage.removeItem(LEGACY_DRAFT_KEY);
-    saved=JSON.parse(sessionStorage.getItem(DRAFT_KEY)||"null");
-  }catch{}
-  applyDraft(saved);
+  clearLocalDraftCache();
 }
 
 function resetDecisionsKeepingIdentity(saved){
@@ -378,12 +389,12 @@ function updateCompletionUI(){
     const completeLabel=revisionMode&&currentBaseVersion
       ?"Nueva v"+(currentBaseVersion+1)+" preparada"
       :"Configuración completa";
-    builderBadge.textContent=state.complete?"Listo":"Borrador";
-    builderBadge.title=state.complete?completeLabel:"Borrador incompleto";
+    builderBadge.textContent=state.complete?"Listo":"En edición";
+    builderBadge.title=state.complete?completeLabel:"Configuración en curso";
     builderBadge.classList.toggle("is-complete",state.complete);
   }
   if(publishButton){
-    publishButton.disabled=!state.complete||!currentDefinitionId;
+    publishButton.disabled=!state.complete||(revisionMode&&!currentDefinitionId);
   }
   return state;
 }
@@ -453,6 +464,81 @@ async function loadServerDraft(){
   markSavedSnapshot();
 }
 
+async function loadPublishedUnexecuted(){
+  if(!currentDefinitionId)return;
+  loadingServerDraft=true;
+  setServerStatus("Cargando flujo publicado…");
+
+  const [definitionResult,versionResult,applicationResult]=await Promise.all([
+    supabase
+      .from("workflow_definitions_v2")
+      .select("id,status,revision,organization_id,name")
+      .eq("id",currentDefinitionId)
+      .maybeSingle(),
+    supabase
+      .from("workflow_definition_versions_v2")
+      .select("id,version,spec,published_at")
+      .eq("definition_id",currentDefinitionId)
+      .order("version",{ascending:false}),
+    supabase
+      .from("workflow_applications_v2")
+      .select("id")
+      .eq("definition_id",currentDefinitionId)
+  ]);
+
+  if(definitionResult.error||versionResult.error||applicationResult.error||!definitionResult.data){
+    loadingServerDraft=false;
+    setServerStatus("No se pudo cargar este flujo publicado.","error");
+    publishButton.disabled=true;
+    return;
+  }
+
+  if(definitionResult.data.status!=="published"){
+    loadingServerDraft=false;
+    setServerStatus("Este flujo ya no está disponible para edición.","error");
+    publishButton.disabled=true;
+    return;
+  }
+
+  const applicationIds=(applicationResult.data||[]).map(item=>item.id);
+  if(applicationIds.length){
+    const {count,error}=await supabase
+      .from("workflow_executions_v2")
+      .select("id",{count:"exact",head:true})
+      .in("application_id",applicationIds);
+    if(error){
+      loadingServerDraft=false;
+      setServerStatus("No se pudo comprobar el historial del flujo.","error");
+      publishButton.disabled=true;
+      return;
+    }
+    if((count||0)>0){
+      loadingServerDraft=false;
+      setServerStatus("Este flujo ya tiene ejecuciones. Vuelve a Mis Flujos y entra con Editar para crear una nueva versión.","error");
+      publishButton.disabled=true;
+      return;
+    }
+  }
+
+  const latest=(versionResult.data||[])[0]||null;
+  if(!latest){
+    loadingServerDraft=false;
+    setServerStatus("El flujo no tiene una versión publicada válida.","error");
+    publishButton.disabled=true;
+    return;
+  }
+
+  currentRevision=Number(definitionResult.data.revision);
+  currentBaseVersion=Number(latest.version);
+  applyDraft(latest.spec,{restoreStep:false});
+  currentStep=0;
+  loadingServerDraft=false;
+  updateTriggerFields();
+  showStep(0,false);
+  setServerStatus("Flujo publicado sin ejecuciones · los cambios sustituirán su configuración actual al publicar.");
+  markSavedSnapshot();
+}
+
 function validateBeforeSave(){
   const name=field("flowName");
   if(!name||name.value.trim().length<3){
@@ -508,7 +594,7 @@ function renderSummary(){
   if(data.notifications.onClose)notificationNames.push("al cerrar flujo");
   const pending=state.sections.filter(section=>!section.complete).map(section=>section.label);
   summary.replaceChildren(
-    summaryRow("Estado",state.complete?"Configuración completa":"Borrador incompleto · "+state.completed+"/"+state.total),
+    summaryRow("Estado",state.complete?"Configuración completa":"Configuración incompleta · "+state.completed+"/"+state.total),
     summaryRow("Pendiente",pending.length?pending.join(", "):"Nada pendiente en el asistente"),
     summaryRow("Nombre",data.flowName||"Sin nombre"),
     summaryRow("Tipo",label("flowType",data.flowType)),
@@ -648,15 +734,41 @@ async function publishDefinition(definitionId,revision,{isRevision=false,button=
   return true;
 }
 
-async function publishCurrentDraft(){
+async function continueToDestination(){
   const state=completion();
   if(!state.complete){
-    setServerStatus("Completa todos los apartados antes de publicar.","warning");
+    setServerStatus("Completa todos los apartados antes de continuar.","warning");
     return;
   }
-  const saved=await saveServerDraft();
-  if(!saved)return;
-  await publishDefinition(currentDefinitionId,currentRevision,{isRevision:revisionMode,button:publishButton});
+
+  if(revisionMode){
+    const saved=await saveServerDraft();
+    if(!saved)return;
+  }
+
+  const token=globalThis.crypto?.randomUUID?.()||("handoff-"+Date.now()+"-"+Math.random().toString(36).slice(2));
+  const payload={
+    mode:revisionMode?"revision":editPublishedMode?"edit_unexecuted":"create",
+    spec:serverDraft(),
+    definitionId:currentDefinitionId||null,
+    expectedRevision:Number.isFinite(currentRevision)?currentRevision:null,
+    baseVersion:Number.isFinite(currentBaseVersion)?currentBaseVersion:null,
+    requestKey:token,
+    createdAt:Date.now()
+  };
+
+  try{
+    sessionStorage.setItem("gestionpisos.workflow-builder.handoff."+token,JSON.stringify(payload));
+  }catch{
+    setServerStatus("No se pudo preparar el paso Destino en esta sesión.","error");
+    return;
+  }
+
+  allowNavigation=true;
+  const next=new URL("./workflow-applications.html",window.location.href);
+  next.searchParams.set("setup","1");
+  next.searchParams.set("handoff",token);
+  window.location.href=next.href;
 }
 
 function setDraftStatus(message,tone="neutral"){
@@ -842,7 +954,7 @@ async function loadDraftWorkspace(){
   renderDraftWorkspace();
 }
 
-publishButton?.addEventListener("click",publishCurrentDraft);
+publishButton?.addEventListener("click",continueToDestination);
 addChecklistItemButton?.addEventListener("click",()=>{
   addChecklistItem({text:"",required:true},{focus:true});
   notifyChecklistChanged();
@@ -902,15 +1014,22 @@ draftLoadMore?.addEventListener("click",()=>{
 });
 
 clearButton.addEventListener("click",async()=>{
-  const message=currentDefinitionId
-    ?"¿Descartar los cambios sin guardar y recuperar la última versión guardada del borrador?"
-    :"¿Borrar los cambios locales de este flujo nuevo?";
+  const message=revisionMode
+    ?"¿Descartar los cambios no guardados de esta edición y recuperar la última edición guardada?"
+    :editPublishedMode
+      ?"¿Descartar estos cambios y recuperar la configuración publicada?"
+      :"¿Descartar esta creación? Se perderán todos los cambios.";
   if(!window.confirm(message))return;
 
   clearLocalDraftCache();
-  if(currentDefinitionId){
+  if(revisionMode&&currentDefinitionId){
     await loadServerDraft();
-    setServerStatus("Cambios locales descartados. Se restauró la última revisión guardada.","success");
+    setServerStatus("Cambios descartados. Se restauró la edición guardada.","success");
+    return;
+  }
+  if(editPublishedMode&&currentDefinitionId){
+    await loadPublishedUnexecuted();
+    setServerStatus("Cambios descartados. Se restauró la configuración publicada.","success");
     return;
   }
 
@@ -921,7 +1040,7 @@ clearButton.addEventListener("click",async()=>{
   updateTriggerFields();
   showStep(0,true);
   markSavedSnapshot();
-  setServerStatus("Cambios locales eliminados. El flujo nuevo vuelve a estar vacío.");
+  setServerStatus("Creación descartada. No se ha guardado ningún flujo.");
 });
 
 window.addEventListener("beforeunload",event=>{
@@ -939,16 +1058,17 @@ window.addEventListener("beforeunload",event=>{
   }
 
   if(currentDefinitionId){
-    await loadServerDraft();
+    if(editPublishedMode)await loadPublishedUnexecuted();
+    else await loadServerDraft();
     return;
   }
 
   form.reset();
   renderChecklistItems([]);
+  clearLocalDraftCache();
   markSavedSnapshot();
-  restoreLocalDraft();
   updateTriggerFields();
   showStep(currentStep);
   const state=completion();
-  setServerStatus("Nuevo flujo · "+state.completed+"/"+state.total+" apartados completos.");
+  setServerStatus("Nuevo flujo · "+state.completed+"/"+state.total+" apartados completos. Nada se guarda hasta Publicar o Ejecutar.");
 })();

@@ -277,6 +277,22 @@ begin
   )<>1 then
     raise exception 'scheduled workflow duplicated its execution';
   end if;
+
+  if (
+    select count(*)
+    from public.notifications_v2 n
+    join public.workflow_executions_v2 e
+      on e.id=n.source_id
+    where e.application_id=v_app
+      and n.source_kind='workflow_execution'
+      and n.event_type='workflow_task_created'
+      and n.event_key='created'
+      and n.recipient_user_id='22222222-2222-4222-8222-222222222222'::uuid
+      and n.channel_in_app=true
+      and n.channel_email=false
+  )<>1 then
+    raise exception 'automatic scheduled execution did not reuse onCreate notification trigger exactly once';
+  end if;
 end;
 $run_manual_schedule$;
 
@@ -522,10 +538,26 @@ begin
   ) then
     raise exception 'blocked schedule did not notify its creator';
   end if;
+
+  if private.process_due_workflow_schedules_v1(v_due+interval '2 minutes')<>0 then
+    raise exception 'blocked scheduled workflow was retried automatically';
+  end if;
+
+  if (
+    select count(*)
+    from public.notifications_v2
+    where source_kind='workflow_schedule'
+      and source_id=v_app
+      and event_type='workflow_schedule_blocked'
+      and event_key like 'blocked:%'
+      and recipient_user_id='22222222-2222-4222-8222-222222222222'::uuid
+  )<>1 then
+    raise exception 'blocked schedule notification was duplicated';
+  end if;
 end;
 $blocked_schedule$;
 
--- 4. Zona/UTC deben coincidir. El wrapper completo revierte la publicación si no coinciden.
+-- 4. Validaciones temporales rechazan entradas inválidas sin dejar publicación parcial.
 set local role authenticated;
 select set_config(
   'request.jwt.claims',
@@ -537,6 +569,87 @@ select set_config(
   true
 );
 
+do $past_schedule$
+begin
+  perform *
+  from public.publish_workflow_ready_v2(
+    jsonb_build_object(
+      'authoringVersion',2,
+      'flowName','Programada pasada',
+      'flowType','custom',
+      'flowDescription','Debe rechazar fecha pasada',
+      'scopeType','organization',
+      'triggerType','scheduled_once',
+      'recurrence','',
+      'scheduledAt',to_char(date_trunc('minute',now()-interval '10 minutes') at time zone 'UTC','YYYY-MM-DD"T"HH24:MI'),
+      'scheduledTimezone','UTC',
+      'scheduledAtUtc',to_char(date_trunc('minute',now()-interval '10 minutes') at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+      'customEvery','',
+      'customUnit','',
+      'assignmentType','manual',
+      'steps',jsonb_build_object('accept',true,'photo',false,'checklist',false,'document',false),
+      'checklistItems','[]'::jsonb,
+      'closeType','auto',
+      'notifications',jsonb_build_object('onCreate',false,'onClose',false)
+    ),
+    null,null,null,'{}'::uuid[],
+    false,
+    'regression-scheduled-past',
+    null,
+    null,
+    'UTC',
+    '22222222-2222-4222-8222-222222222222'::uuid
+  );
+  raise exception 'past scheduled workflow unexpectedly published';
+exception
+  when sqlstate '22023' then
+    if sqlerrm<>'workflow_schedule_must_be_future' then
+      raise;
+    end if;
+end;
+$past_schedule$;
+
+do $invalid_timezone$
+begin
+  perform *
+  from public.publish_workflow_ready_v2(
+    jsonb_build_object(
+      'authoringVersion',2,
+      'flowName','Programada zona inválida',
+      'flowType','custom',
+      'flowDescription','Debe rechazar zona IANA inválida',
+      'scopeType','organization',
+      'triggerType','scheduled_once',
+      'recurrence','',
+      'scheduledAt','2099-01-01T10:00',
+      'scheduledTimezone','Mars/Olympus',
+      'scheduledAtUtc','2099-01-01T10:00:00Z',
+      'customEvery','',
+      'customUnit','',
+      'assignmentType','manual',
+      'steps',jsonb_build_object('accept',true,'photo',false,'checklist',false,'document',false),
+      'checklistItems','[]'::jsonb,
+      'closeType','auto',
+      'notifications',jsonb_build_object('onCreate',false,'onClose',false)
+    ),
+    null,null,null,'{}'::uuid[],
+    false,
+    'regression-scheduled-invalid-timezone',
+    null,
+    null,
+    'Mars/Olympus',
+    '22222222-2222-4222-8222-222222222222'::uuid
+  );
+  raise exception 'invalid timezone unexpectedly published';
+exception
+  when sqlstate '22023' then
+    if sqlerrm<>'workflow_schedule_timezone_invalid' then
+      raise;
+    end if;
+end;
+$invalid_timezone$;
+
+-- Zona/UTC deben coincidir. El wrapper completo revierte la publicación si no coinciden.
 do $timezone_mismatch$
 begin
   perform *

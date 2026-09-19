@@ -54,7 +54,7 @@ grep -q 'serviceWorker' docs/app.js
 grep -q 'GestionPisos' docs/manifest.webmanifest
 grep -Fq "'./legal.html'" docs/sw.js
 grep -Fq "'./privacy.html'" docs/sw.js
-grep -q 'gestionpisos-shell-v25' docs/sw.js
+grep -q 'gestionpisos-shell-v26' docs/sw.js
 grep -Fq "'./bottom-nav.js'" docs/sw.js
 grep -Fq "'./bottom-nav.css'" docs/sw.js
 grep -Fq 'mountBottomNavigation' docs/auth-guard.js
@@ -224,7 +224,7 @@ test -s docs/photo-camera.js
 grep -q 'photo-camera.css?v=2026091802' docs/photo-camera.html
 grep -q 'photo-reference-guide.js?v=2026091801' docs/photo-camera.html
 grep -q 'photo-alignment.js?v=2026091503' docs/photo-camera.js
-grep -q 'photo-camera.js' docs/photo-camera.html
+grep -Fq 'photo-camera.js?v=2026091912' docs/photo-camera.html
 grep -q 'id="closeCamera"' docs/photo-camera.html
 grep -q 'id="flashCamera"' docs/photo-camera.html
 grep -q 'id="captureCamera"' docs/photo-camera.html
@@ -259,7 +259,7 @@ grep -q 'submit_workflow_photo_verification_v1' docs/photo-persistence.js
 grep -q 'workflow_resource_id' docs/photo-persistence.js
 grep -q 'workflow_execution_photo_resources_v2' docs/photo-reference-guide.js
 grep -q 'pattern_snapshot' docs/photo-reference-guide.js
-grep -q 'photo-persistence.js?v=2026091801' docs/photo-camera.html
+grep -Fq 'photo-persistence.js?v=2026091912' docs/photo-camera.html
 
 test -s docs/permissions.html
 test -s docs/permissions.js
@@ -353,3 +353,10 @@ grep -Fq 'button.dataset.themeBound = "1"' docs/app.js
 grep -Fq 'window.AllaisoTheme = { apply, toggle, bind }' docs/app.js
 ! grep -Fq 'document.addEventListener("click", event =>' docs/app.js
 grep -Fq 'id="homeThemeAction"' docs/index.html
+
+grep -Fq "const backLink = $('cameraBackLink');" docs/photo-camera.js
+grep -Fq "return './workflow-tasks.html';" docs/photo-camera.js
+grep -Fq "'./cleaning.html?task_id='" docs/photo-camera.js
+grep -Fq "return './photo-patterns.html';" docs/photo-camera.js
+grep -Fq "const back = document.getElementById(\"cameraBackLink\");" docs/photo-persistence.js
+! grep -Fq 'document.querySelector(".topbar a.ghost")' docs/photo-persistence.js

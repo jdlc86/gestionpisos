@@ -12,8 +12,8 @@ alter table public.tenant_tasks_v2
 alter table public.tenant_tasks_v2
   add constraint tenant_tasks_v2_removal_shape_check
   check (
-    (removed_at is null and removed_by is null)
-    or (removed_at is not null and removed_by is not null)
+    removed_by is null
+    or removed_at is not null
   ) not valid;
 
 alter table public.tenant_tasks_v2

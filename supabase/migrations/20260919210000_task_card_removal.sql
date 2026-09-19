@@ -43,6 +43,10 @@ begin
     raise exception 'not_authenticated' using errcode='42501';
   end if;
 
+  if coalesce(auth.jwt()->>'aal','aal1') <> 'aal2' then
+    raise exception 'aal2_required' using errcode='42501';
+  end if;
+
   select *
   into v_task
   from public.tenant_tasks_v2
@@ -88,6 +92,24 @@ begin
       removed_by=v_actor,
       updated_at=now()
   where id=v_task.id;
+
+  insert into public.audit_log_v2(
+    organization_id,actor_user_id,action,entity_type,entity_id,result,details
+  ) values (
+    v_task.organization_id,
+    v_actor,
+    'task_card_removed',
+    'tenant_task',
+    v_task.id::text,
+    'success',
+    jsonb_build_object(
+      'task_type',v_task.task_type,
+      'status',v_task.status,
+      'source_kind',v_task.source_kind,
+      'source_id',v_task.source_id,
+      'assigned_user_id',v_task.assigned_user_id
+    )
+  );
 
   return query select v_task.id,true;
 end;

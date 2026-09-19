@@ -252,7 +252,7 @@ grep -Fq 'workflow_definitions_v2' docs/WORKFLOW_IMPLEMENTATION_MAP.md
 
 echo 'Workflow smoke checks passed'
 
-grep -Fq 'ejecución pendiente y su tarea asociada' docs/workflow-applications.js
+grep -Fq 'Destinos cargados. Puedes preparar uno nuevo o ejecutar el flujo desde un destino disponible.' docs/workflow-applications.js
 
 grep -Fq 'class="builder-editor-state"' docs/workflow-builder.html
 grep -Fq '.builder-editor-state::before' docs/workflow-builder.css

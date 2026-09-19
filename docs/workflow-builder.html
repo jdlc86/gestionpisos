@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#ffffff">
   <meta name="description" content="Creador de Flujos de GestionPisos">
   <link rel="stylesheet" href="./app.css?v=2026091703">
-  <link rel="stylesheet" href="./workflow-builder.css?v=2026091902">
+  <link rel="stylesheet" href="./workflow-builder.css?v=2026091903">
   <title>Allaiso · Creador de Flujos</title>
 </head>
 <body>
@@ -15,16 +15,8 @@
       <div><p class="eyebrow">ALLAISO</p><h1>Creador de Flujos</h1></div>
       <div class="global-actions">
         <button class="global-icon" data-theme-toggle aria-label="Cambiar tema"><span data-theme-icon>☾</span></button>
-        <a class="global-icon" href="./workflows.html" aria-label="Volver a Flujos de Trabajo" title="Flujos de Trabajo">←</a>
-        <a class="global-icon" href="./" aria-label="Inicio" title="Inicio">⌂</a>
       </div>
     </header>
-
-    <section class="hero">
-      <span class="badge">Autoría</span>
-      <h2>Diseña y organiza tus flujos sin mezclar borradores con el editor.</h2>
-      <p>El Creador separa la gestión de borradores de la edición. Las recetas publicadas continúan en Mis Flujos.</p>
-    </section>
 
     <section id="builderDraftsView" class="builder-view" aria-labelledby="builderDraftsTitle">
       <section class="builder-drafts-section">
@@ -32,9 +24,9 @@
           <div>
             <p class="eyebrow">Creador de Flujos</p>
             <h2 id="builderDraftsTitle">Borradores</h2>
-            <p class="builder-view-description">Retoma un borrador o inicia uno nuevo. El editor se abre en una vista independiente.</p>
+            <p class="builder-view-description">Continúa uno existente o crea un flujo nuevo.</p>
           </div>
-          <a class="primary" href="./workflow-builder.html?new=1">➕ Nuevo flujo</a>
+          <a class="builder-action builder-action--primary" href="./workflow-builder.html?new=1">Nuevo flujo</a>
         </div>
 
         <div class="builder-draft-controls" aria-label="Filtrar borradores">
@@ -65,7 +57,7 @@
 
     <section id="builderEditorView" class="builder-view" hidden aria-labelledby="builderEditorTitle">
       <div class="builder-editor-bar">
-        <button id="builderExitEditor" type="button" class="secondary">← Borradores</button>
+        <button id="builderExitEditor" type="button" class="builder-back-link" aria-label="Volver a borradores">← Volver</button>
         <div class="builder-editor-heading">
           <p class="eyebrow">Editor</p>
           <h2 id="builderEditorTitle">Nuevo flujo</h2>
@@ -99,7 +91,7 @@
             <option value="custom">Personalizado</option>
           </select></label>
           <label>Descripción<textarea id="flowDescription" name="flowDescription" rows="4" maxlength="400" placeholder="Qué objetivo tiene este flujo"></textarea></label>
-          <div class="builder-note">El nombre permite guardar el borrador. El tipo sigue pendiente hasta que lo selecciones tú.</div>
+          <div class="builder-note">Puedes guardar el borrador desde este primer paso.</div>
         </section>
 
         <section class="builder-panel" data-step="1">
@@ -112,7 +104,7 @@
             <option value="room">Una habitación</option>
             <option value="occupancy">Una ocupación / inquilino</option>
           </select></label>
-          <div class="builder-note">En esta fase se guarda el tipo de ámbito. La entidad concreta se seleccionará y validará server-side antes de publicar; un nombre visible nunca será una credencial.</div>
+          <div class="builder-note">La entidad concreta se selecciona después, al aplicar el flujo.</div>
         </section>
 
         <section class="builder-panel" data-step="2">
@@ -150,7 +142,7 @@
           <label id="scheduledAtRow" hidden>Fecha y hora
             <input id="scheduledAt" name="scheduledAt" type="datetime-local" disabled>
           </label>
-          <div class="builder-note">Manual y Por evento no usan frecuencia. Recurrente muestra frecuencia; Personalizada permite indicar cada cuántos días, semanas o meses. Fecha concreta muestra calendario y hora.</div>
+          <div class="builder-note">Los campos necesarios aparecen según el tipo de activación.</div>
         </section>
 
         <section class="builder-panel" data-step="3">
@@ -164,7 +156,7 @@
             <option value="role">Rol o capacidad</option>
             <option value="manual">Se decide al iniciar</option>
           </select></label>
-          <div class="builder-note">La persona final se resolverá siempre en servidor cuando se cree la ejecución; el navegador no podrá autoasignar permisos.</div>
+          <div class="builder-note">La persona final se resolverá al iniciar la ejecución.</div>
         </section>
 
         <section class="builder-panel" data-step="4">
@@ -178,7 +170,7 @@
             <label class="check-row"><input type="checkbox" name="stepDocument"> Adjuntar o revisar documento</label>
           </fieldset>
           <a id="photoBankLink" class="resource-link" href="./photo-patterns.html?from=workflow-builder" hidden>📷 Abrir Banco Fotográfico</a>
-          <div class="builder-note">Selecciona al menos un paso para considerar configurado este apartado. Los patrones se referenciarán por versión; no se copiarán dentro del flujo.</div>
+          <div class="builder-note">Selecciona al menos una acción para este flujo.</div>
         </section>
 
         <section class="builder-panel" data-step="5">
@@ -192,14 +184,14 @@
           </select></label>
           <label class="check-row"><input type="checkbox" id="notifyOnCreate" name="notifyOnCreate"> Notificar al asignado al crear la tarea</label>
           <label class="check-row"><input type="checkbox" id="notifyOnClose" name="notifyOnClose"> Notificar al cerrar el flujo</label>
-          <div class="builder-note">Las notificaciones son opcionales. La decisión de cierre sí debe elegirse explícitamente.</div>
+          <div class="builder-note">El tipo de cierre es obligatorio. Las notificaciones son opcionales.</div>
         </section>
 
         <section class="builder-panel" data-step="6">
           <p class="eyebrow">Paso 7 de 7</p>
           <h2>Revisión del borrador</h2>
           <div id="workflowSummary" class="builder-summary"></div>
-          <div class="builder-warning"><strong>Guardar no significa publicar.</strong> Un borrador incompleto puede guardarse y retomarse después. La publicación permanecerá bloqueada hasta que la configuración requerida esté completa y el backend valide el ámbito real.</div>
+          <div class="builder-warning"><strong>Guardar no publica.</strong> Publicar se habilita cuando la configuración está completa.</div>
         </section>
 
         <div id="builderServerStatus" class="builder-note builder-server-status" role="status" aria-live="polite">Comprobando estado del borrador…</div>
@@ -207,10 +199,10 @@
         <div class="builder-actions">
           <button id="builderBack" type="button" class="secondary" disabled>Atrás</button>
           <button id="builderClear" type="button" class="secondary">Descartar cambios locales</button>
-          <button id="builderSave" type="button" class="secondary">Guardar borrador</button>
-          <button id="builderSaveExitInline" type="button" class="secondary">Guardar y salir</button>
-          <button id="builderPublish" type="button" class="secondary" disabled>Publicar</button>
-          <button id="builderNext" type="button" class="primary">Continuar</button>
+          <button id="builderSave" type="button" class="builder-action">Guardar</button>
+          <button id="builderSaveExitInline" type="button" class="builder-action">Guardar y salir</button>
+          <button id="builderPublish" type="button" class="builder-action builder-action--primary" disabled>Publicar</button>
+          <button id="builderNext" type="button" class="builder-action builder-action--primary">Continuar</button>
         </div>
       </form>
       </section>
@@ -222,18 +214,17 @@
         <h2 id="builderExitDialogTitle">¿Qué quieres hacer antes de volver a Borradores?</h2>
         <p>El borrador guardado no se eliminará. Puedes guardar los cambios actuales, salir sin guardarlos o continuar editando.</p>
         <div class="builder-exit-dialog-actions">
-          <button id="builderExitSave" type="button" class="primary">Guardar y salir</button>
+          <button id="builderExitSave" type="button" class="builder-action builder-action--primary">Guardar y salir</button>
           <button id="builderExitDiscard" type="button" class="secondary">Salir sin guardar</button>
           <button id="builderExitCancel" type="button" class="secondary">Cancelar</button>
         </div>
       </div>
     </dialog>
 
-    <section class="status"><span class="dot"></span><span>Autoría y operación están separadas: los borradores viven aquí; Mis Flujos muestra únicamente recetas con versiones publicadas.</span></section>
   </main>
 
   <script src="./app.js?v=202609152" defer></script>
-  <script type="module" src="./workflow-builder.js?v=2026091902"></script>
+  <script type="module" src="./workflow-builder.js?v=2026091903"></script>
   <script type="module" src="./auth-guard.js"></script>
 </body>
 </html>

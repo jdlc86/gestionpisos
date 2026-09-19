@@ -6,16 +6,42 @@
   <meta name="theme-color" content="#ffffff">
   <meta name="description" content="Tareas de Flujos de Trabajo de GestionPisos">
   <link rel="stylesheet" href="./app.css?v=2026091906">
-  <link rel="stylesheet" href="./workflow-tasks.css?v=2026091911">
+  <link rel="stylesheet" href="./workflow-tasks.css?v=2026091922">
   <title>Allaiso · Tareas</title>
 </head>
 <body>
   <main class="shell">
-    <header class="topbar">
-      <div><p class="eyebrow">ALLAISO</p><h1>Tareas</h1></div>
-      <div class="global-actions"><a class="global-icon desktop-home-link" href="./" aria-label="Inicio" title="Inicio"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 10.5 12 3l8.5 7.5v9a1.5 1.5 0 0 1-1.5 1.5h-5v-6H10v6H5a1.5 1.5 0 0 1-1.5-1.5z"/></svg></a></div></header>
+    <header id="tasksTopbar" class="topbar tasks-topbar">
+      <div id="tasksNormalHeader" class="tasks-header-mode tasks-header-normal">
+        <div><p class="eyebrow">ALLAISO</p><h1>Tareas</h1></div>
+        <div class="global-actions tasks-header-actions">
+          <button id="taskSelectionToggle" type="button" class="tasks-icon-button" aria-label="Seleccionar varias tareas" title="Seleccionar" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 7 1.5 1.5L9 6"/><path d="M11.5 7h7"/><path d="m5 13 1.5 1.5L9 12"/><path d="M11.5 13h7"/><path d="M5 19h13.5"/></svg>
+          </button>
+          <a class="global-icon desktop-home-link" href="./" aria-label="Inicio" title="Inicio"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 10.5 12 3l8.5 7.5v9a1.5 1.5 0 0 1-1.5 1.5h-5v-6H10v6H5a1.5 1.5 0 0 1-1.5-1.5z"/></svg></a>
+        </div>
+      </div>
+
+      <div id="tasksSelectionHeader" class="tasks-header-mode tasks-selection-mode" hidden>
+        <button id="taskSelectionClose" type="button" class="tasks-icon-button" aria-label="Salir de selección" title="Salir de selección">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"/></svg>
+        </button>
+        <strong id="taskSelectionSummary">0 seleccionadas</strong>
+        <div class="tasks-selection-menu-wrap">
+          <button id="taskSelectionMenuToggle" type="button" class="tasks-icon-button" aria-label="Opciones de selección" aria-haspopup="menu" aria-expanded="false" title="Opciones">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg>
+          </button>
+          <div id="taskSelectionMenu" class="tasks-selection-menu" role="menu" hidden>
+            <button id="taskSelectVisible" type="button" role="menuitem">Seleccionar visibles</button>
+            <button id="taskDeselectVisible" type="button" role="menuitem">Deseleccionar visibles</button>
+          </div>
+        </div>
+      </div>
+    </header>
+
     <p class="page-subtitle">Las acciones cambian tarea y ejecución juntas.</p>
-<section class="task-toolbar" aria-label="Filtros de tareas">
+
+    <section class="task-toolbar" aria-label="Filtros de tareas">
       <label>Mostrar
         <select id="taskFilter">
           <option value="open">Abiertas</option>
@@ -33,10 +59,20 @@
       <span class="dot"></span>
       <span>Consultando tareas autorizadas.</span>
     </section>
+
+    <section id="taskBulkDock" class="tasks-bulk-dock" hidden aria-label="Acciones para tareas seleccionadas">
+      <div class="tasks-bulk-dock-inner">
+        <button id="taskBulkDelete" type="button" class="tasks-bulk-action tasks-bulk-action--danger" disabled>
+          <span class="tasks-bulk-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg></span>
+          <span>Eliminar</span>
+          <span id="taskBulkDeleteCount" class="tasks-bulk-count">0</span>
+        </button>
+      </div>
+    </section>
   </main>
 
   <script src="./app.js?v=2026091902" defer></script>
-  <script type="module" src="./workflow-tasks.js?v=2026091911"></script>
+  <script type="module" src="./workflow-tasks.js?v=2026091922"></script>
   <script type="module" src="./auth-guard.js"></script>
 </body>
 </html>

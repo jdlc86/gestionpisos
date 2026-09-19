@@ -369,7 +369,7 @@ function transientAssignmentControls(app){
   const discard=document.createElement("button");
   discard.type="button";
   discard.className="danger-soft";
-  discard.textContent="Descartar";
+  discard.textContent="Descartar todo";
   discard.addEventListener("click",discardTransient);
 
   actions.append(publish,execute,changeTarget,discard);

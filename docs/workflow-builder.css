@@ -21,7 +21,7 @@
 .builder-panel .check-row input{width:auto;margin-top:2px}
 .resource-link{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:10px 13px;border:1px solid var(--ui-border);border-radius:var(--ui-radius-sm);background:var(--ui-subtle);color:var(--ui-text);font-weight:750;text-decoration:none}
 .resource-link:hover{background:var(--ui-subtle-strong)}
-.builder-actions{display:flex;flex-wrap:wrap;gap:9px;padding-top:4px;border-top:1px solid var(--ui-border)}
+.builder-actions{display:flex;flex-wrap:wrap;justify-content:space-between;gap:9px;padding-top:4px;border-top:1px solid var(--ui-border)}
 .builder-actions .primary{margin-left:auto}
 .builder-summary{display:grid;gap:10px}
 .builder-summary-row{display:grid;grid-template-columns:minmax(120px,.7fr) minmax(0,1.3fr);gap:12px;padding:10px 0;border-bottom:1px solid var(--ui-border)}

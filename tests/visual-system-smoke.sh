@@ -75,7 +75,7 @@ grep -Fq 'href="./legal.html"' docs/index.html
 grep -Fq 'href="./privacy.html"' docs/index.html
 grep -Fq 'new Date().getFullYear()' docs/index.html
 test -s docs/app-version.json
-grep -Fq '"version": "0.1.3-beta"' docs/app-version.json
+grep -Fq '"version": "0.1.4-beta"' docs/app-version.json
 grep -Fq 'Stamp release metadata' .github/workflows/pages.yml
 grep -Fq 'GITHUB_RUN_NUMBER' .github/workflows/pages.yml
 grep -Fq 'GITHUB_SHA' .github/workflows/pages.yml
@@ -89,7 +89,11 @@ grep -Fq '[hidden]{display:none!important}' docs/app.css
 grep -Fq 'input[type="checkbox"],input[type="radio"]' docs/app.css
 grep -Fq '.builder-editor-state{' docs/workflow-builder.css
 
-grep -Fq 'linear-gradient(145deg,#f7f3ec 0%,#f4f0e9 42%,#ede6da 100%)' docs/app.css
-grep -Fq 'background:#b08a55' docs/app.css
+grep -Fq 'linear-gradient(145deg,#2d2a26 0%,#26231f 54%,#1f1d1a 100%)' docs/app.css
+grep -Fq 'border:1px solid #544c42' docs/app.css
 grep -Fq 'html[data-theme="dark"] .hero--brand{' docs/app.css
-grep -Fq './app.css?v=2026091908' docs/index.html
+grep -Fq './app.css?v=2026091909' docs/index.html
+
+! grep -Fq '#f7f3ec' docs/app.css
+! grep -Fq '.hero--brand::before' docs/app.css
+grep -Fq 'color:#cdc5bb' docs/app.css

@@ -81,6 +81,10 @@ begin
     raise exception 'workflow_scheduled_utc_invalid' using errcode='22023';
   end;
 
+  if v_run_at is distinct from date_trunc('minute',v_run_at) then
+    raise exception 'workflow_schedule_time_mismatch' using errcode='22023';
+  end if;
+
   v_roundtrip:=to_char(
     v_run_at at time zone v_timezone,
     'YYYY-MM-DD"T"HH24:MI'

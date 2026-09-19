@@ -36,6 +36,8 @@ const handoffToken=params.get("handoff")||"";
 const transientSetup=guidedSetup&&Boolean(handoffToken);
 const executionIntent=guidedSetup&&params.get("intent")==="execute";
 const executionFromFlows=executionIntent&&params.get("from")==="mis-flujos";
+const batchToken=params.get("batch")||"";
+const batchIndex=Math.max(0,Number(params.get("batch_index")||0)||0);
 const revisionPublished=params.get("published")==="1";
 const setupVersionNumber=Number(params.get("version")||0);
 let guidedApplicationId=params.get("application")||null;
@@ -57,9 +59,11 @@ let transientTarget=null;
 let transientFinalized=false;
 let authorOrganizationId=null;
 let executionMissingFocusDone=false;
+let batchQueue=null;
 
 const EXECUTION_KEY_PREFIX="workflow-execute-now:";
 const HANDOFF_KEY_PREFIX="gestionpisos.workflow-builder.handoff.";
+const BATCH_EXECUTION_PREFIX="workflow-batch-execution:";
 const scopeLabels={organization:"Toda la organización",property:"Un piso",room:"Una habitación",occupancy:"Una ocupación / inquilino"};
 const executionStatusLabels={pending:"Pendiente",active:"Activa",waiting_review:"Esperando revisión",completed:"Completada",cancelled:"Cancelada",failed:"Fallida"};
 const assignmentLabels={
@@ -69,6 +73,53 @@ const assignmentLabels={
   fixed_person:"Persona fija",
   role:"Rol o capacidad"
 };
+
+function loadBatchQueue(){
+  if(!batchToken)return null;
+  let raw=null;
+  try{raw=sessionStorage.getItem(BATCH_EXECUTION_PREFIX+batchToken)}catch{}
+  if(!raw)return null;
+  try{
+    const parsed=JSON.parse(raw);
+    if(!parsed||!Array.isArray(parsed.items)||!parsed.items.length)return null;
+    if(parsed.createdAt&&Date.now()-Number(parsed.createdAt)>2*60*60*1000){
+      sessionStorage.removeItem(BATCH_EXECUTION_PREFIX+batchToken);
+      return null;
+    }
+    const item=parsed.items[batchIndex]||null;
+    if(!item||item.definitionId!==definitionId)return null;
+    parsed.index=batchIndex;
+    return parsed;
+  }catch{
+    return null;
+  }
+}
+function clearBatchQueue(){
+  if(!batchToken)return;
+  try{sessionStorage.removeItem(BATCH_EXECUTION_PREFIX+batchToken)}catch{}
+}
+function batchProgressLabel(){
+  if(!batchQueue)return "";
+  return "Flujo "+(batchIndex+1)+" de "+batchQueue.items.length;
+}
+function batchNextItem(){
+  if(!batchQueue)return null;
+  return batchQueue.items[batchIndex+1]||null;
+}
+function batchNextUrl(){
+  const next=batchNextItem();
+  if(!next)return null;
+  const url=new URL("./workflow-applications.html",window.location.href);
+  url.search="";
+  url.searchParams.set("definition",next.definitionId);
+  url.searchParams.set("setup","1");
+  url.searchParams.set("intent","execute");
+  url.searchParams.set("from","mis-flujos");
+  url.searchParams.set("batch",batchToken);
+  url.searchParams.set("batch_index",String(batchIndex+1));
+  if(next.applicationId)url.searchParams.set("application",next.applicationId);
+  return url.href;
+}
 
 function setStatus(message,error=false){
   const span=status?.querySelector("span:last-child");
@@ -1103,6 +1154,13 @@ function renderExecutionAssist(app){
   head.append(title,badge);
   article.append(head);
 
+  if(batchQueue){
+    const progress=document.createElement("div");
+    progress.className="execution-batch-progress";
+    progress.textContent=batchProgressLabel()+" · "+batchQueue.items[batchIndex].name;
+    article.append(progress);
+  }
+
   const banner=document.createElement("div");
   banner.className="execution-assist-banner";
   const bannerTitle=document.createElement("strong");
@@ -1186,8 +1244,11 @@ function renderExecutionAssist(app){
   const cancel=document.createElement("a");
   cancel.className="secondary";
   cancel.href="./workflow-definitions.html";
-  cancel.textContent="Cancelar ejecución";
-  cancel.addEventListener("click",()=>clearRequestKey(app.id));
+  cancel.textContent=batchQueue?"Cancelar ejecución masiva":"Cancelar ejecución";
+  cancel.addEventListener("click",()=>{
+    clearRequestKey(app.id);
+    if(batchQueue)clearBatchQueue();
+  });
 
   if(executionFromFlows)actions.append(run,cancel);
   else actions.append(run);
@@ -1340,11 +1401,32 @@ function renderGuidedReady(app){
   if(guidedExecutionId){
     const done=document.createElement("div");done.className="application-complete";
     const strong=document.createElement("strong");strong.textContent="Tarea creada";
-    const p=document.createElement("p");p.textContent="El flujo ya se ejecutó y la tarea está disponible para la persona asignada.";
+    const p=document.createElement("p");
     const actions=document.createElement("div");actions.className="application-guided-actions";
-    const tasks=document.createElement("a");tasks.className="primary";tasks.href="./workflow-tasks.html";tasks.textContent="Abrir Tareas";
-    const flows=document.createElement("a");flows.className="secondary";flows.href="./workflow-definitions.html";flows.textContent="Volver a Mis Flujos";
-    actions.append(tasks,flows);
+
+    const nextUrl=batchNextUrl();
+    if(batchQueue&&nextUrl){
+      p.textContent=batchProgressLabel()+" completado. Continúa con el siguiente flujo de la selección.";
+      const next=document.createElement("a");
+      next.className="primary";
+      next.href=nextUrl;
+      next.textContent="Siguiente flujo · "+(batchIndex+2)+" de "+batchQueue.items.length;
+      const cancel=document.createElement("a");
+      cancel.className="secondary";
+      cancel.href="./workflow-definitions.html";
+      cancel.textContent="Cancelar ejecución masiva";
+      cancel.addEventListener("click",clearBatchQueue);
+      actions.append(next,cancel);
+    }else{
+      if(batchQueue)clearBatchQueue();
+      p.textContent=batchQueue
+        ?"Ejecución masiva completada. Todas las tareas preparadas en esta selección ya han sido procesadas."
+        :"El flujo ya se ejecutó y la tarea está disponible para la persona asignada.";
+      const tasks=document.createElement("a");tasks.className="primary";tasks.href="./workflow-tasks.html";tasks.textContent="Abrir Tareas";
+      const flows=document.createElement("a");flows.className="secondary";flows.href="./workflow-definitions.html";flows.textContent="Volver a Mis Flujos";
+      actions.append(tasks,flows);
+    }
+
     done.append(strong,p,actions);
     article.append(done);
   }else{
@@ -1628,6 +1710,11 @@ form.addEventListener("submit",async event=>{
 });
 
 async function load(){
+  batchQueue=loadBatchQueue();
+  if(batchToken&&!batchQueue){
+    setStatus("La selección de ejecución masiva ya no está disponible. Vuelve a Mis Flujos para seleccionar de nuevo.",true);
+  }
+
   if(transientSetup){
     await loadTransient();
     return;

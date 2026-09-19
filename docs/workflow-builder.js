@@ -384,6 +384,8 @@ function errorMessage(error){
   if(text.includes("workflow_checklist_too_many_items"))return "El checklist admite un máximo de 30 elementos.";
   if(text.includes("workflow_checklist_item_text_invalid"))return "Cada elemento del checklist admite hasta 160 caracteres.";
   if(text.includes("workflow_checklist_item_invalid")||text.includes("workflow_checklist_item_required_invalid"))return "Hay un elemento de checklist con formato no válido.";
+  if(text.includes("workflow_schedule_timezone_invalid"))return "No se pudo identificar una zona horaria válida para la Fecha concreta.";
+  if(text.includes("workflow_scheduled_utc_invalid")||text.includes("workflow_schedule_time_mismatch"))return "La fecha y hora concreta no representan un instante válido. Selecciónalas de nuevo.";
   if(text.includes("workflow_name_invalid"))return "El borrador necesita un nombre de al menos 3 caracteres para poder guardarse.";
   if(text.includes("not_authenticated"))return "La sesión ya no es válida. Vuelve a iniciar sesión.";
   if(text.includes("organization_selection_required"))return "No se puede determinar de forma inequívoca la organización del borrador.";

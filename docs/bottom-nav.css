@@ -58,7 +58,7 @@
   }
 
   .app-bottom-nav-item.is-active{
-    color:var(--ui-text);
+    color:var(--ui-info);
     font-weight:800;
   }
 
@@ -71,7 +71,7 @@
   }
 
   .app-bottom-nav-item.is-active .app-bottom-nav-icon{
-    background:var(--ui-subtle-strong);
+    background:var(--ui-info-soft);
   }
 
   .app-bottom-nav-icon svg{

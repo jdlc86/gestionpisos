@@ -102,7 +102,7 @@ select set_config(
   jsonb_build_object(
     'sub','44444444-4444-4444-8444-444444444444',
     'role','authenticated',
-    'aal','aal1'
+    'aal','aal2'
   )::text,
   true
 );
@@ -118,6 +118,32 @@ exception
     if sqlerrm<>'task_delete_forbidden' then raise; end if;
 end;
 $employee_denied$;
+
+reset role;
+
+-- Incluso ROOT debe completar MFA antes de retirar una tarjeta.
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub',current_setting('gestionpisos.task_remove.root'),
+    'role','authenticated',
+    'aal','aal1'
+  )::text,
+  true
+);
+
+do $root_aal1_denied$
+begin
+  perform public.delete_task_card_v1(
+    current_setting('gestionpisos.task_remove.done')::uuid
+  );
+  raise exception 'aal1 root task removal unexpectedly succeeded';
+exception
+  when sqlstate '42501' then
+    if sqlerrm<>'aal2_required' then raise; end if;
+end;
+$root_aal1_denied$;
 
 reset role;
 
@@ -192,6 +218,19 @@ begin
       and action_key='complete'
   ) then
     raise exception 'task removal destroyed task history';
+  end if;
+
+  if (
+    select count(*)
+    from public.audit_log_v2
+    where organization_id=current_setting('gestionpisos.task_remove.org')::uuid
+      and actor_user_id=current_setting('gestionpisos.task_remove.root')::uuid
+      and action='task_card_removed'
+      and entity_type='tenant_task'
+      and entity_id=current_setting('gestionpisos.task_remove.done')
+      and result='success'
+  )<>1 then
+    raise exception 'task removal audit event missing or duplicated';
   end if;
 
   if exists(

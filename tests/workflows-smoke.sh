@@ -57,7 +57,11 @@ grep -Fq './auth-guard.js' docs/workflow-tasks.html
 ! grep -Fq 'data-theme-toggle' docs/workflow-applications.html
 ! grep -Fq 'data-theme-toggle' docs/workflow-tasks.html
 grep -Fq 'data-theme-toggle' docs/index.html
-grep -Fq 'class="ui-nav-icon"' docs/workflows.html
+grep -Fq 'class="premium-icon"' docs/workflows.html
+grep -Fq 'class="card premium-nav-card"' docs/workflows.html
+grep -Fq 'data-premium-icon="builder"' docs/workflows.html
+grep -Fq 'data-premium-icon="camera"' docs/workflows.html
+grep -Fq 'availability-badge' docs/workflows.html
 grep -Fq '<svg viewBox="0 0 24 24">' docs/workflows.html
 ! grep -Fq '➕' docs/workflows.html
 ! grep -Fq '🧩' docs/workflows.html
@@ -129,7 +133,7 @@ grep -Fq 'Decisión Aceptar / Rechazar' docs/workflow-builder.js
 grep -Fq 'id="scheduledAt"' docs/workflow-builder.html
 grep -Fq 'id="customRecurrenceRow"' docs/workflow-builder.html
 grep -Fq '.builder-panel [hidden]{display:none!important}' docs/workflow-builder.css
-grep -Fq './workflow-builder.css?v=2026091904' docs/workflow-builder.html
+grep -Fq './workflow-builder.css?v=2026091905' docs/workflow-builder.html
 grep -Fq 'name="customEvery"' docs/workflow-builder.html
 grep -Fq 'name="customUnit"' docs/workflow-builder.html
 grep -Fq 'toggleDependentRow' docs/workflow-builder.js
@@ -154,7 +158,7 @@ grep -Fq 'Crear nueva versión' docs/workflow-definitions.js
 grep -Fq 'Continuar nueva versión' docs/workflow-definitions.js
 grep -Fq 'workflow-applications.html?definition=' docs/workflow-definitions.js
 grep -Fq './workflow-definitions.js?v=2026091901' docs/workflow-definitions.html
-grep -Fq './workflow-definitions.css?v=2026091901' docs/workflow-definitions.html
+grep -Fq './workflow-definitions.css?v=2026091902' docs/workflow-definitions.html
 grep -Fq 'Solo recetas publicadas; los borradores se gestionan en el Creador.' docs/workflow-definitions.html
 ! grep -Fq 'Completar borrador' docs/workflow-definitions.js
 ! grep -Fq 'Publicar versión' docs/workflow-definitions.js
@@ -165,7 +169,7 @@ grep -Fq 'properties_v2' docs/workflow-applications.js
 grep -Fq 'rooms_v2' docs/workflow-applications.js
 grep -Fq 'occupancies_v2' docs/workflow-applications.js
 grep -Fq '.application-card [hidden]{display:none!important}' docs/workflow-applications.css
-grep -Fq './workflow-applications.css?v=2026091804' docs/workflow-applications.html
+grep -Fq './workflow-applications.css?v=2026091902' docs/workflow-applications.html
 grep -Fq './workflow-applications.js?v=2026091805' docs/workflow-applications.html
 grep -Fq 'crear una ejecución manual y su tarea asociada' docs/workflow-applications.html
 grep -Fq 'Definición → Versión publicada → Aplicación concreta' docs/WORKFLOW_APPLICATIONS_CONTRACT.md
@@ -210,7 +214,7 @@ grep -Fq 'managerOrganizationIds' docs/workflow-tasks.js
 ! grep -Fq 'currentUser?.app_metadata?.role' docs/workflow-tasks.js
 grep -Fq 'review_reject' docs/workflow-tasks.js
 grep -Fq 'task-actions' docs/workflow-tasks.css
-grep -Fq './workflow-tasks.css?v=2026091804' docs/workflow-tasks.html
+grep -Fq './workflow-tasks.css?v=2026091902' docs/workflow-tasks.html
 grep -Fq './workflow-tasks.js?v=2026091805' docs/workflow-tasks.html
 grep -Fq 'cambian tarea y ejecución juntas' docs/workflow-tasks.html
 

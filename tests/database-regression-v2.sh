@@ -83,6 +83,7 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -v "$repo_path:/w
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260919163000_workflow_document_step.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260919164500_workflow_document_indexes.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260919174500_workflow_notifications.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260919181500_workflow_temporal_authoring.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/database-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/photo-verification-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-definition-regression.sql
@@ -91,6 +92,7 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -v "$repo_path:/w
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-publish-execute-lifecycle-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-document-step-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-notifications-regression.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-temporal-authoring-regression.sql
 
     trap - EXIT
     cleanup

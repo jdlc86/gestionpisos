@@ -351,6 +351,7 @@ Fotografía, Checklist y Documento ya son pasos operativos del motor mínimo.
 | Snapshot ejecución→foto | `workflow_execution_photo_resources_v2` | Implementado; congela versión y silueta |
 | Eventos transversales de ejecución | `workflow_execution_events_v2` | Creación, materialización, acciones, evidencia y cierre de revisión registrados; presentación transversal implementada en Historial |
 | Notificaciones | `notifications_v2` + trigger de `workflow_executions_v2` | onCreate al asignado; onClose a creador+asignado; dedupe por source/event/recipient |
+| Fecha concreta | `workflow_application_schedules_v2` + `pg_cron` | Programación automática exacta; manual se fija al programar y responsable se resuelve al disparar |
 
 ## 6. Compatibilidad y transición
 
@@ -437,3 +438,12 @@ El siguiente trabajo debe cubrir:
 La recurrencia automática se incorpora después de esa validación.
 
 La regla histórica del primer mapeo se mantiene como salvaguarda: **no se crean tablas nuevas de workflow de forma improvisada o paralela**; cualquier DDL nuevo debe derivarse explícitamente del contrato del motor, justificar su necesidad frente a las tablas existentes y venir acompañado de RLS y pruebas de regresión.
+
+
+### Disparadores automáticos
+
+**Fecha concreta** usa el mismo núcleo de ejecución que el disparo manual, con `trigger_kind=scheduled_once`, snapshot inmutable y exactamente una tarea materializada.
+
+El instante se congela como hora local + zona IANA + UTC exacto. El scheduler nunca interpreta por sí mismo un `datetime-local`.
+
+`triggerType=recurring` permanece pendiente: ya existe autoría de frecuencia, pero falta definir la primera fecha/hora que servirá de ancla.

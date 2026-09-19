@@ -29,6 +29,7 @@ as $task_personal_hide_allowed$
   select
     p_actor is not null
     and p_task.removed_at is null
+    and p_task.assigned_user_id is not null
     and p_task.assigned_user_id=p_actor
     and p_task.status in ('completed','cancelled','failed','rejected','refunded','held')
     and (
@@ -100,7 +101,7 @@ begin
     raise exception 'task_not_found' using errcode='P0002';
   end if;
 
-  if not private.task_personal_hide_allowed_v1(v_task,v_actor) then
+  if private.task_personal_hide_allowed_v1(v_task,v_actor) is distinct from true then
     if v_task.status not in ('completed','cancelled','failed','rejected','refunded','held') then
       raise exception 'task_hide_requires_terminal' using errcode='55000';
     end if;

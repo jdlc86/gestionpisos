@@ -128,8 +128,8 @@ select *
 from public.apply_workflow_task_action_v1(
   current_setting('gestionpisos.notify.task')::uuid,
   'accept',
-  null,
-  'regression-workflow-notify-accept'
+  'regression-workflow-notify-accept',
+  null
 );
 
 reset role;
@@ -187,8 +187,8 @@ select *
 from public.apply_workflow_task_action_v1(
   current_setting('gestionpisos.notify.task')::uuid,
   'accept',
-  null,
-  'regression-workflow-notify-accept'
+  'regression-workflow-notify-accept',
+  null
 );
 
 reset role;
@@ -284,8 +284,8 @@ select *
 from public.apply_workflow_task_action_v1(
   current_setting('gestionpisos.reject.task')::uuid,
   'reject',
-  'No se puede realizar',
-  'regression-workflow-notify-reject-action'
+  'regression-workflow-notify-reject-action',
+  'No se puede realizar'
 );
 
 reset role;
@@ -393,8 +393,8 @@ select *
 from public.apply_workflow_task_action_v1(
   current_setting('gestionpisos.silent.task')::uuid,
   'accept',
-  null,
-  'regression-workflow-notify-silent-action'
+  'regression-workflow-notify-silent-action',
+  null
 );
 
 reset role;

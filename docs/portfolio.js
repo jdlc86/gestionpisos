@@ -188,7 +188,7 @@ function relationChips(item) {
   const chips = createElement("div", "relation-chips");
   if (current === "owners") {
     const properties = state.properties.filter(property => property.ownerId === item.id);
-    chips.append(createElement("span", "relation-chip relation-count", `🏠 ${properties.length} piso${properties.length === 1 ? "" : "s"}`));
+    chips.append(createElement("span", "relation-chip relation-count", `${properties.length} piso${properties.length === 1 ? "" : "s"}`));
     properties.slice(0, 2).forEach(property => chips.append(createElement("span", "relation-chip", property.name)));
   } else if (current === "properties") {
     const owner = findItem("owners", item.ownerId);
@@ -223,7 +223,7 @@ function descriptionFor(item) {
     if (item.status === "blocked") {
       return identity.filter(Boolean).join(" · ");
     }
-    return [...identity, item.startsOn ? `📅 Entrada: ${item.startsOn}` : "", item.endsOn ? `Salida: ${item.endsOn}` : "Salida: indefinida"].filter(Boolean).join(" · ");
+    return [...identity, item.startsOn ? `Entrada: ${item.startsOn}` : "", item.endsOn ? `Salida: ${item.endsOn}` : "Salida: indefinida"].filter(Boolean).join(" · ");
   }
   return item.description || "Sin descripción";
 }
@@ -232,12 +232,15 @@ function formatDate(value) {
   return new Intl.DateTimeFormat("es-ES", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 }
 
-const viewIcons = { owners: "♙", properties: "⌂", rooms: "▣", occupancies: "♟" };
-const actionIcons = { edit: "✎", history: "↺", documents: "▤", tasks: "☑", "photo-history": "▧", archive: "⊘" };
+const viewIcons = { owners: "users", properties: "home", rooms: "rooms", occupancies: "users" };
+const actionIcons = { edit: "edit", history: "history", documents: "documents", tasks: "tasks", "photo-history": "camera", archive: "archive" };
 
 function iconLabel(kind, label) {
   const span = createElement("span", "action-label");
-  span.append(createElement("span", "action-icon", actionIcons[kind] || "•"), document.createTextNode(label));
+  const icon = createElement("span", "action-icon");
+  icon.dataset.premiumIcon = actionIcons[kind] || "tasks";
+  icon.setAttribute("aria-hidden", "true");
+  span.append(icon, document.createTextNode(label));
   return span;
 }
 
@@ -245,11 +248,14 @@ function renderCard(item) {
   const card = createElement("article", "record-card");
   const content = createElement("div");
   const heading = createElement("div", "record-heading");
-  heading.append(createElement("span", "record-type-icon", viewIcons[current] || "•"), createElement("h4", "", itemName(current, item)));
+  const typeIcon = createElement("span", "premium-icon premium-icon--record");
+  typeIcon.dataset.premiumIcon = viewIcons[current] || "home";
+  typeIcon.setAttribute("aria-hidden", "true");
+  heading.append(typeIcon, createElement("h4", "", itemName(current, item)));
   const meta = createElement("div", "record-meta");
   meta.append(createElement("span", `status-pill is-${item.status}`, labels[item.status] || item.status));
   if (current === "occupancies" && item.status === "blocked") {
-    meta.append(createElement("span", "relation-chip", `⏸ Suspensión: ${item.suspendedAt ? formatDate(item.suspendedAt) : "---"}`));
+    meta.append(createElement("span", "relation-chip", `Suspensión: ${item.suspendedAt ? formatDate(item.suspendedAt) : "---"}`));
   }
   if (item.archivedAt) meta.append(createElement("span", "relation-chip", `Baja: ${formatDate(item.archivedAt)}`));
   content.append(
@@ -303,6 +309,7 @@ function render() {
   emptyText.textContent = view.emptyText;
   document.querySelectorAll(".segment").forEach(button => button.classList.toggle("is-active", button.dataset.view === current));
   records.replaceChildren(...items.map(renderCard));
+  window.AllaisoPremiumIcons?.render(records);
   emptyState.hidden = items.length !== 0;
   renderSummary();
   document.dispatchEvent(new CustomEvent("gestionpisos:portfolio-rendered", {

@@ -510,7 +510,7 @@ grep -Fq 'runAt>Date.now()' docs/workflow-builder.js
 grep -Fq 'Zona horaria · ' docs/workflow-builder.js
 grep -Fq 'function scheduledDisplay(spec)' docs/workflow-applications.js
 grep -Fq 'title.textContent=automatic?"Programación":"Decisión final"' docs/workflow-applications.js
-grep -Fq 'publish.textContent=scheduled?"Programar":"Publicar"' docs/workflow-applications.js
+grep -Fq 'publish.textContent=automatic?"Programar":"Publicar"' docs/workflow-applications.js
 grep -Fq 'execute.hidden=automatic' docs/workflow-applications.js
 grep -Fq 'common.p_schedule_timezone=spec.scheduledTimezone||null' docs/workflow-applications.js
 grep -Fq 'common.p_schedule_assigned_user_id=' docs/workflow-applications.js

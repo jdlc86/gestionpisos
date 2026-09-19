@@ -12,7 +12,7 @@ grep -Fq '.secondary{border:1px solid var(--ui-border);background:transparent' d
 grep -Fq '.context-back{' docs/app.css
 grep -Fq '.desktop-home-link{display:none!important}' docs/app.css
 
-grep -Fq 'class="ui-nav-icon"' docs/index.html
+grep -Fq 'class="ui-nav-icon home-module-icon"' docs/index.html
 grep -Fq 'class="ui-nav-icon"' docs/configuration-resources.html
 grep -Fq 'class="ui-nav-icon home-module-icon"' docs/index.html
 grep -Fq '>🏠</span>Cartera' docs/index.html

@@ -58,3 +58,8 @@ No se cambia schema, RLS, RPC, datos, roles, MFA/AAL ni lógica de negocio. Los 
 ## Ajuste posterior de Inicio
 
 Tras validar la auditoría global en dispositivo real, Inicio queda como excepción de marca: recupera los pictogramas de color de las tarjetas que existían antes de la homogeneización SVG. La bottom navigation y los controles contextuales mantienen SVG monocromos. También se incorpora un pie institucional con copyright dinámico, versión canónica y build real de despliegue.
+
+
+## Refinamiento premium para gestión inmobiliaria de alto standing
+
+La revisión posterior en móvil confirmó que la homogeneización anterior había reducido demasiado la personalidad visual. Se sustituye el uso de emojis y la mezcla de familias por un sistema SVG premium común a Inicio y submenús. El sistema usa trazo consistente, placa champagne discreta, tarjetas con fondo uniforme y sombras de baja intensidad. El hero de Inicio recupera el fondo grafito de alto contraste. El azul sigue reservado a acciones operativas; el champagne no se utiliza como CTA.

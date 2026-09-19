@@ -28,6 +28,7 @@ scheduled_exact='supabase/migrations/20260919190050_workflow_scheduled_exact_tim
 recurring='supabase/migrations/20260919193000_workflow_recurring.sql'
 web_push='supabase/migrations/20260919203000_web_push_notifications.sql'
 task_card_removal='supabase/migrations/20260919210000_task_card_removal.sql'
+task_personal_hiding='supabase/migrations/20260919213000_task_personal_hiding.sql'
 scheduled_cron='supabase/migrations/20260919190100_workflow_schedule_cron.sql'
 checklist='supabase/migrations/20260919103000_workflow_checklist_step.sql'
 
@@ -58,12 +59,14 @@ test -s "$scheduled_exact"
 test -s "$recurring"
 test -s "$web_push"
 test -s "$task_card_removal"
+test -s "$task_personal_hiding"
 test -s "$scheduled_cron"
 test -s tests/workflow-notifications-regression.sql
 test -s tests/workflow-scheduled-once-regression.sql
 test -s tests/workflow-recurring-regression.sql
 test -s tests/web-push-regression.sql
 test -s tests/task-card-removal-regression.sql
+test -s tests/task-personal-hiding-regression.sql
 test -s tests/local-property-staff-v3-alignment.sql
 test -s tests/workflow-draft-discard-regression.sql
 test -s tests/workflow-publish-execute-lifecycle-regression.sql
@@ -413,6 +416,20 @@ grep -Fq "'task_card_removed'" "$task_card_removal"
 grep -Fq "'tenant_task'" "$task_card_removal"
 grep -Fq 'revoke all on function public.delete_task_card_v1(uuid)' "$task_card_removal"
 grep -Fq 'grant execute on function public.delete_task_card_v1(uuid)' "$task_card_removal"
+
+# Ocultamiento personal de Tareas: preferencia privada, sin borrar la tarea global.
+grep -Fq 'create table if not exists public.tenant_task_personal_hidden_v1' "$task_personal_hiding"
+grep -Fq 'alter table public.tenant_task_personal_hidden_v1 enable row level security' "$task_personal_hiding"
+grep -Fq 'revoke all on table public.tenant_task_personal_hidden_v1 from public,anon,authenticated' "$task_personal_hiding"
+grep -Fq 'create or replace function public.hide_my_task_card_v1' "$task_personal_hiding"
+grep -Fq 'create or replace function public.unhide_my_task_card_v1' "$task_personal_hiding"
+grep -Fq 'create or replace function public.list_my_hidden_task_cards_v1' "$task_personal_hiding"
+grep -Fq 'task_hide_requires_terminal' "$task_personal_hiding"
+grep -Fq 'task_hide_forbidden' "$task_personal_hiding"
+grep -Fq "ur.role in ('employee','tenant','owner')" "$task_personal_hiding"
+grep -Fq 'grant execute on function public.hide_my_task_card_v1(uuid)' "$task_personal_hiding"
+grep -Fq 'grant execute on function public.unhide_my_task_card_v1(uuid)' "$task_personal_hiding"
+grep -Fq 'grant execute on function public.list_my_hidden_task_cards_v1()' "$task_personal_hiding"
 
 # Fecha concreta: scheduler transversal, instante exacto e idempotencia.
 grep -Fq 'create table public.workflow_application_schedules_v2' "$scheduled_once"

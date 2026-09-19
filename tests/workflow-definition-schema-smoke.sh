@@ -390,3 +390,12 @@ grep -Fq "'blocked:'" "$scheduled_exact"
 grep -Fq 'cron.schedule' "$scheduled_cron"
 grep -Fq 'gestionpisos-workflow-schedules' "$scheduled_cron"
 grep -Fq 'private.process_due_workflow_schedules_v1(now())' "$scheduled_cron"
+
+
+# Fecha concreta: edición sin historial usa saneador exacto y DST ambiguo se rechaza.
+grep -Fq 'create or replace function public.update_unexecuted_workflow_v1' "$scheduled_exact"
+grep -Fq 'v_spec:=private.workflow_sanitize_authoring_spec_v3(p_spec);' "$scheduled_exact"
+grep -Fq 'workflow_schedule_local_time_ambiguous' "$scheduled_exact"
+grep -Fq 'generate_series(-180,180)' "$scheduled_exact"
+grep -Fq 'reprogramming did not preserve version and exact schedule' tests/workflow-scheduled-once-regression.sql
+grep -Fq 'ambiguous DST wall time unexpectedly published' tests/workflow-scheduled-once-regression.sql

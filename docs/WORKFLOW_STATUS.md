@@ -89,7 +89,9 @@ Los borradores de futura versión siguen existiendo porque protegen un flujo con
 
 Cada tarjeta presenta la configuración operativa relevante, incluido el destino actual, el número de ejecuciones y la fecha/hora de la última ejecución. La UI no expone la decisión técnica de versionar.
 
-Mis Flujos incorpora búsqueda por nombre/configuración/destino y un modo **Seleccionar** para acciones masivas. La selección puede abarcar los resultados visibles del buscador y muestra antes de actuar cuántos flujos son eliminables o archivables según su historial.
+Mis Flujos incorpora búsqueda contextual por nombre/configuración/destino: el campo no ocupa espacio permanente, se abre desde una lupa del encabezado y puede cerrarse conservando el filtro como chip compacto.
+
+La selección múltiple tampoco usa controles permanentes. Se entra desde el icono contextual del encabezado o mediante pulsación prolongada de una tarjeta. En ese modo, las tarjetas muestran indicadores circulares discretos y las operaciones aparecen en un dock flotante sobre la navegación inferior. El menú contextual permite seleccionar o deseleccionar todos los resultados visibles del filtro actual.
 
 Las ejecuciones múltiples se preparan como una cola asistida: el usuario selecciona varios flujos una sola vez y el sistema recorre cada uno reutilizando la pantalla de ejecución. Cada elemento vuelve a validar sus condiciones y, si necesita información, muestra únicamente los apartados pendientes. No se crean tareas masivas a ciegas.
 

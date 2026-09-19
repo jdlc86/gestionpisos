@@ -92,7 +92,7 @@ grep -Fq '.builder-editor-state{' docs/workflow-builder.css
 grep -Fq 'linear-gradient(145deg,#2d2a26 0%,#26231f 54%,#1f1d1a 100%)' docs/app.css
 grep -Fq 'border:1px solid #544c42' docs/app.css
 grep -Fq 'html[data-theme="dark"] .hero--brand{' docs/app.css
-grep -Fq './app.css?v=2026091909' docs/index.html
+grep -Fq './app.css?v=2026091910' docs/index.html
 
 ! grep -Fq '#f7f3ec' docs/app.css
 ! grep -Fq '.hero--brand::before' docs/app.css

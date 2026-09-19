@@ -545,3 +545,11 @@ grep -Fq '["scheduled_once","recurring"].includes' docs/workflow-definitions.js
 grep -Fq 'schedule.schedule_kind==="recurring"' docs/workflow-definitions.js
 grep -Fq 'next_occurrence_index,execution_count,last_scheduled_for' docs/workflow-definitions.js
 grep -Fq '"Próxima · "+next' docs/workflow-definitions.js
+
+
+# Recurrente legacy: un flujo automático publicado antes del scheduler debe pedir programación explícita.
+grep -Fq 'function needsScheduleConfiguration(row)' docs/workflow-definitions.js
+grep -Fq '"Necesita programación"' docs/workflow-definitions.js
+grep -Fq 'edit.textContent=needsSchedule?"Editar programación":"Editar"' docs/workflow-definitions.js
+grep -Fq 'edit.textContent=needsSchedule?"Continuar programación":"Editar"' docs/workflow-definitions.js
+grep -Fq 'else if(!needsSchedule)' docs/workflow-definitions.js

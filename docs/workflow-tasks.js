@@ -203,6 +203,7 @@ function clearSelection(){
 }
 function errorText(error){
   const message=String(error?.message||"");
+  if(message.includes("aal2_required"))return "Esta operación requiere MFA. Vuelve a autenticarte y repite la acción.";
   if(message.includes("task_delete_forbidden"))return "No tienes permiso para eliminar esta tarjeta.";
   if(message.includes("task_delete_requires_terminal"))return "Solo se pueden eliminar de Tareas las tarjetas que ya están cerradas.";
   if(message.includes("task_delete_execution_not_terminal"))return "La ejecución asociada sigue abierta y no se puede retirar de Tareas.";

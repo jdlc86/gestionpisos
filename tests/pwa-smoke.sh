@@ -54,7 +54,7 @@ grep -q 'serviceWorker' docs/app.js
 grep -q 'GestionPisos' docs/manifest.webmanifest
 grep -Fq "'./legal.html'" docs/sw.js
 grep -Fq "'./privacy.html'" docs/sw.js
-grep -q 'gestionpisos-shell-v21' docs/sw.js
+grep -q 'gestionpisos-shell-v22' docs/sw.js
 grep -Fq "'./bottom-nav.js'" docs/sw.js
 grep -Fq "'./bottom-nav.css'" docs/sw.js
 grep -Fq 'mountBottomNavigation' docs/auth-guard.js
@@ -346,3 +346,7 @@ grep -Fq 'linear-gradient(145deg,#2d2a26 0%,#26231f 54%,#1f1d1a 100%)' docs/app.
 
 grep -Fq '.account-menu{' docs/app.css
 grep -Fq 'data-theme-menu-label' docs/app.js
+
+! grep -Fq 'menu.addEventListener("click", event => event.stopPropagation())' docs/auth-guard.js
+grep -Fq 'if (!event.target.closest("[data-theme-toggle]")) return;' docs/app.js
+grep -Fq 'id="homeThemeAction"' docs/index.html

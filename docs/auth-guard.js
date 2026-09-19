@@ -48,7 +48,6 @@ function setupHomeAccountMenu(session) {
     if (menu.hidden) openMenu();
     else closeMenu();
   });
-  menu.addEventListener("click", event => event.stopPropagation());
   document.addEventListener("click", event => {
     if (!root.contains(event.target)) closeMenu();
   });

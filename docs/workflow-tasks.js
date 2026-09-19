@@ -116,13 +116,18 @@ function canDeleteTask(task){
   return true;
 }
 function canHideTask(task){
-  return Boolean(
-    task
-    && !isManager()
-    && !isPersonallyHidden(task)
-    && task.assigned_user_id===currentUser?.id
-    && TERMINAL_TASK_STATUSES.has(task.status)
-  );
+  if(
+    !task
+    || isManager()
+    || isPersonallyHidden(task)
+    || task.assigned_user_id!==currentUser?.id
+    || !TERMINAL_TASK_STATUSES.has(task.status)
+  )return false;
+  if(task.source_kind==="workflow_execution"){
+    const execution=executionForTask(task);
+    return Boolean(execution&&TERMINAL_EXECUTION_STATUSES.has(execution.status));
+  }
+  return true;
 }
 function canRestoreTask(task){
   return Boolean(task&&!isManager()&&isPersonallyHidden(task));
@@ -270,6 +275,7 @@ function errorText(error){
   const message=String(error?.message||"");
   if(message.includes("aal2_required"))return "Esta operación requiere MFA. Vuelve a autenticarte y repite la acción.";
   if(message.includes("task_hide_requires_terminal"))return "Solo puedes ocultar de tu bandeja tareas que ya estén cerradas.";
+  if(message.includes("task_hide_execution_not_terminal"))return "El workflow asociado todavía sigue abierto; esta tarjeta no se puede ocultar.";
   if(message.includes("task_hide_forbidden"))return "Esta tarea no se puede ocultar de tu bandeja.";
   if(message.includes("task_delete_forbidden"))return "No tienes permiso para eliminar esta tarjeta.";
   if(message.includes("task_delete_requires_terminal"))return "Solo se pueden eliminar de Tareas las tarjetas que ya están cerradas.";

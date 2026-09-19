@@ -158,8 +158,8 @@ grep -Fq 'start_workflow_definition_revision_v1' docs/workflow-definitions.js
 ! grep -Fq 'Crear nueva versión' docs/workflow-definitions.js
 ! grep -Fq 'Continuar nueva versión' docs/workflow-definitions.js
 grep -Fq 'workflow-applications.html?definition=' docs/workflow-definitions.js
-grep -Fq './workflow-definitions.js?v=2026091917' docs/workflow-definitions.html
-grep -Fq './workflow-definitions.css?v=2026091903' docs/workflow-definitions.html
+grep -Fq './workflow-definitions.js?v=2026091920' docs/workflow-definitions.html
+grep -Fq './workflow-definitions.css?v=2026091910' docs/workflow-definitions.html
 grep -Fq 'Tus flujos terminados. Ejecuta, edita y elimina o archiva según exista historial.' docs/workflow-definitions.html
 ! grep -Fq 'Completar borrador' docs/workflow-definitions.js
 ! grep -Fq 'Publicar versión' docs/workflow-definitions.js
@@ -170,8 +170,8 @@ grep -Fq 'properties_v2' docs/workflow-applications.js
 grep -Fq 'rooms_v2' docs/workflow-applications.js
 grep -Fq 'occupancies_v2' docs/workflow-applications.js
 grep -Fq '.application-card [hidden]{display:none!important}' docs/workflow-applications.css
-grep -Fq './workflow-applications.css?v=2026091914' docs/workflow-applications.html
-grep -Fq './workflow-applications.js?v=2026091919' docs/workflow-applications.html
+grep -Fq './workflow-applications.css?v=2026091915' docs/workflow-applications.html
+grep -Fq './workflow-applications.js?v=2026091920' docs/workflow-applications.html
 grep -Fq '¿Dónde quieres utilizarlo?' docs/workflow-applications.html
 grep -Fq 'Definición → Versión publicada → Aplicación concreta' docs/WORKFLOW_APPLICATIONS_CONTRACT.md
 grep -Fq 'workflow_applications_v2' docs/WORKFLOW_APPLICATIONS_CONTRACT.md
@@ -372,9 +372,35 @@ grep -Fq 'function renderExecutionAssist(app)' docs/workflow-applications.js
 grep -Fq 'function executionReviewCard' docs/workflow-applications.js
 grep -Fq 'Falta información para ejecutar' docs/workflow-applications.js
 grep -Fq 'Completa únicamente los apartados abiertos para continuar.' docs/workflow-applications.js
-grep -Fq 'cancel.textContent="Cancelar ejecución"' docs/workflow-applications.js
+grep -Fq 'cancel.textContent=batchQueue?"Cancelar ejecución masiva":"Cancelar ejecución"' docs/workflow-applications.js
 grep -Fq 'firstPending.scrollIntoView' docs/workflow-applications.js
 grep -Fq 'execution-field-missing' docs/workflow-applications.js
 grep -Fq '.execution-review-card.is-pending' docs/workflow-applications.css
 grep -Fq '.execution-field-missing' docs/workflow-applications.css
 ! grep -Fq 'Gestionar destinos' docs/workflow-applications.js
+
+
+# Mis Flujos: búsqueda, selección múltiple y última ejecución visible.
+grep -Fq 'id="workflowSearch"' docs/workflow-definitions.html
+grep -Fq 'id="workflowSelectionToggle"' docs/workflow-definitions.html
+grep -Fq 'id="workflowSelectVisible"' docs/workflow-definitions.html
+grep -Fq 'id="workflowBulkExecute"' docs/workflow-definitions.html
+grep -Fq 'id="workflowBulkDelete"' docs/workflow-definitions.html
+grep -Fq 'id="workflowBulkArchive"' docs/workflow-definitions.html
+grep -Fq 'function rowMatchesSearch(row)' docs/workflow-definitions.js
+grep -Fq 'function executionMeta(row)' docs/workflow-definitions.js
+grep -Fq 'last.textContent="Última: "' docs/workflow-definitions.js
+grep -Fq 'function bulkDeleteSelected()' docs/workflow-definitions.js
+grep -Fq 'function bulkArchiveSelected()' docs/workflow-definitions.js
+grep -Fq 'function startBulkExecution()' docs/workflow-definitions.js
+grep -Fq 'workflow-batch-execution:' docs/workflow-definitions.js
+grep -Fq '.definitions-bulk-bar' docs/workflow-definitions.css
+grep -Fq '.definitions-list.is-selecting .definition-actions{display:none}' docs/workflow-definitions.css
+
+# Ejecución múltiple: cola asistida y navegación secuencial.
+grep -Fq 'const batchToken=params.get("batch")||""' docs/workflow-applications.js
+grep -Fq 'function loadBatchQueue()' docs/workflow-applications.js
+grep -Fq 'function batchNextUrl()' docs/workflow-applications.js
+grep -Fq 'Siguiente flujo · ' docs/workflow-applications.js
+grep -Fq 'Cancelar ejecución masiva' docs/workflow-applications.js
+grep -Fq '.execution-batch-progress' docs/workflow-applications.css

@@ -2,3 +2,33 @@
 .definition-badge--incomplete{border-color:var(--ui-warning);background:var(--ui-warning-soft);color:var(--ui-text)}
 
 .definition-draft-note{padding:9px 10px;border:1px solid var(--ui-warning);border-radius:var(--ui-radius-sm);background:var(--ui-warning-soft);color:var(--ui-text);font-size:12px;font-weight:700}
+
+
+/* Mis Flujos · búsqueda y acciones masivas */
+.definitions-controls{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end;margin-bottom:12px}
+.definitions-search{display:grid;gap:5px;color:var(--ui-muted);font-size:11px;font-weight:800}
+.definitions-search input{min-height:44px}
+.definitions-bulk-bar{display:grid;gap:10px;margin-bottom:12px;padding:12px;border:1px solid var(--ui-border);border-radius:var(--ui-radius);background:var(--ui-surface);box-shadow:var(--ui-card-shadow)}
+.definitions-bulk-bar[hidden]{display:none!important}
+.definitions-bulk-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.definitions-select-all{display:flex;align-items:center;gap:8px;color:var(--ui-text);font-size:12px;font-weight:750}
+.definitions-select-all input{width:auto}
+.definitions-bulk-head strong{color:var(--ui-muted);font-size:11px}
+.definitions-bulk-actions{display:flex;flex-wrap:wrap;gap:8px}
+.definitions-bulk-actions button{min-height:42px}
+.definition-card.is-selected{border-color:var(--ui-action);box-shadow:0 0 0 2px color-mix(in srgb,var(--ui-action) 14%,transparent),var(--ui-card-shadow)}
+.definition-select{display:none;align-items:center;gap:8px;color:var(--ui-muted);font-size:11px;font-weight:800}
+.definition-select input{width:auto}
+.definitions-list.is-selecting .definition-select{display:flex}
+.definitions-list.is-selecting .definition-actions{display:none}
+.definition-card-head-main{display:grid;gap:8px;min-width:0}
+.definition-execution-value{display:grid;gap:2px}
+.definition-execution-value small{color:var(--ui-muted);font-size:10px;line-height:1.35}
+.definition-batch-progress{margin-bottom:12px;padding:10px 12px;border:1px solid var(--ui-info);border-radius:var(--ui-radius-sm);background:var(--ui-info-soft);color:var(--ui-text);font-size:12px;font-weight:750}
+@media(max-width:620px){
+  .definitions-controls{grid-template-columns:1fr}
+  .definitions-controls button{width:100%}
+  .definitions-bulk-head{align-items:flex-start;flex-direction:column}
+  .definitions-bulk-actions{display:grid;grid-template-columns:1fr}
+  .definitions-bulk-actions button{width:100%}
+}

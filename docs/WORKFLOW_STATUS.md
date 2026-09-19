@@ -166,7 +166,7 @@ Se conservan:
 - solicitudes fotográficas;
 - `cleaning.html`.
 
-El motor ya puede publicar y ejecutar definiciones manuales reales. Limpieza sigue siendo el primer adaptador de dominio previsto, pero su migración debe esperar a que Documento e historial transversal estén suficientemente cerrados para no degradar el flujo legacy.
+El motor ya puede publicar y ejecutar definiciones manuales reales con Foto, Checklist y Documento. Limpieza sigue siendo el primer adaptador de dominio previsto, pero su migración debe esperar a que el historial transversal y los E2E de los pasos genéricos estén suficientemente cerrados para no degradar el flujo legacy.
 
 ## 9. Seguridad y pruebas de la persistencia
 
@@ -275,7 +275,7 @@ Se cerraron dos recorridos manuales completos sobre el motor persistente:
    - una captura válida completa recurso + tarea + ejecución;
    - un único run/ítem/objeto de Storage.
 
-Estas pruebas demuestran que el primer flujo manual con evidencia fotográfica **sí es operativo dentro del alcance implementado**. Checklist y revisión humana genérica ya tienen implementación propia; Documento y recurrencias siguen fuera del alcance operativo completo.
+Estas pruebas demuestran que el primer flujo manual con evidencia fotográfica **sí es operativo dentro del alcance implementado**. Checklist, Documento y revisión humana genérica ya tienen implementación propia; las recurrencias automáticas siguen fuera del alcance operativo completo.
 
 ### PR #216 + #217 — Evidencia fotográfica y decisión del asignado
 
@@ -353,19 +353,34 @@ Checklist se implementa como un paso del motor común, no como un subsistema de 
 
 La primera versión no convierte Checklist en un constructor de formularios: no incluye texto libre, firma, adjuntos propios ni lógica condicional.
 
+### Incremento — Documento operativo
+
+Documento se integra como evidencia privada de la ejecución, no como un gestor documental paralelo:
+
+- `workflow_execution_documents_v2` conserva ejecución, tarea, actor, nombre, MIME, tamaño, ruta y estado;
+- el bucket privado `workflow-documents-v2` admite PDF/JPEG/PNG/WebP hasta 10 MiB;
+- solo la persona asignada puede preparar y confirmar la evidencia;
+- ROOT/ADMIN autorizados pueden leerla para revisión;
+- preparación y confirmación son idempotentes por `request_key`;
+- un documento `submitted` satisface Documento v1;
+- Foto + Checklist + Documento pueden completarse en cualquier orden y el último requisito pendiente decide el cierre;
+- `closeType=human_review` lleva la ejecución a `waiting_review` sin crear otra cola de revisión.
+
+La v1 no incluye firma, OCR, clasificación, borrado destructivo ni un mínimo configurable mayor que uno. Véase `WORKFLOW_DOCUMENT_EVIDENCE_CONTRACT.md`.
+
 ## 12. Próximo incremento técnico
 
-Los pasos **Fotografía** y **Checklist**, junto con el cierre **human_review**, ya están conectados a la infraestructura existente. Checklist congela sus ítems por ejecución y bloquea el cierre hasta completar los obligatorios.
+Los pasos **Fotografía**, **Checklist** y **Documento**, junto con el cierre **human_review**, ya están conectados a la infraestructura existente. Checklist congela sus ítems por ejecución y Documento conserva evidencia privada ligada a la ejecución; ambos bloquean el cierre mientras falte su requisito.
 
 Orden recomendado:
 
-1. validar E2E humano el nuevo paso Checklist en producción;
-2. implementar Documento con el mismo principio de bloqueo de cierre;
+1. validar E2E humano Checklist y Documento en producción;
+2. validar combinaciones Foto + Checklist + Documento en órdenes distintos;
 3. completar la vista de Historial transversal ejecución → tarea → evidencia → revisión → cierre;
 4. añadir notificaciones operativas específicas de cierre/rechazo;
 5. después habilitar recurrencias automáticas.
 
-La recurrencia automática permanece posterior a estos E2E para no automatizar un ciclo que todavía tenga tipos de paso incompletos.
+La recurrencia automática permanece posterior a estos E2E para no automatizar un ciclo transversal antes de validar sus pasos genéricos en producción.
 
 ## 13. Reglas de no regresión
 
@@ -398,4 +413,4 @@ El criterio inicial quedó demostrado el 18/09/2026 para el recorrido manual con
 
 Por tanto, **una definición publicada y aplicada ya puede representar un proceso operativo real dentro de los pasos implementados**.
 
-Esto no debe generalizarse a capacidades aún pendientes. Checklist ya tiene contrato, implementación y regresión automatizada; su E2E humano se valida después del despliegue. Documento y recurrencia automática no pueden considerarse completos hasta que tengan contrato, implementación y E2E propios. `human_review` ya tiene contrato, implementación y validación E2E real.
+Esto no debe generalizarse a capacidades aún pendientes. Checklist y Documento ya tienen contrato, implementación y regresión automatizada; sus E2E humanos se validan después del despliegue. La recurrencia automática no puede considerarse completa hasta que tenga contrato, implementación y E2E propios. `human_review` ya tiene contrato, implementación y validación E2E real.

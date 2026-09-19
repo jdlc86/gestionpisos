@@ -174,7 +174,7 @@ grep -Fq 'id="photoBankLink"' docs/workflow-builder.html
 grep -Fq 'href="./photo-patterns.html?from=workflow-builder" hidden' docs/workflow-builder.html
 grep -Fq 'function updatePhotoResource()' docs/workflow-builder.js
 grep -Fq 'photoBankLink.hidden=!checked("stepPhoto")' docs/workflow-builder.js
-grep -Fq './workflow-builder.js?v=2026091918' docs/workflow-builder.html
+grep -Fq './workflow-builder.js?v=2026091919' docs/workflow-builder.html
 
 grep -Fq 'workflow_definitions_v2' docs/workflow-definitions.js
 grep -Fq '.eq("status","published")' docs/workflow-definitions.js
@@ -183,7 +183,7 @@ grep -Fq 'start_workflow_definition_revision_v1' docs/workflow-definitions.js
 ! grep -Fq 'Crear nueva versión' docs/workflow-definitions.js
 ! grep -Fq 'Continuar nueva versión' docs/workflow-definitions.js
 grep -Fq 'workflow-applications.html?definition=' docs/workflow-definitions.js
-grep -Fq './workflow-definitions.js?v=2026091921' docs/workflow-definitions.html
+grep -Fq './workflow-definitions.js?v=2026091922' docs/workflow-definitions.html
 grep -Fq './workflow-definitions.css?v=2026091911' docs/workflow-definitions.html
 grep -Fq 'Tus flujos terminados. Ejecuta, edita y elimina o archiva según exista historial.' docs/workflow-definitions.html
 ! grep -Fq 'Completar borrador' docs/workflow-definitions.js
@@ -494,3 +494,25 @@ grep -Fq 'const historyNote=taskHistoryNote(' docs/workflow-history.js
 grep -Fq 'rejected?"review_reject":"review_approve"' docs/workflow-history.js
 grep -Fq 'if(historyNote)return historyNote;' docs/workflow-history.js
 grep -Fq './workflow-history.js?v=2026091911' docs/workflow-history.html
+
+
+# Autoría temporal: fecha inicial, zona horaria y asignación resoluble.
+grep -Fq 'id="scheduleTimeZone"' docs/workflow-builder.html
+grep -Fq 'id="scheduleTimezoneHint"' docs/workflow-builder.html
+grep -Fq 'id="scheduledAtLabel"' docs/workflow-builder.html
+grep -Fq 'id="assignmentNote"' docs/workflow-builder.html
+grep -Fq 'const browserScheduleTimeZone=' docs/workflow-builder.js
+grep -Fq 'scheduleTimeZone:value("scheduleTimeZone")' docs/workflow-builder.js
+grep -Fq 'function assignmentComplete(data)' docs/workflow-builder.js
+grep -Fq 'data.assignmentType==="property_responsible"' docs/workflow-builder.js
+grep -Fq '["property","room","occupancy"].includes(data.scopeType)' docs/workflow-builder.js
+grep -Fq 'const temporal=recurring||scheduled' docs/workflow-builder.js
+grep -Fq 'scheduledAtLabel.textContent=recurring?"Primera ejecución":"Fecha y hora"' docs/workflow-builder.js
+grep -Fq 'Zona horaria · ' docs/workflow-builder.js
+grep -Fq 'La activación automática requiere Responsable operativo del piso.' docs/workflow-builder.js
+grep -Fq 'primera ejecución pendiente' docs/workflow-builder.js
+grep -Fq 'function scheduleLocalText(value)' docs/workflow-definitions.js
+grep -Fq 'inicio pendiente' docs/workflow-definitions.js
+grep -Fq 'programación pendiente' docs/workflow-definitions.js
+grep -Fq './workflow-builder.js?v=2026091919' docs/workflow-builder.html
+grep -Fq './workflow-definitions.js?v=2026091922' docs/workflow-definitions.html

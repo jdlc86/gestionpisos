@@ -211,15 +211,15 @@
           <div class="builder-warning"><strong>Todavía no se ha guardado nada.</strong> Continuar para usarlo te llevará a elegir el destino. En el paso Listo podrás Publicar sin crear tareas o Ejecutar y crear la tarea.</div>
         </section>
 
-        <div id="builderServerStatus" class="builder-note builder-server-status" role="status" aria-live="polite">Comprobando estado del borrador…</div>
+        <div id="builderServerStatus" class="builder-note builder-server-status" role="status" aria-live="polite">Preparando el creador…</div>
 
         <div class="builder-actions">
           <button id="builderBack" type="button" class="builder-action builder-action--neutral" disabled>Atrás</button>
-          <button id="builderClear" type="button" class="builder-action builder-action--neutral">Descartar</button>
+          <button id="builderNext" type="button" class="builder-action builder-action--primary">Siguiente</button>
+          <button id="builderPublish" type="button" class="builder-action builder-action--primary" disabled hidden>Continuar para usarlo</button>
+          <button id="builderClear" type="button" class="builder-action builder-action--danger" hidden>Descartar todo</button>
           <button id="builderSave" type="button" class="builder-action" hidden>Guardar</button>
           <button id="builderSaveExitInline" type="button" class="builder-action" hidden>Guardar y salir</button>
-          <button id="builderPublish" type="button" class="builder-action builder-action--primary" disabled>Continuar para usarlo</button>
-          <button id="builderNext" type="button" class="builder-action builder-action--primary">Continuar</button>
         </div>
       </form>
       </section>
@@ -241,7 +241,7 @@
   </main>
 
   <script src="./app.js?v=2026091902" defer></script>
-  <script type="module" src="./workflow-builder.js?v=2026091916"></script>
+  <script type="module" src="./workflow-builder.js?v=2026091918"></script>
   <script type="module" src="./auth-guard.js"></script>
 </body>
 </html>

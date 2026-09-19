@@ -25,6 +25,7 @@ const draftSearch=document.getElementById("builderDraftSearch");
 const draftFilter=document.getElementById("builderDraftFilter");
 const draftCount=document.getElementById("builderDraftCount");
 const draftLoadMore=document.getElementById("builderDraftLoadMore");
+const draftStatus=document.getElementById("builderDraftStatus");
 const triggerType=document.getElementById("triggerType");
 const recurrenceRow=document.getElementById("recurrenceRow");
 const customRecurrenceRow=document.getElementById("customRecurrenceRow");
@@ -653,6 +654,66 @@ async function publishCurrentDraft(){
   await publishDefinition(currentDefinitionId,currentRevision,{isRevision:revisionMode,button:publishButton});
 }
 
+function setDraftStatus(message,tone="neutral"){
+  if(!draftStatus)return;
+  draftStatus.hidden=!message;
+  draftStatus.textContent=message||"";
+  draftStatus.dataset.tone=tone;
+}
+
+function discardDraftErrorMessage(error){
+  const text=String(error?.message||error?.details||"");
+  if(text.includes("workflow_draft_conflict"))return "Este borrador cambió en otra sesión. Recarga antes de eliminarlo.";
+  if(text.includes("workflow_draft_discard_forbidden"))return "No tienes permiso para eliminar este borrador.";
+  if(text.includes("workflow_draft_discard_requires_unpublished"))return "Este flujo ya fue publicado y no puede eliminarse como borrador.";
+  if(text.includes("workflow_draft_has_dependencies"))return "Este borrador tiene dependencias operativas y no se puede eliminar.";
+  if(text.includes("workflow_revision_draft_not_found")||text.includes("workflow_definition_not_found"))return "El borrador ya no existe o fue modificado. Recarga la lista.";
+  return "No se pudo eliminar el borrador. No se modificó ninguna versión publicada.";
+}
+
+async function discardDraft(item,button){
+  const revision=Number(item.revision);
+  const isRevision=Boolean(item.is_revision);
+  const message=isRevision
+    ?"¿Eliminar este borrador de la nueva versión? La v"+item.base_version+" publicada seguirá operativa y no se modificará."
+    :"¿Eliminar definitivamente este borrador? Todavía no ha sido publicado y desaparecerá del Creador.";
+  if(!window.confirm(message))return;
+
+  const original=button.textContent;
+  button.disabled=true;
+  button.textContent="Eliminando…";
+  setDraftStatus(isRevision
+    ?"Eliminando solo el borrador de la nueva versión…"
+    :"Eliminando borrador no publicado…");
+
+  const rpc=isRevision
+    ?"discard_workflow_definition_revision_draft_v1"
+    :"discard_workflow_definition_draft_v1";
+  const {error}=await supabase.rpc(rpc,{
+    p_definition_id:item.definition_id,
+    p_expected_revision:Number.isFinite(revision)?revision:null
+  });
+
+  if(error){
+    button.disabled=false;
+    button.textContent=original;
+    setDraftStatus(discardDraftErrorMessage(error),"error");
+    return;
+  }
+
+  draftItems=draftItems.filter(candidate=>!(
+    candidate.definition_id===item.definition_id
+    && Boolean(candidate.is_revision)===isRevision
+  ));
+  renderDraftWorkspace();
+  setDraftStatus(
+    isRevision
+      ?"Borrador de nueva versión eliminado. La versión publicada permanece intacta."
+      :"Borrador eliminado.",
+    "success"
+  );
+}
+
 function draftWorkspaceCard(item){
   const article=document.createElement("article");
   article.className="builder-draft-card";
@@ -673,7 +734,14 @@ function draftWorkspaceCard(item){
   const edit=document.createElement("a");edit.className="builder-action builder-action--primary";
   edit.href="./workflow-builder.html?id="+encodeURIComponent(item.definition_id)+(item.is_revision?"&revision=1":"");
   edit.textContent="Editar";
-  actions.append(edit);
+
+  const discard=document.createElement("button");
+  discard.type="button";
+  discard.className="builder-action builder-action--danger";
+  discard.textContent="Eliminar borrador";
+  discard.addEventListener("click",()=>discardDraft(item,discard));
+
+  actions.append(edit,discard);
 
   article.append(head,meta,actions);
   return article;

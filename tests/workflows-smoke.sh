@@ -91,7 +91,13 @@ grep -Fq '.builder-view[hidden]{display:none!important}' docs/workflow-builder.c
 grep -Fq '.builder-drafts-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr))' docs/workflow-builder.css
 grep -Fq '.builder-exit-dialog' docs/workflow-builder.css
 grep -Fq 'class="builder-back-link"' docs/workflow-builder.html
-grep -Fq '← Volver' docs/workflow-builder.html
+grep -Fq 'class="builder-back-icon"' docs/workflow-builder.html
+! grep -Fq '← Volver' docs/workflow-builder.html
+grep -Fq 'aria-label="Volver a borradores"' docs/workflow-builder.html
+grep -Fq 'id="builderClear" type="button" class="builder-action builder-action--neutral">Descartar cambios</button>' docs/workflow-builder.html
+! grep -Fq 'Descartar cambios locales' docs/workflow-builder.html
+grep -Fq '.builder-action--neutral{' docs/workflow-builder.css
+grep -Fq 'grid-template-columns:auto minmax(0,1fr) auto' docs/workflow-builder.css
 grep -Fq 'builder-action builder-action--primary' docs/workflow-builder.html
 grep -Fq 'body.builder-editor-active .topbar{display:none}' docs/workflow-builder.css
 grep -Fq 'background:var(--ui-info)' docs/workflow-builder.css
@@ -117,7 +123,7 @@ grep -Fq 'Decisión Aceptar / Rechazar' docs/workflow-builder.js
 grep -Fq 'id="scheduledAt"' docs/workflow-builder.html
 grep -Fq 'id="customRecurrenceRow"' docs/workflow-builder.html
 grep -Fq '.builder-panel [hidden]{display:none!important}' docs/workflow-builder.css
-grep -Fq './workflow-builder.css?v=2026091903' docs/workflow-builder.html
+grep -Fq './workflow-builder.css?v=2026091904' docs/workflow-builder.html
 grep -Fq 'name="customEvery"' docs/workflow-builder.html
 grep -Fq 'name="customUnit"' docs/workflow-builder.html
 grep -Fq 'toggleDependentRow' docs/workflow-builder.js

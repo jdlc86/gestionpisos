@@ -72,6 +72,18 @@ begin
     raise exception 'workflow_schedule_time_mismatch' using errcode='22023';
   end if;
 
+  if exists(
+    select 1
+    from generate_series(-180,180) as delta(minutes)
+    where delta.minutes<>0
+      and to_char(
+        (v_run_at + delta.minutes * interval '1 minute') at time zone v_timezone,
+        'YYYY-MM-DD"T"HH24:MI'
+      )=v_local
+  ) then
+    raise exception 'workflow_schedule_local_time_ambiguous' using errcode='22023';
+  end if;
+
   return v_spec || jsonb_build_object(
     'scheduledTimezone',v_timezone,
     'scheduledAtUtc',v_utc

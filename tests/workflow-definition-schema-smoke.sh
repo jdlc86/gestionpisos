@@ -23,6 +23,9 @@ lifecycle_anon_hardening='supabase/migrations/20260919170500_workflow_lifecycle_
 document_step='supabase/migrations/20260919163000_workflow_document_step.sql'
 document_indexes='supabase/migrations/20260919164500_workflow_document_indexes.sql'
 workflow_notifications='supabase/migrations/20260919174500_workflow_notifications.sql'
+scheduled_once='supabase/migrations/20260919190000_workflow_scheduled_once.sql'
+scheduled_exact='supabase/migrations/20260919190050_workflow_scheduled_exact_time.sql'
+scheduled_cron='supabase/migrations/20260919190100_workflow_schedule_cron.sql'
 checklist='supabase/migrations/20260919103000_workflow_checklist_step.sql'
 
 test -s "$migration"
@@ -47,7 +50,12 @@ test -s "$lifecycle_anon_hardening"
 test -s "$document_step"
 test -s "$document_indexes"
 test -s "$workflow_notifications"
+test -s "$scheduled_once"
+test -s "$scheduled_exact"
+test -s "$scheduled_cron"
 test -s tests/workflow-notifications-regression.sql
+test -s tests/workflow-scheduled-once-regression.sql
+test -s tests/local-property-staff-v3-alignment.sql
 test -s tests/workflow-draft-discard-regression.sql
 test -s tests/workflow-publish-execute-lifecycle-regression.sql
 test -s tests/workflow-document-step-regression.sql
@@ -358,3 +366,27 @@ grep -Fq "channel_email" "$workflow_notifications"
 grep -Fq "false," "$workflow_notifications"
 grep -Fq 'revoke all on function private.workflow_execution_notifications_v1()' "$workflow_notifications"
 grep -Fq 'create trigger workflow_execution_notifications_v1' "$workflow_notifications"
+
+
+# Fecha concreta: scheduler transversal, instante exacto e idempotencia.
+grep -Fq 'create table public.workflow_application_schedules_v2' "$scheduled_once"
+grep -Fq "check (schedule_kind in ('scheduled_once'))" "$scheduled_once"
+grep -Fq 'create or replace function private.workflow_execute_application_internal_v1' "$scheduled_once"
+grep -Fq 'create or replace function private.process_due_workflow_schedules_v1' "$scheduled_once"
+grep -Fq 'for update of s skip locked' "$scheduled_once"
+grep -Fq "'scheduled-once:'" "$scheduled_once"
+grep -Fq 'create or replace function public.publish_workflow_ready_v2' "$scheduled_once"
+grep -Fq 'create or replace function public.update_unexecuted_workflow_v2' "$scheduled_once"
+grep -Fq 'create or replace function public.publish_workflow_revision_ready_v2' "$scheduled_once"
+grep -Fq 'revoke all on function public.publish_workflow_ready_v2' "$scheduled_once"
+grep -Fq 'create or replace function private.workflow_sanitize_authoring_spec_v3' "$scheduled_exact"
+grep -Fq "'scheduledTimezone'" "$scheduled_exact"
+grep -Fq "'scheduledAtUtc'" "$scheduled_exact"
+grep -Fq 'workflow_schedule_time_mismatch' "$scheduled_exact"
+grep -Fq 'workflow_scheduled_manual_execution_forbidden' "$scheduled_exact"
+grep -Fq "last_error_code=sqlstate" "$scheduled_exact"
+! grep -Fq 'sqlerrm' "$scheduled_exact"
+grep -Fq "'blocked:'" "$scheduled_exact"
+grep -Fq 'cron.schedule' "$scheduled_cron"
+grep -Fq 'gestionpisos-workflow-schedules' "$scheduled_cron"
+grep -Fq 'private.process_due_workflow_schedules_v1(now())' "$scheduled_cron"

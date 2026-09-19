@@ -184,6 +184,8 @@ Se verifica que:
 
 Las pruebas se ejecutan también en PostgreSQL 17 desechable desde Schema Guard.
 
+El 19/09/2026 se detectó además una diferencia entre el PostgreSQL local y los **default privileges** reales de Supabase: cinco RPC `SECURITY DEFINER` del ciclo Publicar/Editar/Eliminar/Archivar conservaban `EXECUTE` explícito para `anon`. Sus cuerpos ya rechazaban sesiones sin `auth.uid()`, pero se cerró también la superficie RPC con una migración aditiva que revoca `anon` de forma explícita. La regresión local reproduce desde entonces esos default privileges para evitar falsos verdes.
+
 ## 10. Estado por módulo
 
 | Módulo | Estado | Observación |

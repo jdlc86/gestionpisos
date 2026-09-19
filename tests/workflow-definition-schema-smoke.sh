@@ -19,6 +19,7 @@ photo_review_hardening='supabase/migrations/20260919001000_photo_review_read_aut
 authoring_separation='supabase/migrations/20260918234456_workflow_authoring_operational_separation.sql'
 draft_discard='supabase/migrations/20260919141500_workflow_draft_discard.sql'
 lifecycle='supabase/migrations/20260919143208_workflow_publish_execute_lifecycle.sql'
+lifecycle_anon_hardening='supabase/migrations/20260919170500_workflow_lifecycle_anon_execute_hardening.sql'
 document_step='supabase/migrations/20260919163000_workflow_document_step.sql'
 document_indexes='supabase/migrations/20260919164500_workflow_document_indexes.sql'
 checklist='supabase/migrations/20260919103000_workflow_checklist_step.sql'
@@ -41,6 +42,7 @@ test -s "$photo_review_hardening"
 test -s "$authoring_separation"
 test -s "$draft_discard"
 test -s "$lifecycle"
+test -s "$lifecycle_anon_hardening"
 test -s "$document_step"
 test -s "$document_indexes"
 test -s tests/workflow-draft-discard-regression.sql
@@ -323,3 +325,14 @@ grep -Fq 'workflow_execution_documents_v2_organization_idx' "$document_indexes"
 grep -Fq 'on public.workflow_execution_documents_v2(organization_id)' "$document_indexes"
 grep -Fq 'workflow_execution_documents_v2_uploaded_by_idx' "$document_indexes"
 grep -Fq 'on public.workflow_execution_documents_v2(uploaded_by)' "$document_indexes"
+
+
+# Lifecycle: Supabase concede EXECUTE a anon por default privileges; el hardening debe cerrarlo explícitamente.
+grep -Fq 'revoke all on function public.publish_workflow_ready_v1' "$lifecycle_anon_hardening"
+grep -Fq 'revoke all on function public.update_unexecuted_workflow_v1' "$lifecycle_anon_hardening"
+grep -Fq 'revoke all on function public.publish_workflow_revision_ready_v1' "$lifecycle_anon_hardening"
+grep -Fq 'revoke all on function public.delete_unexecuted_workflow_v1' "$lifecycle_anon_hardening"
+grep -Fq 'revoke all on function public.archive_workflow_definition_v1' "$lifecycle_anon_hardening"
+test "$(grep -Fc 'from public,anon;' "$lifecycle_anon_hardening")" -ge 5
+grep -Fq 'grant execute on function public.publish_workflow_ready_v1' "$lifecycle_anon_hardening"
+grep -Fq 'to authenticated;' "$lifecycle_anon_hardening"

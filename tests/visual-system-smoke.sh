@@ -75,7 +75,7 @@ grep -Fq 'href="./legal.html"' docs/index.html
 grep -Fq 'href="./privacy.html"' docs/index.html
 grep -Fq 'new Date().getFullYear()' docs/index.html
 test -s docs/app-version.json
-grep -Fq '"version": "0.1.1-beta"' docs/app-version.json
+grep -Fq '"version": "0.1.2-beta"' docs/app-version.json
 grep -Fq 'Stamp release metadata' .github/workflows/pages.yml
 grep -Fq 'GITHUB_RUN_NUMBER' .github/workflows/pages.yml
 grep -Fq 'GITHUB_SHA' .github/workflows/pages.yml
@@ -84,3 +84,7 @@ test -s docs/legal.html
 test -s docs/privacy.html
 
 echo 'Visual system smoke checks passed'
+
+grep -Fq '[hidden]{display:none!important}' docs/app.css
+grep -Fq 'input[type="checkbox"],input[type="radio"]' docs/app.css
+grep -Fq '.builder-editor-state{' docs/workflow-builder.css

@@ -271,9 +271,12 @@ function updateCompletionUI(){
   });
   updateEditorTitle();
   if(builderBadge){
-    builderBadge.textContent=state.complete
-      ?(revisionMode&&currentBaseVersion?"Nueva v"+(currentBaseVersion+1)+" preparada":"Configuración completa")
-      :"Borrador incompleto";
+    const completeLabel=revisionMode&&currentBaseVersion
+      ?"Nueva v"+(currentBaseVersion+1)+" preparada"
+      :"Configuración completa";
+    builderBadge.textContent=state.complete?"Listo":"Borrador";
+    builderBadge.title=state.complete?completeLabel:"Borrador incompleto";
+    builderBadge.classList.toggle("is-complete",state.complete);
   }
   if(publishButton){
     publishButton.disabled=!state.complete||!currentDefinitionId;

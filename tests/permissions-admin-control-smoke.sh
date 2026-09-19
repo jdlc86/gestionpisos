@@ -21,3 +21,7 @@ grep -Fq 'staff_responsible_reassignment_required' supabase/migrations/202609160
 ! grep -Fq 'capability==="permission_management"' docs/permissions.js
 
 echo 'Permissions administrative control smoke checks passed'
+
+grep -Fq '<span>Puede recuperar ROOT</span>' docs/permissions.html
+grep -Fq '.emergency-root-capability input[type="checkbox"]' docs/permissions.css
+grep -Fq '[hidden]{display:none!important}' docs/app.css

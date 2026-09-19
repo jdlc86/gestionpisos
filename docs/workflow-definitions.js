@@ -38,6 +38,7 @@ let versionsByDefinition=new Map();
 let revisionDraftByDefinition=new Map();
 let applicationsByDefinition=new Map();
 let executionsByDefinition=new Map();
+let schedulesByApplication=new Map();
 let propertyById=new Map();
 let roomById=new Map();
 let occupancyById=new Map();
@@ -83,7 +84,7 @@ function scheduledDateTime(spec){
   return String(spec?.scheduledAt||"").trim()||"Pendiente";
 }
 function isScheduledAutomatic(row){
-  return String(publishedSpec(row).triggerType||"")==="scheduled_once";
+  return ["scheduled_once","recurring"].includes(String(publishedSpec(row).triggerType||""));
 }
 function latestVersion(row){return versionsByDefinition.get(row.id)?.[0]||null}
 function publishedSpec(row){return latestVersion(row)?.spec||{}}
@@ -98,19 +99,40 @@ function currentApplication(row){
     || apps.find(app=>app.status==="configured")
     || null;
 }
+function scheduleFor(row){
+  const app=currentApplication(row);
+  return app?schedulesByApplication.get(app.id)||null:null;
+}
+function scheduleStatusText(row){
+  const schedule=scheduleFor(row);
+  if(!schedule)return null;
+  if(schedule.status==="blocked")return "Programación bloqueada";
+  if(schedule.status==="cancelled")return "Programación cancelada";
+  if(schedule.status==="completed")return "Programación completada";
+  if(schedule.status==="active"){
+    const next=dateTime(schedule.next_run_at);
+    return schedule.schedule_kind==="recurring"
+      ?"Próxima · "+next
+      :"Programada · "+next;
+  }
+  return null;
+}
 function activationText(row){
   const spec=publishedSpec(row);
   const trigger=String(spec.triggerType||"");
   const base=text("triggerType",trigger);
   if(trigger==="recurring"){
     const recurrence=String(spec.recurrence||"");
-    if(!recurrence)return base;
+    const first=scheduledDateTime(spec);
+    if(!recurrence)return base+" · desde "+first;
     if(recurrence==="custom"){
       const every=String(spec.customEvery||"").trim();
       const unit=String(spec.customUnit||"");
-      return every&&unit?base+" · Cada "+every+" "+text("customUnit",unit):base+" · "+text("recurrence",recurrence);
+      return every&&unit
+        ?base+" · Cada "+every+" "+text("customUnit",unit)+" · desde "+first
+        :base+" · "+text("recurrence",recurrence)+" · desde "+first;
     }
-    return base+" · "+text("recurrence",recurrence);
+    return base+" · "+text("recurrence",recurrence)+" · desde "+first;
   }
   if(trigger==="scheduled_once"){
     return base+" · "+scheduledDateTime(spec);
@@ -425,6 +447,12 @@ function card(row){
     meta("Versión actual","v"+(version?.version||"?")),
     executionMeta(row)
   );
+  const scheduleStatus=scheduleStatusText(row);
+  if(scheduleStatus){
+    details.append(meta("Programación",scheduleStatus,{
+      className:scheduleFor(row)?.status==="blocked"?"definition-meta-item--warning":""
+    }));
+  }
 
   article.append(head,details);
 
@@ -734,6 +762,7 @@ async function load({preserveSelection=false}={}){
   revisionDraftByDefinition=new Map();
   applicationsByDefinition=new Map();
   executionsByDefinition=new Map();
+  schedulesByApplication=new Map();
   propertyById=new Map();
   roomById=new Map();
   occupancyById=new Map();
@@ -780,21 +809,30 @@ async function load({preserveSelection=false}={}){
     const appToDefinition=new Map(applications.map(app=>[app.id,app.definition_id]));
 
     if(applicationIds.length){
-      const {data:executionData,error:executionError}=await supabase
-        .from("workflow_executions_v2")
-        .select("id,application_id,status,created_at")
-        .in("application_id",applicationIds)
-        .order("created_at",{ascending:false});
-      if(executionError){
-        setStatus("No se pudo comprobar el historial de ejecución.",true);
+      const [executionResult,scheduleResult]=await Promise.all([
+        supabase
+          .from("workflow_executions_v2")
+          .select("id,application_id,status,created_at")
+          .in("application_id",applicationIds)
+          .order("created_at",{ascending:false}),
+        supabase
+          .from("workflow_application_schedules_v2")
+          .select("application_id,schedule_kind,status,next_run_at,next_occurrence_index,execution_count,last_scheduled_for,last_error_at")
+          .in("application_id",applicationIds)
+      ]);
+      if(executionResult.error||scheduleResult.error){
+        setStatus("No se pudo comprobar el historial o la programación automática.",true);
         return;
       }
-      (executionData||[]).forEach(execution=>{
+      (executionResult.data||[]).forEach(execution=>{
         const definitionId=appToDefinition.get(execution.application_id);
         if(!definitionId)return;
         const bucket=executionsByDefinition.get(definitionId)||[];
         bucket.push(execution);
         executionsByDefinition.set(definitionId,bucket);
+      });
+      (scheduleResult.data||[]).forEach(schedule=>{
+        schedulesByApplication.set(schedule.application_id,schedule);
       });
     }
 

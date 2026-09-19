@@ -337,37 +337,72 @@ begin
     end if;
   end if;
 
-  select
-    exists(
+  if to_regclass('public.profiles') is not null then
+    execute
+      'select exists(
+         select 1
+         from public.profiles p
+         where p.user_id=$1
+           and p.status=''active''
+           and p.archived_at is null
+           and exists(
+             select 1
+             from public.user_roles ur
+             where ur.user_id=$1
+               and ur.revoked_at is null
+           )
+       )'
+    into v_operational_active
+    using p_user_id;
+  else
+    select exists(
       select 1
-      from public.profiles p
-      where p.user_id=p_user_id
-        and p.status='active'
-        and p.archived_at is null
-        and exists(
-          select 1
-          from public.user_roles ur
-          where ur.user_id=p_user_id
-            and ur.revoked_at is null
-        )
+      from public.user_roles ur
+      where ur.user_id=p_user_id
+        and ur.revoked_at is null
     )
-    or exists(
-      select 1
-      from public.owners o
-      where o.user_id=p_user_id
-        and o.status='active'
-        and o.archived_at is null
-    )
-    or exists(
-      select 1
-      from public.tenants_v2 t
-      where t.user_id=p_user_id
-        and t.status='active'
-        and t.archived_at is null
-    )
-  into v_operational_active;
+    into v_operational_active;
+  end if;
 
-  return coalesce(v_operational_active,false);
+  if coalesce(v_operational_active,false) then
+    return true;
+  end if;
+
+  if to_regclass('public.owners') is not null then
+    execute
+      'select exists(
+         select 1
+         from public.owners o
+         where o.user_id=$1
+           and o.status=''active''
+           and o.archived_at is null
+       )'
+    into v_operational_active
+    using p_user_id;
+
+    if coalesce(v_operational_active,false) then
+      return true;
+    end if;
+  end if;
+
+  if to_regclass('public.tenants_v2') is not null then
+    execute
+      'select exists(
+         select 1
+         from public.tenants_v2 t
+         where t.user_id=$1
+           and t.status=''active''
+           and t.archived_at is null
+       )'
+    into v_operational_active
+    using p_user_id;
+
+    if coalesce(v_operational_active,false) then
+      return true;
+    end if;
+  end if;
+
+  return false;
 end;
 $web_push_recipient_active$;
 

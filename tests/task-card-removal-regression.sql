@@ -5,7 +5,7 @@ begin;
 
 select set_config(
   'gestionpisos.task_remove.org',
-  (select id::text from public.organizations order by created_at limit 1),
+  (select id::text from public.organizations where name='Allaiso' limit 1),
   true
 );
 select set_config(

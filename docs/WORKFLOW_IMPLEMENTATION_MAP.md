@@ -352,6 +352,7 @@ Fotografía, Checklist y Documento ya son pasos operativos del motor mínimo.
 | Eventos transversales de ejecución | `workflow_execution_events_v2` | Creación, materialización, acciones, evidencia y cierre de revisión registrados; presentación transversal implementada en Historial |
 | Notificaciones | `notifications_v2` + trigger de `workflow_executions_v2` | onCreate al asignado; onClose a creador+asignado; dedupe por source/event/recipient |
 | Fecha concreta | `workflow_application_schedules_v2` + `pg_cron` | Programación automática exacta; manual se fija al programar y responsable se resuelve al disparar |
+| Recurrente | `workflow_application_schedules_v2` + mismo `pg_cron` | Primera ejecución explícita; semanal/quincenal/mensual/custom; ancla estable, catch-up auditado y responsable dinámico |
 
 ## 6. Compatibilidad y transición
 
@@ -433,9 +434,9 @@ El siguiente trabajo debe cubrir:
 - Historial transversal visible suficiente para reconstruir evidencia, reviewer y cierre;
 - notificaciones operativas específicas de cierre/rechazo;
 - permisos/RLS y pruebas negativas de los nuevos tipos de paso;
-- no habilitar recurrencia hasta probar estos recorridos extremo a extremo.
+- validar Recurrente extremo a extremo con al menos dos ocurrencias y cambio de responsable.
 
-La recurrencia automática se incorpora después de esa validación.
+La recurrencia automática ya reutiliza el mismo núcleo de ejecución y scheduler; no existe un segundo cron ni motor de tareas.
 
 La regla histórica del primer mapeo se mantiene como salvaguarda: **no se crean tablas nuevas de workflow de forma improvisada o paralela**; cualquier DDL nuevo debe derivarse explícitamente del contrato del motor, justificar su necesidad frente a las tablas existentes y venir acompañado de RLS y pruebas de regresión.
 
@@ -446,4 +447,4 @@ La regla histórica del primer mapeo se mantiene como salvaguarda: **no se crean
 
 El instante se congela como hora local + zona IANA + UTC exacto. El scheduler nunca interpreta por sí mismo un `datetime-local`.
 
-`triggerType=recurring` permanece pendiente: ya existe autoría de frecuencia, pero falta definir la primera fecha/hora que servirá de ancla.
+`triggerType=recurring` exige una primera fecha/hora explícita y mantiene la próxima ocurrencia en `workflow_application_schedules_v2`. Cada fecha se deriva del ancla local original y el mismo cron materializa exactamente una tarea por ocurrencia procesada.

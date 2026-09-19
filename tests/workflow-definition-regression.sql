@@ -460,11 +460,11 @@ begin
 end;
 $$;
 
--- Recurrencia personalizada requiere valor y unidad; ambos quedan persistidos.
+-- Recurrencia personalizada requiere cadencia + primera ejecución exacta.
 select set_config(
-  'gestionpisos.workflow_custom_id',
+  'gestionpisos.workflow_recurring_custom_id',
   (select definition_id::text
-   from public.save_workflow_definition_draft_v1(
+   from public.save_workflow_definition_draft_v2(
      jsonb_build_object(
        'authoringVersion',2,
        'flowName','Limpieza personalizada',
@@ -474,6 +474,8 @@ select set_config(
        'triggerType','recurring',
        'recurrence','custom',
        'scheduledAt','2026-10-20T10:30',
+       'scheduledTimezone','Europe/Madrid',
+       'scheduledAtUtc','2026-10-20T08:30:00Z',
        'customEvery','3',
        'customUnit','day',
        'assignmentType','property_responsible',
@@ -494,7 +496,7 @@ begin
   select draft_spec, authoring_complete
   into v_spec, v_complete
   from public.workflow_definitions_v2
-  where id=current_setting('gestionpisos.workflow_custom_id')::uuid;
+  where id=current_setting('gestionpisos.workflow_recurring_custom_id')::uuid;
 
   if not v_complete then
     raise exception 'custom recurring workflow not marked complete';
@@ -502,11 +504,42 @@ begin
   if v_spec ->> 'customEvery' <> '3' or v_spec ->> 'customUnit' <> 'day' then
     raise exception 'custom recurring workflow lost cadence';
   end if;
-  if coalesce(v_spec ->> 'scheduledAt','') <> '' then
-    raise exception 'custom recurring workflow retained irrelevant scheduledAt';
+  if v_spec ->> 'scheduledAt' <> '2026-10-20T10:30'
+    or v_spec ->> 'scheduledTimezone' <> 'Europe/Madrid'
+    or v_spec ->> 'scheduledAtUtc' <> '2026-10-20T08:30:00Z' then
+    raise exception 'custom recurring workflow lost first exact execution';
   end if;
 end;
 $$;
+
+-- Las pruebas genéricas de Aplicaciones usan un flujo manual de ámbito piso;
+-- Recurrente exige su schedule operativo y no puede reutilizarse como manual.
+select set_config(
+  'gestionpisos.workflow_custom_id',
+  (select definition_id::text
+   from public.save_workflow_definition_draft_v2(
+     jsonb_build_object(
+       'authoringVersion',2,
+       'flowName','Limpieza manual por piso',
+       'flowType','cleaning',
+       'flowDescription','',
+       'scopeType','property',
+       'triggerType','manual',
+       'recurrence','',
+       'scheduledAt','',
+       'scheduledTimezone','',
+       'scheduledAtUtc','',
+       'customEvery','',
+       'customUnit','',
+       'assignmentType','property_responsible',
+       'steps',jsonb_build_object('accept',true,'photo',false,'checklist',false,'document',false),
+       'closeType','auto',
+       'notifications',jsonb_build_object('onCreate',false,'onClose',false)
+     )
+   )
+   limit 1),
+  true
+);
 
 -- Manual ignora cualquier frecuencia o fecha residual enviada por el cliente.
 select set_config(

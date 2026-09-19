@@ -32,6 +32,7 @@ const recurrenceRow=document.getElementById("recurrenceRow");
 const customRecurrenceRow=document.getElementById("customRecurrenceRow");
 const scheduledAtRow=document.getElementById("scheduledAtRow");
 const scheduledTimezoneHint=document.getElementById("scheduledTimezoneHint");
+const scheduledAtLabel=document.getElementById("scheduledAtLabel");
 const photoBankLink=document.getElementById("photoBankLink");
 const checklistEditor=document.getElementById("checklistEditor");
 const checklistItemsBox=document.getElementById("checklistItems");
@@ -349,7 +350,9 @@ function triggerComplete(data){
     return Number.isFinite(runAt)&&runAt>Date.now();
   }
   if(data.triggerType==="recurring"){
-    if(!data.recurrence)return false;
+    if(!data.recurrence||!data.scheduledAt||!data.scheduledTimezone||!data.scheduledAtUtc)return false;
+    const runAt=Date.parse(data.scheduledAtUtc);
+    if(!Number.isFinite(runAt)||runAt<=Date.now())return false;
     if(data.recurrence!=="custom")return true;
     const every=Number(data.customEvery);
     return Number.isInteger(every)&&every>=1&&every<=365&&["day","week","month"].includes(data.customUnit);
@@ -376,7 +379,7 @@ function applyDraft(saved,{restoreStep=true}={}){
   updateChecklistEditor();
   setChecked("notifyOnCreate",saved.notifications?.onCreate);
   setChecked("notifyOnClose",saved.notifications?.onClose);
-  if(saved.triggerType==="scheduled_once")syncScheduledInstant({force:false});
+  if(["scheduled_once","recurring"].includes(saved.triggerType))syncScheduledInstant({force:false});
   if(restoreStep&&Number.isInteger(saved.currentStep))currentStep=Math.max(0,Math.min(panels.length-1,saved.currentStep));
 }
 
@@ -436,11 +439,13 @@ function updateTriggerFields({clearHidden=false}={}){
   const customUnit=field("customUnit");
   const recurring=type==="recurring";
   const scheduled=type==="scheduled_once";
+  const automatic=scheduled||recurring;
   const custom=recurring&&value("recurrence")==="custom";
 
   toggleDependentRow(recurrenceRow,recurring);
   toggleDependentRow(customRecurrenceRow,custom);
-  toggleDependentRow(scheduledAtRow,scheduled);
+  toggleDependentRow(scheduledAtRow,automatic);
+  if(scheduledAtLabel)scheduledAtLabel.textContent=recurring?"Primera ejecución":"Fecha y hora";
 
   if(clearHidden){
     if(!recurring&&recurrence)recurrence.value="";
@@ -448,7 +453,7 @@ function updateTriggerFields({clearHidden=false}={}){
       if(customEvery)customEvery.value="";
       if(customUnit)customUnit.value="";
     }
-    if(!scheduled){
+    if(!automatic){
       if(scheduledAt)scheduledAt.value="";
       if(scheduledTimezone)scheduledTimezone.value="";
       if(scheduledAtUtc)scheduledAtUtc.value="";
@@ -456,7 +461,7 @@ function updateTriggerFields({clearHidden=false}={}){
     }
   }
 
-  if(scheduled)syncScheduledInstant({force:false});
+  if(automatic)syncScheduledInstant({force:false});
 }
 
 function updatePhotoResource(){
@@ -650,11 +655,23 @@ function summaryRow(title,text){
 
 function activationSummary(data){
   if(data.triggerType==="recurring"){
+    const first=(()=>{
+      if(!data.scheduledAtUtc||!data.scheduledTimezone)return "Primera ejecución pendiente";
+      const parsed=new Date(data.scheduledAtUtc);
+      if(Number.isNaN(parsed.getTime()))return data.scheduledAt||"Primera ejecución pendiente";
+      try{
+        return new Intl.DateTimeFormat("es-ES",{
+          dateStyle:"medium",
+          timeStyle:"short",
+          timeZone:data.scheduledTimezone
+        }).format(parsed)+" · "+data.scheduledTimezone;
+      }catch{return data.scheduledAt||"Primera ejecución pendiente"}
+    })();
     if(data.recurrence==="custom"){
       const every=data.customEvery||"—";
-      return "Recurrente · Cada "+every+" "+label("customUnit",data.customUnit);
+      return "Recurrente · Cada "+every+" "+label("customUnit",data.customUnit)+" · desde "+first;
     }
-    return label("triggerType",data.triggerType)+" · "+label("recurrence",data.recurrence);
+    return label("triggerType",data.triggerType)+" · "+label("recurrence",data.recurrence)+" · desde "+first;
   }
   if(data.triggerType==="scheduled_once"){
     if(!data.scheduledAt||!data.scheduledTimezone)return "Fecha concreta · Pendiente";

@@ -38,6 +38,7 @@ let versionsByDefinition=new Map();
 let revisionDraftByDefinition=new Map();
 let applicationsByDefinition=new Map();
 let executionsByDefinition=new Map();
+let schedulesByApplication=new Map();
 let propertyById=new Map();
 let roomById=new Map();
 let occupancyById=new Map();
@@ -82,8 +83,18 @@ function scheduledDateTime(spec){
   }
   return String(spec?.scheduledAt||"").trim()||"Pendiente";
 }
+function scheduledRuntimeDate(value,timezone){
+  if(!value)return "Pendiente";
+  try{
+    return new Intl.DateTimeFormat("es-ES",{
+      dateStyle:"medium",
+      timeStyle:"short",
+      timeZone:timezone||undefined
+    }).format(new Date(value))+(timezone?" · "+timezone:"");
+  }catch{return dateTime(value)}
+}
 function isScheduledAutomatic(row){
-  return String(publishedSpec(row).triggerType||"")==="scheduled_once";
+  return ["scheduled_once","recurring"].includes(String(publishedSpec(row).triggerType||""));
 }
 function latestVersion(row){return versionsByDefinition.get(row.id)?.[0]||null}
 function publishedSpec(row){return latestVersion(row)?.spec||{}}
@@ -98,19 +109,48 @@ function currentApplication(row){
     || apps.find(app=>app.status==="configured")
     || null;
 }
+function scheduleFor(row){
+  const app=currentApplication(row);
+  return app?schedulesByApplication.get(app.id)||null:null;
+}
+function needsScheduleConfiguration(row){
+  if(!isScheduledAutomatic(row))return false;
+  const spec=publishedSpec(row);
+  return !scheduleFor(row)
+    || !String(spec.scheduledAt||"").trim()
+    || !String(spec.scheduledTimezone||"").trim()
+    || !String(spec.scheduledAtUtc||"").trim();
+}
+function scheduleStatusText(row){
+  const schedule=scheduleFor(row);
+  if(!schedule)return needsScheduleConfiguration(row)?"Necesita programación":null;
+  if(schedule.status==="blocked")return "Programación bloqueada";
+  if(schedule.status==="cancelled")return "Programación cancelada";
+  if(schedule.status==="completed")return "Programación completada";
+  if(schedule.status==="active"){
+    const next=scheduledRuntimeDate(schedule.next_run_at,schedule.schedule_timezone);
+    return schedule.schedule_kind==="recurring"
+      ?"Próxima · "+next
+      :"Programada · "+next;
+  }
+  return null;
+}
 function activationText(row){
   const spec=publishedSpec(row);
   const trigger=String(spec.triggerType||"");
   const base=text("triggerType",trigger);
   if(trigger==="recurring"){
     const recurrence=String(spec.recurrence||"");
-    if(!recurrence)return base;
+    const first=scheduledDateTime(spec);
+    if(!recurrence)return base+" · desde "+first;
     if(recurrence==="custom"){
       const every=String(spec.customEvery||"").trim();
       const unit=String(spec.customUnit||"");
-      return every&&unit?base+" · Cada "+every+" "+text("customUnit",unit):base+" · "+text("recurrence",recurrence);
+      return every&&unit
+        ?base+" · Cada "+every+" "+text("customUnit",unit)+" · desde "+first
+        :base+" · "+text("recurrence",recurrence)+" · desde "+first;
     }
-    return base+" · "+text("recurrence",recurrence);
+    return base+" · "+text("recurrence",recurrence)+" · desde "+first;
   }
   if(trigger==="scheduled_once"){
     return base+" · "+scheduledDateTime(spec);
@@ -411,9 +451,10 @@ function card(row){
   const title=document.createElement("h3");title.textContent=String(spec.flowName||row.name||"Flujo");
   headMain.append(title);
 
+  const needsSchedule=needsScheduleConfiguration(row);
   const badge=document.createElement("span");
-  badge.className="definition-badge "+(history?"definition-badge--complete":"definition-badge--incomplete");
-  badge.textContent=history?"Con historial":"Sin ejecuciones";
+  badge.className="definition-badge "+(needsSchedule||!history?"definition-badge--incomplete":"definition-badge--complete");
+  badge.textContent=needsSchedule?"Necesita programación":history?"Con historial":"Sin ejecuciones";
   head.append(headMain,badge);
 
   const details=document.createElement("div");details.className="definition-meta";
@@ -425,6 +466,12 @@ function card(row){
     meta("Versión actual","v"+(version?.version||"?")),
     executionMeta(row)
   );
+  const scheduleStatus=scheduleStatusText(row);
+  if(scheduleStatus){
+    details.append(meta("Programación",scheduleStatus,{
+      className:(needsSchedule||scheduleFor(row)?.status==="blocked")?"definition-meta-item--warning":""
+    }));
+  }
 
   article.append(head,details);
 
@@ -444,7 +491,7 @@ function card(row){
       +"&setup=1&intent=execute&from=mis-flujos"
       +(app?"&application="+encodeURIComponent(app.id):"");
     actions.append(execute);
-  }else{
+  }else if(!needsSchedule){
     const automatic=document.createElement("span");
     automatic.className="definition-action-note";
     automatic.textContent="Ejecución automática";
@@ -454,15 +501,15 @@ function card(row){
   if(history){
     if(draft){
       const edit=document.createElement("a");
-      edit.className="secondary";
+      edit.className=needsSchedule?"primary":"secondary";
       edit.href="./workflow-builder.html?id="+encodeURIComponent(row.id)+"&revision=1";
-      edit.textContent="Editar";
+      edit.textContent=needsSchedule?"Continuar programación":"Editar";
       actions.append(edit);
     }else{
       const edit=document.createElement("button");
       edit.type="button";
-      edit.className="secondary";
-      edit.textContent="Editar";
+      edit.className=needsSchedule?"primary":"secondary";
+      edit.textContent=needsSchedule?"Editar programación":"Editar";
       edit.addEventListener("click",()=>startRevision(row,edit));
       actions.append(edit);
     }
@@ -475,9 +522,9 @@ function card(row){
     actions.append(archive);
   }else{
     const edit=document.createElement("a");
-    edit.className="secondary";
+    edit.className=needsSchedule?"primary":"secondary";
     edit.href="./workflow-builder.html?id="+encodeURIComponent(row.id)+"&edit=1";
-    edit.textContent="Editar";
+    edit.textContent=needsSchedule?"Editar programación":"Editar";
     actions.append(edit);
 
     const remove=document.createElement("button");
@@ -734,6 +781,7 @@ async function load({preserveSelection=false}={}){
   revisionDraftByDefinition=new Map();
   applicationsByDefinition=new Map();
   executionsByDefinition=new Map();
+  schedulesByApplication=new Map();
   propertyById=new Map();
   roomById=new Map();
   occupancyById=new Map();
@@ -780,21 +828,30 @@ async function load({preserveSelection=false}={}){
     const appToDefinition=new Map(applications.map(app=>[app.id,app.definition_id]));
 
     if(applicationIds.length){
-      const {data:executionData,error:executionError}=await supabase
-        .from("workflow_executions_v2")
-        .select("id,application_id,status,created_at")
-        .in("application_id",applicationIds)
-        .order("created_at",{ascending:false});
-      if(executionError){
-        setStatus("No se pudo comprobar el historial de ejecución.",true);
+      const [executionResult,scheduleResult]=await Promise.all([
+        supabase
+          .from("workflow_executions_v2")
+          .select("id,application_id,status,created_at")
+          .in("application_id",applicationIds)
+          .order("created_at",{ascending:false}),
+        supabase
+          .from("workflow_application_schedules_v2")
+          .select("application_id,schedule_kind,schedule_timezone,status,next_run_at,next_occurrence_index,execution_count,last_scheduled_for,last_error_at")
+          .in("application_id",applicationIds)
+      ]);
+      if(executionResult.error||scheduleResult.error){
+        setStatus("No se pudo comprobar el historial o la programación automática.",true);
         return;
       }
-      (executionData||[]).forEach(execution=>{
+      (executionResult.data||[]).forEach(execution=>{
         const definitionId=appToDefinition.get(execution.application_id);
         if(!definitionId)return;
         const bucket=executionsByDefinition.get(definitionId)||[];
         bucket.push(execution);
         executionsByDefinition.set(definitionId,bucket);
+      });
+      (scheduleResult.data||[]).forEach(schedule=>{
+        schedulesByApplication.set(schedule.application_id,schedule);
       });
     }
 

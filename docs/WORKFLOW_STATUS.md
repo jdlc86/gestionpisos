@@ -277,7 +277,7 @@ Se cerraron dos recorridos manuales completos sobre el motor persistente:
    - una captura válida completa recurso + tarea + ejecución;
    - un único run/ítem/objeto de Storage.
 
-Estas pruebas demuestran que el primer flujo manual con evidencia fotográfica **sí es operativo dentro del alcance implementado**. Checklist, Documento y revisión humana genérica ya tienen implementación propia; las recurrencias automáticas siguen fuera del alcance operativo completo.
+Estas pruebas demuestran que el motor genérico ya cubre ejecución manual, Fecha concreta y Recurrente, además de Foto, Checklist, Documento y revisión humana. Los disparadores recurrentes tienen primera ejecución explícita, zona horaria, idempotencia y regresión automatizada.
 
 ### PR #216 + #217 — Evidencia fotográfica y decisión del asignado
 
@@ -381,9 +381,9 @@ Orden recomendado:
 3. validar la vista de Historial transversal con ejecuciones reales;
 4. validar notificaciones operativas de creación/cierre/rechazo en producción;
 5. validar Fecha concreta automática en producción;
-6. definir la primera fecha/hora de Recurrente y después habilitar recurrencias automáticas.
+6. validar Recurrente E2E en producción con al menos dos ocurrencias y cambio de responsable.
 
-La recurrencia automática permanece posterior a estos E2E para no automatizar un ciclo transversal antes de validar sus pasos genéricos en producción.
+La automatización recurrente ya está implementada; queda su validación humana E2E tras despliegue antes de adaptar dominios legacy a este disparador.
 
 ## 13. Reglas de no regresión
 
@@ -416,7 +416,7 @@ El criterio inicial quedó demostrado el 18/09/2026 para el recorrido manual con
 
 Por tanto, **una definición publicada y aplicada ya puede representar un proceso operativo real dentro de los pasos implementados**.
 
-Esto no debe generalizarse a capacidades aún pendientes. Checklist y Documento ya tienen contrato, implementación y regresión automatizada; sus E2E humanos se validan después del despliegue. La recurrencia automática no puede considerarse completa hasta que tenga contrato, implementación y E2E propios. `human_review` ya tiene contrato, implementación y validación E2E real.
+Esto no debe generalizarse a dominios legacy aún no migrados. Checklist, Documento, Fecha concreta y Recurrente ya tienen contrato, implementación y regresión automatizada; sus E2E humanos se validan después del despliegue. `human_review` ya tiene contrato, implementación y validación E2E real.
 
 
 ### Incremento — Notificaciones operativas
@@ -451,4 +451,20 @@ La campanita personal de Inicio consume `notifications_v2` directamente bajo RLS
 - un fallo pasa a `blocked`, no deja ejecución parcial y avisa al creador;
 - Fecha concreta no ofrece ejecución manual ni entra en lotes de Ejecutar.
 
-**Recurrente todavía no está automatizado**: antes debe añadirse una primera fecha/hora explícita. No se usará la hora de publicación como ancla implícita.
+### Incremento — Recurrente automático
+
+Recurrente reutiliza `workflow_application_schedules_v2` y el mismo cron de Fecha concreta:
+
+- exige **Primera ejecución** explícita con hora local + zona IANA + UTC;
+- soporta semanal, quincenal, mensual y frecuencia personalizada;
+- calcula cada ocurrencia desde el ancla original para evitar deriva mensual;
+- conserva la hora local a través de DST y bloquea horas futuras ambiguas/inexistentes;
+- manual fija el asignado al Programar; responsable operativo se resuelve en cada ocurrencia;
+- tras una caída crea una sola obligación vencida y audita las ocurrencias intermedias omitidas;
+- una nueva versión cancela la programación de la aplicación anterior;
+- no admite ejecución manual ni ejecución masiva.
+
+La regresión PostgreSQL cubre avance, idempotencia, catch-up, fin de mes, DST y cambio de responsable entre ocurrencias.
+
+
+Los flujos recurrentes publicados antes de existir la primera fecha explícita no reciben una fecha inventada ni se migran destructivamente. Mis Flujos los identifica como **Necesita programación** y destaca **Editar programación**; si ya tienen historial, la corrección crea una nueva versión y conserva las ejecuciones anteriores.

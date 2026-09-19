@@ -8,17 +8,17 @@
 .filter-label{display:grid;gap:4px;color:var(--ui-muted);font-size:10px;font-weight:750;letter-spacing:.05em;text-transform:uppercase}
 .filter-label select,.editor-fields input,.editor-fields select,.editor-fields textarea{width:100%;border:1px solid var(--ui-border);border-radius:8px;padding:10px 11px;background:var(--ui-surface);color:var(--ui-text);font:inherit}
 .relationship-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:0 0 14px}
-.summary-cell{padding:14px;border:1px solid var(--ui-border);border-radius:var(--ui-radius);background:var(--ui-surface);box-shadow:var(--ui-shadow)}
-.summary-cell:nth-child(even){background:var(--ui-subtle)}
+.summary-cell{padding:14px;border:1px solid var(--ui-border);border-radius:14px;background:var(--ui-surface);box-shadow:var(--ui-card-shadow)}
+
 .summary-cell strong,.summary-cell span{display:block}
 .summary-cell strong{font-size:20px}
 .summary-cell span{margin-top:2px;color:var(--ui-muted);font-size:12px}
 .record-list{display:grid;gap:10px}
-.record-card{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;padding:16px;border:1px solid var(--ui-border);border-radius:var(--ui-radius);background:var(--ui-surface);box-shadow:var(--ui-shadow)}
+.record-card{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;padding:16px;border:1px solid var(--ui-border);border-radius:14px;background:var(--ui-surface);box-shadow:var(--ui-card-shadow)}
 .record-card h4{margin:0;font-size:17px;letter-spacing:-.015em}
 .record-card p{margin:6px 0 0;color:var(--ui-muted);line-height:1.45}
 .record-heading{display:flex;align-items:center;gap:10px}
-.record-type-icon{display:grid;flex:0 0 30px;width:30px;height:30px;place-items:center;border:1px solid var(--ui-border);border-radius:7px;background:var(--ui-subtle);color:var(--ui-text);font-size:15px}
+.record-type-icon{display:grid;flex:0 0 32px;width:32px;height:32px;place-items:center;border:1px solid var(--ui-accent-border);border-radius:10px;background:var(--ui-accent-soft);color:var(--ui-text);font-size:15px}
 .record-actions{display:flex;flex-wrap:wrap;align-content:start;justify-content:end;gap:7px}
 .record-actions button{min-height:32px;padding:6px 9px;border-radius:7px;font-size:12px}
 .action-label{display:inline-flex;align-items:center;gap:6px}

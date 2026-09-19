@@ -9,6 +9,9 @@ import { mountBottomNavigation } from "./bottom-nav.js?v=2026091901";
 
 const loginUrl = new URL("./login.html", window.location.href);
 loginUrl.searchParams.set("next", window.location.pathname.split("/").pop() || "index.html");
+const currentPage = window.location.pathname.split("/").pop() || "index.html";
+const isHomePage = currentPage === "index.html";
+
 
 async function pendingStaffOnboarding() {
   const { data, error } = await supabase.rpc("get_my_internal_staff_onboarding");
@@ -71,10 +74,10 @@ async function requireSession() {
       console.error("bottom_navigation_failed", error);
     });
 
-    if (requiresPrivilegedMfa(session)) addMfaSecurityAction();
+    if (isHomePage && requiresPrivilegedMfa(session)) addMfaSecurityAction();
 
     const topbar = document.querySelector(".topbar");
-    if (topbar && !document.getElementById("logoutBtn")) {
+    if (isHomePage && topbar && !document.getElementById("logoutBtn")) {
       const button = document.createElement("button");
       button.id = "logoutBtn";
       button.type = "button";

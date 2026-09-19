@@ -154,7 +154,11 @@ begin
   ) is distinct from true then
     raise exception 'employee terminal task was not hidden';
   end if;
+end;
+$employee_hide$;
 
+do $employee_open_blocked$
+begin
   perform public.hide_my_task_card_v1(
     current_setting('gestionpisos.personal_hide.employee_open')::uuid
   );
@@ -163,7 +167,7 @@ exception
   when sqlstate '55000' then
     if sqlerrm<>'task_hide_requires_terminal' then raise; end if;
 end;
-$employee_hide$;
+$employee_open_blocked$;
 
 do $employee_foreign_denied$
 begin

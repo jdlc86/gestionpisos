@@ -26,7 +26,7 @@ Extender a toda la PWA autenticada el patrón validado en Creador de Flujos: men
 - Acción secundaria: outline neutro.
 - Destructiva/rechazo: rojo semántico.
 - Heroes: compactados globalmente y eliminados cuando duplicaban el título o el contenido operativo.
-- Módulos de Inicio y Flujos: iconos SVG monocromos.
+- Inicio y submenús: iconos SVG premium coherentes; la navegación inferior y contextual permanece monocroma.
 - Tema: controlado por html[data-theme="dark"] y la elección persistida desde Inicio.
 
 ## Pantallas auditadas
@@ -57,7 +57,7 @@ No se cambia schema, RLS, RPC, datos, roles, MFA/AAL ni lógica de negocio. Los 
 
 ## Ajuste posterior de Inicio
 
-Tras validar la auditoría global en dispositivo real, Inicio queda como excepción de marca: recupera los pictogramas de color de las tarjetas que existían antes de la homogeneización SVG. La bottom navigation y los controles contextuales mantienen SVG monocromos. También se incorpora un pie institucional con copyright dinámico, versión canónica y build real de despliegue.
+Tras validar la auditoría global en dispositivo real, Inicio se confirmó como la principal superficie de marca. La prueba temporal con pictogramas de color evidenció que la personalidad visual debía aumentar sin romper coherencia; se sustituyó después por una familia SVG premium propia y consistente. La bottom navigation y los controles contextuales mantienen SVG monocromos. También se incorpora un pie institucional con copyright dinámico, versión canónica y build real de despliegue.
 
 
 ## Refinamiento premium para gestión inmobiliaria de alto standing

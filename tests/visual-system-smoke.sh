@@ -75,7 +75,7 @@ grep -Fq 'href="./legal.html"' docs/index.html
 grep -Fq 'href="./privacy.html"' docs/index.html
 grep -Fq 'new Date().getFullYear()' docs/index.html
 test -s docs/app-version.json
-grep -Fq '"version": "0.1.4-beta"' docs/app-version.json
+grep -Fq '"version": "0.1.5-beta"' docs/app-version.json
 grep -Fq 'Stamp release metadata' .github/workflows/pages.yml
 grep -Fq 'GITHUB_RUN_NUMBER' .github/workflows/pages.yml
 grep -Fq 'GITHUB_SHA' .github/workflows/pages.yml
@@ -97,3 +97,8 @@ grep -Fq './app.css?v=2026091909' docs/index.html
 ! grep -Fq '#f7f3ec' docs/app.css
 ! grep -Fq '.hero--brand::before' docs/app.css
 grep -Fq 'color:#cdc5bb' docs/app.css
+
+grep -Fq '.account-menu{' docs/app.css
+grep -Fq 'id="homeAccountAction"' docs/index.html
+grep -Fq 'Seguridad MFA' docs/index.html
+grep -Fq 'Cerrar sesión' docs/index.html

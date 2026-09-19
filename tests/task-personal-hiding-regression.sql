@@ -109,8 +109,8 @@ insert into public.tenant_tasks_v2(
 (
   current_setting('gestionpisos.personal_hide.unassigned_done')::uuid,
   current_setting('gestionpisos.personal_hide.org')::uuid,
-  null,
-  'generic','manual','Unassigned terminal task','completed',
+  current_setting('gestionpisos.personal_hide.tenant')::uuid,
+  'generic','manual','Tenant-related but unassigned terminal task','completed',
   null,
   current_setting('gestionpisos.personal_hide.root')::uuid
 );
@@ -240,17 +240,17 @@ select public.hide_my_task_card_v1(
   current_setting('gestionpisos.personal_hide.tenant_done')::uuid
 );
 
-do $tenant_unrelated_denied$
+do $tenant_unassigned_denied$
 begin
   perform public.hide_my_task_card_v1(
     current_setting('gestionpisos.personal_hide.unassigned_done')::uuid
   );
-  raise exception 'tenant unrelated task hide unexpectedly succeeded';
+  raise exception 'tenant unassigned task hide unexpectedly succeeded';
 exception
   when sqlstate '42501' then
     if sqlerrm<>'task_hide_forbidden' then raise; end if;
 end;
-$tenant_unrelated_denied$;
+$tenant_unassigned_denied$;
 
 do $tenant_restore$
 begin

@@ -368,7 +368,7 @@ Reglas:
 2. ningún patrón se duplica para “adaptarlo” a un flujo;
 3. una nueva definición solo afecta nuevas ejecuciones futuras;
 4. los IDs legacy permanecen trazables desde cualquier adaptador;
-5. no se introduce una segunda cámara ni un segundo bucket;
+5. no se introduce una segunda cámara ni se duplica un bucket para el mismo tipo de evidencia; Documento usa su bucket privado propio porque requiere MIME, límites y políticas distintas de Foto;
 6. no se introduce otro sistema de notificaciones;
 7. no se elimina `cleaning.html` hasta disponer de sustituto funcional probado;
 8. todo DDL de workflow debe seguir `WORKFLOW_ENGINE_CONTRACT.md`, ser aditivo y disponer de pruebas RLS positivas y negativas.

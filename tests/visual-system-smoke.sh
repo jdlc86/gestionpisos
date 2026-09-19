@@ -14,10 +14,15 @@ grep -Fq '.desktop-home-link{display:none!important}' docs/app.css
 
 grep -Fq 'class="ui-nav-icon"' docs/index.html
 grep -Fq 'class="ui-nav-icon"' docs/configuration-resources.html
-grep -Fq '<svg viewBox="0 0 24 24">' docs/index.html
+grep -Fq 'class="ui-nav-icon home-module-icon"' docs/index.html
+grep -Fq '>🏠</span>Cartera' docs/index.html
+grep -Fq '>📊</span>Centro Operativo' docs/index.html
+grep -Fq '>🚨</span>Incidencias' docs/index.html
+grep -Fq '>🔄</span>Flujos de Trabajo' docs/index.html
+grep -Fq '>🧹</span>Limpieza' docs/index.html
+grep -Fq '>🔐</span>Gestión de Permisos' docs/index.html
+grep -Fq '>⚙️</span>Configuración y Recursos' docs/index.html
 grep -Fq '<svg viewBox="0 0 24 24">' docs/configuration-resources.html
-! grep -Fq '>🔐</span>' docs/index.html docs/configuration-resources.html
-! grep -Fq '>⚙️</span>' docs/index.html
 ! grep -Fq 'href="./mfa-setup.html?next=configuration-resources.html"' docs/configuration-resources.html
 
 if grep -Fq 'module-icon--' docs/index.html docs/app.css; then
@@ -33,6 +38,21 @@ fi
 ! grep -Fq 'theme-toggle' docs/portfolio.css
 ! grep -Fq 'portfolio-hero' docs/portfolio.css
 ! grep -Fq 'ops-hero' docs/operations.css
+grep -Fq 'Toda la gestión diaria, en una sola aplicación.' docs/index.html
+grep -Fq '© <span id="copyrightYear"></span> Allaiso · Todos los derechos reservados.' docs/index.html
+grep -Fq 'v__APP_VERSION__ · Build __APP_BUILD__' docs/index.html
+grep -Fq 'data-build-sha="__APP_COMMIT__"' docs/index.html
+grep -Fq 'href="./legal.html"' docs/index.html
+grep -Fq 'href="./privacy.html"' docs/index.html
+grep -Fq 'new Date().getFullYear()' docs/index.html
+test -s docs/app-version.json
+grep -Fq '"version": "0.1.0-beta"' docs/app-version.json
+grep -Fq 'Stamp release metadata' .github/workflows/pages.yml
+grep -Fq 'GITHUB_RUN_NUMBER' .github/workflows/pages.yml
+grep -Fq 'GITHUB_SHA' .github/workflows/pages.yml
+grep -Fq 'ZoneInfo("Europe/Madrid")' .github/workflows/pages.yml
+test -s docs/legal.html
+test -s docs/privacy.html
 grep -Fq 'background:#111214' docs/permissions.css
 grep -Fq 'var(--ui-border)' docs/permissions.css
 

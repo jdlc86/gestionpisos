@@ -25,7 +25,9 @@ grep -Fq 'Gestión de Permisos' docs/configuration-resources.html
 grep -Fq 'data-theme-toggle' docs/index.html
 grep -Fq 'setupHomeAccountMenu(session)' docs/auth-guard.js
 grep -Fq 'mfaAction.hidden = !requiresPrivilegedMfa(session)' docs/auth-guard.js
-grep -Fq 'if (isHomePage) setupHomeAccountMenu(session);' docs/auth-guard.js
+grep -Fq 'if (isHomePage) {' docs/auth-guard.js
+grep -Fq 'setupHomeAccountMenu(session);' docs/auth-guard.js
+grep -Fq 'mountNotificationCenter({ supabase, session })' docs/auth-guard.js
 grep -Fq 'Seguridad MFA' docs/index.html
 grep -Fq 'Operadores de emergencia' docs/configuration-resources.html
 grep -Fq 'factory-reset.html' docs/configuration-resources.html

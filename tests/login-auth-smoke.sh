@@ -65,7 +65,9 @@ grep -Fq 'mfaAction.hidden = !requiresPrivilegedMfa(session)' docs/auth-guard.js
 grep -Fq 'Seguridad MFA' docs/index.html
 grep -Fq 'authFlowUrl(mfa.route' docs/auth-guard.js
 grep -Fq 'const isHomePage = currentPage === "index.html"' docs/auth-guard.js
-grep -Fq 'if (isHomePage) setupHomeAccountMenu(session);' docs/auth-guard.js
+grep -Fq 'if (isHomePage) {' docs/auth-guard.js
+grep -Fq 'setupHomeAccountMenu(session);' docs/auth-guard.js
+grep -Fq 'mountNotificationCenter({ supabase, session })' docs/auth-guard.js
 grep -Fq 'id="homeAccountAction"' docs/index.html
 grep -Fq 'id="logoutBtn"' docs/index.html
 
@@ -74,7 +76,7 @@ grep -Fq 'https://esm.sh/@supabase/supabase-js@2.116.0' docs/supabase-client.js
 grep -Fq 'supabase_client_module_load_failed' docs/supabase-client.js
 ! grep -Fq '@supabase/supabase-js@2.57.4' docs/supabase-client.js
 
-grep -Fq "gestionpisos-shell-v36" docs/sw.js
+grep -Fq "gestionpisos-shell-v37" docs/sw.js
 grep -Fq "'./mfa-setup.html'" docs/sw.js
 grep -Fq "'./mfa-challenge.html'" docs/sw.js
 grep -Fq "if(url.origin!==self.location.origin) return;" docs/sw.js

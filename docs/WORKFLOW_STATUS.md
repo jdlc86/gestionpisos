@@ -430,3 +430,6 @@ Los workflows reutilizan `notifications_v2` mediante una correlación genérica 
 - el canal inicial es únicamente in-app; email permanece desactivado hasta disponer de autoría explícita de canal.
 
 No se crea un segundo motor de notificaciones.
+
+
+La campanita personal de Inicio consume `notifications_v2` directamente bajo RLS, muestra contador de no leídas y permite marcar avisos como leídos. Los eventos de workflow enlazan a Tareas o Historial según corresponda. No se crea una bandeja paralela.

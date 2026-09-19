@@ -54,3 +54,18 @@ En esta primera integración:
 - `channel_email=false`.
 
 Email no se activa implícitamente: debe existir una opción explícita de autoría/canal antes de enviar correos por workflows.
+
+
+## Campanita de Inicio
+
+La superficie inicial de notificaciones vive en el encabezado de **Inicio**:
+
+- la campana muestra contador solo cuando existen avisos no leídos;
+- al abrirse usa un sheet compacto, no una pantalla administrativa;
+- consulta las 30 notificaciones in-app recientes visibles por RLS;
+- permite marcar una o todas como leídas mediante `mark_notification_read`;
+- `workflow_task_created` navega a Tareas;
+- `workflow_completed` y `workflow_rejected` navegan a Historial;
+- no expone UUID, rutas de Storage ni claves de correlación en la interfaz.
+
+El Centro Operativo sigue siendo el espacio para broadcasts/programación; la campanita es la bandeja personal del usuario.

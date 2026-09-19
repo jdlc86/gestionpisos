@@ -68,6 +68,23 @@ function dateTime(value){
   if(!value)return "Nunca";
   try{return new Intl.DateTimeFormat("es-ES",{dateStyle:"medium",timeStyle:"short"}).format(new Date(value))}catch{return value}
 }
+function scheduledDateTime(spec){
+  const utc=String(spec?.scheduledAtUtc||"").trim();
+  const timezone=String(spec?.scheduledTimezone||"").trim();
+  if(utc&&timezone){
+    try{
+      return new Intl.DateTimeFormat("es-ES",{
+        dateStyle:"medium",
+        timeStyle:"short",
+        timeZone:timezone
+      }).format(new Date(utc))+" · "+timezone;
+    }catch{}
+  }
+  return String(spec?.scheduledAt||"").trim()||"Pendiente";
+}
+function isScheduledAutomatic(row){
+  return String(publishedSpec(row).triggerType||"")==="scheduled_once";
+}
 function latestVersion(row){return versionsByDefinition.get(row.id)?.[0]||null}
 function publishedSpec(row){return latestVersion(row)?.spec||{}}
 function applicationsFor(row){return applicationsByDefinition.get(row.id)||[]}
@@ -96,8 +113,7 @@ function activationText(row){
     return base+" · "+text("recurrence",recurrence);
   }
   if(trigger==="scheduled_once"){
-    const scheduledAt=String(spec.scheduledAt||"").trim();
-    return scheduledAt?base+" · "+dateTime(scheduledAt):base;
+    return base+" · "+scheduledDateTime(spec);
   }
   return base;
 }
@@ -285,6 +301,7 @@ function updateBulkState(){
   const selected=selectedRows();
   const deletable=selected.filter(row=>!hasHistory(row));
   const archivable=selected.filter(row=>hasHistory(row));
+  const executable=selected.filter(row=>!isScheduledAutomatic(row));
 
   if(selectionSummary){
     selectionSummary.textContent=selected.length
@@ -292,11 +309,11 @@ function updateBulkState(){
   }
 
   if(bulkDock)bulkDock.hidden=!selectionMode||selected.length===0;
-  bulkExecute.disabled=selected.length===0;
+  bulkExecute.disabled=executable.length===0;
   bulkDelete.disabled=deletable.length===0;
   bulkArchive.disabled=archivable.length===0;
 
-  if(bulkExecuteCount)bulkExecuteCount.textContent=String(selected.length);
+  if(bulkExecuteCount)bulkExecuteCount.textContent=String(executable.length);
   if(bulkDeleteCount)bulkDeleteCount.textContent=String(deletable.length);
   if(bulkArchiveCount)bulkArchiveCount.textContent=String(archivable.length);
 
@@ -419,13 +436,20 @@ function card(row){
 
   const actions=document.createElement("div");actions.className="definition-actions";
 
-  const execute=document.createElement("a");
-  execute.className="primary";
-  execute.textContent="Ejecutar";
-  execute.href="./workflow-applications.html?definition="+encodeURIComponent(row.id)
-    +"&setup=1&intent=execute&from=mis-flujos"
-    +(app?"&application="+encodeURIComponent(app.id):"");
-  actions.append(execute);
+  if(!isScheduledAutomatic(row)){
+    const execute=document.createElement("a");
+    execute.className="primary";
+    execute.textContent="Ejecutar";
+    execute.href="./workflow-applications.html?definition="+encodeURIComponent(row.id)
+      +"&setup=1&intent=execute&from=mis-flujos"
+      +(app?"&application="+encodeURIComponent(app.id):"");
+    actions.append(execute);
+  }else{
+    const automatic=document.createElement("span");
+    automatic.className="definition-action-note";
+    automatic.textContent="Ejecución automática";
+    actions.append(automatic);
+  }
 
   if(history){
     if(draft){
@@ -571,11 +595,17 @@ async function bulkArchiveSelected(){
 }
 
 function startBulkExecution(){
-  const selected=selectedRows();
-  if(!selected.length)return;
+  const allSelected=selectedRows();
+  const selected=allSelected.filter(row=>!isScheduledAutomatic(row));
+  const skipped=allSelected.length-selected.length;
+  if(!selected.length){
+    setStatus("Los flujos seleccionados de Fecha concreta se ejecutarán automáticamente en su programación.");
+    return;
+  }
 
   const confirmed=window.confirm(
     "Se prepararán "+selected.length+" flujo"+(selected.length===1?"":"s")+" para ejecución. "
+    +(skipped?skipped+" flujo"+(skipped===1?" programado se omitirá. ":"s programados se omitirán. "):"")
     +"Si alguno necesita datos, el sistema te mostrará solo lo que falta antes de crear su tarea. ¿Continuar?"
   );
   if(!confirmed)return;

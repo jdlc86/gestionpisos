@@ -26,6 +26,7 @@ workflow_notifications='supabase/migrations/20260919174500_workflow_notification
 scheduled_once='supabase/migrations/20260919190000_workflow_scheduled_once.sql'
 scheduled_exact='supabase/migrations/20260919190050_workflow_scheduled_exact_time.sql'
 recurring='supabase/migrations/20260919193000_workflow_recurring.sql'
+web_push='supabase/migrations/20260919203000_web_push_notifications.sql'
 scheduled_cron='supabase/migrations/20260919190100_workflow_schedule_cron.sql'
 checklist='supabase/migrations/20260919103000_workflow_checklist_step.sql'
 
@@ -54,10 +55,12 @@ test -s "$workflow_notifications"
 test -s "$scheduled_once"
 test -s "$scheduled_exact"
 test -s "$recurring"
+test -s "$web_push"
 test -s "$scheduled_cron"
 test -s tests/workflow-notifications-regression.sql
 test -s tests/workflow-scheduled-once-regression.sql
 test -s tests/workflow-recurring-regression.sql
+test -s tests/web-push-regression.sql
 test -s tests/local-property-staff-v3-alignment.sql
 test -s tests/workflow-draft-discard-regression.sql
 test -s tests/workflow-publish-execute-lifecycle-regression.sql
@@ -370,6 +373,30 @@ grep -Fq "false," "$workflow_notifications"
 grep -Fq 'revoke all on function private.workflow_execution_notifications_v1()' "$workflow_notifications"
 grep -Fq 'create trigger workflow_execution_notifications_v1' "$workflow_notifications"
 
+# Web Push: sin polling, secretos fuera del cliente y entrega idempotente.
+grep -Fq 'create table if not exists public.web_push_subscriptions_v1' "$web_push"
+grep -Fq "create extension if not exists pg_net" "$web_push"
+! grep -Fq "pg_net with schema" "$web_push"
+grep -Fq 'create table if not exists public.web_push_deliveries_v1' "$web_push"
+grep -Fq 'register_web_push_subscription_v1' "$web_push"
+grep -Fq 'unregister_web_push_subscription_v1' "$web_push"
+grep -Fq 'web_push_server_config_v1' "$web_push"
+grep -Fq 'web_push_claim_delivery_v1' "$web_push"
+grep -Fq 'web_push_finish_delivery_v1' "$web_push"
+grep -Fq 'private.web_push_recipient_active_v1' "$web_push"
+grep -Fq 'notification_web_push_dispatch_v1' "$web_push"
+grep -Fq 'gestionpisos_web_push_dispatch_secret_v1' "$web_push"
+grep -Fq "revoke all on function public.web_push_server_config_v1()" "$web_push"
+grep -Fq 'grant execute on function public.web_push_server_config_v1()' "$web_push"
+grep -Fq 'to service_role;' "$web_push"
+test -s supabase/functions/web-push/index.ts
+grep -Fq 'npm:@supabase/supabase-js@2.116.0' supabase/functions/web-push/index.ts
+grep -Fq 'npm:web-push@3.6.7' supabase/functions/web-push/index.ts
+grep -Fq 'web_push_claim_delivery_v1' supabase/functions/web-push/index.ts
+grep -Fq 'X-Allaiso-Push-Secret' supabase/functions/web-push/index.ts
+test -s .github/workflows/web-push-function.yml
+grep -Fq -- '--no-verify-jwt' .github/workflows/web-push-function.yml
+grep -Fq 'supabase functions deploy web-push' .github/workflows/web-push-function.yml
 
 # Fecha concreta: scheduler transversal, instante exacto e idempotencia.
 grep -Fq 'create table public.workflow_application_schedules_v2' "$scheduled_once"

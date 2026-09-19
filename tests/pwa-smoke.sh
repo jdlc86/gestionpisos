@@ -54,7 +54,7 @@ grep -q 'serviceWorker' docs/app.js
 grep -q 'GestionPisos' docs/manifest.webmanifest
 grep -Fq "'./legal.html'" docs/sw.js
 grep -Fq "'./privacy.html'" docs/sw.js
-grep -q 'gestionpisos-shell-v39' docs/sw.js
+grep -q 'gestionpisos-shell-v40' docs/sw.js
 grep -Fq "'./workflow-history.html'" docs/sw.js
 grep -Fq "'./workflow-history.css'" docs/sw.js
 grep -Fq "'./workflow-history.js'" docs/sw.js
@@ -365,12 +365,12 @@ grep -Fq "const back = document.getElementById(\"cameraBackLink\");" docs/photo-
 ! grep -Fq 'document.querySelector(".topbar a.ghost")' docs/photo-persistence.js
 
 
-# Campanita global de Inicio.
+# Campanita global + Web Push Android.
 test -s docs/notification-center.js
 test -s docs/notification-center.css
 node --check docs/notification-center.js
-grep -Fq './notification-center.css?v=2026091910' docs/index.html
-grep -Fq './notification-center.js?v=2026091911' docs/auth-guard.js
+grep -Fq './notification-center.css?v=2026091920' docs/index.html
+grep -Fq './notification-center.js?v=2026091920' docs/auth-guard.js
 grep -Fq 'mountNotificationCenter({ supabase, session })' docs/auth-guard.js
 grep -Fq 'id="notificationBell"' docs/notification-center.js
 grep -Fq '.from("notifications_v2")' docs/notification-center.js
@@ -384,3 +384,13 @@ grep -Fq "'./notification-center.js'" docs/sw.js
 grep -Fq "'./notification-center.css'" docs/sw.js
 grep -Fq '.notification-bell-count{' docs/notification-center.css
 grep -Fq '.notification-sheet{' docs/notification-center.css
+grep -Fq 'Activar Android' docs/notification-center.js
+grep -Fq 'register_web_push_subscription_v1' docs/notification-center.js
+grep -Fq 'unregister_web_push_subscription_v1' docs/notification-center.js
+grep -Fq 'supabase.functions.invoke("web-push"' docs/notification-center.js
+grep -Fq "self.addEventListener('push'" docs/sw.js
+grep -Fq "self.addEventListener('notificationclick'" docs/sw.js
+grep -Fq "showNotification" docs/sw.js
+grep -Fq "push_notification" docs/sw.js
+grep -Fq '.notification-push-action{' docs/notification-center.css
+! grep -Fq '\\n.notification-' docs/notification-center.css

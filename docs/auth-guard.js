@@ -6,7 +6,7 @@ import {
   requiresPrivilegedMfa
 } from "./mfa-common.js?v=2026091701";
 import { mountBottomNavigation } from "./bottom-nav.js?v=2026091901";
-import { mountNotificationCenter } from "./notification-center.js?v=2026091911";
+import { mountNotificationCenter } from "./notification-center.js?v=2026091920";
 
 const loginUrl = new URL("./login.html", window.location.href);
 loginUrl.searchParams.set("next", window.location.pathname.split("/").pop() || "index.html");
@@ -110,11 +110,12 @@ async function requireSession() {
       console.error("bottom_navigation_failed", error);
     });
 
+    mountNotificationCenter({ supabase, session }).catch(error => {
+      console.error("notification_center_failed", error);
+    });
+
     if (isHomePage) {
       setupHomeAccountMenu(session);
-      mountNotificationCenter({ supabase, session }).catch(error => {
-        console.error("notification_center_failed", error);
-      });
     }
   } catch (error) {
     console.error("auth_guard_failed", error);

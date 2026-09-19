@@ -545,6 +545,15 @@ $workflow_complete$;
 end;
 $workflow_complete$;
 
+-- Recalcular únicamente estado de autoría. No se reescriben specs publicados.
+update public.workflow_definitions_v2
+set authoring_complete=public.workflow_authoring_complete_v1(draft_spec)
+where status='draft';
+
+update public.workflow_definition_revision_drafts_v2
+set authoring_complete=public.workflow_authoring_complete_v1(draft_spec)
+where published_at is null;
+
 comment on function private.workflow_sanitize_authoring_spec_v2(jsonb) is
   'Sanea autoría v2 e incorpora scheduledAt + scheduleTimeZone para activaciones temporales. Valida zona IANA sin reescribir specs históricos.';
 

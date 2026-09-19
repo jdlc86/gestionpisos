@@ -22,6 +22,7 @@ lifecycle='supabase/migrations/20260919143208_workflow_publish_execute_lifecycle
 lifecycle_anon_hardening='supabase/migrations/20260919170500_workflow_lifecycle_anon_execute_hardening.sql'
 document_step='supabase/migrations/20260919163000_workflow_document_step.sql'
 document_indexes='supabase/migrations/20260919164500_workflow_document_indexes.sql'
+workflow_notifications='supabase/migrations/20260919174500_workflow_notifications.sql'
 checklist='supabase/migrations/20260919103000_workflow_checklist_step.sql'
 
 test -s "$migration"
@@ -45,6 +46,8 @@ test -s "$lifecycle"
 test -s "$lifecycle_anon_hardening"
 test -s "$document_step"
 test -s "$document_indexes"
+test -s "$workflow_notifications"
+test -s tests/workflow-notifications-regression.sql
 test -s tests/workflow-draft-discard-regression.sql
 test -s tests/workflow-publish-execute-lifecycle-regression.sql
 test -s tests/workflow-document-step-regression.sql
@@ -336,3 +339,22 @@ grep -Fq 'revoke all on function public.archive_workflow_definition_v1' "$lifecy
 test "$(grep -Fc 'from public,anon;' "$lifecycle_anon_hardening")" -ge 5
 grep -Fq 'grant execute on function public.publish_workflow_ready_v1' "$lifecycle_anon_hardening"
 grep -Fq 'to authenticated;' "$lifecycle_anon_hardening"
+
+
+# Notificaciones workflow: reutilizar notifications_v2 con correlación idempotente.
+grep -Fq 'add column if not exists source_kind text' "$workflow_notifications"
+grep -Fq 'add column if not exists source_id uuid' "$workflow_notifications"
+grep -Fq 'add column if not exists event_key text' "$workflow_notifications"
+grep -Fq 'notifications_source_correlation_check' "$workflow_notifications"
+grep -Fq 'notifications_v2_source_event_recipient_uq' "$workflow_notifications"
+grep -Fq 'create or replace function private.workflow_execution_notifications_v1' "$workflow_notifications"
+grep -Fq "v_notify_create:=coalesce" "$workflow_notifications"
+grep -Fq "v_notify_close:=coalesce" "$workflow_notifications"
+grep -Fq "'workflow_task_created'" "$workflow_notifications"
+grep -Fq "'workflow_completed'" "$workflow_notifications"
+grep -Fq "'workflow_rejected'" "$workflow_notifications"
+grep -Fq "new.status in ('completed','rejected')" "$workflow_notifications"
+grep -Fq "channel_email" "$workflow_notifications"
+grep -Fq "false," "$workflow_notifications"
+grep -Fq 'revoke all on function private.workflow_execution_notifications_v1()' "$workflow_notifications"
+grep -Fq 'create trigger workflow_execution_notifications_v1' "$workflow_notifications"

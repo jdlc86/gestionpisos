@@ -96,6 +96,20 @@ Para evitar que una lista creciente obligue a desplazarse hasta el formulario, e
 
 Salir del Editor con cambios sin guardar ofrece **Guardar y salir / Salir sin guardar / Cancelar**. También existe **Guardar y salir** como acción directa. En un borrador persistido, **Descartar cambios locales** restaura la última revisión guardada en servidor en vez de vaciar el formulario.
 
+### Continuidad UX: Diseño → Destino → Listo
+
+La arquitectura interna continúa siendo `Definición → Versión → Aplicación → Ejecución`, pero esa terminología ya no obliga al usuario a navegar manualmente por cada capa.
+
+Para una primera publicación, el Creador presenta una continuidad operativa de tres etapas:
+
+`Diseño → Destino → Listo`
+
+Al completar el paso 7, **Continuar para usarlo** guarda el borrador, publica una versión inmutable y lleva directamente a seleccionar el destino real. La UI denomina **Destino** a la aplicación concreta, aunque internamente se conserva `workflow_applications_v2`.
+
+Después de guardar el destino, la misma experiencia muestra **Listo para usar**, resuelve la asignación permitida y ofrece **Ejecutar ahora** sin obligar a volver a Mis Flujos ni buscar manualmente la aplicación recién creada.
+
+Las nuevas versiones publicadas mantienen un tratamiento conservador: se llega a la gestión de destinos sin migrar silenciosamente las aplicaciones existentes de versiones anteriores.
+
 ### Borradores parciales y decisiones explícitas
 
 El Creador permite guardar un borrador con solo un nombre y continuar más tarde. Las opciones de tipo, ámbito, activación, asignación, pasos y cierre ya no tienen decisiones de negocio preseleccionadas.

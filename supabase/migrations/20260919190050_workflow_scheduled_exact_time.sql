@@ -458,7 +458,7 @@ returns table(
 language plpgsql
 security definer
 set search_path = public, private, pg_temp
-as $
+as $workflow_update_exact$
 declare
   v_actor uuid:=auth.uid();
   v_definition public.workflow_definitions_v2;
@@ -606,7 +606,7 @@ begin
     v_execution_assigned_user_id,
     v_new_revision;
 end;
-$;
+$workflow_update_exact$;
 
 -- Los borradores programados creados antes de este incremento deben volver a
 -- validarse al editar; no inventamos zona ni UTC para decisiones históricas.

@@ -488,7 +488,7 @@ select set_config(
   true
 );
 
-do $
+do $$
 declare
   v_spec jsonb;
   v_complete boolean;
@@ -510,7 +510,7 @@ begin
     raise exception 'custom recurring workflow lost first exact execution';
   end if;
 end;
-$;
+$$;
 
 -- Las pruebas genéricas de Aplicaciones usan un flujo manual de ámbito piso;
 -- Recurrente exige su schedule operativo y no puede reutilizarse como manual.

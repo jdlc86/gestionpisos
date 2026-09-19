@@ -62,7 +62,7 @@ begin
 end;
 $registered_for_actor$;
 
--- El mismo endpoint en el mismo dispositivo se reasigna al usuario de la sesión actual.
+-- Conocer solo el endpoint no permite secuestrar la suscripción de otro usuario.
 set local role authenticated;
 select set_config(
   'request.jwt.claims',
@@ -74,10 +74,29 @@ select set_config(
   true
 );
 
+do $endpoint_hijack_blocked$
+begin
+  perform public.register_web_push_subscription_v1(
+    'https://push.example.invalid/subscription/one',
+    'BReplacementPublicDeviceKey123456',
+    'ReplacementAuthSecret123',
+    'Regression Browser 2'
+  );
+  raise exception 'push endpoint hijack unexpectedly succeeded';
+exception
+  when sqlstate '42501' then
+    if sqlerrm<>'web_push_subscription_conflict' then
+      raise;
+    end if;
+end;
+$endpoint_hijack_blocked$;
+
+-- El cambio legítimo de cuenta en el mismo dispositivo conserva endpoint y claves,
+-- por lo que puede reasignarse al usuario de la sesión actual.
 select public.register_web_push_subscription_v1(
   'https://push.example.invalid/subscription/one',
-  'BReplacementPublicDeviceKey123456',
-  'ReplacementAuthSecret123',
+  'BExamplePublicDeviceKey1234567890',
+  'ExampleAuthSecret123',
   'Regression Browser 2'
 );
 
@@ -90,10 +109,11 @@ begin
     from public.web_push_subscriptions_v1
     where user_id='33333333-3333-4333-8333-333333333333'::uuid
       and endpoint='https://push.example.invalid/subscription/one'
-      and p256dh='BReplacementPublicDeviceKey123456'
+      and p256dh='BExamplePublicDeviceKey1234567890'
+      and auth_secret='ExampleAuthSecret123'
       and disabled_at is null
   )<>1 then
-    raise exception 'existing push endpoint was not rebound to current user';
+    raise exception 'legitimate same-device push endpoint was not rebound to current user';
   end if;
 end;
 $endpoint_rebound$;
@@ -142,8 +162,8 @@ select set_config(
 );
 select public.register_web_push_subscription_v1(
   'https://push.example.invalid/subscription/one',
-  'BReplacementPublicDeviceKey123456',
-  'ReplacementAuthSecret123',
+  'BExamplePublicDeviceKey1234567890',
+  'ExampleAuthSecret123',
   'Regression Browser 2'
 );
 reset role;

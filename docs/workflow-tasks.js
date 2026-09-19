@@ -116,7 +116,13 @@ function canDeleteTask(task){
   return true;
 }
 function canHideTask(task){
-  return Boolean(task&&!isManager()&&!isPersonallyHidden(task)&&TERMINAL_TASK_STATUSES.has(task.status));
+  return Boolean(
+    task
+    && !isManager()
+    && !isPersonallyHidden(task)
+    && task.assigned_user_id===currentUser?.id
+    && TERMINAL_TASK_STATUSES.has(task.status)
+  );
 }
 function canRestoreTask(task){
   return Boolean(task&&!isManager()&&isPersonallyHidden(task));
@@ -1125,7 +1131,7 @@ async function bulkSelectionAction(){
       ?"Las tareas seleccionadas siguen abiertas o no pueden ser gestionadas por tu usuario."
       :operation==="restore"
         ?"No hay tareas ocultas seleccionadas que puedas restaurar."
-        :"Solo puedes ocultar de tu bandeja tareas cerradas que te correspondan.";
+        :"Solo puedes ocultar de tu bandeja tareas cerradas que estén asignadas a ti.";
     setStatus(message,true);
     return;
   }

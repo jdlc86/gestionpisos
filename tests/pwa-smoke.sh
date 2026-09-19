@@ -54,7 +54,7 @@ grep -q 'serviceWorker' docs/app.js
 grep -q 'GestionPisos' docs/manifest.webmanifest
 grep -Fq "'./legal.html'" docs/sw.js
 grep -Fq "'./privacy.html'" docs/sw.js
-grep -q 'gestionpisos-shell-v37' docs/sw.js
+grep -q 'gestionpisos-shell-v38' docs/sw.js
 grep -Fq "'./workflow-history.html'" docs/sw.js
 grep -Fq "'./workflow-history.css'" docs/sw.js
 grep -Fq "'./workflow-history.js'" docs/sw.js
@@ -370,7 +370,7 @@ test -s docs/notification-center.js
 test -s docs/notification-center.css
 node --check docs/notification-center.js
 grep -Fq './notification-center.css?v=2026091910' docs/index.html
-grep -Fq './notification-center.js?v=2026091910' docs/auth-guard.js
+grep -Fq './notification-center.js?v=2026091911' docs/auth-guard.js
 grep -Fq 'mountNotificationCenter({ supabase, session })' docs/auth-guard.js
 grep -Fq 'id="notificationBell"' docs/notification-center.js
 grep -Fq '.from("notifications_v2")' docs/notification-center.js

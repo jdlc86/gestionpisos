@@ -1,7 +1,8 @@
 const EVENT_DESTINATIONS={
   workflow_task_created:"./workflow-tasks.html",
   workflow_completed:"./workflow-history.html",
-  workflow_rejected:"./workflow-history.html"
+  workflow_rejected:"./workflow-history.html",
+  workflow_schedule_blocked:"./workflow-definitions.html"
 };
 
 function fmtDate(value){

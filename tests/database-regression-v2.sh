@@ -37,6 +37,7 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -v "$repo_path:/w
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/local-auth-bootstrap.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/fixtures/20260913_remote_baseline.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/local-regression-fixture.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/local-property-staff-v3-alignment.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260913205141_close_owners_and_occupancy_blockers.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260913225216_beta0_notifications_tables.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260913225223_beta0_notifications_rls.sql
@@ -83,6 +84,8 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -v "$repo_path:/w
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260919163000_workflow_document_step.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260919164500_workflow_document_indexes.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260919174500_workflow_notifications.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260919190000_workflow_scheduled_once.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260919190050_workflow_scheduled_exact_time.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/database-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/photo-verification-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-definition-regression.sql
@@ -91,6 +94,7 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -v "$repo_path:/w
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-publish-execute-lifecycle-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-document-step-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-notifications-regression.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-scheduled-once-regression.sql
 
     trap - EXIT
     cleanup

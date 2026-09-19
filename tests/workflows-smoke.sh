@@ -458,6 +458,6 @@ grep -Fq 'workflow_execution_documents_v2' docs/WORKFLOW_DOCUMENT_EVIDENCE_CONTR
 grep -Fq 'workflow-documents-v2' docs/WORKFLOW_DOCUMENT_EVIDENCE_CONTRACT.md
 grep -Fq 'prepare_workflow_document_upload_v1' docs/WORKFLOW_DOCUMENT_EVIDENCE_CONTRACT.md
 grep -Fq 'submit_workflow_document_v1' docs/WORKFLOW_DOCUMENT_EVIDENCE_CONTRACT.md
-grep -Fq 'Foto + Checklist + Documento' docs/WORKFLOW_DOCUMENT_EVIDENCE_CONTRACT.md
+grep -Fq 'Foto completada + Checklist completado + Documento pendiente' docs/WORKFLOW_DOCUMENT_EVIDENCE_CONTRACT.md
 grep -Fq 'tenant_documents_v2' docs/WORKFLOW_DOCUMENT_EVIDENCE_CONTRACT.md
 grep -Fq 'WORKFLOW_DOCUMENT_EVIDENCE_CONTRACT.md' docs/WORKFLOW_DOCUMENTATION_INDEX.md

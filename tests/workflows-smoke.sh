@@ -20,6 +20,7 @@ test -s docs/WORKFLOW_EXECUTION_CONTRACT.md
 test -s docs/WORKFLOW_TASKS_CONTRACT.md
 test -s docs/WORKFLOW_ACTIONS_CONTRACT.md
 test -s docs/WORKFLOW_PHOTO_EVIDENCE_CONTRACT.md
+test -s docs/WORKFLOW_DOCUMENT_EVIDENCE_CONTRACT.md
 test -s docs/workflow-tasks.html
 test -s docs/workflow-tasks.css
 test -s docs/workflow-tasks.js
@@ -450,3 +451,13 @@ grep -Fq '.task-documents{' docs/workflow-tasks.css
 grep -Fq '.task-document-row{' docs/workflow-tasks.css
 grep -Fq './workflow-tasks.css?v=2026091911' docs/workflow-tasks.html
 grep -Fq './workflow-tasks.js?v=2026091911' docs/workflow-tasks.html
+
+
+# Contrato Documento: evidencia privada, tarea común y cierre coordinado.
+grep -Fq 'workflow_execution_documents_v2' docs/WORKFLOW_DOCUMENT_EVIDENCE_CONTRACT.md
+grep -Fq 'workflow-documents-v2' docs/WORKFLOW_DOCUMENT_EVIDENCE_CONTRACT.md
+grep -Fq 'prepare_workflow_document_upload_v1' docs/WORKFLOW_DOCUMENT_EVIDENCE_CONTRACT.md
+grep -Fq 'submit_workflow_document_v1' docs/WORKFLOW_DOCUMENT_EVIDENCE_CONTRACT.md
+grep -Fq 'Foto + Checklist + Documento' docs/WORKFLOW_DOCUMENT_EVIDENCE_CONTRACT.md
+grep -Fq 'tenant_documents_v2' docs/WORKFLOW_DOCUMENT_EVIDENCE_CONTRACT.md
+grep -Fq 'WORKFLOW_DOCUMENT_EVIDENCE_CONTRACT.md' docs/WORKFLOW_DOCUMENTATION_INDEX.md

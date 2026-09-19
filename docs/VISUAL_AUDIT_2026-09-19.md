@@ -53,3 +53,8 @@ Las pantallas de autenticación y recuperación conservan su shell específico. 
 ## Seguridad
 
 No se cambia schema, RLS, RPC, datos, roles, MFA/AAL ni lógica de negocio. Los cambios son HTML/CSS/JS de presentación y navegación.
+
+
+## Ajuste posterior de Inicio
+
+Tras validar la auditoría global en dispositivo real, Inicio queda como excepción de marca: recupera los pictogramas de color de las tarjetas que existían antes de la homogeneización SVG. La bottom navigation y los controles contextuales mantienen SVG monocromos. También se incorpora un pie institucional con copyright dinámico, versión canónica y build real de despliegue.

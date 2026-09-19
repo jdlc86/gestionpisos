@@ -134,7 +134,7 @@ grep -Fq 'Decisión Aceptar / Rechazar' docs/workflow-builder.js
 grep -Fq 'id="scheduledAt"' docs/workflow-builder.html
 grep -Fq 'id="customRecurrenceRow"' docs/workflow-builder.html
 grep -Fq '.builder-panel [hidden]{display:none!important}' docs/workflow-builder.css
-grep -Fq './workflow-builder.css?v=2026091905' docs/workflow-builder.html
+grep -Fq './workflow-builder.css?v=2026091906' docs/workflow-builder.html
 grep -Fq 'name="customEvery"' docs/workflow-builder.html
 grep -Fq 'name="customUnit"' docs/workflow-builder.html
 grep -Fq 'toggleDependentRow' docs/workflow-builder.js
@@ -149,7 +149,7 @@ grep -Fq 'id="photoBankLink"' docs/workflow-builder.html
 grep -Fq 'href="./photo-patterns.html?from=workflow-builder" hidden' docs/workflow-builder.html
 grep -Fq 'function updatePhotoResource()' docs/workflow-builder.js
 grep -Fq 'photoBankLink.hidden=!checked("stepPhoto")' docs/workflow-builder.js
-grep -Fq './workflow-builder.js?v=2026091903' docs/workflow-builder.html
+grep -Fq './workflow-builder.js?v=2026091904' docs/workflow-builder.html
 
 grep -Fq 'workflow_definitions_v2' docs/workflow-definitions.js
 grep -Fq '.eq("status","published")' docs/workflow-definitions.js
@@ -253,3 +253,8 @@ grep -Fq 'workflow_definitions_v2' docs/WORKFLOW_IMPLEMENTATION_MAP.md
 echo 'Workflow smoke checks passed'
 
 grep -Fq 'ejecución pendiente y su tarea asociada' docs/workflow-applications.js
+
+grep -Fq 'class="builder-editor-state"' docs/workflow-builder.html
+grep -Fq '.builder-editor-state::before' docs/workflow-builder.css
+grep -Fq 'builderBadge.textContent=state.complete?"Listo":"Borrador"' docs/workflow-builder.js
+grep -Fq 'builderBadge.title=state.complete?completeLabel:"Borrador incompleto"' docs/workflow-builder.js

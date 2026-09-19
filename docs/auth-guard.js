@@ -25,14 +25,18 @@ async function pendingExternalOnboarding() {
   return data?.status === "pending" ? data : null;
 }
 
+function homeActionHost() {
+  return document.querySelector(".topbar .global-actions") || document.querySelector(".topbar");
+}
+
 function addMfaSecurityAction() {
-  const topbar = document.querySelector(".topbar");
+  const topbar = homeActionHost();
   if (!topbar || document.getElementById("mfaSetupAction")) return;
   const button = document.createElement("button");
   button.id = "mfaSetupAction";
   button.type = "button";
   button.className = "ghost";
-  button.textContent = "🛡️ MFA";
+  button.textContent = "MFA";
   button.setAttribute("aria-label", "Configurar MFA");
   button.title = "Configurar MFA";
   button.addEventListener("click", () => {
@@ -76,7 +80,7 @@ async function requireSession() {
 
     if (isHomePage && requiresPrivilegedMfa(session)) addMfaSecurityAction();
 
-    const topbar = document.querySelector(".topbar");
+    const topbar = homeActionHost();
     if (isHomePage && topbar && !document.getElementById("logoutBtn")) {
       const button = document.createElement("button");
       button.id = "logoutBtn";

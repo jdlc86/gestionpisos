@@ -7,6 +7,82 @@
   const flashButton = $('flashCamera');
   const message = $('cameraMessage');
   const preview = $('preview');
+  const backLink = $('cameraBackLink');
+  const params = new URLSearchParams(window.location.search);
+
+  function uuidLike(value) {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value || '');
+  }
+
+  function safeRequestedReturn() {
+    const requested = params.get('return_to');
+    if (!requested) return null;
+
+    const allowed = new Set([
+      'workflow-tasks.html',
+      'cleaning.html',
+      'photo-patterns.html',
+      'photo-verifications.html',
+      'operations.html'
+    ]);
+
+    try {
+      const url = new URL(requested, window.location.href);
+      const file = url.pathname.split('/').pop();
+      if (url.origin !== window.location.origin || !allowed.has(file)) return null;
+      return './' + file + url.search;
+    } catch {
+      return null;
+    }
+  }
+
+  function cameraReturnTarget() {
+    const requested = safeRequestedReturn();
+    if (requested) return requested;
+
+    const sourceType = params.get('source_type') || '';
+    const sourceId = params.get('source_id') || '';
+    const workflowResourceId = params.get('workflow_resource_id') || '';
+    const mode = params.get('mode') || '';
+
+    if (workflowResourceId && sourceType === 'workflow_execution') {
+      return './workflow-tasks.html';
+    }
+
+    if (sourceType === 'cleaning_task') {
+      return uuidLike(sourceId)
+        ? './cleaning.html?task_id=' + encodeURIComponent(sourceId)
+        : './cleaning.html';
+    }
+
+    if (mode === 'pattern' || (mode === 'verify' && params.get('pattern_id') && !sourceType)) {
+      return './photo-patterns.html';
+    }
+
+    return './cleaning.html';
+  }
+
+  function configureBackLink() {
+    if (!backLink) return;
+    const target = cameraReturnTarget();
+    backLink.href = target;
+
+    if (target.startsWith('./workflow-tasks.html')) {
+      backLink.setAttribute('aria-label', 'Volver a Tareas');
+      backLink.title = 'Volver a Tareas';
+    } else if (target.startsWith('./photo-patterns.html')) {
+      backLink.setAttribute('aria-label', 'Volver a Patrones');
+      backLink.title = 'Volver a Patrones';
+    } else if (target.startsWith('./cleaning.html')) {
+      backLink.setAttribute('aria-label', 'Volver a Limpieza');
+      backLink.title = 'Volver a Limpieza';
+    } else {
+      backLink.setAttribute('aria-label', 'Volver');
+      backLink.title = 'Volver';
+    }
+  }
+
+  configureBackLink();
 
   let stream = null;
   let torchOn = false;

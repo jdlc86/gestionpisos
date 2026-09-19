@@ -68,7 +68,7 @@ grep -Fq 'id="builderExitEditor"' docs/workflow-builder.html
 grep -Fq 'id="builderExitDialog"' docs/workflow-builder.html
 grep -Fq 'id="builderSaveExitInline"' docs/workflow-builder.html
 grep -Fq 'id="builderPublish"' docs/workflow-builder.html
-grep -Fq '➕ Nuevo flujo' docs/workflow-builder.html
+grep -Fq '>Nuevo flujo</a>' docs/workflow-builder.html
 grep -Fq 'Paso 1 de 7' docs/workflow-builder.html
 grep -Fq 'Paso 7 de 7' docs/workflow-builder.html
 grep -Fq 'sessionStorage.setItem(DRAFT_KEY' docs/workflow-builder.js
@@ -90,8 +90,17 @@ grep -Fq 'Se restauró la última revisión guardada.' docs/workflow-builder.js
 grep -Fq '.builder-view[hidden]{display:none!important}' docs/workflow-builder.css
 grep -Fq '.builder-drafts-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr))' docs/workflow-builder.css
 grep -Fq '.builder-exit-dialog' docs/workflow-builder.css
-grep -Fq 'Guardar borrador' docs/workflow-builder.html
-grep -Fq 'Guardar no significa publicar.' docs/workflow-builder.html
+grep -Fq 'class="builder-back-link"' docs/workflow-builder.html
+grep -Fq '← Volver' docs/workflow-builder.html
+grep -Fq 'builder-action builder-action--primary' docs/workflow-builder.html
+grep -Fq 'body.builder-editor-active .topbar{display:none}' docs/workflow-builder.css
+grep -Fq 'background:var(--ui-info)' docs/workflow-builder.css
+grep -Fq 'document.body.classList.toggle("builder-editor-active",editorRequested)' docs/workflow-builder.js
+! grep -Fq 'href="./" aria-label="Inicio"' docs/workflow-builder.html
+! grep -Fq '<section class="hero">' docs/workflow-builder.html
+! grep -Fq 'Autoría y operación están separadas' docs/workflow-builder.html
+grep -Fq 'id="builderSave" type="button" class="builder-action">Guardar</button>' docs/workflow-builder.html
+grep -Fq '<strong>Guardar no publica.</strong>' docs/workflow-builder.html
 grep -Fq 'Pendiente · selecciona un tipo' docs/workflow-builder.html
 grep -Fq 'Pendiente · selecciona un ámbito' docs/workflow-builder.html
 grep -Fq 'Pendiente · selecciona una activación' docs/workflow-builder.html
@@ -108,7 +117,7 @@ grep -Fq 'Decisión Aceptar / Rechazar' docs/workflow-builder.js
 grep -Fq 'id="scheduledAt"' docs/workflow-builder.html
 grep -Fq 'id="customRecurrenceRow"' docs/workflow-builder.html
 grep -Fq '.builder-panel [hidden]{display:none!important}' docs/workflow-builder.css
-grep -Fq './workflow-builder.css?v=2026091902' docs/workflow-builder.html
+grep -Fq './workflow-builder.css?v=2026091903' docs/workflow-builder.html
 grep -Fq 'name="customEvery"' docs/workflow-builder.html
 grep -Fq 'name="customUnit"' docs/workflow-builder.html
 grep -Fq 'toggleDependentRow' docs/workflow-builder.js
@@ -117,13 +126,13 @@ grep -Fq 'data.recurrence==="custom"' docs/workflow-builder.js
 grep -Fq 'authoringVersion:AUTHORING_VERSION' docs/workflow-builder.js
 grep -Fq 'legacyDraftNeedsReview' docs/workflow-builder.js
 grep -Fq 'authoring_complete' docs/workflow-builder.js
-grep -Fq 'No se creó una revisión nueva.' docs/workflow-builder.js
+grep -Fq 'Sin cambios · revisión' docs/workflow-builder.js
 grep -Fq 'photo-patterns.html?from=workflow-builder' docs/workflow-builder.html
 grep -Fq 'id="photoBankLink"' docs/workflow-builder.html
 grep -Fq 'href="./photo-patterns.html?from=workflow-builder" hidden' docs/workflow-builder.html
 grep -Fq 'function updatePhotoResource()' docs/workflow-builder.js
 grep -Fq 'photoBankLink.hidden=!checked("stepPhoto")' docs/workflow-builder.js
-grep -Fq './workflow-builder.js?v=2026091902' docs/workflow-builder.html
+grep -Fq './workflow-builder.js?v=2026091903' docs/workflow-builder.html
 
 grep -Fq 'workflow_definitions_v2' docs/workflow-definitions.js
 grep -Fq '.eq("status","published")' docs/workflow-definitions.js

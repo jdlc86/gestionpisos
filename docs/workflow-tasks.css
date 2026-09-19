@@ -35,13 +35,15 @@
 
 
 /* Selección múltiple: mismo lenguaje visual que Mis Flujos. */
-.tasks-topbar{display:block}
+.tasks-topbar{position:relative}
 .tasks-header-mode{width:100%}
-.tasks-header-normal{display:flex;align-items:center;justify-content:space-between;gap:14px}
-.tasks-header-actions{display:flex;align-items:center;gap:8px}
-.tasks-icon-button{display:grid;width:40px;height:40px;place-items:center;padding:0;border:1px solid var(--ui-border);border-radius:12px;background:var(--ui-surface);color:var(--ui-text);cursor:pointer}
-.tasks-icon-button:hover,.tasks-icon-button:active{background:var(--ui-subtle)}
-.tasks-icon-button svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tasks-header-mode[hidden]{display:none!important}
+.tasks-header-normal{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0}
+.tasks-header-actions{display:flex;align-items:center;gap:4px}
+.tasks-icon-button{display:grid;flex:0 0 40px;width:40px;height:40px;place-items:center;padding:0;border:0;border-radius:50%;background:transparent;color:var(--ui-muted);cursor:pointer}
+.tasks-icon-button:hover,.tasks-icon-button:active{background:var(--ui-subtle);color:var(--ui-text)}
+.tasks-icon-button:focus-visible{outline:3px solid color-mix(in srgb,var(--ui-info) 35%,transparent);outline-offset:2px}
+.tasks-icon-button svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .tasks-selection-menu-wrap .tasks-icon-button svg circle{fill:currentColor;stroke:none}
 .tasks-selection-mode{display:grid;grid-template-columns:40px minmax(0,1fr) 40px;align-items:center;gap:8px;animation:tasks-header-in .16s ease}
 .tasks-selection-mode>strong{overflow:hidden;color:var(--ui-text);font-size:15px;text-align:center;text-overflow:ellipsis;white-space:nowrap}
@@ -52,6 +54,7 @@ html[data-theme="dark"] .tasks-selection-menu{box-shadow:0 20px 48px rgba(0,0,0,
 .tasks-selection-menu button{display:flex;width:100%;min-height:44px;align-items:center;padding:9px 11px;border:0;border-radius:9px;background:transparent;color:var(--ui-text);font-weight:700;text-align:left;cursor:pointer}
 .tasks-selection-menu button:hover,.tasks-selection-menu button:active{background:var(--ui-subtle)}
 .tasks-selection-menu button:disabled{opacity:.4;cursor:default}
+.tasks-topbar.is-selecting+.page-subtitle{display:none}
 
 .task-card{position:relative;touch-action:pan-y;transition:border-color .14s ease,box-shadow .14s ease,transform .14s ease}
 .task-select-indicator{position:absolute;z-index:2;top:13px;right:13px;display:none;width:28px;height:28px;place-items:center;padding:0;border:1.5px solid var(--ui-border-strong);border-radius:50%;background:var(--ui-surface);color:transparent;box-shadow:0 2px 8px rgba(0,0,0,.07);cursor:pointer}

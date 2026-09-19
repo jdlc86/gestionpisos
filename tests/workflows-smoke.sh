@@ -46,6 +46,30 @@ grep -Fq 'Tareas' docs/workflows.html
 grep -Fq 'href="./workflow-tasks.html"' docs/workflows.html
 grep -Fq 'data-workflow-module="history"' docs/workflows.html
 grep -Fq 'Historial' docs/workflows.html
+grep -Fq 'href="./workflow-history.html"' docs/workflows.html
+test -s docs/WORKFLOW_HISTORY_CONTRACT.md
+test -s docs/workflow-history.html
+test -s docs/workflow-history.css
+test -s docs/workflow-history.js
+node --check docs/workflow-history.js
+grep -Fq './auth-guard.js' docs/workflow-history.html
+grep -Fq 'id="historySearchToggle"' docs/workflow-history.html
+grep -Fq 'data-history-filter="open"' docs/workflow-history.html
+grep -Fq 'data-history-filter="completed"' docs/workflow-history.html
+grep -Fq 'data-history-filter="rejected"' docs/workflow-history.html
+grep -Fq 'workflow_execution_events_v2' docs/workflow-history.js
+grep -Fq 'tenant_task_history_v2' docs/workflow-history.js
+grep -Fq 'workflow_execution_photo_resources_v2' docs/workflow-history.js
+grep -Fq 'workflow_execution_documents_v2' docs/workflow-history.js
+grep -Fq 'photo_verification_runs_v2' docs/workflow-history.js
+grep -Fq 'createSignedUrl(documentRow.storage_path,300)' docs/workflow-history.js
+grep -Fq 'function renderTimeline(execution,container)' docs/workflow-history.js
+grep -Fq 'function renderEvidence(execution,container)' docs/workflow-history.js
+grep -Fq '.history-timeline{' docs/workflow-history.css
+grep -Fq '.history-search-mode{' docs/workflow-history.css
+grep -Fq 'WORKFLOW_HISTORY_CONTRACT.md' docs/WORKFLOW_DOCUMENTATION_INDEX.md
+grep -Fq 'workflow-history.html' docs/sw.js
+grep -Fq '"workflow-history.html"' docs/bottom-nav.js
 
 grep -Fq './auth-guard.js' docs/workflows.html
 grep -Fq './auth-guard.js' docs/workflow-builder.html

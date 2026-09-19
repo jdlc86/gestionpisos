@@ -341,7 +341,7 @@ grep -Fq 'input[type="checkbox"],input[type="radio"]' docs/app.css
 grep -Fq '<span>Puede recuperar ROOT</span>' docs/permissions.html
 grep -Fq 'class="builder-editor-state"' docs/workflow-builder.html
 
-grep -Fq './app.css?v=2026091909' docs/index.html
+grep -Fq './app.css?v=2026091910' docs/index.html
 grep -Fq 'linear-gradient(145deg,#2d2a26 0%,#26231f 54%,#1f1d1a 100%)' docs/app.css
 
 grep -Fq '.account-menu{' docs/app.css

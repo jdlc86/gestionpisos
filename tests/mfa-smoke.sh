@@ -59,6 +59,9 @@ grep -Fq '🛡️ MFA' docs/auth-guard.js
 ! grep -Fq 'Seguridad MFA' docs/auth-guard.js
 grep -Fq 'button.setAttribute("aria-label", "Configurar MFA")' docs/auth-guard.js
 grep -Fq 'authFlowUrl(mfa.route' docs/auth-guard.js
+grep -Fq 'const isHomePage = currentPage === "index.html"' docs/auth-guard.js
+grep -Fq 'if (isHomePage && requiresPrivilegedMfa(session)) addMfaSecurityAction();' docs/auth-guard.js
+grep -Fq 'if (isHomePage && topbar && !document.getElementById("logoutBtn"))' docs/auth-guard.js
 grep -Fq 'privilegedMfaRoute(supabase, session, { requireEnrollment: true })' docs/login.js
 grep -Fq 'mfa_check_timeout' docs/login.js
 

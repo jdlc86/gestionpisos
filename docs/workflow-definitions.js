@@ -114,7 +114,7 @@ function card(row){
   const applications=document.createElement("a");
   applications.className="primary";
   applications.href="./workflow-applications.html?definition="+encodeURIComponent(row.id);
-  applications.textContent="Aplicaciones";
+  applications.textContent="Usar flujo";
   actions.append(applications);
 
   if(draft){

@@ -249,3 +249,13 @@ body.builder-editor-active .builder-actions{
 .builder-draft-status{margin:0}
 .builder-draft-status[data-tone="success"]{border-color:var(--ui-success);color:var(--ui-text)}
 .builder-draft-status[data-tone="error"]{border-color:var(--ui-danger);background:var(--ui-danger-soft);color:var(--ui-text)}
+
+
+/* Continuidad operativa: Diseño → Destino → Listo */
+.workflow-journey{display:grid;grid-template-columns:auto minmax(20px,1fr) auto minmax(20px,1fr) auto;align-items:center;gap:8px;margin:0 0 12px;padding:10px 12px;border:1px solid var(--ui-border);border-radius:var(--ui-radius);background:var(--ui-surface)}
+.workflow-journey-step{display:flex;align-items:center;gap:7px;color:var(--ui-muted);font-size:11px;font-weight:800;white-space:nowrap}
+.workflow-journey-step span{display:grid;place-items:center;width:24px;height:24px;border:1px solid var(--ui-border-strong);border-radius:50%;background:var(--ui-subtle);color:var(--ui-muted);font-size:10px}
+.workflow-journey-step.is-current{color:var(--ui-info)}
+.workflow-journey-step.is-current span{border-color:var(--ui-action);background:var(--ui-action);color:var(--ui-action-text)}
+.workflow-journey-line{height:1px;background:var(--ui-border)}
+@media(max-width:480px){.workflow-journey{gap:5px;padding:9px}.workflow-journey-step{gap:5px;font-size:10px}.workflow-journey-step span{width:21px;height:21px}}

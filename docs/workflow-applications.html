@@ -4,32 +4,40 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#ffffff">
-  <meta name="description" content="Aplicaciones concretas de Flujos de Trabajo de GestionPisos">
+  <meta name="description" content="Preparación y destinos de Flujos de Trabajo de GestionPisos">
   <link rel="stylesheet" href="./app.css?v=2026091906">
-  <link rel="stylesheet" href="./workflow-applications.css?v=2026091903">
-  <title>Allaiso · Aplicaciones del flujo</title>
+  <link rel="stylesheet" href="./workflow-applications.css?v=2026091913">
+  <title>Allaiso · Usar flujo</title>
 </head>
 <body>
   <main class="shell">
-    <header class="topbar"><div class="context-heading"><a class="context-back" href="./workflow-definitions.html" aria-label="Volver a Mis Flujos" title="Volver a Mis Flujos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></a><div><p class="eyebrow">ALLAISO</p><h1>Aplicaciones del flujo</h1></div></div><a class="global-icon desktop-home-link" href="./" aria-label="Inicio" title="Inicio"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 10.5 12 3l8.5 7.5v9a1.5 1.5 0 0 1-1.5 1.5h-5v-6H10v6H5a1.5 1.5 0 0 1-1.5-1.5z"/></svg></a></header>
-<section id="applicationDefinition" class="application-card application-card--loading" aria-live="polite">
+    <header class="topbar"><div class="context-heading"><a class="context-back" href="./workflow-definitions.html" aria-label="Volver a Mis Flujos" title="Volver a Mis Flujos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></a><div><p class="eyebrow">ALLAISO</p><h1 id="applicationsPageTitle">Usar flujo</h1></div></div><a class="global-icon desktop-home-link" href="./" aria-label="Inicio" title="Inicio"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 10.5 12 3l8.5 7.5v9a1.5 1.5 0 0 1-1.5 1.5h-5v-6H10v6H5a1.5 1.5 0 0 1-1.5-1.5z"/></svg></a></header>
+<section id="workflowSetupJourney" class="workflow-journey" aria-label="Preparación del flujo" hidden>
+      <div class="workflow-journey-step" data-setup-stage="design"><span>1</span><strong>Diseño</strong></div>
+      <div class="workflow-journey-line" aria-hidden="true"></div>
+      <div class="workflow-journey-step" data-setup-stage="destination"><span>2</span><strong>Destino</strong></div>
+      <div class="workflow-journey-line" aria-hidden="true"></div>
+      <div class="workflow-journey-step" data-setup-stage="ready"><span>3</span><strong>Listo</strong></div>
+    </section>
+
+    <section id="applicationDefinition" class="application-card application-card--loading" aria-live="polite">
       Cargando definición publicada…
     </section>
 
     <section id="applicationFormCard" class="application-card" hidden>
       <div>
-        <p class="eyebrow">Nueva aplicación</p>
-        <h2>Selecciona el destino real</h2>
-        <p class="application-muted">La aplicación quedará configurada. Desde su tarjeta podrás crear una ejecución manual y su tarea asociada; las recurrencias automáticas siguen separadas.</p>
+        <p id="applicationFormEyebrow" class="eyebrow">Nuevo destino</p>
+        <h2 id="applicationFormTitle">¿Dónde quieres utilizarlo?</h2>
+        <p id="applicationFormDescription" class="application-muted">Elige el piso, habitación u ocupación donde este flujo debe estar disponible.</p>
       </div>
 
       <form id="workflowApplicationForm">
-        <label>Versión publicada
+        <label id="applicationVersionRow">Versión publicada
           <select id="applicationVersion" required></select>
         </label>
 
         <div class="application-scope">
-          <strong>Ámbito lógico</strong>
+          <strong>Alcance</strong>
           <span id="applicationScope">—</span>
         </div>
 
@@ -53,17 +61,17 @@
         </fieldset>
 
         <div id="applicationTargetNote" class="application-note"></div>
-        <button id="applicationCreate" class="primary" type="submit">Crear aplicación</button>
+        <button id="applicationCreate" class="primary" type="submit">Guardar destino</button>
       </form>
     </section>
 
-    <section class="applications-section">
+    <section id="applicationsSection" class="applications-section">
       <div>
-        <p class="eyebrow">Vinculaciones</p>
-        <h2>Aplicaciones existentes</h2>
+        <p id="applicationsEyebrow" class="eyebrow">Destinos</p>
+        <h2 id="applicationsTitle">Destinos configurados</h2>
       </div>
       <div id="workflowApplications" class="applications-list" aria-live="polite">
-        <article class="application-card application-card--loading">Cargando aplicaciones…</article>
+        <article class="application-card application-card--loading">Cargando destinos…</article>
       </div>
     </section>
 
@@ -73,7 +81,7 @@
   </main>
 
   <script src="./app.js?v=2026091902" defer></script>
-  <script type="module" src="./workflow-applications.js?v=2026091805"></script>
+  <script type="module" src="./workflow-applications.js?v=2026091913"></script>
   <script type="module" src="./auth-guard.js"></script>
 </body>
 </html>

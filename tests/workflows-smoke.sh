@@ -117,7 +117,7 @@ grep -Fq 'desktop-home-link' docs/workflow-builder.html
 ! grep -Fq '<section class="hero">' docs/workflow-builder.html
 ! grep -Fq 'Autoría y operación están separadas' docs/workflow-builder.html
 grep -Fq 'id="builderSave" type="button" class="builder-action">Guardar</button>' docs/workflow-builder.html
-grep -Fq '<strong>Guardar no publica.</strong>' docs/workflow-builder.html
+grep -Fq '<strong>Guardar mantiene un borrador.</strong>' docs/workflow-builder.html
 grep -Fq 'Pendiente · selecciona un tipo' docs/workflow-builder.html
 grep -Fq 'Pendiente · selecciona un ámbito' docs/workflow-builder.html
 grep -Fq 'Pendiente · selecciona una activación' docs/workflow-builder.html
@@ -134,7 +134,7 @@ grep -Fq 'Decisión Aceptar / Rechazar' docs/workflow-builder.js
 grep -Fq 'id="scheduledAt"' docs/workflow-builder.html
 grep -Fq 'id="customRecurrenceRow"' docs/workflow-builder.html
 grep -Fq '.builder-panel [hidden]{display:none!important}' docs/workflow-builder.css
-grep -Fq './workflow-builder.css?v=2026091911' docs/workflow-builder.html
+grep -Fq './workflow-builder.css?v=2026091913' docs/workflow-builder.html
 grep -Fq 'name="customEvery"' docs/workflow-builder.html
 grep -Fq 'name="customUnit"' docs/workflow-builder.html
 grep -Fq 'toggleDependentRow' docs/workflow-builder.js
@@ -149,7 +149,7 @@ grep -Fq 'id="photoBankLink"' docs/workflow-builder.html
 grep -Fq 'href="./photo-patterns.html?from=workflow-builder" hidden' docs/workflow-builder.html
 grep -Fq 'function updatePhotoResource()' docs/workflow-builder.js
 grep -Fq 'photoBankLink.hidden=!checked("stepPhoto")' docs/workflow-builder.js
-grep -Fq './workflow-builder.js?v=2026091911' docs/workflow-builder.html
+grep -Fq './workflow-builder.js?v=2026091913' docs/workflow-builder.html
 
 grep -Fq 'workflow_definitions_v2' docs/workflow-definitions.js
 grep -Fq '.eq("status","published")' docs/workflow-definitions.js
@@ -170,9 +170,9 @@ grep -Fq 'properties_v2' docs/workflow-applications.js
 grep -Fq 'rooms_v2' docs/workflow-applications.js
 grep -Fq 'occupancies_v2' docs/workflow-applications.js
 grep -Fq '.application-card [hidden]{display:none!important}' docs/workflow-applications.css
-grep -Fq './workflow-applications.css?v=2026091903' docs/workflow-applications.html
-grep -Fq './workflow-applications.js?v=2026091805' docs/workflow-applications.html
-grep -Fq 'crear una ejecución manual y su tarea asociada' docs/workflow-applications.html
+grep -Fq './workflow-applications.css?v=2026091913' docs/workflow-applications.html
+grep -Fq './workflow-applications.js?v=2026091913' docs/workflow-applications.html
+grep -Fq '¿Dónde quieres utilizarlo?' docs/workflow-applications.html
 grep -Fq 'Definición → Versión publicada → Aplicación concreta' docs/WORKFLOW_APPLICATIONS_CONTRACT.md
 grep -Fq 'workflow_applications_v2' docs/WORKFLOW_APPLICATIONS_CONTRACT.md
 grep -Fq 'execute_workflow_application_now_v1' docs/workflow-applications.js
@@ -252,7 +252,7 @@ grep -Fq 'workflow_definitions_v2' docs/WORKFLOW_IMPLEMENTATION_MAP.md
 
 echo 'Workflow smoke checks passed'
 
-grep -Fq 'ejecución pendiente y su tarea asociada' docs/workflow-applications.js
+grep -Fq 'Destinos cargados. Puedes preparar uno nuevo o ejecutar el flujo desde un destino disponible.' docs/workflow-applications.js
 
 grep -Fq 'class="builder-editor-state"' docs/workflow-builder.html
 grep -Fq '.builder-editor-state::before' docs/workflow-builder.css
@@ -282,3 +282,28 @@ grep -Fq 'discard_workflow_definition_revision_draft_v1' docs/workflow-builder.j
 grep -Fq 'Eliminar borrador' docs/workflow-builder.js
 grep -Fq '.builder-action--danger{' docs/workflow-builder.css
 grep -Fq '20260919141500_workflow_draft_discard.sql' tests/database-regression-v2.sh
+
+# Guided handoff: authoring architecture remains unchanged, navigation is simplified.
+grep -Fq 'Continuar para usarlo' docs/workflow-builder.html
+grep -Fq 'class="workflow-journey"' docs/workflow-builder.html
+grep -Fq '<strong>Diseño</strong>' docs/workflow-builder.html
+grep -Fq '<strong>Destino</strong>' docs/workflow-builder.html
+grep -Fq '<strong>Listo</strong>' docs/workflow-builder.html
+grep -Fq 'next.searchParams.set("setup","1")' docs/workflow-builder.js
+grep -Fq 'workflow-applications.html' docs/workflow-builder.js
+grep -Fq 'applications.textContent="Usar flujo"' docs/workflow-definitions.js
+grep -Fq 'id="workflowSetupJourney"' docs/workflow-applications.html
+grep -Fq 'id="applicationVersionRow"' docs/workflow-applications.html
+grep -Fq 'id="applicationsSection"' docs/workflow-applications.html
+grep -Fq 'Destinos configurados' docs/workflow-applications.html
+grep -Fq 'const guidedSetup=params.get("setup")==="1"' docs/workflow-applications.js
+grep -Fq 'let guidedApplicationId=params.get("application")||null' docs/workflow-applications.js
+grep -Fq 'function setSetupStage(stage)' docs/workflow-applications.js
+grep -Fq 'function renderGuidedReady(app)' docs/workflow-applications.js
+grep -Fq 'function buildExecutionControls(app,{guided=false}={})' docs/workflow-applications.js
+grep -Fq 'url.searchParams.set("application",guidedApplicationId)' docs/workflow-applications.js
+grep -Fq 'Destino preparado. Revisa quién realizará la tarea y pulsa Ejecutar ahora.' docs/workflow-applications.js
+grep -Fq 'Tarea creada' docs/workflow-applications.js
+grep -Fq '.application-ready-card{' docs/workflow-applications.css
+grep -Fq '.workflow-journey{' docs/workflow-builder.css
+grep -Fq '.workflow-journey{' docs/workflow-applications.css

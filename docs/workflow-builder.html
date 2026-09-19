@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#ffffff">
   <meta name="description" content="Creador de Flujos de GestionPisos">
   <link rel="stylesheet" href="./app.css?v=2026091907">
-  <link rel="stylesheet" href="./workflow-builder.css?v=2026091911">
+  <link rel="stylesheet" href="./workflow-builder.css?v=2026091913">
   <title>Allaiso · Creador de Flujos</title>
 </head>
 <body>
@@ -33,7 +33,7 @@
           <label>Estado
             <select id="builderDraftFilter">
               <option value="all">Todos</option>
-              <option value="ready">Listos para publicar</option>
+              <option value="ready">Listos para continuar</option>
               <option value="incomplete">Incompletos</option>
               <option value="revision">Nuevas versiones</option>
             </select>
@@ -61,6 +61,14 @@
           <h2 id="builderEditorTitle">Nuevo flujo</h2>
         </div>
         <span id="builderBadge" class="builder-editor-state" title="Borrador incompleto">Borrador</span>
+      </div>
+
+      <div class="workflow-journey" aria-label="Preparación del flujo">
+        <div class="workflow-journey-step is-current"><span>1</span><strong>Diseño</strong></div>
+        <div class="workflow-journey-line" aria-hidden="true"></div>
+        <div class="workflow-journey-step"><span>2</span><strong>Destino</strong></div>
+        <div class="workflow-journey-line" aria-hidden="true"></div>
+        <div class="workflow-journey-step"><span>3</span><strong>Listo</strong></div>
       </div>
 
       <section class="builder-layout">
@@ -200,7 +208,7 @@
           <p class="eyebrow">Paso 7 de 7</p>
           <h2>Revisión del borrador</h2>
           <div id="workflowSummary" class="builder-summary"></div>
-          <div class="builder-warning"><strong>Guardar no publica.</strong> Publicar se habilita cuando la configuración está completa.</div>
+          <div class="builder-warning"><strong>Guardar mantiene un borrador.</strong> Continuar para usarlo publicará una versión estable y te llevará directamente a elegir dónde se utilizará.</div>
         </section>
 
         <div id="builderServerStatus" class="builder-note builder-server-status" role="status" aria-live="polite">Comprobando estado del borrador…</div>
@@ -210,7 +218,7 @@
           <button id="builderClear" type="button" class="builder-action builder-action--neutral">Descartar cambios</button>
           <button id="builderSave" type="button" class="builder-action">Guardar</button>
           <button id="builderSaveExitInline" type="button" class="builder-action">Guardar y salir</button>
-          <button id="builderPublish" type="button" class="builder-action builder-action--primary" disabled>Publicar</button>
+          <button id="builderPublish" type="button" class="builder-action builder-action--primary" disabled>Continuar para usarlo</button>
           <button id="builderNext" type="button" class="builder-action builder-action--primary">Continuar</button>
         </div>
       </form>
@@ -233,7 +241,7 @@
   </main>
 
   <script src="./app.js?v=2026091902" defer></script>
-  <script type="module" src="./workflow-builder.js?v=2026091911"></script>
+  <script type="module" src="./workflow-builder.js?v=2026091913"></script>
   <script type="module" src="./auth-guard.js"></script>
 </body>
 </html>

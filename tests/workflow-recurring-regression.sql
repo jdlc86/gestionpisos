@@ -609,6 +609,53 @@ insert into public.property_staff_access_v3(
   null
 );
 
+do $recurrence_calendar_variants$
+declare
+  v_base jsonb:=jsonb_build_object(
+    'scheduledTimezone','UTC',
+    'scheduledAt','2026-01-05T09:30',
+    'scheduledAtUtc','2026-01-05T09:30:00Z'
+  );
+  v_actual timestamptz;
+begin
+  v_actual:=private.workflow_recurring_occurrence_v1(
+    v_base||jsonb_build_object(
+      'recurrence','biweekly',
+      'customEvery','',
+      'customUnit',''
+    ),
+    2
+  );
+  if v_actual is distinct from '2026-02-02T09:30:00Z'::timestamptz then
+    raise exception 'biweekly recurrence calculation drifted: %',v_actual;
+  end if;
+
+  v_actual:=private.workflow_recurring_occurrence_v1(
+    v_base||jsonb_build_object(
+      'recurrence','custom',
+      'customEvery','3',
+      'customUnit','week'
+    ),
+    2
+  );
+  if v_actual is distinct from '2026-02-16T09:30:00Z'::timestamptz then
+    raise exception 'custom weekly recurrence calculation drifted: %',v_actual;
+  end if;
+
+  v_actual:=private.workflow_recurring_occurrence_v1(
+    v_base||jsonb_build_object(
+      'recurrence','custom',
+      'customEvery','2',
+      'customUnit','month'
+    ),
+    2
+  );
+  if v_actual is distinct from '2026-05-05T09:30:00Z'::timestamptz then
+    raise exception 'custom monthly recurrence calculation drifted: %',v_actual;
+  end if;
+end;
+$recurrence_calendar_variants$;
+
 do $recurring_responsible_second$
 declare
   v_app uuid:=current_setting('gestionpisos.recurring.responsible_app')::uuid;

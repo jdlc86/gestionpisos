@@ -579,7 +579,52 @@ $timezone_mismatch$;
 
 reset role;
 
--- 5. Una hora local repetida por cambio DST no puede programarse silenciosamente.
+-- 5. Los RPC v1 no pueden publicar Fecha concreta sin su fila operativa.
+do $v1_schedule_bypass$
+begin
+  begin
+    perform *
+    from public.publish_workflow_ready_v1(
+      jsonb_build_object(
+        'authoringVersion',2,
+        'flowName','Programada bypass v1',
+        'flowType','custom',
+        'flowDescription','Debe exigir schedule operativo',
+        'scopeType','organization',
+        'triggerType','scheduled_once',
+        'recurrence','',
+        'scheduledAt','2099-01-01T10:00',
+        'scheduledTimezone','UTC',
+        'scheduledAtUtc','2099-01-01T10:00:00Z',
+        'customEvery','',
+        'customUnit','',
+        'assignmentType','manual',
+        'steps',jsonb_build_object('accept',true,'photo',false,'checklist',false,'document',false),
+        'checklistItems','[]'::jsonb,
+        'closeType','auto',
+        'notifications',jsonb_build_object('onCreate',false,'onClose',false)
+      ),
+      null,null,null,'{}'::uuid[],
+      false,
+      'regression-scheduled-v1-bypass',
+      null,
+      null
+    );
+
+    set constraints workflow_scheduled_application_requires_schedule_v1 immediate;
+    raise exception 'scheduled v1 bypass unexpectedly committed application';
+  exception
+    when sqlstate '55000' then
+      if sqlerrm<>'workflow_scheduled_configuration_required' then
+        raise;
+      end if;
+  end;
+end;
+$v1_schedule_bypass$;
+
+set constraints workflow_scheduled_application_requires_schedule_v1 deferred;
+
+-- 6. Una hora local repetida por cambio DST no puede programarse silenciosamente.
 set local role authenticated;
 select set_config(
   'request.jwt.claims',

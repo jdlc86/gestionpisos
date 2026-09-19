@@ -134,7 +134,7 @@ grep -Fq 'Decisión Aceptar / Rechazar' docs/workflow-builder.js
 grep -Fq 'id="scheduledAt"' docs/workflow-builder.html
 grep -Fq 'id="customRecurrenceRow"' docs/workflow-builder.html
 grep -Fq '.builder-panel [hidden]{display:none!important}' docs/workflow-builder.css
-grep -Fq './workflow-builder.css?v=2026091906' docs/workflow-builder.html
+grep -Fq './workflow-builder.css?v=2026091910' docs/workflow-builder.html
 grep -Fq 'name="customEvery"' docs/workflow-builder.html
 grep -Fq 'name="customUnit"' docs/workflow-builder.html
 grep -Fq 'toggleDependentRow' docs/workflow-builder.js
@@ -149,7 +149,7 @@ grep -Fq 'id="photoBankLink"' docs/workflow-builder.html
 grep -Fq 'href="./photo-patterns.html?from=workflow-builder" hidden' docs/workflow-builder.html
 grep -Fq 'function updatePhotoResource()' docs/workflow-builder.js
 grep -Fq 'photoBankLink.hidden=!checked("stepPhoto")' docs/workflow-builder.js
-grep -Fq './workflow-builder.js?v=2026091904' docs/workflow-builder.html
+grep -Fq './workflow-builder.js?v=2026091910' docs/workflow-builder.html
 
 grep -Fq 'workflow_definitions_v2' docs/workflow-definitions.js
 grep -Fq '.eq("status","published")' docs/workflow-definitions.js
@@ -215,8 +215,8 @@ grep -Fq 'managerOrganizationIds' docs/workflow-tasks.js
 ! grep -Fq 'currentUser?.app_metadata?.role' docs/workflow-tasks.js
 grep -Fq 'review_reject' docs/workflow-tasks.js
 grep -Fq 'task-actions' docs/workflow-tasks.css
-grep -Fq './workflow-tasks.css?v=2026091902' docs/workflow-tasks.html
-grep -Fq './workflow-tasks.js?v=2026091805' docs/workflow-tasks.html
+grep -Fq './workflow-tasks.css?v=2026091910' docs/workflow-tasks.html
+grep -Fq './workflow-tasks.js?v=2026091910' docs/workflow-tasks.html
 grep -Fq 'cambian tarea y ejecución juntas' docs/workflow-tasks.html
 
 grep -Fq 'workflow_execution_photo_resources_v2' docs/workflow-tasks.js
@@ -263,3 +263,14 @@ grep -Fq 'width:max-content' docs/workflow-definitions.css
 grep -Fq 'justify-self:start' docs/workflow-definitions.css
 grep -Fq 'white-space:nowrap' docs/workflow-definitions.css
 grep -Fq 'width:max-content' docs/workflow-applications.css
+
+grep -Fq 'id="checklistEditor"' docs/workflow-builder.html
+grep -Fq 'id="addChecklistItem"' docs/workflow-builder.html
+grep -Fq 'checklistItems:checked("stepChecklist")?checklistItemsDraft():[]' docs/workflow-builder.js
+grep -Fq 'checklistConfigurationComplete' docs/workflow-builder.js
+grep -Fq '"save_workflow_definition_draft_v2"' docs/workflow-builder.js
+grep -Fq 'function renderChecklist(task,article)' docs/workflow-tasks.js
+grep -Fq 'set_workflow_checklist_item_v1' docs/workflow-tasks.js
+grep -Fq 'workflow_executions_v2' docs/workflow-tasks.js
+grep -Fq '.task-checklist{' docs/workflow-tasks.css
+grep -Fq '20260919103000_workflow_checklist_step.sql' tests/database-regression-v2.sh

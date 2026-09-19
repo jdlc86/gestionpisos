@@ -60,10 +60,11 @@ grep -Fq 'id="mfaFactorSelect"' docs/mfa-challenge.html
 grep -Fq 'autocomplete="one-time-code"' docs/mfa-challenge.html
 
 grep -Fq 'privilegedMfaRoute(supabase, session, { requireEnrollment: true })' docs/auth-guard.js
-grep -Fq '🛡️ MFA' docs/auth-guard.js
+grep -Fq 'button.textContent = "MFA"' docs/auth-guard.js
 ! grep -Fq 'Seguridad MFA' docs/auth-guard.js
 grep -Fq 'authFlowUrl(mfa.route' docs/auth-guard.js
 grep -Fq 'const isHomePage = currentPage === "index.html"' docs/auth-guard.js
+grep -Fq 'homeActionHost' docs/auth-guard.js
 grep -Fq 'if (isHomePage && requiresPrivilegedMfa(session)) addMfaSecurityAction();' docs/auth-guard.js
 grep -Fq 'if (isHomePage && topbar && !document.getElementById("logoutBtn"))' docs/auth-guard.js
 
@@ -72,7 +73,7 @@ grep -Fq 'https://esm.sh/@supabase/supabase-js@2.116.0' docs/supabase-client.js
 grep -Fq 'supabase_client_module_load_failed' docs/supabase-client.js
 ! grep -Fq '@supabase/supabase-js@2.57.4' docs/supabase-client.js
 
-grep -Fq "gestionpisos-shell-v14" docs/sw.js
+grep -Fq "gestionpisos-shell-v15" docs/sw.js
 grep -Fq "'./mfa-setup.html'" docs/sw.js
 grep -Fq "'./mfa-challenge.html'" docs/sw.js
 grep -Fq "if(url.origin!==self.location.origin) return;" docs/sw.js

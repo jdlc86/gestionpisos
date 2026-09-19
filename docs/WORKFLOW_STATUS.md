@@ -385,7 +385,7 @@ La recurrencia automática permanece posterior a estos E2E para no automatizar u
 ## 13. Reglas de no regresión
 
 - no duplicar `photo_patterns_v2` por flujo;
-- no crear una segunda cámara o bucket;
+- no crear una segunda cámara ni duplicar almacenamiento para el mismo tipo de evidencia; cada evidencia distinta debe justificar su propio bucket privado y políticas;
 - no crear otro sistema de notificaciones;
 - no reescribir históricos existentes;
 - no convertir `cleaning_plans_v2` en modelo universal;

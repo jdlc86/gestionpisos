@@ -124,6 +124,12 @@ Cada paso tiene:
 - configuración validada;
 - política de finalización.
 
+### Checklist v1
+
+La receta guarda una lista ordenada `checklistItems` de hasta 30 elementos. La publicación exige al menos un elemento obligatorio. La ejecución copia esa lista a `workflow_executions_v2.checklist_state`, donde se conserva el resultado operativo sin modificar `spec_snapshot`.
+
+El checklist no crea una tabla de tareas paralela. Solo el asignado modifica su estado mediante RPC y el cierre se evalúa junto con los demás pasos configurados.
+
 No se introducirá una segunda cámara, bucket, notificador ni sistema de tareas para implementar un tipo de paso.
 
 ## 7. Recursos

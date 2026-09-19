@@ -3690,6 +3690,469 @@ begin
 end;
 $$;
 
+-- Checklist genérico: autoría, snapshot de ejecución, RLS/RPC, cierre auto y revisión humana.
+do $workflow_checklist_privileges$
+begin
+  if has_function_privilege('anon','public.save_workflow_definition_draft_v2(jsonb,uuid,bigint)','EXECUTE') then
+    raise exception 'anon can execute checklist-aware workflow draft RPC';
+  end if;
+  if not has_function_privilege('authenticated','public.save_workflow_definition_draft_v2(jsonb,uuid,bigint)','EXECUTE') then
+    raise exception 'authenticated cannot execute checklist-aware workflow draft RPC';
+  end if;
+  if has_function_privilege('anon','public.set_workflow_checklist_item_v1(uuid,text,boolean,text)','EXECUTE') then
+    raise exception 'anon can update workflow checklist';
+  end if;
+  if not has_function_privilege('authenticated','public.set_workflow_checklist_item_v1(uuid,text,boolean,text)','EXECUTE') then
+    raise exception 'authenticated cannot update own workflow checklist';
+  end if;
+end;
+$workflow_checklist_privileges$;
+
+select set_config(
+  'gestionpisos.workflow_checklist_incomplete_definition_id',
+  (
+    select definition_id::text
+    from public.save_workflow_definition_draft_v2(
+      jsonb_build_object(
+        'authoringVersion',2,
+        'flowName','Checklist inválido',
+        'flowType','custom',
+        'flowDescription','',
+        'scopeType','room',
+        'triggerType','manual',
+        'recurrence','',
+        'scheduledAt','',
+        'customEvery','',
+        'customUnit','',
+        'assignmentType','manual',
+        'steps',jsonb_build_object('accept',false,'photo',false,'checklist',true,'document',false),
+        'checklistItems',jsonb_build_array(
+          jsonb_build_object('text','Elemento solo opcional','required',false)
+        ),
+        'closeType','auto',
+        'notifications',jsonb_build_object('onCreate',false,'onClose',false)
+      )
+    )
+    limit 1
+  ),
+  true
+);
+
+do $workflow_checklist_authoring_rules$
+declare
+  v_complete boolean;
+begin
+  select authoring_complete into v_complete
+  from public.workflow_definitions_v2
+  where id=current_setting('gestionpisos.workflow_checklist_incomplete_definition_id')::uuid;
+
+  if coalesce(v_complete,true) then
+    raise exception 'all-optional checklist unexpectedly considered complete';
+  end if;
+end;
+$workflow_checklist_authoring_rules$;
+
+select set_config(
+  'gestionpisos.workflow_checklist_definition_id',
+  (
+    select definition_id::text
+    from public.save_workflow_definition_draft_v2(
+      jsonb_build_object(
+        'authoringVersion',2,
+        'flowName','Checklist operativo',
+        'flowType','custom',
+        'flowDescription','Regresión Checklist',
+        'scopeType','room',
+        'triggerType','manual',
+        'recurrence','',
+        'scheduledAt','',
+        'customEvery','',
+        'customUnit','',
+        'assignmentType','manual',
+        'steps',jsonb_build_object('accept',false,'photo',false,'checklist',true,'document',false),
+        'checklistItems',jsonb_build_array(
+          jsonb_build_object('text','Paso obligatorio','required',true),
+          jsonb_build_object('text','Paso opcional','required',false)
+        ),
+        'closeType','auto',
+        'notifications',jsonb_build_object('onCreate',false,'onClose',false)
+      )
+    )
+    limit 1
+  ),
+  true
+);
+
+do $workflow_checklist_sanitized$
+declare
+  v_spec jsonb;
+  v_complete boolean;
+begin
+  select draft_spec,authoring_complete into v_spec,v_complete
+  from public.workflow_definitions_v2
+  where id=current_setting('gestionpisos.workflow_checklist_definition_id')::uuid;
+
+  if not v_complete
+    or v_spec#>>'{checklistItems,0,key}'<>'item-1'
+    or v_spec#>>'{checklistItems,1,key}'<>'item-2'
+    or v_spec#>>'{checklistItems,0,text}'<>'Paso obligatorio'
+    or coalesce((v_spec#>>'{checklistItems,0,required}')::boolean,false) is not true
+    or coalesce((v_spec#>>'{checklistItems,1,required}')::boolean,true) is not false then
+    raise exception 'checklist authoring was not normalized correctly';
+  end if;
+end;
+$workflow_checklist_sanitized$;
+
+select set_config(
+  'gestionpisos.workflow_checklist_version_id',
+  (
+    select version_id::text
+    from public.publish_workflow_definition_v1(
+      current_setting('gestionpisos.workflow_checklist_definition_id')::uuid,
+      1
+    )
+    limit 1
+  ),
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_checklist_application_id',
+  (
+    select application_id::text
+    from public.create_workflow_application_v1(
+      current_setting('gestionpisos.workflow_checklist_version_id')::uuid,
+      current_setting('gestionpisos.workflow_property_1')::uuid,
+      current_setting('gestionpisos.workflow_room_1')::uuid,
+      null
+    )
+    limit 1
+  ),
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_checklist_execution_id',
+  (
+    select execution_id::text
+    from public.execute_workflow_application_now_v1(
+      current_setting('gestionpisos.workflow_checklist_application_id')::uuid,
+      'workflow-checklist-auto-001',
+      current_setting('gestionpisos.workflow_root')::uuid
+    )
+    limit 1
+  ),
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_checklist_task_id',
+  (
+    select id::text
+    from public.tenant_tasks_v2
+    where source_kind='workflow_execution'
+      and source_id=current_setting('gestionpisos.workflow_checklist_execution_id')::uuid
+    limit 1
+  ),
+  true
+);
+
+do $workflow_checklist_snapshot$
+declare
+  v_state jsonb;
+begin
+  select checklist_state into v_state
+  from public.workflow_executions_v2
+  where id=current_setting('gestionpisos.workflow_checklist_execution_id')::uuid;
+
+  if jsonb_array_length(v_state)<>2
+    or v_state#>>'{0,key}'<>'item-1'
+    or v_state#>>'{1,key}'<>'item-2'
+    or coalesce((v_state#>>'{0,completed}')::boolean,true)
+    or coalesce((v_state#>>'{1,completed}')::boolean,true) then
+    raise exception 'execution checklist snapshot invalid';
+  end if;
+end;
+$workflow_checklist_snapshot$;
+
+-- Otro ADMIN no puede completar el checklist ajeno, aunque invoque directamente el RPC.
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub',current_setting('gestionpisos.workflow_admin_2'),
+    'role','authenticated',
+    'aal','aal2'
+  )::text,
+  true
+);
+
+do $workflow_checklist_wrong_actor$
+begin
+  begin
+    perform * from public.set_workflow_checklist_item_v1(
+      current_setting('gestionpisos.workflow_checklist_task_id')::uuid,
+      'item-2',
+      true,
+      'workflow-checklist-wrong-actor-001'
+    );
+    raise exception 'non-assignee checklist update unexpectedly succeeded';
+  exception when insufficient_privilege then null;
+  end;
+end;
+$workflow_checklist_wrong_actor$;
+
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub',current_setting('gestionpisos.workflow_root'),
+    'role','authenticated',
+    'aal','aal2'
+  )::text,
+  true
+);
+
+-- Completar primero el opcional activa la tarea, pero no cierra.
+select * from public.set_workflow_checklist_item_v1(
+  current_setting('gestionpisos.workflow_checklist_task_id')::uuid,
+  'item-2',
+  true,
+  'workflow-checklist-optional-001'
+);
+
+do $workflow_checklist_optional_state$
+declare
+  v_task text;
+  v_execution text;
+begin
+  select status into v_task
+  from public.tenant_tasks_v2
+  where id=current_setting('gestionpisos.workflow_checklist_task_id')::uuid;
+  select status into v_execution
+  from public.workflow_executions_v2
+  where id=current_setting('gestionpisos.workflow_checklist_execution_id')::uuid;
+  if v_task<>'active' or v_execution<>'active' then
+    raise exception 'optional checklist item closed or failed to activate workflow';
+  end if;
+end;
+$workflow_checklist_optional_state$;
+
+-- El último obligatorio cierra tarea + ejecución para closeType=auto.
+select * from public.set_workflow_checklist_item_v1(
+  current_setting('gestionpisos.workflow_checklist_task_id')::uuid,
+  'item-1',
+  true,
+  'workflow-checklist-required-001'
+);
+
+do $workflow_checklist_auto_closed$
+declare
+  v_task text;
+  v_execution text;
+  v_completed_at timestamptz;
+  v_events integer;
+  v_history integer;
+begin
+  select status into v_task
+  from public.tenant_tasks_v2
+  where id=current_setting('gestionpisos.workflow_checklist_task_id')::uuid;
+  select status,completed_at into v_execution,v_completed_at
+  from public.workflow_executions_v2
+  where id=current_setting('gestionpisos.workflow_checklist_execution_id')::uuid;
+  select count(*) into v_events
+  from public.workflow_execution_events_v2
+  where execution_id=current_setting('gestionpisos.workflow_checklist_execution_id')::uuid
+    and event_type='checklist_item_changed';
+  select count(*) into v_history
+  from public.tenant_task_history_v2
+  where task_id=current_setting('gestionpisos.workflow_checklist_task_id')::uuid
+    and action_key in ('checklist_item_completed','checklist_item_reopened');
+
+  if v_task<>'completed' or v_execution<>'completed' or v_completed_at is null
+    or v_events<>2 or v_history<>2 then
+    raise exception 'checklist auto close did not preserve synchronized state/history';
+  end if;
+end;
+$workflow_checklist_auto_closed$;
+
+-- Reintento de la transición terminal recupera el recibo y no duplica histórico.
+do $workflow_checklist_retry$
+declare
+  v_applied boolean;
+  v_events integer;
+begin
+  select applied_new into v_applied
+  from public.set_workflow_checklist_item_v1(
+    current_setting('gestionpisos.workflow_checklist_task_id')::uuid,
+    'item-1',
+    true,
+    'workflow-checklist-required-001'
+  )
+  limit 1;
+
+  select count(*) into v_events
+  from public.workflow_execution_events_v2
+  where execution_id=current_setting('gestionpisos.workflow_checklist_execution_id')::uuid
+    and event_type='checklist_item_changed'
+    and details->>'request_key'='workflow-checklist-required-001';
+
+  if v_applied or v_events<>1 then
+    raise exception 'checklist idempotent retry duplicated transition';
+  end if;
+end;
+$workflow_checklist_retry$;
+
+-- Authenticated tampoco puede alterar checklist_state directamente.
+do $workflow_checklist_direct_write$
+begin
+  begin
+    update public.workflow_executions_v2
+    set checklist_state='[]'::jsonb
+    where id=current_setting('gestionpisos.workflow_checklist_execution_id')::uuid;
+    raise exception 'direct checklist state update unexpectedly succeeded';
+  exception when insufficient_privilege then null;
+  end;
+end;
+$workflow_checklist_direct_write$;
+
+-- Cierre human_review: con decisión Aceptar, Checklist se bloquea hasta aceptar y
+-- el último obligatorio termina en waiting_review, no completed.
+select set_config(
+  'gestionpisos.workflow_checklist_review_definition_id',
+  (
+    select definition_id::text
+    from public.save_workflow_definition_draft_v2(
+      jsonb_build_object(
+        'authoringVersion',2,
+        'flowName','Checklist con revisión',
+        'flowType','custom',
+        'flowDescription','Regresión Checklist + human review',
+        'scopeType','room',
+        'triggerType','manual',
+        'recurrence','',
+        'scheduledAt','',
+        'customEvery','',
+        'customUnit','',
+        'assignmentType','manual',
+        'steps',jsonb_build_object('accept',true,'photo',false,'checklist',true,'document',false),
+        'checklistItems',jsonb_build_array(
+          jsonb_build_object('text','Validación obligatoria','required',true)
+        ),
+        'closeType','human_review',
+        'notifications',jsonb_build_object('onCreate',false,'onClose',false)
+      )
+    )
+    limit 1
+  ),
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_checklist_review_version_id',
+  (
+    select version_id::text
+    from public.publish_workflow_definition_v1(
+      current_setting('gestionpisos.workflow_checklist_review_definition_id')::uuid,
+      1
+    )
+    limit 1
+  ),
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_checklist_review_application_id',
+  (
+    select application_id::text
+    from public.create_workflow_application_v1(
+      current_setting('gestionpisos.workflow_checklist_review_version_id')::uuid,
+      current_setting('gestionpisos.workflow_property_1')::uuid,
+      current_setting('gestionpisos.workflow_room_1')::uuid,
+      null
+    )
+    limit 1
+  ),
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_checklist_review_execution_id',
+  (
+    select execution_id::text
+    from public.execute_workflow_application_now_v1(
+      current_setting('gestionpisos.workflow_checklist_review_application_id')::uuid,
+      'workflow-checklist-review-001',
+      current_setting('gestionpisos.workflow_root')::uuid
+    )
+    limit 1
+  ),
+  true
+);
+
+select set_config(
+  'gestionpisos.workflow_checklist_review_task_id',
+  (
+    select id::text
+    from public.tenant_tasks_v2
+    where source_kind='workflow_execution'
+      and source_id=current_setting('gestionpisos.workflow_checklist_review_execution_id')::uuid
+    limit 1
+  ),
+  true
+);
+
+do $workflow_checklist_accept_gate$
+begin
+  begin
+    perform * from public.set_workflow_checklist_item_v1(
+      current_setting('gestionpisos.workflow_checklist_review_task_id')::uuid,
+      'item-1',
+      true,
+      'workflow-checklist-before-accept-001'
+    );
+    raise exception 'checklist bypassed required accept decision';
+  exception when object_not_in_prerequisite_state then null;
+  end;
+end;
+$workflow_checklist_accept_gate$;
+
+select * from public.apply_workflow_task_action_v1(
+  current_setting('gestionpisos.workflow_checklist_review_task_id')::uuid,
+  'accept',
+  'workflow-checklist-review-accept-001',
+  null
+);
+
+select * from public.set_workflow_checklist_item_v1(
+  current_setting('gestionpisos.workflow_checklist_review_task_id')::uuid,
+  'item-1',
+  true,
+  'workflow-checklist-review-complete-001'
+);
+
+do $workflow_checklist_waiting_review$
+declare
+  v_task text;
+  v_execution text;
+  v_review_actions integer;
+begin
+  select status into v_task
+  from public.tenant_tasks_v2
+  where id=current_setting('gestionpisos.workflow_checklist_review_task_id')::uuid;
+  select status into v_execution
+  from public.workflow_executions_v2
+  where id=current_setting('gestionpisos.workflow_checklist_review_execution_id')::uuid;
+  select count(*) into v_review_actions
+  from public.tenant_task_actions_v2
+  where task_id=current_setting('gestionpisos.workflow_checklist_review_task_id')::uuid
+    and from_status='waiting_review'
+    and action_key in ('review_approve','review_reject');
+
+  if v_task<>'waiting_review' or v_execution<>'waiting_review' or v_review_actions<>2 then
+    raise exception 'checklist human-review close did not reach waiting_review with review actions';
+  end if;
+end;
+$workflow_checklist_waiting_review$;
+
 -- Archivar es explícito, reversible por nueva aplicación y conserva histórico.
 select public.archive_workflow_application_v1(
   current_setting('gestionpisos.workflow_property_application_id')::uuid

@@ -153,7 +153,22 @@ Si después de Aceptar quedan fotografía, checklist o documento, la ejecución 
 
 La evidencia fotográfica ya puede completar su propio paso conforme a `WORKFLOW_PHOTO_EVIDENCE_CONTRACT.md`.
 
-Checklist y documento siguen sin poder simularse mediante una transición genérica.
+Checklist dispone de transición operativa propia mediante `set_workflow_checklist_item_v1`; Documento sigue sin poder simularse mediante una transición genérica.
+
+## 8.1 Checklist operativo
+
+Checklist no usa una acción genérica de `tenant_task_actions_v2` para cada casilla. La mutación se realiza con `set_workflow_checklist_item_v1`, que valida asignado, estado, puerta Aceptar y clave de reintento.
+
+Cada cambio sincroniza en una sola transacción:
+
+- `workflow_executions_v2.checklist_state`;
+- `tenant_tasks_v2.status` cuando cambia el estado global;
+- `workflow_executions_v2.status`;
+- `tenant_task_history_v2`;
+- `workflow_execution_events_v2`;
+- auditoría.
+
+Completar todos los elementos obligatorios no basta si Foto u otro paso operativo sigue pendiente.
 
 ## 9. Interfaz
 
@@ -236,7 +251,6 @@ Siguen pendientes:
 
 - asistente automático de reasignación tras rechazo;
 - notificación operativa específica de rechazo;
-- checklist;
 - documento;
 - recurrencia automática;
 - adaptadores de dominio.

@@ -17,6 +17,7 @@ human_review='supabase/migrations/20260918233000_workflow_human_review.sql'
 review_access='supabase/migrations/20260918234500_workflow_review_actor_visibility_hardening.sql'
 photo_review_hardening='supabase/migrations/20260919001000_photo_review_read_authorization_hardening.sql'
 authoring_separation='supabase/migrations/20260918234456_workflow_authoring_operational_separation.sql'
+checklist='supabase/migrations/20260919103000_workflow_checklist_step.sql'
 
 test -s "$migration"
 test -s "$hardening"
@@ -34,6 +35,7 @@ test -s "$human_review"
 test -s "$review_access"
 test -s "$photo_review_hardening"
 test -s "$authoring_separation"
+test -s "$checklist"
 test -s tests/workflow-definition-regression.sql
 test -s tests/workflow-authoring-separation-regression.sql
 
@@ -239,3 +241,14 @@ grep -Fq "t.task_type='workflow'" "$human_review"
 ! grep -Fq "drop policy if exists tenant_task_actions_v2_read_scope" "$human_review"
 
 echo 'Workflow definition schema smoke checks passed'
+
+grep -Fq 'create or replace function public.save_workflow_definition_draft_v2' "$checklist"
+grep -Fq "'checklistItems',v_normalized_checklist" "$checklist"
+grep -Fq 'add column if not exists checklist_state jsonb' "$checklist"
+grep -Fq 'create trigger workflow_execution_initialize_checklist_v1' "$checklist"
+grep -Fq 'create or replace function public.set_workflow_checklist_item_v1' "$checklist"
+grep -Fq 'workflow_checklist_actor_forbidden' "$checklist"
+grep -Fq 'workflow_checklist_accept_required' "$checklist"
+grep -Fq "event_type='checklist_item_changed'" "$checklist"
+grep -Fq 'jsonb_array_length(v_execution.checklist_state)=0' "$checklist"
+grep -Fq 'grant execute on function public.set_workflow_checklist_item_v1' "$checklist"

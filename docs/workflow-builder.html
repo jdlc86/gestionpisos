@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#ffffff">
   <meta name="description" content="Creador de Flujos de GestionPisos">
   <link rel="stylesheet" href="./app.css?v=2026091907">
-  <link rel="stylesheet" href="./workflow-builder.css?v=2026091906">
+  <link rel="stylesheet" href="./workflow-builder.css?v=2026091910">
   <title>Allaiso · Creador de Flujos</title>
 </head>
 <body>
@@ -166,6 +166,17 @@
             <label class="check-row"><input type="checkbox" name="stepChecklist"> Completar checklist o formulario</label>
             <label class="check-row"><input type="checkbox" name="stepDocument"> Adjuntar o revisar documento</label>
           </fieldset>
+          <section id="checklistEditor" class="builder-checklist-editor" hidden aria-labelledby="checklistEditorTitle">
+            <div class="builder-checklist-heading">
+              <div>
+                <strong id="checklistEditorTitle">Checklist</strong>
+                <p>Define una lista breve y ordenada. Debe existir al menos un elemento obligatorio para publicar.</p>
+              </div>
+              <button id="addChecklistItem" type="button" class="builder-action builder-action--neutral">Añadir elemento</button>
+            </div>
+            <div id="checklistItems" class="builder-checklist-items"></div>
+            <p class="builder-checklist-help">Máximo 30 elementos · 160 caracteres por elemento.</p>
+          </section>
           <a id="photoBankLink" class="resource-link" href="./photo-patterns.html?from=workflow-builder" hidden>📷 Abrir Banco Fotográfico</a>
           <div class="builder-note">Selecciona al menos una acción para este flujo.</div>
         </section>
@@ -221,7 +232,7 @@
   </main>
 
   <script src="./app.js?v=2026091902" defer></script>
-  <script type="module" src="./workflow-builder.js?v=2026091904"></script>
+  <script type="module" src="./workflow-builder.js?v=2026091910"></script>
   <script type="module" src="./auth-guard.js"></script>
 </body>
 </html>

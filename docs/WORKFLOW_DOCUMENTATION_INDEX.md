@@ -11,6 +11,7 @@ Usar estos documentos en este orden:
 7. **`WORKFLOW_ACTIONS_CONTRACT.md`** — acciones derivadas de la receta, autorización del asignado, idempotencia y transición atómica tarea ↔ ejecución.
 8. **`WORKFLOW_PHOTO_EVIDENCE_CONTRACT.md`** — binding de patrones, snapshot por ejecución, cámara reutilizada y cierre transaccional de evidencia fotográfica.
 9. **`WORKFLOW_STATUS.md`** — fotografía fechada del estado real de implementación, PRs integrados, límites actuales y siguiente incremento.
+10. **`WORKFLOW_CHECKLIST_CONTRACT.md`** — contrato específico del primer checklist genérico: autoría, snapshot, permisos, idempotencia y cierre.
 
 ## Regla de mantenimiento
 

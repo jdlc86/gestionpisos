@@ -145,9 +145,11 @@
             </label>
           </div>
 
-          <label id="scheduledAtRow" hidden>Fecha y hora
+          <label id="scheduledAtRow" hidden><span id="scheduledAtLabel">Fecha y hora</span>
             <input id="scheduledAt" name="scheduledAt" type="datetime-local" disabled>
+            <input id="scheduleTimeZone" name="scheduleTimeZone" type="hidden" disabled>
           </label>
+          <div id="scheduleTimezoneHint" class="builder-note" hidden></div>
           <div class="builder-note">Los campos necesarios aparecen según el tipo de activación.</div>
         </section>
 
@@ -162,7 +164,7 @@
             <option value="role">Rol o capacidad</option>
             <option value="manual">Se decide al iniciar</option>
           </select></label>
-          <div class="builder-note">La persona final se resolverá al iniciar la ejecución.</div>
+          <div id="assignmentNote" class="builder-note">La persona final se resolverá al iniciar la ejecución.</div>
         </section>
 
         <section class="builder-panel" data-step="4">
@@ -241,7 +243,7 @@
   </main>
 
   <script src="./app.js?v=2026091902" defer></script>
-  <script type="module" src="./workflow-builder.js?v=2026091918"></script>
+  <script type="module" src="./workflow-builder.js?v=2026091919"></script>
   <script type="module" src="./auth-guard.js"></script>
 </body>
 </html>

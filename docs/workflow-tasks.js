@@ -13,10 +13,15 @@ let actionsByTask=new Map();
 let managerOrganizationIds=new Set();
 let rootManager=false;
 let photoResourcesByExecution=new Map();
+let documentsByExecution=new Map();
 let workflowExecutionsById=new Map();
 
 const ACTION_KEY_PREFIX="workflow-task-action:";
 const CHECKLIST_KEY_PREFIX="workflow-checklist-action:";
+const DOCUMENT_KEY_PREFIX="workflow-document-upload:";
+const DOCUMENT_BUCKET="workflow-documents-v2";
+const DOCUMENT_TYPES=new Set(["application/pdf","image/jpeg","image/png","image/webp"]);
+const DOCUMENT_MAX_BYTES=10*1024*1024;
 const statusLabels={
   pending:"Pendiente",active:"En curso",waiting_review:"Esperando revisión",
   accepted:"Aceptada",in_progress:"En curso",waiting_info:"Esperando información",
@@ -34,6 +39,13 @@ function setStatus(message,error=false){
 function fmtDate(value){
   if(!value)return "—";
   try{return new Intl.DateTimeFormat("es-ES",{dateStyle:"medium",timeStyle:"short"}).format(new Date(value))}catch{return value}
+}
+function fmtBytes(value){
+  const bytes=Number(value||0);
+  if(!Number.isFinite(bytes)||bytes<=0)return "—";
+  if(bytes<1024)return bytes+" B";
+  if(bytes<1024*1024)return (bytes/1024).toFixed(bytes<10*1024?1:0)+" KB";
+  return (bytes/(1024*1024)).toFixed(bytes<10*1024*1024?1:0)+" MB";
 }
 function meta(label,value){
   const box=document.createElement("div");box.className="task-meta-item";
@@ -75,6 +87,16 @@ function errorText(error){
   if(message.includes("workflow_checklist_not_actionable"))return "El checklist ya no se puede modificar en el estado actual.";
   if(message.includes("workflow_checklist_item_not_found"))return "El elemento ya no existe en esta ejecución. Recarga la pantalla.";
   if(message.includes("workflow_checklist_request_key_conflict"))return "El reintento pertenece a otro cambio del checklist. Recarga la pantalla.";
+  if(message.includes("workflow_document_actor_forbidden"))return "Solo la persona asignada puede adjuntar documentos a esta tarea.";
+  if(message.includes("workflow_document_accept_required"))return "Primero debes aceptar la tarea.";
+  if(message.includes("workflow_document_not_actionable"))return "El documento ya no se puede adjuntar en el estado actual.";
+  if(message.includes("workflow_document_not_configured"))return "Esta tarea no tiene un paso Documento configurado.";
+  if(message.includes("workflow_document_filename_invalid"))return "El nombre del archivo no es válido.";
+  if(message.includes("workflow_document_size_invalid"))return "El archivo debe tener un tamaño máximo de 10 MB.";
+  if(message.includes("workflow_document_mime_invalid"))return "Solo se admiten PDF, JPG, PNG o WebP.";
+  if(message.includes("workflow_document_object_missing"))return "La carga del archivo no llegó a completarse. Selecciona el archivo de nuevo para reintentar.";
+  if(message.includes("workflow_document_request_key_conflict"))return "El reintento pertenece a otro documento. Selecciona el archivo de nuevo.";
+  if(message.includes("workflow_document_not_found"))return "El documento ya no está disponible. Recarga la tarea.";
   if(message.includes("workflow_action_not_supported")||message.includes("workflow_action_close_rule_not_supported"))return "Esta transición todavía no está habilitada para esta receta.";
   return "No se pudo aplicar la acción. No se ha confirmado ningún cambio.";
 }
@@ -92,6 +114,22 @@ function checklistRequestKey(task,itemKey,completed){
   let key=sessionStorage.getItem(storageKey);
   if(!key){
     key=globalThis.crypto?.randomUUID?.()||("checklist-"+Date.now()+"-"+Math.random().toString(36).slice(2));
+    sessionStorage.setItem(storageKey,key);
+  }
+  return {storageKey,key};
+}
+function documentRequestKey(task,file){
+  const fingerprint=[
+    task.id,
+    file.name,
+    file.size,
+    file.lastModified,
+    file.type
+  ].join(":");
+  const storageKey=DOCUMENT_KEY_PREFIX+fingerprint;
+  let key=sessionStorage.getItem(storageKey);
+  if(!key){
+    key=globalThis.crypto?.randomUUID?.()||("document-"+Date.now()+"-"+Math.random().toString(36).slice(2));
     sessionStorage.setItem(storageKey,key);
   }
   return {storageKey,key};
@@ -298,6 +336,216 @@ function renderChecklist(task,article){
   article.append(box);
 }
 
+async function openWorkflowDocument(documentRow,button){
+  const original=button.textContent;
+  button.disabled=true;
+  button.textContent="Abriendo…";
+
+  const preview=window.open("about:blank","_blank");
+  if(preview)preview.opener=null;
+
+  const {data,error}=await supabase.storage
+    .from(DOCUMENT_BUCKET)
+    .createSignedUrl(documentRow.storage_path,300);
+
+  button.disabled=false;
+  button.textContent=original;
+
+  if(error||!data?.signedUrl){
+    if(preview)preview.close();
+    setStatus("No se pudo abrir el documento privado.",true);
+    return;
+  }
+
+  if(preview)preview.location.href=data.signedUrl;
+  else window.location.href=data.signedUrl;
+}
+
+async function uploadWorkflowDocument(task,file,button,input){
+  if(!DOCUMENT_TYPES.has(file.type)){
+    input.value="";
+    setStatus("Solo se admiten PDF, JPG, PNG o WebP.",true);
+    return;
+  }
+  if(file.size<1||file.size>DOCUMENT_MAX_BYTES){
+    input.value="";
+    setStatus("El archivo debe tener un tamaño máximo de 10 MB.",true);
+    return;
+  }
+
+  const {storageKey,key}=documentRequestKey(task,file);
+  const original=button.textContent;
+  button.disabled=true;
+  button.textContent="Preparando…";
+  setStatus("Preparando el documento privado…");
+
+  const {data:prepared,error:prepareError}=await supabase.rpc("prepare_workflow_document_upload_v1",{
+    p_task_id:task.id,
+    p_original_filename:file.name,
+    p_mime_type:file.type,
+    p_size_bytes:file.size,
+    p_request_key:key
+  });
+
+  const preparation=Array.isArray(prepared)?prepared[0]:null;
+  if(prepareError||!preparation?.document_id||!preparation?.storage_path){
+    button.disabled=false;
+    button.textContent=original;
+    input.value="";
+    const message=String(prepareError?.message||"");
+    if(message.includes("workflow_")&&!message.includes("network"))sessionStorage.removeItem(storageKey);
+    setStatus(errorText(prepareError),true);
+    return;
+  }
+
+  button.textContent="Subiendo…";
+  setStatus("Subiendo "+file.name+" de forma privada…");
+
+  const {error:uploadError}=await supabase.storage
+    .from(DOCUMENT_BUCKET)
+    .upload(preparation.storage_path,file,{
+      contentType:file.type,
+      cacheControl:"3600",
+      upsert:false
+    });
+
+  button.textContent="Confirmando…";
+
+  const {data:submitted,error:submitError}=await supabase.rpc("submit_workflow_document_v1",{
+    p_document_id:preparation.document_id,
+    p_request_key:key
+  });
+
+  button.textContent=original;
+  input.value="";
+
+  if(submitError){
+    button.disabled=false;
+    const missing=String(submitError.message||"").includes("workflow_document_object_missing");
+    if(!missing&&String(submitError.message||"").includes("workflow_"))sessionStorage.removeItem(storageKey);
+    if(uploadError&&missing){
+      setStatus("No se pudo completar la carga. Selecciona el mismo archivo para reintentar.",true);
+    }else{
+      setStatus(errorText(submitError),true);
+    }
+    return;
+  }
+
+  sessionStorage.removeItem(storageKey);
+  const result=Array.isArray(submitted)?submitted[0]:null;
+
+  if(result?.applied_new===false){
+    setStatus("El documento ya estaba confirmado; no se duplicó la evidencia.");
+  }else if(result?.execution_status==="completed"){
+    setStatus("Documento adjuntado. Tarea y ejecución cerradas.");
+  }else if(result?.execution_status==="waiting_review"){
+    setStatus("Documento adjuntado. La ejecución queda esperando revisión humana.");
+  }else{
+    setStatus("Documento adjuntado. El flujo sigue activo porque quedan otros pasos.");
+  }
+
+  await load(true);
+}
+
+function renderDocuments(task,article){
+  const execution=executionForTask(task);
+  if(!execution||execution.spec_snapshot?.steps?.document!==true)return;
+
+  const documents=(documentsByExecution.get(task.source_id)||[])
+    .slice()
+    .sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
+  const submitted=documents.filter(item=>item.status==="submitted");
+  const uploading=documents.filter(item=>item.status==="uploading");
+
+  const box=document.createElement("section");
+  box.className="task-documents";
+
+  const head=document.createElement("div");
+  head.className="task-documents-head";
+  const headingBox=document.createElement("div");
+  const heading=document.createElement("strong");
+  heading.textContent="Documento";
+  const progress=document.createElement("span");
+  progress.className="task-documents-progress";
+  progress.textContent=submitted.length
+    ?submitted.length+" adjunto"+(submitted.length===1?"":"s")
+    :"Pendiente";
+  headingBox.append(heading,progress);
+  head.append(headingBox);
+  box.append(head);
+
+  if(submitted.length){
+    const rows=document.createElement("div");
+    rows.className="task-document-list";
+    submitted.forEach(documentRow=>{
+      const row=document.createElement("div");
+      row.className="task-document-row";
+
+      const info=document.createElement("div");
+      info.className="task-document-info";
+      const name=document.createElement("span");
+      name.textContent=documentRow.original_filename;
+      const metaLine=document.createElement("small");
+      metaLine.textContent=fmtBytes(documentRow.size_bytes)+" · "+fmtDate(documentRow.submitted_at||documentRow.created_at);
+      info.append(name,metaLine);
+
+      const open=document.createElement("button");
+      open.type="button";
+      open.className="secondary task-document-open";
+      open.textContent="Abrir";
+      open.addEventListener("click",()=>openWorkflowDocument(documentRow,open));
+
+      row.append(info,open);
+      rows.append(row);
+    });
+    box.append(rows);
+  }
+
+  const requiresAccept=execution.spec_snapshot?.steps?.accept===true;
+  const assignee=task.assigned_user_id===currentUser?.id;
+  const actionable=["pending","active"].includes(task.status);
+  const blockedByAccept=requiresAccept&&task.status==="pending";
+
+  if(assignee&&actionable&&!blockedByAccept){
+    const input=document.createElement("input");
+    input.type="file";
+    input.hidden=true;
+    input.accept="application/pdf,image/jpeg,image/png,image/webp";
+    input.setAttribute("aria-label","Seleccionar documento");
+
+    const add=document.createElement("button");
+    add.type="button";
+    add.className="primary task-document-add";
+    add.textContent=submitted.length?"Adjuntar otro":"Adjuntar documento";
+    add.addEventListener("click",()=>input.click());
+    input.addEventListener("change",()=>{
+      const file=input.files?.[0];
+      if(file)uploadWorkflowDocument(task,file,add,input);
+    });
+
+    box.append(input,add);
+  }else if(blockedByAccept&&assignee){
+    const note=document.createElement("p");
+    note.className="task-document-wait";
+    note.textContent="Acepta la tarea antes de adjuntar el documento.";
+    box.append(note);
+  }else if(!assignee&&!submitted.length){
+    const note=document.createElement("p");
+    note.className="task-document-wait";
+    note.textContent="El documento debe adjuntarlo la persona asignada.";
+    box.append(note);
+  }
+
+  if(uploading.length&&assignee&&actionable){
+    const note=document.createElement("p");
+    note.className="task-document-wait";
+    note.textContent="Hay una carga sin confirmar. Si fue interrumpida, selecciona el mismo archivo para reintentar.";
+    box.append(note);
+  }
+
+  article.append(box);
+}
+
 function renderActions(task,article){
   if(task.source_kind!=="workflow_execution")return;
 
@@ -388,6 +636,7 @@ function render(){
 
     renderPhotoResources(task,article);
     renderChecklist(task,article);
+    renderDocuments(task,article);
     renderActions(task,article);
     list.append(article);
   });
@@ -525,6 +774,32 @@ async function loadPhotoResources(){
   });
 }
 
+async function loadDocuments(){
+  documentsByExecution=new Map();
+  const executionIds=[...new Set(tasks
+    .filter(task=>task.source_kind==="workflow_execution"&&task.source_id)
+    .map(task=>task.source_id))];
+  if(!executionIds.length)return;
+
+  const {data,error}=await supabase
+    .from("workflow_execution_documents_v2")
+    .select("id,execution_id,task_id,organization_id,uploaded_by,original_filename,mime_type,size_bytes,storage_path,status,created_at,submitted_at")
+    .in("execution_id",executionIds)
+    .order("created_at");
+
+  if(error){
+    const message=String(error.message||"");
+    if(message.includes("workflow_execution_documents_v2")&&message.toLowerCase().includes("does not exist"))return;
+    throw error;
+  }
+
+  (data||[]).forEach(documentRow=>{
+    const bucket=documentsByExecution.get(documentRow.execution_id)||[];
+    bucket.push(documentRow);
+    documentsByExecution.set(documentRow.execution_id,bucket);
+  });
+}
+
 async function loadActions(){
   actionsByTask=new Map();
   const workflowIds=tasks
@@ -575,7 +850,7 @@ async function load(preserveStatus=false){
   tasks=data||[];
 
   try{
-    await Promise.all([loadManagerAccess(),loadRelated(),loadActions(),loadWorkflowExecutions(),loadPhotoResources()]);
+    await Promise.all([loadManagerAccess(),loadRelated(),loadActions(),loadWorkflowExecutions(),loadPhotoResources(),loadDocuments()]);
   }catch{
     list.replaceChildren();
     const empty=document.createElement("article");empty.className="task-empty";

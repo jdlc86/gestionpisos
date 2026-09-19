@@ -20,6 +20,7 @@ test -s docs/WORKFLOW_EXECUTION_CONTRACT.md
 test -s docs/WORKFLOW_TASKS_CONTRACT.md
 test -s docs/WORKFLOW_ACTIONS_CONTRACT.md
 test -s docs/WORKFLOW_PHOTO_EVIDENCE_CONTRACT.md
+test -s docs/WORKFLOW_DOCUMENT_EVIDENCE_CONTRACT.md
 test -s docs/workflow-tasks.html
 test -s docs/workflow-tasks.css
 test -s docs/workflow-tasks.js
@@ -215,8 +216,8 @@ grep -Fq 'managerOrganizationIds' docs/workflow-tasks.js
 ! grep -Fq 'currentUser?.app_metadata?.role' docs/workflow-tasks.js
 grep -Fq 'review_reject' docs/workflow-tasks.js
 grep -Fq 'task-actions' docs/workflow-tasks.css
-grep -Fq './workflow-tasks.css?v=2026091910' docs/workflow-tasks.html
-grep -Fq './workflow-tasks.js?v=2026091910' docs/workflow-tasks.html
+grep -Fq './workflow-tasks.css?v=2026091911' docs/workflow-tasks.html
+grep -Fq './workflow-tasks.js?v=2026091911' docs/workflow-tasks.html
 grep -Fq 'cambian tarea y ejecución juntas' docs/workflow-tasks.html
 
 grep -Fq 'workflow_execution_photo_resources_v2' docs/workflow-tasks.js
@@ -431,3 +432,32 @@ grep -Fq 'function batchNextUrl()' docs/workflow-applications.js
 grep -Fq 'Siguiente flujo · ' docs/workflow-applications.js
 grep -Fq 'Cancelar ejecución masiva' docs/workflow-applications.js
 grep -Fq '.execution-batch-progress' docs/workflow-applications.css
+
+
+# Documento operativo dentro de Tareas y sin gestor paralelo.
+grep -Fq 'const DOCUMENT_BUCKET="workflow-documents-v2"' docs/workflow-tasks.js
+grep -Fq 'function renderDocuments(task,article)' docs/workflow-tasks.js
+grep -Fq 'prepare_workflow_document_upload_v1' docs/workflow-tasks.js
+grep -Fq 'submit_workflow_document_v1' docs/workflow-tasks.js
+grep -Fq '.from(DOCUMENT_BUCKET)' docs/workflow-tasks.js
+grep -Fq '.upload(preparation.storage_path,file' docs/workflow-tasks.js
+grep -Fq '.createSignedUrl(documentRow.storage_path,300)' docs/workflow-tasks.js
+grep -Fq 'Adjuntar documento' docs/workflow-tasks.js
+grep -Fq 'Acepta la tarea antes de adjuntar el documento.' docs/workflow-tasks.js
+grep -Fq 'workflow_execution_documents_v2' docs/workflow-tasks.js
+grep -Fq 'loadDocuments()' docs/workflow-tasks.js
+grep -Fq 'renderDocuments(task,article)' docs/workflow-tasks.js
+grep -Fq '.task-documents{' docs/workflow-tasks.css
+grep -Fq '.task-document-row{' docs/workflow-tasks.css
+grep -Fq './workflow-tasks.css?v=2026091911' docs/workflow-tasks.html
+grep -Fq './workflow-tasks.js?v=2026091911' docs/workflow-tasks.html
+
+
+# Contrato Documento: evidencia privada, tarea común y cierre coordinado.
+grep -Fq 'workflow_execution_documents_v2' docs/WORKFLOW_DOCUMENT_EVIDENCE_CONTRACT.md
+grep -Fq 'workflow-documents-v2' docs/WORKFLOW_DOCUMENT_EVIDENCE_CONTRACT.md
+grep -Fq 'prepare_workflow_document_upload_v1' docs/WORKFLOW_DOCUMENT_EVIDENCE_CONTRACT.md
+grep -Fq 'submit_workflow_document_v1' docs/WORKFLOW_DOCUMENT_EVIDENCE_CONTRACT.md
+grep -Fq 'Foto completada + Checklist completado + Documento pendiente' docs/WORKFLOW_DOCUMENT_EVIDENCE_CONTRACT.md
+grep -Fq 'tenant_documents_v2' docs/WORKFLOW_DOCUMENT_EVIDENCE_CONTRACT.md
+grep -Fq 'WORKFLOW_DOCUMENT_EVIDENCE_CONTRACT.md' docs/WORKFLOW_DOCUMENTATION_INDEX.md

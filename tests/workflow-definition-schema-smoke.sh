@@ -19,6 +19,7 @@ photo_review_hardening='supabase/migrations/20260919001000_photo_review_read_aut
 authoring_separation='supabase/migrations/20260918234456_workflow_authoring_operational_separation.sql'
 draft_discard='supabase/migrations/20260919141500_workflow_draft_discard.sql'
 lifecycle='supabase/migrations/20260919143208_workflow_publish_execute_lifecycle.sql'
+document_step='supabase/migrations/20260919163000_workflow_document_step.sql'
 checklist='supabase/migrations/20260919103000_workflow_checklist_step.sql'
 
 test -s "$migration"
@@ -39,8 +40,10 @@ test -s "$photo_review_hardening"
 test -s "$authoring_separation"
 test -s "$draft_discard"
 test -s "$lifecycle"
+test -s "$document_step"
 test -s tests/workflow-draft-discard-regression.sql
 test -s tests/workflow-publish-execute-lifecycle-regression.sql
+test -s tests/workflow-document-step-regression.sql
 test -s "$checklist"
 test -s tests/workflow-definition-regression.sql
 test -s tests/workflow-authoring-separation-regression.sql
@@ -287,3 +290,27 @@ grep -Fq "grant execute on function public.update_unexecuted_workflow_v1" "$life
 grep -Fq "grant execute on function public.publish_workflow_revision_ready_v1" "$lifecycle"
 grep -Fq "grant execute on function public.delete_unexecuted_workflow_v1" "$lifecycle"
 grep -Fq "grant execute on function public.archive_workflow_definition_v1" "$lifecycle"
+
+
+# Documento: evidencia privada dentro del motor transversal de workflows.
+grep -Fq 'create table public.workflow_execution_documents_v2' "$document_step"
+grep -Fq 'alter table public.workflow_execution_documents_v2 enable row level security' "$document_step"
+grep -Fq 'workflow_execution_documents_v2_read' "$document_step"
+grep -Fq "'workflow-documents-v2'" "$document_step"
+grep -Fq 'workflow_documents_storage_insert' "$document_step"
+grep -Fq 'workflow_documents_storage_select' "$document_step"
+grep -Fq 'create or replace function public.prepare_workflow_document_upload_v1' "$document_step"
+grep -Fq 'create or replace function public.submit_workflow_document_v1' "$document_step"
+grep -Fq "raise exception 'workflow_document_actor_forbidden'" "$document_step"
+grep -Fq "raise exception 'workflow_document_accept_required'" "$document_step"
+grep -Fq "o.owner_id=v_actor::text" "$document_step"
+grep -Fq "event_type='document_evidence_submitted'" "$document_step"
+grep -Fq 'grant execute on function public.prepare_workflow_document_upload_v1' "$document_step"
+grep -Fq 'grant execute on function public.submit_workflow_document_v1' "$document_step"
+grep -Fq 'revoke all on public.workflow_execution_documents_v2 from anon' "$document_step"
+grep -Fq 'comment on table public.workflow_execution_documents_v2' "$document_step"
+
+# Foto/Checklist consultan evidencia documental real, no solo el flag del spec.
+grep -Fq 'from public.workflow_execution_documents_v2 d' "$document_step"
+grep -Fq 'where d.execution_id=v_execution.id' "$document_step"
+grep -Fq "and d.status='submitted'" "$document_step"

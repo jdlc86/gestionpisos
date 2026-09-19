@@ -55,6 +55,9 @@ grep -q 'GestionPisos' docs/manifest.webmanifest
 grep -Fq "'./legal.html'" docs/sw.js
 grep -Fq "'./privacy.html'" docs/sw.js
 grep -q 'gestionpisos-shell-v35' docs/sw.js
+grep -Fq "'./workflow-history.html'" docs/sw.js
+grep -Fq "'./workflow-history.css'" docs/sw.js
+grep -Fq "'./workflow-history.js'" docs/sw.js
 grep -Fq "'./bottom-nav.js'" docs/sw.js
 grep -Fq "'./bottom-nav.css'" docs/sw.js
 grep -Fq 'mountBottomNavigation' docs/auth-guard.js
@@ -82,7 +85,7 @@ grep -Fq 'data-theme-toggle' docs/index.html
 grep -Fq 'id="homeAccountMenu" class="account-menu"' docs/index.html
 grep -Fq 'id="mfaSetupAction"' docs/index.html
 grep -Fq 'id="logoutBtn"' docs/index.html
-for non_home_screen in docs/portfolio.html docs/operations.html docs/workflows.html docs/workflow-builder.html docs/workflow-definitions.html docs/workflow-applications.html docs/workflow-tasks.html docs/cleaning.html docs/incidents.html docs/permissions.html docs/configuration-resources.html docs/photo-verifications.html docs/photo-patterns.html; do
+for non_home_screen in docs/portfolio.html docs/operations.html docs/workflows.html docs/workflow-builder.html docs/workflow-definitions.html docs/workflow-applications.html docs/workflow-tasks.html docs/workflow-history.html docs/cleaning.html docs/incidents.html docs/permissions.html docs/configuration-resources.html docs/photo-verifications.html docs/photo-patterns.html; do
   ! grep -Fq 'data-theme-toggle' "$non_home_screen"
 done
 ! grep -Fq 'id="themeToggle"' docs/portfolio.html

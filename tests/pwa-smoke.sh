@@ -74,8 +74,8 @@ grep -Fq '.app-bottom-nav-item.is-active' docs/bottom-nav.css
 grep -Fq 'color:var(--ui-info)' docs/bottom-nav.css
 grep -Fq 'background:var(--ui-info-soft)' docs/bottom-nav.css
 grep -Fq 'const isHomePage = currentPage === "index.html"' docs/auth-guard.js
-grep -Fq 'homeActionHost' docs/auth-guard.js
-grep -Fq 'button.textContent = "MFA"' docs/auth-guard.js
+grep -Fq 'setupHomeAccountMenu(session)' docs/auth-guard.js
+grep -Fq 'mfaAction.hidden = !requiresPrivilegedMfa(session)' docs/auth-guard.js
 grep -Fq 'id="homeAccountAction"' docs/index.html
 grep -Fq 'id="homeThemeAction"' docs/index.html
 grep -Fq 'data-theme-toggle' docs/index.html

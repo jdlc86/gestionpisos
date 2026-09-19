@@ -74,8 +74,11 @@ begin
     from public.workflow_executions_v2 e
     where e.id=v_task.source_id;
 
-    if v_execution_status is not null
-      and v_execution_status not in ('completed','cancelled','failed','rejected') then
+    if v_execution_status is null then
+      raise exception 'task_delete_execution_missing' using errcode='55000';
+    end if;
+
+    if v_execution_status not in ('completed','cancelled','failed','rejected') then
       raise exception 'task_delete_execution_not_terminal' using errcode='55000';
     end if;
   end if;

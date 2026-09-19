@@ -79,6 +79,27 @@ function localMinuteString(date){
   return date.getFullYear()+"-"+pad(date.getMonth()+1)+"-"+pad(date.getDate())
     +"T"+pad(date.getHours())+":"+pad(date.getMinutes());
 }
+function zonedMinuteString(date,timezone){
+  try{
+    const parts=new Intl.DateTimeFormat("en-CA",{
+      timeZone:timezone,
+      year:"numeric",
+      month:"2-digit",
+      day:"2-digit",
+      hour:"2-digit",
+      minute:"2-digit",
+      hourCycle:"h23"
+    }).formatToParts(date);
+    const values=Object.fromEntries(parts.map(part=>[part.type,part.value]));
+    return values.year+"-"+values.month+"-"+values.day+"T"+values.hour+":"+values.minute;
+  }catch{return ""}
+}
+function scheduledMinuteIsAmbiguous(date,local,timezone){
+  for(const minutes of [-180,-150,-120,-90,-60,-30,30,60,90,120,150,180]){
+    if(zonedMinuteString(new Date(date.getTime()+minutes*60000),timezone)===local)return true;
+  }
+  return false;
+}
 function syncScheduledInstant({force=false}={}){
   const localField=field("scheduledAt");
   const timezoneField=field("scheduledTimezone");
@@ -100,10 +121,17 @@ function syncScheduledInstant({force=false}={}){
 
   const timezone=browserTimezone();
   const parsed=new Date(local);
-  if(!timezone||Number.isNaN(parsed.getTime())||localMinuteString(parsed)!==local){
+  if(!timezone||Number.isNaN(parsed.getTime())||zonedMinuteString(parsed,timezone)!==local){
     timezoneField.value="";
     utcField.value="";
     if(scheduledTimezoneHint)scheduledTimezoneHint.textContent="La fecha/hora local no es válida en este dispositivo.";
+    return false;
+  }
+
+  if(scheduledMinuteIsAmbiguous(parsed,local,timezone)){
+    timezoneField.value="";
+    utcField.value="";
+    if(scheduledTimezoneHint)scheduledTimezoneHint.textContent="Esta hora se repite por el cambio horario. Elige otra hora.";
     return false;
   }
 

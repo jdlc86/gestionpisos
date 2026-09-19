@@ -87,7 +87,11 @@ Los borradores de futura versión siguen existiendo porque protegen un flujo con
 
 `workflow-definitions.html` muestra solo flujos terminados/publicados.
 
-Cada tarjeta presenta la configuración operativa relevante, incluido el destino actual y el número de ejecuciones. La UI no expone la decisión técnica de versionar.
+Cada tarjeta presenta la configuración operativa relevante, incluido el destino actual, el número de ejecuciones y la fecha/hora de la última ejecución. La UI no expone la decisión técnica de versionar.
+
+Mis Flujos incorpora búsqueda por nombre/configuración/destino y un modo **Seleccionar** para acciones masivas. La selección puede abarcar los resultados visibles del buscador y muestra antes de actuar cuántos flujos son eliminables o archivables según su historial.
+
+Las ejecuciones múltiples se preparan como una cola asistida: el usuario selecciona varios flujos una sola vez y el sistema recorre cada uno reutilizando la pantalla de ejecución. Cada elemento vuelve a validar sus condiciones y, si necesita información, muestra únicamente los apartados pendientes. No se crean tareas masivas a ciegas.
 
 Acciones:
 
@@ -184,7 +188,7 @@ Las pruebas se ejecutan también en PostgreSQL 17 desechable desde Schema Guard.
 | --- | --- | --- |
 | Flujos de Trabajo | Implementado | Hub transversal |
 | Creador de Flujos | Implementado como recorrido integrado | Creación nueva temporal; Diseño → Destino → Listo → Publicar/Ejecutar |
-| Mis Flujos | Implementado como catálogo operativo | Ejecutar/Editar y Eliminar o Archivar según historial |
+| Mis Flujos | Implementado como catálogo operativo | Buscar, selección múltiple, ejecución en cola y Eliminar/Archivar masivos según historial |
 | Aplicaciones | Implementado como capa técnica de Destino | Validación real y recursos; integrada en la finalización |
 | Banco Fotográfico | Operativo/reutilizado | Patrones vinculables a aplicaciones y congelados por ejecución |
 | Versiones publicadas | Implementado | Editables solo antes de primera ejecución; después inmutables por historial |

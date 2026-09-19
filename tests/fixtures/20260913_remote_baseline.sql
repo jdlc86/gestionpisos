@@ -88,10 +88,18 @@ create table if not exists public.occupancies_v2 (
 
 create table if not exists public.property_staff_access_v3 (
   id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references public.organizations(id) on delete restrict,
   property_id uuid not null references public.properties_v2(id) on delete restrict,
   employee_user_id uuid not null references auth.users(id) on delete restrict,
+  assignment_type text not null
+    check (assignment_type in ('responsible','access','delegate','reader')),
+  can_write boolean not null default false,
+  valid_from timestamptz not null default now(),
   valid_until timestamptz,
-  revoked_at timestamptz
+  granted_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  revoked_at timestamptz,
+  check (valid_until is null or valid_until > valid_from)
 );
 
 create table if not exists public.audit_log_v2 (

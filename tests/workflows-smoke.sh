@@ -240,20 +240,32 @@ grep -Fq 'managerOrganizationIds' docs/workflow-tasks.js
 ! grep -Fq 'currentUser?.app_metadata?.role' docs/workflow-tasks.js
 grep -Fq 'review_reject' docs/workflow-tasks.js
 grep -Fq 'task-actions' docs/workflow-tasks.css
-grep -Fq './workflow-tasks.css?v=2026091922' docs/workflow-tasks.html
-grep -Fq './workflow-tasks.js?v=2026091922' docs/workflow-tasks.html
+grep -Fq './workflow-tasks.css?v=2026091923' docs/workflow-tasks.html
+grep -Fq './workflow-tasks.js?v=2026091923' docs/workflow-tasks.html
 grep -Fq 'cambian tarea y ejecución juntas' docs/workflow-tasks.html
 grep -Fq 'id="taskSelectionToggle"' docs/workflow-tasks.html
 grep -Fq 'id="tasksSelectionHeader"' docs/workflow-tasks.html
 grep -Fq 'id="taskSelectVisible"' docs/workflow-tasks.html
 grep -Fq 'id="taskDeselectVisible"' docs/workflow-tasks.html
 grep -Fq 'id="taskBulkDock"' docs/workflow-tasks.html
-grep -Fq 'id="taskBulkDelete"' docs/workflow-tasks.html
+grep -Fq 'id="taskBulkAction"' docs/workflow-tasks.html
 grep -Fq 'const selectedTaskIds=new Set()' docs/workflow-tasks.js
 grep -Fq 'function bindTaskLongPress(article,task)' docs/workflow-tasks.js
 grep -Fq 'function selectedDeletableTasks()' docs/workflow-tasks.js
 grep -Fq 'supabase.rpc("delete_task_card_v1"' docs/workflow-tasks.js
 grep -Fq '.is("removed_at",null)' docs/workflow-tasks.js
+grep -Fq 'id="taskHiddenFilterOption"' docs/workflow-tasks.html
+grep -Fq '>Ocultas</option>' docs/workflow-tasks.html
+grep -Fq 'id="taskBulkActionLabel"' docs/workflow-tasks.html
+grep -Fq 'let hiddenTaskIds=new Set()' docs/workflow-tasks.js
+grep -Fq 'list_my_hidden_task_cards_v1' docs/workflow-tasks.js
+grep -Fq 'hide_my_task_card_v1' docs/workflow-tasks.js
+grep -Fq 'unhide_my_task_card_v1' docs/workflow-tasks.js
+grep -Fq 'function selectionOperation()' docs/workflow-tasks.js
+grep -Fq 'filter.value==="hidden"' docs/workflow-tasks.js
+grep -Fq 'Puedes recuperarlas desde Mostrar → Ocultas.' docs/workflow-tasks.js
+grep -Fq '.task-badge--personal-hidden{' docs/workflow-tasks.css
+grep -Fq '.tasks-bulk-action--personal{' docs/workflow-tasks.css
 grep -Fq 'aal2_required' docs/workflow-tasks.js
 grep -Fq '.is("removed_at",null)' docs/portfolio.js
 grep -Fq 'El historial, la ejecución y sus evidencias se conservarán.' docs/workflow-tasks.js
@@ -493,8 +505,8 @@ grep -Fq 'loadDocuments()' docs/workflow-tasks.js
 grep -Fq 'renderDocuments(task,article)' docs/workflow-tasks.js
 grep -Fq '.task-documents{' docs/workflow-tasks.css
 grep -Fq '.task-document-row{' docs/workflow-tasks.css
-grep -Fq './workflow-tasks.css?v=2026091922' docs/workflow-tasks.html
-grep -Fq './workflow-tasks.js?v=2026091922' docs/workflow-tasks.html
+grep -Fq './workflow-tasks.css?v=2026091923' docs/workflow-tasks.html
+grep -Fq './workflow-tasks.js?v=2026091923' docs/workflow-tasks.html
 
 
 # Contrato Documento: evidencia privada, tarea común y cierre coordinado.

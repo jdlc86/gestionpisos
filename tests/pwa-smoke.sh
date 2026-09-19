@@ -77,6 +77,7 @@ for non_home_screen in docs/portfolio.html docs/operations.html docs/workflows.h
   ! grep -Fq 'data-theme-toggle' "$non_home_screen"
 done
 ! grep -Fq 'id="themeToggle"' docs/portfolio.html
+! grep -Fq 'mfa-setup.html?next=configuration-resources.html' docs/configuration-resources.html
 grep -Fq '.desktop-home-link{display:none!important}' docs/app.css
 grep -Fq '.context-back{' docs/app.css
 grep -Fq -- '--ui-action:#0969da' docs/app.css

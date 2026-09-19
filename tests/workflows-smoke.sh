@@ -106,7 +106,7 @@ grep -Fq '.builder-action--neutral{' docs/workflow-builder.css
 grep -Fq 'grid-template-columns:auto minmax(0,1fr) auto' docs/workflow-builder.css
 grep -Fq 'builder-action builder-action--primary' docs/workflow-builder.html
 grep -Fq 'body.builder-editor-active .topbar{display:none}' docs/workflow-builder.css
-grep -Fq 'background:var(--ui-info)' docs/workflow-builder.css
+grep -Fq 'background:var(--ui-action)' docs/workflow-builder.css
 grep -Fq 'document.body.classList.toggle("builder-editor-active",editorRequested)' docs/workflow-builder.js
 grep -Fq 'desktop-home-link' docs/workflow-builder.html
 ! grep -Fq '<section class="hero">' docs/workflow-builder.html

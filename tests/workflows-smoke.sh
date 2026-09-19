@@ -259,6 +259,11 @@ grep -Fq '>Ocultas</option>' docs/workflow-tasks.html
 grep -Fq 'id="taskBulkActionLabel"' docs/workflow-tasks.html
 grep -Fq 'let hiddenTaskIds=new Set()' docs/workflow-tasks.js
 grep -Fq 'list_my_hidden_task_cards_v1' docs/workflow-tasks.js
+grep -Fq '.range(from,from+pageSize-1)' docs/workflow-tasks.js
+grep -Fq 'async function loadHiddenTaskRows()' docs/workflow-tasks.js
+grep -Fq 'const missing=[...hiddenTaskIds].filter(id=>!loadedIds.has(id))' docs/workflow-tasks.js
+grep -Fq 'if(!currentUser?.id||isManager())return;' docs/workflow-tasks.js
+grep -Fq 'if(isManager()){' docs/workflow-tasks.js
 grep -Fq 'hide_my_task_card_v1' docs/workflow-tasks.js
 grep -Fq 'unhide_my_task_card_v1' docs/workflow-tasks.js
 grep -Fq 'function selectionOperation()' docs/workflow-tasks.js

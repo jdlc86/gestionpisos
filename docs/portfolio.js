@@ -492,7 +492,7 @@ async function openTasks(item) {
 }
 async function loadTasks() {
   tasksList.replaceChildren(createElement("li","muted","Cargando tareas…"));
-  const {data,error}=await supabase.from("tenant_tasks_v2").select("id,task_type,title,description,status,due_at,origin,tenant_task_actions_v2(id,action_key,label,from_status,to_status,requires_note,sort_order)").eq("tenant_id",tasksTenant.tenantId).order("created_at",{ascending:false});
+  const {data,error}=await supabase.from("tenant_tasks_v2").select("id,task_type,title,description,status,due_at,origin,tenant_task_actions_v2(id,action_key,label,from_status,to_status,requires_note,sort_order)").eq("tenant_id",tasksTenant.tenantId).is("removed_at",null).order("created_at",{ascending:false});
   if(error){ tasksList.replaceChildren(createElement("li","status error","No se pudieron cargar las tareas.")); return; }
   tasksList.replaceChildren();
   if(!data.length){tasksList.append(createElement("li","muted","Este inquilino todavía no tiene tareas."));return;}

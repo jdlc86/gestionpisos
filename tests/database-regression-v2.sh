@@ -88,6 +88,7 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -v "$repo_path:/w
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260919190050_workflow_scheduled_exact_time.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260919193000_workflow_recurring.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260919203000_web_push_notifications.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260919210000_task_card_removal.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/database-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/photo-verification-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-definition-regression.sql
@@ -99,6 +100,7 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -v "$repo_path:/w
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-scheduled-once-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-recurring-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/web-push-regression.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/task-card-removal-regression.sql
 
     trap - EXIT
     cleanup

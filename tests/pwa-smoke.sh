@@ -54,7 +54,7 @@ grep -q 'serviceWorker' docs/app.js
 grep -q 'GestionPisos' docs/manifest.webmanifest
 grep -Fq "'./legal.html'" docs/sw.js
 grep -Fq "'./privacy.html'" docs/sw.js
-grep -q 'gestionpisos-shell-v17' docs/sw.js
+grep -q 'gestionpisos-shell-v18' docs/sw.js
 grep -Fq "'./bottom-nav.js'" docs/sw.js
 grep -Fq "'./bottom-nav.css'" docs/sw.js
 grep -Fq 'mountBottomNavigation' docs/auth-guard.js
@@ -330,3 +330,8 @@ grep -Fq 'deactivate_internal_staff_user' docs/permissions.js
 grep -Fq 'disable-internal-staff-auth' docs/permissions.js
 test -s supabase/functions/disable-internal-staff-auth/index.ts
 grep -Fq 'ban_duration: "876000h"' supabase/functions/disable-internal-staff-auth/index.ts
+
+grep -Fq '[hidden]{display:none!important}' docs/app.css
+grep -Fq 'input[type="checkbox"],input[type="radio"]' docs/app.css
+grep -Fq '<span>Puede recuperar ROOT</span>' docs/permissions.html
+grep -Fq 'class="builder-editor-state"' docs/workflow-builder.html

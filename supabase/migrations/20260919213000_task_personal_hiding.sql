@@ -29,42 +29,29 @@ as $task_personal_hide_allowed$
   select
     p_actor is not null
     and p_task.removed_at is null
+    and p_task.assigned_user_id=p_actor
     and p_task.status in ('completed','cancelled','failed','rejected','refunded','held')
     and (
-      (
-        p_task.assigned_user_id=p_actor
-        and (
-          exists(
-            select 1
-            from public.user_roles ur
-            where ur.user_id=p_actor
-              and ur.organization_id=p_task.organization_id
-              and ur.revoked_at is null
-              and ur.role in ('employee','tenant','owner')
-          )
-          or exists(
-            select 1
-            from public.owners o
-            where o.user_id=p_actor
-              and o.organization_id=p_task.organization_id
-              and o.status='active'
-              and o.archived_at is null
-          )
-          or exists(
-            select 1
-            from public.tenants_v2 tn
-            where tn.user_id=p_actor
-              and tn.organization_id=p_task.organization_id
-              and tn.status='active'
-              and tn.archived_at is null
-          )
-        )
+      exists(
+        select 1
+        from public.user_roles ur
+        where ur.user_id=p_actor
+          and ur.organization_id=p_task.organization_id
+          and ur.revoked_at is null
+          and ur.role in ('employee','tenant','owner')
+      )
+      or exists(
+        select 1
+        from public.owners o
+        where o.user_id=p_actor
+          and o.organization_id=p_task.organization_id
+          and o.status='active'
+          and o.archived_at is null
       )
       or exists(
         select 1
         from public.tenants_v2 tn
-        where tn.id=p_task.tenant_id
-          and tn.user_id=p_actor
+        where tn.user_id=p_actor
           and tn.organization_id=p_task.organization_id
           and tn.status='active'
           and tn.archived_at is null
@@ -176,6 +163,6 @@ grant execute on function public.list_my_hidden_task_cards_v1()
 comment on table public.tenant_task_personal_hidden_v1 is
   'Preferencia personal: oculta una tarjeta terminal solo de la bandeja del usuario.';
 comment on function public.hide_my_task_card_v1(uuid) is
-  'Oculta de la bandeja propia una tarea terminal visible para empleado, inquilino o propietario.';
+  'Oculta de la bandeja propia una tarea terminal asignada al empleado, inquilino o propietario actual.';
 comment on function public.unhide_my_task_card_v1(uuid) is
   'Restaura una tarjeta previamente ocultada por el usuario actual.';

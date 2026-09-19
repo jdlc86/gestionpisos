@@ -117,6 +117,24 @@ a.card:active{transform:translateY(1px)}
 
 .module-heading{display:flex;align-items:center;gap:9px}
 .ui-nav-icon{display:inline-flex;flex:0 0 24px;width:24px;align-items:center;justify-content:center;border:0;background:transparent;color:var(--ui-muted);line-height:1}.ui-nav-icon svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.home-module-icon{width:28px;flex-basis:28px;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif;font-size:24px;font-weight:400;filter:saturate(.92)}
+.app-footer{display:grid;gap:7px;margin:32px 0 4px;padding:24px 10px 8px;border-top:1px solid var(--ui-border);color:var(--ui-muted);text-align:center}
+.app-footer p{margin:0}
+.app-footer__copyright{font-size:12px;line-height:1.45}
+.app-footer__build{font-size:11px;font-variant-numeric:tabular-nums}
+.app-footer__links{display:flex;align-items:center;justify-content:center;gap:9px;font-size:12px}
+.app-footer__links a{color:var(--ui-info);text-decoration:none}
+.app-footer__links a:hover{text-decoration:underline}
+.app-footer__brand{font-size:12px}
+.app-footer__brand strong{color:color-mix(in srgb,var(--ui-text) 56%,var(--ui-muted));font-size:14px}
+.legal-shell{width:min(760px,100%)}
+.legal-copy{display:grid;gap:18px;padding:18px;border:1px solid var(--ui-border);border-radius:var(--ui-radius);background:var(--ui-surface)}
+.legal-copy h2,.legal-copy h3{margin:0}
+.legal-copy h2{font-size:22px}
+.legal-copy h3{font-size:15px}
+.legal-copy p,.legal-copy li{color:var(--ui-muted);font-size:13px;line-height:1.6}
+.legal-copy p{margin:0}
+.legal-copy ul{display:grid;gap:8px;margin:0;padding-left:20px}
 
 .status{display:flex;align-items:center;gap:10px;margin-top:18px;padding:12px 14px;border:1px solid var(--ui-border);border-radius:var(--ui-radius);background:var(--ui-surface);color:var(--ui-muted);font-size:12px;line-height:1.45}
 .status.error{border-color:var(--ui-danger-border);background:var(--ui-danger-soft);color:var(--ui-danger)}

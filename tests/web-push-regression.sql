@@ -133,18 +133,6 @@ begin
 end;
 $inactive_recipient_filtered$;
 
-insert into public.profiles(
-  user_id,organization_id,display_name,email,status
-) values (
-  '33333333-3333-4333-8333-333333333333'::uuid,
-  '11111111-1111-4111-8111-111111111111'::uuid,
-  'Push regression recipient',
-  'push-regression@example.invalid',
-  'active'
-)
-on conflict(user_id) do update
-set status='active',archived_at=null;
-
 insert into public.user_roles(
   user_id,organization_id,role
 ) values (
@@ -153,6 +141,26 @@ insert into public.user_roles(
   'admin'
 )
 on conflict do nothing;
+
+do $activate_profile_if_present$
+begin
+  if to_regclass('public.profiles') is not null then
+    execute $profile$
+      insert into public.profiles(
+        user_id,organization_id,display_name,email,status
+      ) values (
+        '33333333-3333-4333-8333-333333333333'::uuid,
+        '11111111-1111-4111-8111-111111111111'::uuid,
+        'Push regression recipient',
+        'push-regression@example.invalid',
+        'active'
+      )
+      on conflict(user_id) do update
+      set status='active',archived_at=null
+    $profile$;
+  end if;
+end;
+$activate_profile_if_present$;
 
 do $active_recipient_visible$
 begin

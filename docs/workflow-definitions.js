@@ -2,6 +2,15 @@ import { supabase } from "./supabase-client.js";
 
 const list=document.getElementById("workflowDefinitions");
 const status=document.getElementById("definitionsStatus");
+const searchInput=document.getElementById("workflowSearch");
+const selectionToggle=document.getElementById("workflowSelectionToggle");
+const bulkBar=document.getElementById("workflowBulkBar");
+const selectVisible=document.getElementById("workflowSelectVisible");
+const selectionSummary=document.getElementById("workflowSelectionSummary");
+const bulkExecute=document.getElementById("workflowBulkExecute");
+const bulkDelete=document.getElementById("workflowBulkDelete");
+const bulkArchive=document.getElementById("workflowBulkArchive");
+
 const params=new URLSearchParams(window.location.search);
 const highlightedDefinition=params.get("published")||"";
 
@@ -12,6 +21,12 @@ let executionsByDefinition=new Map();
 let propertyById=new Map();
 let roomById=new Map();
 let occupancyById=new Map();
+let publishedRows=[];
+let filteredRows=[];
+let selectionMode=false;
+const selectedIds=new Set();
+
+const BATCH_EXECUTION_PREFIX="workflow-batch-execution:";
 
 const labels={
   flowType:{cleaning:"Limpieza",inspection:"Inspección",maintenance:"Mantenimiento",checkin:"Check-in",checkout:"Check-out",custom:"Personalizado"},
@@ -29,13 +44,14 @@ function setStatus(message,error=false){
   status?.classList.toggle("error",error);
 }
 function dateTime(value){
-  if(!value)return "—";
+  if(!value)return "Nunca";
   try{return new Intl.DateTimeFormat("es-ES",{dateStyle:"medium",timeStyle:"short"}).format(new Date(value))}catch{return value}
 }
 function latestVersion(row){return versionsByDefinition.get(row.id)?.[0]||null}
 function publishedSpec(row){return latestVersion(row)?.spec||{}}
 function applicationsFor(row){return applicationsByDefinition.get(row.id)||[]}
 function executionsFor(row){return executionsByDefinition.get(row.id)||[]}
+function latestExecution(row){return executionsFor(row)[0]||null}
 function hasHistory(row){return executionsFor(row).length>0}
 function currentApplication(row){
   const latest=latestVersion(row);
@@ -64,11 +80,25 @@ function activationText(row){
   }
   return base;
 }
-function meta(label,value){
-  const box=document.createElement("div");box.className="definition-meta-item";
+function meta(label,value,{className=""}={}){
+  const box=document.createElement("div");
+  box.className="definition-meta-item"+(className?" "+className:"");
   const strong=document.createElement("strong");strong.textContent=label;
   const span=document.createElement("span");span.textContent=value||"—";
   box.append(strong,span);return box;
+}
+function executionMeta(row){
+  const count=executionsFor(row).length;
+  const latest=latestExecution(row);
+  const box=document.createElement("div");
+  box.className="definition-meta-item";
+  const strong=document.createElement("strong");strong.textContent="Ejecuciones";
+  const value=document.createElement("span");value.className="definition-execution-value";
+  const countLine=document.createElement("span");countLine.textContent=String(count);
+  const last=document.createElement("small");last.textContent="Última: "+(latest?dateTime(latest.created_at):"Nunca");
+  value.append(countLine,last);
+  box.append(strong,value);
+  return box;
 }
 function targetText(app){
   if(!app)return "Sin destino configurado";
@@ -147,23 +177,98 @@ async function archiveDefinition(row,button){
   await load();
 }
 
+function rowSearchText(row){
+  const spec=publishedSpec(row);
+  const app=currentApplication(row);
+  return [
+    spec.flowName,row.name,
+    text("flowType",String(spec.flowType||"")),
+    targetText(app),
+    activationText(row),
+    text("assignmentType",String(spec.assignmentType||"")),
+    "v"+(latestVersion(row)?.version||"")
+  ].filter(Boolean).join(" ").toLocaleLowerCase("es");
+}
+function rowMatchesSearch(row){
+  const query=String(searchInput?.value||"").trim().toLocaleLowerCase("es");
+  return !query||rowSearchText(row).includes(query);
+}
+function selectedRows(){
+  return publishedRows.filter(row=>selectedIds.has(row.id));
+}
+function selectedDeletableRows(){
+  return selectedRows().filter(row=>!hasHistory(row));
+}
+function selectedArchivableRows(){
+  return selectedRows().filter(row=>hasHistory(row));
+}
+function updateBulkState(){
+  if(!bulkBar)return;
+  bulkBar.hidden=!selectionMode;
+  list.classList.toggle("is-selecting",selectionMode);
+  selectionToggle.textContent=selectionMode?"Cancelar selección":"Seleccionar";
+
+  const selected=selectedRows();
+  const deletable=selected.filter(row=>!hasHistory(row));
+  const archivable=selected.filter(row=>hasHistory(row));
+
+  selectionSummary.textContent=selected.length
+    +" seleccionado"+(selected.length===1?"":"s")
+    +" · "+deletable.length+" eliminable"+(deletable.length===1?"":"s")
+    +" · "+archivable.length+" archivable"+(archivable.length===1?"":"s");
+
+  bulkExecute.disabled=selected.length===0;
+  bulkDelete.disabled=deletable.length===0;
+  bulkDelete.textContent=deletable.length?"Eliminar ("+deletable.length+")":"Eliminar";
+  bulkArchive.disabled=archivable.length===0;
+  bulkArchive.textContent=archivable.length?"Archivar ("+archivable.length+")":"Archivar";
+
+  const visibleIds=filteredRows.map(row=>row.id);
+  const selectedVisible=visibleIds.filter(id=>selectedIds.has(id)).length;
+  selectVisible.checked=visibleIds.length>0&&selectedVisible===visibleIds.length;
+  selectVisible.indeterminate=selectedVisible>0&&selectedVisible<visibleIds.length;
+  selectVisible.disabled=visibleIds.length===0;
+}
+function toggleRowSelection(row,checked,article){
+  if(checked)selectedIds.add(row.id);else selectedIds.delete(row.id);
+  article.classList.toggle("is-selected",checked);
+  updateBulkState();
+}
+function clearSelection(){
+  selectedIds.clear();
+  selectionMode=false;
+  renderDefinitions();
+}
+
 function card(row){
   const version=latestVersion(row);
   const spec=publishedSpec(row);
   const draft=revisionDraftByDefinition.get(row.id)||null;
   const app=currentApplication(row);
   const history=hasHistory(row);
-  const executionCount=executionsFor(row).length;
 
-  const article=document.createElement("article");article.className="definition-card";
+  const article=document.createElement("article");
+  article.className="definition-card";
   if(row.id===highlightedDefinition)article.classList.add("is-highlighted");
+  if(selectedIds.has(row.id))article.classList.add("is-selected");
 
   const head=document.createElement("div");head.className="definition-card-head";
+  const headMain=document.createElement("div");headMain.className="definition-card-head-main";
+
+  const selector=document.createElement("label");selector.className="definition-select";
+  const checkbox=document.createElement("input");checkbox.type="checkbox";checkbox.checked=selectedIds.has(row.id);
+  checkbox.setAttribute("aria-label","Seleccionar "+String(spec.flowName||row.name||"flujo"));
+  const selectorText=document.createElement("span");selectorText.textContent="Seleccionar";
+  selector.append(checkbox,selectorText);
+  checkbox.addEventListener("change",()=>toggleRowSelection(row,checkbox.checked,article));
+
   const title=document.createElement("h3");title.textContent=String(spec.flowName||row.name||"Flujo");
+  headMain.append(selector,title);
+
   const badge=document.createElement("span");
   badge.className="definition-badge "+(history?"definition-badge--complete":"definition-badge--incomplete");
   badge.textContent=history?"Con historial":"Sin ejecuciones";
-  head.append(title,badge);
+  head.append(headMain,badge);
 
   const details=document.createElement("div");details.className="definition-meta";
   details.append(
@@ -172,7 +277,7 @@ function card(row){
     meta("Activación",activationText(row)),
     meta("Asignación",text("assignmentType",String(spec.assignmentType||""))),
     meta("Versión actual","v"+(version?.version||"?")),
-    meta("Ejecuciones",String(executionCount))
+    executionMeta(row)
   );
 
   article.append(head,details);
@@ -234,15 +339,154 @@ function card(row){
   return article;
 }
 
-function emptyState(){
+function emptyState(message="Todavía no hay flujos"){
   const article=document.createElement("article");article.className="definitions-empty";
-  const h=document.createElement("h3");h.textContent="Todavía no hay flujos";
-  const p=document.createElement("p");p.textContent="Los flujos aparecen aquí cuando completas el Creador y eliges Publicar o Ejecutar.";
-  const link=document.createElement("a");link.className="primary definitions-create";link.href="./workflow-builder.html";link.textContent="Crear flujo";
-  article.append(h,p,link);return article;
+  const h=document.createElement("h3");h.textContent=message;
+  const p=document.createElement("p");
+  p.textContent=publishedRows.length
+    ?"Prueba con otro término de búsqueda."
+    :"Los flujos aparecen aquí cuando completas el Creador y eliges Publicar o Ejecutar.";
+  article.append(h,p);
+  if(!publishedRows.length){
+    const link=document.createElement("a");link.className="primary definitions-create";link.href="./workflow-builder.html";link.textContent="Crear flujo";
+    article.append(link);
+  }
+  return article;
 }
 
-async function load(){
+function renderDefinitions(){
+  filteredRows=publishedRows.filter(rowMatchesSearch);
+  list.replaceChildren();
+
+  if(!filteredRows.length){
+    list.append(emptyState(publishedRows.length?"No hay coincidencias":"Todavía no hay flujos"));
+    updateBulkState();
+    return;
+  }
+
+  filteredRows.forEach(row=>list.append(card(row)));
+  updateBulkState();
+}
+
+async function bulkDeleteSelected(){
+  const eligible=selectedDeletableRows();
+  const skipped=selectedRows().length-eligible.length;
+  if(!eligible.length)return;
+
+  const message="Se eliminarán definitivamente "+eligible.length+" flujo"+(eligible.length===1?"":"s")+" sin historial."
+    +(skipped?" "+skipped+" seleccionado"+(skipped===1?" tiene":"s tienen")+" historial y no se eliminará"+(skipped===1?"":"n")+".":"")
+    +" ¿Continuar?";
+  if(!window.confirm(message))return;
+
+  bulkDelete.disabled=true;
+  bulkArchive.disabled=true;
+  bulkExecute.disabled=true;
+  setStatus("Eliminando "+eligible.length+" flujo"+(eligible.length===1?"":"s")+"…");
+
+  let ok=0;
+  const failures=[];
+  for(const row of eligible){
+    const {error}=await supabase.rpc("delete_unexecuted_workflow_v1",{p_definition_id:row.id});
+    if(error)failures.push({row,error});
+    else{ok++;selectedIds.delete(row.id)}
+  }
+
+  await load({preserveSelection:true});
+  if(failures.length){
+    setStatus(ok+" eliminado"+(ok===1?"":"s")+" · "+failures.length+" no se pudieron eliminar. "+errorText(failures[0].error),true);
+  }else{
+    setStatus(ok+" flujo"+(ok===1?" eliminado.":"s eliminados."));
+  }
+}
+
+async function bulkArchiveSelected(){
+  const eligible=selectedArchivableRows();
+  const skipped=selectedRows().length-eligible.length;
+  if(!eligible.length)return;
+
+  const message="Se archivarán "+eligible.length+" flujo"+(eligible.length===1?"":"s")+" con historial. Sus tareas y ejecuciones se conservarán."
+    +(skipped?" "+skipped+" seleccionado"+(skipped===1?" no tiene":"s no tienen")+" historial y no se archivará"+(skipped===1?"":"n")+".":"")
+    +" ¿Continuar?";
+  if(!window.confirm(message))return;
+
+  bulkDelete.disabled=true;
+  bulkArchive.disabled=true;
+  bulkExecute.disabled=true;
+  setStatus("Archivando "+eligible.length+" flujo"+(eligible.length===1?"":"s")+"…");
+
+  let ok=0;
+  const failures=[];
+  for(const row of eligible){
+    const {error}=await supabase.rpc("archive_workflow_definition_v1",{p_definition_id:row.id});
+    if(error)failures.push({row,error});
+    else{ok++;selectedIds.delete(row.id)}
+  }
+
+  await load({preserveSelection:true});
+  if(failures.length){
+    setStatus(ok+" archivado"+(ok===1?"":"s")+" · "+failures.length+" no se pudieron archivar. "+errorText(failures[0].error),true);
+  }else{
+    setStatus(ok+" flujo"+(ok===1?" archivado.":"s archivados."));
+  }
+}
+
+function startBulkExecution(){
+  const selected=selectedRows();
+  if(!selected.length)return;
+
+  const confirmed=window.confirm(
+    "Se prepararán "+selected.length+" flujo"+(selected.length===1?"":"s")+" para ejecución. "
+    +"Si alguno necesita datos, el sistema te mostrará solo lo que falta antes de crear su tarea. ¿Continuar?"
+  );
+  if(!confirmed)return;
+
+  const token=globalThis.crypto?.randomUUID?.()||("batch-"+Date.now()+"-"+Math.random().toString(36).slice(2));
+  const queue={
+    createdAt:Date.now(),
+    index:0,
+    items:selected.map(row=>({
+      definitionId:row.id,
+      applicationId:currentApplication(row)?.id||null,
+      name:String(publishedSpec(row).flowName||row.name||"Flujo")
+    }))
+  };
+
+  try{
+    sessionStorage.setItem(BATCH_EXECUTION_PREFIX+token,JSON.stringify(queue));
+  }catch{
+    setStatus("No se pudo preparar la cola de ejecución en esta sesión.",true);
+    return;
+  }
+
+  const first=queue.items[0];
+  const url=new URL("./workflow-applications.html",window.location.href);
+  url.searchParams.set("definition",first.definitionId);
+  url.searchParams.set("setup","1");
+  url.searchParams.set("intent","execute");
+  url.searchParams.set("from","mis-flujos");
+  url.searchParams.set("batch",token);
+  url.searchParams.set("batch_index","0");
+  if(first.applicationId)url.searchParams.set("application",first.applicationId);
+  window.location.href=url.href;
+}
+
+searchInput?.addEventListener("input",renderDefinitions);
+selectionToggle?.addEventListener("click",()=>{
+  selectionMode=!selectionMode;
+  if(!selectionMode)selectedIds.clear();
+  renderDefinitions();
+});
+selectVisible?.addEventListener("change",()=>{
+  filteredRows.forEach(row=>{
+    if(selectVisible.checked)selectedIds.add(row.id);else selectedIds.delete(row.id);
+  });
+  renderDefinitions();
+});
+bulkExecute?.addEventListener("click",startBulkExecution);
+bulkDelete?.addEventListener("click",bulkDeleteSelected);
+bulkArchive?.addEventListener("click",bulkArchiveSelected);
+
+async function load({preserveSelection=false}={}){
   const {data:userData,error:userError}=await supabase.auth.getUser();
   if(userError||!userData?.user){
     list.replaceChildren();
@@ -369,15 +613,22 @@ async function load(){
     (occupancyResult.data||[]).forEach(item=>occupancyById.set(item.id,item));
   }
 
-  const publishedRows=rows.filter(row=>latestVersion(row));
-  list.replaceChildren();
+  publishedRows=rows.filter(row=>latestVersion(row));
+
+  if(!preserveSelection){
+    selectedIds.clear();
+  }else{
+    const existing=new Set(publishedRows.map(row=>row.id));
+    [...selectedIds].forEach(id=>{if(!existing.has(id))selectedIds.delete(id)});
+  }
+
+  renderDefinitions();
+
   if(!publishedRows.length){
-    list.append(emptyState());
     setStatus("No hay flujos publicados en tu ámbito.");
     return;
   }
 
-  publishedRows.forEach(row=>list.append(card(row)));
   const withHistory=publishedRows.filter(hasHistory).length;
   const withoutHistory=publishedRows.length-withHistory;
   setStatus(

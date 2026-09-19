@@ -83,7 +83,7 @@ grep -Fq '>Nuevo flujo</a>' docs/workflow-builder.html
 grep -Fq 'Paso 1 de 7' docs/workflow-builder.html
 grep -Fq 'Paso 7 de 7' docs/workflow-builder.html
 grep -Fq 'sessionStorage.setItem(DRAFT_KEY' docs/workflow-builder.js
-grep -Fq 'save_workflow_definition_draft_v1' docs/workflow-builder.js
+grep -Fq 'save_workflow_definition_draft_v2' docs/workflow-builder.js
 grep -Fq 'save_workflow_definition_revision_draft_v1' docs/workflow-builder.js
 grep -Fq 'publish_workflow_definition_v1' docs/workflow-builder.js
 grep -Fq 'publish_workflow_definition_revision_v1' docs/workflow-builder.js

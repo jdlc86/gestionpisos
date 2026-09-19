@@ -372,7 +372,7 @@ grep -Fq 'function renderExecutionAssist(app)' docs/workflow-applications.js
 grep -Fq 'function executionReviewCard' docs/workflow-applications.js
 grep -Fq 'Falta información para ejecutar' docs/workflow-applications.js
 grep -Fq 'Completa únicamente los apartados abiertos para continuar.' docs/workflow-applications.js
-grep -Fq 'cancel.textContent="Cancelar ejecución"' docs/workflow-applications.js
+grep -Fq 'cancel.textContent=batchQueue?"Cancelar ejecución masiva":"Cancelar ejecución"' docs/workflow-applications.js
 grep -Fq 'firstPending.scrollIntoView' docs/workflow-applications.js
 grep -Fq 'execution-field-missing' docs/workflow-applications.js
 grep -Fq '.execution-review-card.is-pending' docs/workflow-applications.css

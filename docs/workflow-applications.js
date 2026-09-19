@@ -169,6 +169,11 @@ function errorText(error){
   if(message.includes("workflow_manual_assignee_required"))return "Selecciona quién realizará esta ejecución.";
   if(message.includes("workflow_manual_assignee_not_eligible"))return "La persona seleccionada no tiene capacidad operativa válida para este ámbito.";
   if(message.includes("workflow_property_responsible_unavailable"))return "Este piso no tiene un responsable operativo vigente para ejecutar el flujo.";
+  if(message.includes("workflow_schedule_must_be_future"))return "La fecha programada debe estar en el futuro.";
+  if(message.includes("workflow_schedule_timezone_invalid")||message.includes("workflow_schedule_timezone_conflict"))return "No se pudo validar la zona horaria de esta programación. Vuelve al Creador y revisa la fecha.";
+  if(message.includes("workflow_scheduled_utc_invalid")||message.includes("workflow_schedule_time_mismatch"))return "La fecha y hora programadas no representan un instante válido. Vuelve al Creador y selecciónalas de nuevo.";
+  if(message.includes("workflow_schedule_assignment_not_supported"))return "Esta regla de asignación todavía no admite programación automática.";
+  if(message.includes("workflow_scheduled_execute_now_forbidden")||message.includes("workflow_scheduled_manual_execution_forbidden"))return "Los flujos de Fecha concreta se programan; no se ejecutan manualmente desde este paso.";
   if(message.includes("workflow_assignment_not_supported"))return "Esta regla de asignación todavía no está habilitada para Ejecutar ahora.";
   if(message.includes("workflow_execution_property_unavailable")||message.includes("workflow_execution_room_unavailable")||message.includes("workflow_execution_occupancy_unavailable"))return "El destino de esta aplicación ya no está disponible para nuevas ejecuciones.";
   if(message.includes("workflow_application_not_executable"))return "Este destino ya no está disponible para nuevas ejecuciones.";
@@ -370,13 +375,29 @@ function targetFromControls(){
   };
 }
 
+function scheduledDisplay(spec){
+  if(!spec?.scheduledAtUtc||!spec?.scheduledTimezone)return "Fecha pendiente";
+  const parsed=new Date(spec.scheduledAtUtc);
+  if(Number.isNaN(parsed.getTime()))return String(spec.scheduledAt||"Fecha pendiente");
+  try{
+    return new Intl.DateTimeFormat("es-ES",{
+      dateStyle:"medium",
+      timeStyle:"short",
+      timeZone:spec.scheduledTimezone
+    }).format(parsed)+" · "+spec.scheduledTimezone;
+  }catch{
+    return String(spec.scheduledAt||"Fecha pendiente")+" · "+String(spec.scheduledTimezone||"");
+  }
+}
+
 function transientAssignmentControls(app){
   const spec=transientPayload?.spec||{};
   const assignmentType=String(spec.assignmentType||"");
+  const scheduled=String(spec.triggerType||"")==="scheduled_once";
   const wrap=document.createElement("div");
   wrap.className="execution-controls";
   const title=document.createElement("strong");
-  title.textContent="Decisión final";
+  title.textContent=scheduled?"Programación":"Decisión final";
   wrap.append(title);
 
   let assigneeSelect=null;
@@ -384,7 +405,9 @@ function transientAssignmentControls(app){
   if(assignmentType==="manual"){
     const candidates=executionCandidates(app);
     const label=document.createElement("label");
-    label.textContent="¿Quién realizará esta tarea si eliges Ejecutar?";
+    label.textContent=scheduled
+      ?"¿Quién realizará esta tarea cuando llegue la fecha?"
+      :"¿Quién realizará esta tarea si eliges Ejecutar?";
     assigneeSelect=document.createElement("select");
     assigneeSelect.append(option("","Selecciona una persona"));
     assigneeSelect.append(...candidates.map(person=>option(person.user_id,candidateLabel(person))));
@@ -394,19 +417,25 @@ function transientAssignmentControls(app){
   }else if(assignmentType==="property_responsible"){
     const note=document.createElement("span");
     note.className="execution-note";
-    note.textContent="Si ejecutas, se validará de nuevo el responsable operativo vigente del piso.";
+    note.textContent=scheduled
+      ?"El responsable operativo se resolverá de nuevo cuando llegue la fecha programada."
+      :"Si ejecutas, se validará de nuevo el responsable operativo vigente del piso.";
     wrap.append(note);
   }else{
     executable=false;
     const note=document.createElement("span");
     note.className="execution-note";
-    note.textContent="Puedes Publicar este flujo, pero esta regla de asignación todavía no admite ejecución manual.";
+    note.textContent=scheduled
+      ?"Esta regla de asignación todavía no admite programación automática."
+      :"Puedes Publicar este flujo, pero esta regla de asignación todavía no admite ejecución manual.";
     wrap.append(note);
   }
 
   const explanation=document.createElement("div");
   explanation.className="application-note";
-  explanation.textContent="Publicar lo guarda en Mis Flujos sin crear tareas. Mientras nunca se ejecute podrás editarlo o eliminarlo. Ejecutar lo publica y crea la tarea; desde ese momento conservará historial y solo podrá archivarse.";
+  explanation.textContent=scheduled
+    ?"Programar guarda el flujo y su destino sin crear una tarea ahora. La tarea se creará automáticamente el "+scheduledDisplay(spec)+"."
+    :"Publicar lo guarda en Mis Flujos sin crear tareas. Mientras nunca se ejecute podrás editarlo o eliminarlo. Ejecutar lo publica y crea la tarea; desde ese momento conservará historial y solo podrá archivarse.";
   wrap.append(explanation);
 
   const actions=document.createElement("div");
@@ -414,15 +443,24 @@ function transientAssignmentControls(app){
 
   const publish=document.createElement("button");
   publish.type="button";
-  publish.className="secondary";
-  publish.textContent="Publicar";
-  publish.addEventListener("click",()=>finalizeTransient(false,null,publish));
+  publish.className=scheduled?"primary":"secondary";
+  publish.textContent=scheduled?"Programar":"Publicar";
+  publish.disabled=scheduled&&!executable;
+  publish.addEventListener("click",()=>{
+    const assignee=assigneeSelect?.value||null;
+    if(scheduled&&assignmentType==="manual"&&!assignee){
+      setStatus("Selecciona quién realizará la tarea cuando llegue la fecha.",true);
+      return;
+    }
+    finalizeTransient(false,scheduled?assignee:null,publish);
+  });
 
   const execute=document.createElement("button");
   execute.type="button";
   execute.className="primary";
   execute.textContent="Ejecutar";
   execute.disabled=!executable;
+  execute.hidden=scheduled;
   execute.addEventListener("click",()=>{
     const assignee=assigneeSelect?.value||null;
     if(assignmentType==="manual"&&!assignee){
@@ -451,7 +489,9 @@ function transientAssignmentControls(app){
   discard.textContent="Descartar todo";
   discard.addEventListener("click",discardTransient);
 
-  actions.append(publish,execute,changeTarget,discard);
+  actions.append(publish);
+  if(!scheduled)actions.append(execute);
+  actions.append(changeTarget,discard);
   wrap.append(actions);
   return wrap;
 }
@@ -487,7 +527,7 @@ function renderTransientReady(){
   applicationsList.append(article);
 }
 
-function renderTransientResult(result,{executed=false,assigneeId=null}={}){
+function renderTransientResult(result,{executed=false,scheduled=false,assigneeId=null}={}){
   const spec=transientPayload.spec;
   const app={
     scope_type:transientTarget.scope_type,
@@ -501,16 +541,17 @@ function renderTransientResult(result,{executed=false,assigneeId=null}={}){
   article.className="application-card application-ready-card";
   const head=document.createElement("div");head.className="application-item-head";
   const title=document.createElement("h3");title.textContent=spec.flowName||"Flujo";
-  const badge=document.createElement("span");badge.className="application-badge";badge.textContent=executed?"Ejecutado":"Publicado";
+  const badge=document.createElement("span");badge.className="application-badge";badge.textContent=executed?"Ejecutado":scheduled?"Programado":"Publicado";
   head.append(title,badge);
 
   const details=document.createElement("div");details.className="application-meta application-ready-summary";
   details.append(
     meta("Destino",targetLabel(app)),
     meta("Qué hará",stepsSummary({spec})),
-    meta("Estado",executed?"Tarea creada":"Sin tareas")
+    meta("Estado",executed?"Tarea creada":scheduled?"Programación activa":"Sin tareas")
   );
-  if(executed&&assigneeId){
+  if(scheduled)details.append(meta("Programada para",scheduledDisplay(spec)));
+  if((executed||scheduled)&&assigneeId){
     const person=executionCandidates(app).find(item=>item.user_id===assigneeId);
     details.append(meta("Asignado a",person?candidateLabel(person):"Persona seleccionada"));
   }
@@ -518,11 +559,13 @@ function renderTransientResult(result,{executed=false,assigneeId=null}={}){
 
   const done=document.createElement("div");done.className="application-complete";
   const strong=document.createElement("strong");
-  strong.textContent=executed?"Tarea creada":"Flujo publicado";
+  strong.textContent=executed?"Tarea creada":scheduled?"Flujo programado":"Flujo publicado";
   const p=document.createElement("p");
   p.textContent=executed
     ?"El flujo quedó publicado en Mis Flujos y la tarea ya está disponible para la persona asignada."
-    :"No se ha creado ninguna tarea. Mientras este flujo no se ejecute podrás editarlo o eliminarlo desde Mis Flujos.";
+    :scheduled
+      ?"No se ha creado ninguna tarea todavía. GestionPisos la creará automáticamente cuando llegue la fecha programada."
+      :"No se ha creado ninguna tarea. Mientras este flujo no se ejecute podrás editarlo o eliminarlo desde Mis Flujos.";
   const actions=document.createElement("div");actions.className="application-guided-actions";
   if(executed){
     const tasks=document.createElement("a");tasks.className="primary";tasks.href="./workflow-tasks.html";tasks.textContent="Abrir Tareas";
@@ -537,15 +580,23 @@ function renderTransientResult(result,{executed=false,assigneeId=null}={}){
 
 async function finalizeTransient(execute,assigneeId,button){
   if(!transientPayload||!transientTarget)return;
+  const spec=transientPayload.spec||{};
+  const scheduled=String(spec.triggerType||"")==="scheduled_once";
   if(!execute){
-    const confirmed=window.confirm("Publicar guardará este flujo en Mis Flujos sin crear ninguna tarea. Mientras siga sin ejecutarse podrá editarse o eliminarse. ¿Publicar?");
+    const confirmed=window.confirm(scheduled
+      ?"Programar guardará el flujo y creará la tarea automáticamente el "+scheduledDisplay(spec)+". ¿Programar?"
+      :"Publicar guardará este flujo en Mis Flujos sin crear ninguna tarea. Mientras siga sin ejecutarse podrá editarse o eliminarse. ¿Publicar?");
     if(!confirmed)return;
   }
 
   const original=button.textContent;
   button.disabled=true;
-  button.textContent=execute?"Ejecutando…":"Publicando…";
-  setStatus(execute?"Validando condiciones, publicando y creando la tarea…":"Publicando el flujo sin crear tareas…");
+  button.textContent=execute?"Ejecutando…":scheduled?"Programando…":"Publicando…";
+  setStatus(execute
+    ?"Validando condiciones, publicando y creando la tarea…"
+    :scheduled
+      ?"Guardando el flujo y preparando su ejecución automática…"
+      :"Publicando el flujo sin crear tareas…");
 
   const common={
     p_property_id:transientTarget.property_id,
@@ -556,18 +607,22 @@ async function finalizeTransient(execute,assigneeId,button){
     p_idempotency_key:execute?transientPayload.requestKey:null,
     p_assigned_user_id:execute?assigneeId:null
   };
+  if(scheduled){
+    common.p_schedule_timezone=spec.scheduledTimezone||null;
+    common.p_schedule_assigned_user_id=String(spec.assignmentType||"")==="manual"?assigneeId:null;
+  }
 
   let rpc="";
   let args={};
   if(transientPayload.mode==="create"){
-    rpc="publish_workflow_ready_v1";
+    rpc=scheduled?"publish_workflow_ready_v2":"publish_workflow_ready_v1";
     args={
       p_spec:transientPayload.spec,
       ...common,
       p_request_key:transientPayload.requestKey
     };
   }else if(transientPayload.mode==="edit_unexecuted"){
-    rpc="update_unexecuted_workflow_v1";
+    rpc=scheduled?"update_unexecuted_workflow_v2":"update_unexecuted_workflow_v1";
     args={
       p_definition_id:transientPayload.definitionId,
       p_spec:transientPayload.spec,
@@ -575,7 +630,7 @@ async function finalizeTransient(execute,assigneeId,button){
       ...common
     };
   }else{
-    rpc="publish_workflow_revision_ready_v1";
+    rpc=scheduled?"publish_workflow_revision_ready_v2":"publish_workflow_revision_ready_v1";
     args={
       p_definition_id:transientPayload.definitionId,
       p_expected_revision:transientPayload.expectedRevision,
@@ -602,11 +657,13 @@ async function finalizeTransient(execute,assigneeId,button){
 
   formCard.hidden=true;
   applicationsSection.hidden=false;
-  setSetupStage(execute?"done":"ready");
-  renderTransientResult(result,{executed:execute,assigneeId});
+  setSetupStage(execute||scheduled?"done":"ready");
+  renderTransientResult(result,{executed:execute,scheduled,assigneeId});
   setStatus(execute
     ?"Tarea creada. El flujo queda protegido por historial desde esta primera ejecución."
-    :"Flujo publicado sin tareas. Puedes editarlo o eliminarlo desde Mis Flujos mientras no se ejecute.");
+    :scheduled
+      ?"Flujo programado. La tarea se creará automáticamente el "+scheduledDisplay(spec)+"."
+      :"Flujo publicado sin tareas. Puedes editarlo o eliminarlo desde Mis Flujos mientras no se ejecute.");
   window.scrollTo({top:0,behavior:"smooth"});
 }
 

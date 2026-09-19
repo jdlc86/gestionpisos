@@ -447,4 +447,198 @@ $recurring_v1_bypass$;
 set constraints workflow_scheduled_application_requires_schedule_v1 deferred;
 reset role;
 
+-- 6. Responsable operativo se resuelve de nuevo en cada ocurrencia.
+insert into auth.users(id)
+values
+  ('33333333-3333-4333-8333-333333333333'),
+  ('77777777-7777-4777-8777-777777777777')
+on conflict(id) do nothing;
+
+insert into public.user_roles(user_id,organization_id,role)
+values
+  (
+    '33333333-3333-4333-8333-333333333333',
+    '11111111-1111-4111-8111-111111111111',
+    'employee'
+  ),
+  (
+    '77777777-7777-4777-8777-777777777777',
+    '11111111-1111-4111-8111-111111111111',
+    'employee'
+  )
+on conflict do nothing;
+
+insert into public.owners(
+  id,organization_id,full_name,email,status
+) values (
+  'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  '11111111-1111-4111-8111-111111111111',
+  'Owner recurring responsible',
+  'owner-recurring-responsible@example.invalid',
+  'active'
+);
+
+insert into public.properties_v2(
+  id,organization_id,owner_id,name,address_line,status
+) values (
+  'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+  '11111111-1111-4111-8111-111111111111',
+  'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  'Piso recurring responsible',
+  'Calle Recurrente 1',
+  'active'
+);
+
+insert into public.property_staff_access_v3(
+  organization_id,property_id,employee_user_id,assignment_type,
+  can_write,valid_from,valid_until,granted_by,revoked_at
+) values (
+  '11111111-1111-4111-8111-111111111111',
+  'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+  '33333333-3333-4333-8333-333333333333',
+  'responsible',
+  true,
+  now(),
+  null,
+  '22222222-2222-4222-8222-222222222222',
+  null
+);
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub','22222222-2222-4222-8222-222222222222',
+    'role','authenticated',
+    'aal','aal2'
+  )::text,
+  true
+);
+
+select set_config(
+  'gestionpisos.recurring.responsible_app',
+  (
+    select application_id::text
+    from public.publish_workflow_ready_v2(
+      jsonb_build_object(
+        'authoringVersion',2,
+        'flowName','Recurrente responsable dinámico',
+        'flowType','custom',
+        'flowDescription','Resuelve responsable en cada ocurrencia',
+        'scopeType','property',
+        'triggerType','recurring',
+        'recurrence','weekly',
+        'scheduledAt',to_char(date_trunc('minute',now()+interval '40 minutes') at time zone 'UTC','YYYY-MM-DD"T"HH24:MI'),
+        'scheduledTimezone','UTC',
+        'scheduledAtUtc',to_char(date_trunc('minute',now()+interval '40 minutes') at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+        'customEvery','',
+        'customUnit','',
+        'assignmentType','property_responsible',
+        'steps',jsonb_build_object('accept',true,'photo',false,'checklist',false,'document',false),
+        'checklistItems','[]'::jsonb,
+        'closeType','auto',
+        'notifications',jsonb_build_object('onCreate',false,'onClose',false)
+      ),
+      'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'::uuid,
+      null,null,'{}'::uuid[],
+      false,
+      'regression-recurring-responsible',
+      null,
+      null,
+      'UTC',
+      null
+    )
+    limit 1
+  ),
+  true
+);
+
+reset role;
+
+do $recurring_responsible_first$
+declare
+  v_app uuid:=current_setting('gestionpisos.recurring.responsible_app')::uuid;
+  v_due timestamptz;
+begin
+  if not exists(
+    select 1
+    from public.workflow_application_schedules_v2
+    where application_id=v_app
+      and schedule_kind='recurring'
+      and scheduled_assigned_user_id is null
+  ) then
+    raise exception 'recurring property responsible was frozen at programming time';
+  end if;
+
+  select next_run_at into v_due
+  from public.workflow_application_schedules_v2
+  where application_id=v_app;
+
+  perform private.process_due_workflow_schedules_v1(v_due+interval '1 minute');
+
+  if not exists(
+    select 1
+    from public.workflow_executions_v2
+    where application_id=v_app
+      and trigger_kind='recurring'
+      and assigned_user_id='33333333-3333-4333-8333-333333333333'::uuid
+  ) then
+    raise exception 'first recurring occurrence did not resolve the current responsible';
+  end if;
+end;
+$recurring_responsible_first$;
+
+update public.property_staff_access_v3
+set revoked_at=now()
+where property_id='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'::uuid
+  and assignment_type='responsible'
+  and revoked_at is null;
+
+insert into public.property_staff_access_v3(
+  organization_id,property_id,employee_user_id,assignment_type,
+  can_write,valid_from,valid_until,granted_by,revoked_at
+) values (
+  '11111111-1111-4111-8111-111111111111',
+  'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+  '77777777-7777-4777-8777-777777777777',
+  'responsible',
+  true,
+  now(),
+  null,
+  '22222222-2222-4222-8222-222222222222',
+  null
+);
+
+do $recurring_responsible_second$
+declare
+  v_app uuid:=current_setting('gestionpisos.recurring.responsible_app')::uuid;
+  v_due timestamptz;
+begin
+  select next_run_at into v_due
+  from public.workflow_application_schedules_v2
+  where application_id=v_app;
+
+  perform private.process_due_workflow_schedules_v1(v_due+interval '1 minute');
+
+  if not exists(
+    select 1
+    from public.workflow_executions_v2
+    where application_id=v_app
+      and trigger_kind='recurring'
+      and assigned_user_id='77777777-7777-4777-8777-777777777777'::uuid
+  ) then
+    raise exception 'second recurring occurrence did not resolve the changed responsible';
+  end if;
+
+  if (
+    select count(*)
+    from public.workflow_executions_v2
+    where application_id=v_app
+      and trigger_kind='recurring'
+  )<>2 then
+    raise exception 'responsible recurring flow did not create exactly two executions';
+  end if;
+end;
+$recurring_responsible_second$;
+
 rollback;

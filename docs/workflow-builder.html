@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#ffffff">
   <meta name="description" content="Creador de Flujos de GestionPisos">
   <link rel="stylesheet" href="./app.css?v=2026091703">
-  <link rel="stylesheet" href="./workflow-builder.css?v=2026091903">
+  <link rel="stylesheet" href="./workflow-builder.css?v=2026091904">
   <title>Allaiso · Creador de Flujos</title>
 </head>
 <body>
@@ -57,7 +57,7 @@
 
     <section id="builderEditorView" class="builder-view" hidden aria-labelledby="builderEditorTitle">
       <div class="builder-editor-bar">
-        <button id="builderExitEditor" type="button" class="builder-back-link" aria-label="Volver a borradores">← Volver</button>
+        <button id="builderExitEditor" type="button" class="builder-back-link" aria-label="Volver a borradores" title="Volver a borradores"><svg class="builder-back-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>
         <div class="builder-editor-heading">
           <p class="eyebrow">Editor</p>
           <h2 id="builderEditorTitle">Nuevo flujo</h2>
@@ -197,8 +197,8 @@
         <div id="builderServerStatus" class="builder-note builder-server-status" role="status" aria-live="polite">Comprobando estado del borrador…</div>
 
         <div class="builder-actions">
-          <button id="builderBack" type="button" class="secondary" disabled>Atrás</button>
-          <button id="builderClear" type="button" class="secondary">Descartar cambios locales</button>
+          <button id="builderBack" type="button" class="builder-action builder-action--neutral" disabled>Atrás</button>
+          <button id="builderClear" type="button" class="builder-action builder-action--neutral">Descartar cambios</button>
           <button id="builderSave" type="button" class="builder-action">Guardar</button>
           <button id="builderSaveExitInline" type="button" class="builder-action">Guardar y salir</button>
           <button id="builderPublish" type="button" class="builder-action builder-action--primary" disabled>Publicar</button>
@@ -215,8 +215,8 @@
         <p>El borrador guardado no se eliminará. Puedes guardar los cambios actuales, salir sin guardarlos o continuar editando.</p>
         <div class="builder-exit-dialog-actions">
           <button id="builderExitSave" type="button" class="builder-action builder-action--primary">Guardar y salir</button>
-          <button id="builderExitDiscard" type="button" class="secondary">Salir sin guardar</button>
-          <button id="builderExitCancel" type="button" class="secondary">Cancelar</button>
+          <button id="builderExitDiscard" type="button" class="builder-action builder-action--neutral">Salir sin guardar</button>
+          <button id="builderExitCancel" type="button" class="builder-action builder-action--neutral">Cancelar</button>
         </div>
       </div>
     </dialog>

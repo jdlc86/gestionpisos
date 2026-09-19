@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#ffffff">
   <meta name="description" content="GestionPisos">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./app.css?v=2026091909">
+  <link rel="stylesheet" href="./app.css?v=2026091910">
   <title>GestionPisos</title>
   <script>
     (() => {
@@ -25,7 +25,20 @@
   <main class="shell">
     <header class="topbar">
       <div><p class="eyebrow">ALLAISO</p><h1>GestionPisos</h1></div>
-      <div class="global-actions"><button class="global-icon" data-theme-toggle aria-label="Cambiar tema"><span data-theme-icon>☾</span></button><button id="installBtn" class="ghost" hidden>Instalar</button></div>
+      <div class="global-actions">
+        <button id="installBtn" class="ghost" hidden>Instalar</button>
+        <div id="homeAccount" class="home-account">
+          <button id="homeAccountAction" class="global-icon account-trigger" type="button" aria-label="Cuenta y ajustes" aria-controls="homeAccountMenu" aria-expanded="false" title="Cuenta y ajustes">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 20c.9-4 3.1-5.8 6.5-5.8s5.6 1.8 6.5 5.8"/></svg>
+          </button>
+          <div id="homeAccountMenu" class="account-menu" role="menu" hidden>
+            <button id="homeThemeAction" class="account-menu__item" type="button" role="menuitem" data-theme-toggle><span data-theme-menu-label>Modo oscuro</span></button>
+            <button id="mfaSetupAction" class="account-menu__item" type="button" role="menuitem" hidden>Seguridad MFA</button>
+            <div class="account-menu__separator" role="separator"></div>
+            <button id="logoutBtn" class="account-menu__item account-menu__item--danger" type="button" role="menuitem">Cerrar sesión</button>
+          </div>
+        </div>
+      </div>
     </header>
 
     <section class="hero hero--brand">
@@ -85,7 +98,7 @@
     </footer>
   </main>
   <script>document.getElementById("copyrightYear").textContent=String(new Date().getFullYear());</script>
-  <script src="./app.js?v=2026091902" defer></script>
+  <script src="./app.js?v=2026091903" defer></script>
   <script type="module" src="./root-home-modules.js?v=2026091701"></script>
   <script type="module" src="./auth-guard.js"></script>
 </body>

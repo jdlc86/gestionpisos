@@ -159,7 +159,7 @@ grep -Fq 'Crear nueva versión' docs/workflow-definitions.js
 grep -Fq 'Continuar nueva versión' docs/workflow-definitions.js
 grep -Fq 'workflow-applications.html?definition=' docs/workflow-definitions.js
 grep -Fq './workflow-definitions.js?v=2026091901' docs/workflow-definitions.html
-grep -Fq './workflow-definitions.css?v=2026091902' docs/workflow-definitions.html
+grep -Fq './workflow-definitions.css?v=2026091903' docs/workflow-definitions.html
 grep -Fq 'Solo recetas publicadas; los borradores se gestionan en el Creador.' docs/workflow-definitions.html
 ! grep -Fq 'Completar borrador' docs/workflow-definitions.js
 ! grep -Fq 'Publicar versión' docs/workflow-definitions.js
@@ -170,7 +170,7 @@ grep -Fq 'properties_v2' docs/workflow-applications.js
 grep -Fq 'rooms_v2' docs/workflow-applications.js
 grep -Fq 'occupancies_v2' docs/workflow-applications.js
 grep -Fq '.application-card [hidden]{display:none!important}' docs/workflow-applications.css
-grep -Fq './workflow-applications.css?v=2026091902' docs/workflow-applications.html
+grep -Fq './workflow-applications.css?v=2026091903' docs/workflow-applications.html
 grep -Fq './workflow-applications.js?v=2026091805' docs/workflow-applications.html
 grep -Fq 'crear una ejecución manual y su tarea asociada' docs/workflow-applications.html
 grep -Fq 'Definición → Versión publicada → Aplicación concreta' docs/WORKFLOW_APPLICATIONS_CONTRACT.md
@@ -258,3 +258,8 @@ grep -Fq 'class="builder-editor-state"' docs/workflow-builder.html
 grep -Fq '.builder-editor-state::before' docs/workflow-builder.css
 grep -Fq 'builderBadge.textContent=state.complete?"Listo":"Borrador"' docs/workflow-builder.js
 grep -Fq 'builderBadge.title=state.complete?completeLabel:"Borrador incompleto"' docs/workflow-builder.js
+
+grep -Fq 'width:max-content' docs/workflow-definitions.css
+grep -Fq 'justify-self:start' docs/workflow-definitions.css
+grep -Fq 'white-space:nowrap' docs/workflow-definitions.css
+grep -Fq 'width:max-content' docs/workflow-applications.css

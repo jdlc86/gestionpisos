@@ -28,6 +28,9 @@ if ("serviceWorker" in navigator) {
     document.querySelectorAll("[data-theme-icon]").forEach(node => {
       node.textContent = theme === "dark" ? "☀" : "☾";
     });
+    document.querySelectorAll("[data-theme-menu-label]").forEach(node => {
+      node.textContent = theme === "dark" ? "Modo claro" : "Modo oscuro";
+    });
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.content = theme === "dark" ? "#0d1117" : "#ffffff";
   };

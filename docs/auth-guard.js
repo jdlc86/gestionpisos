@@ -25,24 +25,56 @@ async function pendingExternalOnboarding() {
   return data?.status === "pending" ? data : null;
 }
 
-function homeActionHost() {
-  return document.querySelector(".topbar .global-actions") || document.querySelector(".topbar");
-}
+function setupHomeAccountMenu(session) {
+  const root = document.getElementById("homeAccount");
+  const trigger = document.getElementById("homeAccountAction");
+  const menu = document.getElementById("homeAccountMenu");
+  const themeAction = document.getElementById("homeThemeAction");
+  const mfaAction = document.getElementById("mfaSetupAction");
+  const logoutAction = document.getElementById("logoutBtn");
+  if (!root || !trigger || !menu || !logoutAction) return;
 
-function addMfaSecurityAction() {
-  const topbar = homeActionHost();
-  if (!topbar || document.getElementById("mfaSetupAction")) return;
-  const button = document.createElement("button");
-  button.id = "mfaSetupAction";
-  button.type = "button";
-  button.className = "ghost";
-  button.textContent = "MFA";
-  button.setAttribute("aria-label", "Configurar MFA");
-  button.title = "Configurar MFA";
-  button.addEventListener("click", () => {
-    window.location.assign(authFlowUrl("mfa-setup.html", currentPageNext()));
+  const closeMenu = () => {
+    menu.hidden = true;
+    trigger.setAttribute("aria-expanded", "false");
+  };
+  const openMenu = () => {
+    menu.hidden = false;
+    trigger.setAttribute("aria-expanded", "true");
+  };
+
+  trigger.addEventListener("click", event => {
+    event.stopPropagation();
+    if (menu.hidden) openMenu();
+    else closeMenu();
   });
-  topbar.append(button);
+  menu.addEventListener("click", event => event.stopPropagation());
+  document.addEventListener("click", event => {
+    if (!root.contains(event.target)) closeMenu();
+  });
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape" && !menu.hidden) {
+      closeMenu();
+      trigger.focus();
+    }
+  });
+
+  themeAction?.addEventListener("click", closeMenu);
+
+  if (mfaAction) {
+    mfaAction.hidden = !requiresPrivilegedMfa(session);
+    if (!mfaAction.hidden) {
+      mfaAction.addEventListener("click", () => {
+        window.location.assign(authFlowUrl("mfa-setup.html", currentPageNext()));
+      });
+    }
+  }
+
+  logoutAction.addEventListener("click", async () => {
+    logoutAction.disabled = true;
+    await supabase.auth.signOut();
+    window.location.replace("./login.html");
+  });
 }
 
 async function requireSession() {
@@ -78,22 +110,7 @@ async function requireSession() {
       console.error("bottom_navigation_failed", error);
     });
 
-    if (isHomePage && requiresPrivilegedMfa(session)) addMfaSecurityAction();
-
-    const topbar = homeActionHost();
-    if (isHomePage && topbar && !document.getElementById("logoutBtn")) {
-      const button = document.createElement("button");
-      button.id = "logoutBtn";
-      button.type = "button";
-      button.className = "ghost";
-      button.textContent = "Salir";
-      button.addEventListener("click", async () => {
-        button.disabled = true;
-        await supabase.auth.signOut();
-        window.location.replace("./login.html");
-      });
-      topbar.append(button);
-    }
+    if (isHomePage) setupHomeAccountMenu(session);
   } catch (error) {
     console.error("auth_guard_failed", error);
     window.location.replace(loginUrl.href);

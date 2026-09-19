@@ -55,14 +55,14 @@ grep -Fq 'lost_all_available_authenticators' docs/mfa-challenge.js
 ! grep -Fq 'recover-privileged-mfa' docs/mfa-challenge.js
 
 grep -Fq 'privilegedMfaRoute(supabase, session, { requireEnrollment: true })' docs/auth-guard.js
-grep -Fq 'button.textContent = "MFA"' docs/auth-guard.js
-! grep -Fq 'Seguridad MFA' docs/auth-guard.js
-grep -Fq 'button.setAttribute("aria-label", "Configurar MFA")' docs/auth-guard.js
+grep -Fq 'setupHomeAccountMenu(session)' docs/auth-guard.js
+grep -Fq 'mfaAction.hidden = !requiresPrivilegedMfa(session)' docs/auth-guard.js
+grep -Fq 'Seguridad MFA' docs/index.html
 grep -Fq 'authFlowUrl(mfa.route' docs/auth-guard.js
 grep -Fq 'const isHomePage = currentPage === "index.html"' docs/auth-guard.js
-grep -Fq 'homeActionHost' docs/auth-guard.js
-grep -Fq 'if (isHomePage && requiresPrivilegedMfa(session)) addMfaSecurityAction();' docs/auth-guard.js
-grep -Fq 'if (isHomePage && topbar && !document.getElementById("logoutBtn"))' docs/auth-guard.js
+grep -Fq 'if (isHomePage) setupHomeAccountMenu(session);' docs/auth-guard.js
+grep -Fq 'id="homeAccountAction"' docs/index.html
+grep -Fq 'id="logoutBtn"' docs/index.html
 grep -Fq 'privilegedMfaRoute(supabase, session, { requireEnrollment: true })' docs/login.js
 grep -Fq 'mfa_check_timeout' docs/login.js
 
@@ -118,7 +118,7 @@ grep -Fq 'verification_note' supabase/functions/recover-privileged-mfa/index.ts
 grep -Fq 'Nunca aprobar una recuperación únicamente por conocer el código de solicitud' docs/MFA_RECOVERY_RUNBOOK.md
 grep -Fq 'el navegador nunca llama directamente a `recover-privileged-mfa`' docs/MFA_RECOVERY_RUNBOOK.md
 
-grep -Fq "gestionpisos-shell-v20" docs/sw.js
+grep -Fq "gestionpisos-shell-v21" docs/sw.js
 grep -Fq "'./mfa-setup.html'" docs/sw.js
 grep -Fq "'./mfa-challenge.html'" docs/sw.js
 

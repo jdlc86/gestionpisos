@@ -348,6 +348,7 @@ function applyDraft(saved,{restoreStep=true}={}){
   updateChecklistEditor();
   setChecked("notifyOnCreate",saved.notifications?.onCreate);
   setChecked("notifyOnClose",saved.notifications?.onClose);
+  if(saved.triggerType==="scheduled_once")syncScheduledInstant({force:false});
   if(restoreStep&&Number.isInteger(saved.currentStep))currentStep=Math.max(0,Math.min(panels.length-1,saved.currentStep));
 }
 

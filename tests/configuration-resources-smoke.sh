@@ -19,10 +19,12 @@ grep -Fq 'app_metadata?.role' docs/root-home-modules.js
 
 grep -Fq 'Configuración y Recursos' docs/configuration-resources.html
 grep -Fq 'Gestión de Permisos' docs/configuration-resources.html
-grep -Fq 'Seguridad MFA' docs/configuration-resources.html
-grep -Fq '🛡️' docs/configuration-resources.html
-! grep -Fq 'class="mfa-title"' docs/configuration-resources.html
-! grep -Fq '.configuration-link .mfa-title' docs/configuration-resources.css
+! grep -Fq 'Seguridad MFA' docs/configuration-resources.html
+! grep -Fq 'mfa-setup.html?next=configuration-resources.html' docs/configuration-resources.html
+! grep -Fq '🛡️' docs/configuration-resources.html
+grep -Fq 'data-theme-toggle' docs/index.html
+grep -Fq 'button.textContent = "MFA"' docs/auth-guard.js
+grep -Fq 'if (isHomePage && requiresPrivilegedMfa(session)) addMfaSecurityAction();' docs/auth-guard.js
 grep -Fq 'Operadores de emergencia' docs/configuration-resources.html
 grep -Fq 'factory-reset.html' docs/configuration-resources.html
 

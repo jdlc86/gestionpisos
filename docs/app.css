@@ -89,7 +89,7 @@ button,a{touch-action:manipulation}
 .desktop-home-link{display:grid}
 .page-subtitle{margin:-6px 0 16px;color:var(--ui-muted);font-size:12px;line-height:1.45}
 .page-actions{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
-.page-actions .primary,.page-actions .secondary,.page-actions .ghost{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+.page-actions .primary,.page-actions .secondary,.page-actions .ghost{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}.hero .page-actions,.page-context .page-actions{margin:10px 0 0}
 .eyebrow{margin:0 0 4px;color:var(--ui-muted);font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase}
 .global-actions{display:flex;align-items:center;gap:8px}
 .global-icon,.ghost{min-height:38px;border:1px solid var(--ui-border);border-radius:var(--ui-radius-sm);background:var(--ui-surface);color:var(--ui-text);box-shadow:none;cursor:pointer;text-decoration:none}

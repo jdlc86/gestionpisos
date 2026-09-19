@@ -485,3 +485,12 @@ grep -Fq 'submit_workflow_document_v1' docs/WORKFLOW_DOCUMENT_EVIDENCE_CONTRACT.
 grep -Fq 'Foto completada + Checklist completado + Documento pendiente' docs/WORKFLOW_DOCUMENT_EVIDENCE_CONTRACT.md
 grep -Fq 'tenant_documents_v2' docs/WORKFLOW_DOCUMENT_EVIDENCE_CONTRACT.md
 grep -Fq 'WORKFLOW_DOCUMENT_EVIDENCE_CONTRACT.md' docs/WORKFLOW_DOCUMENTATION_INDEX.md
+
+
+# Historial: Rechazadas significa solo rejected y la revisión usa el motivo agregado del histórico de tarea.
+grep -Fq 'if(activeFilter==="rejected"&&execution.status!=="rejected")return false;' docs/workflow-history.js
+! grep -Fq 'REJECTED_STATUSES' docs/workflow-history.js
+grep -Fq 'const historyNote=taskHistoryNote(' docs/workflow-history.js
+grep -Fq 'rejected?"review_reject":"review_approve"' docs/workflow-history.js
+grep -Fq 'if(historyNote)return historyNote;' docs/workflow-history.js
+grep -Fq './workflow-history.js?v=2026091911' docs/workflow-history.html

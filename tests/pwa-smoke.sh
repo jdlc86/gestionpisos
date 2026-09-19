@@ -54,7 +54,7 @@ grep -q 'serviceWorker' docs/app.js
 grep -q 'GestionPisos' docs/manifest.webmanifest
 grep -Fq "'./legal.html'" docs/sw.js
 grep -Fq "'./privacy.html'" docs/sw.js
-grep -q 'gestionpisos-shell-v22' docs/sw.js
+grep -q 'gestionpisos-shell-v23' docs/sw.js
 grep -Fq "'./bottom-nav.js'" docs/sw.js
 grep -Fq "'./bottom-nav.css'" docs/sw.js
 grep -Fq 'mountBottomNavigation' docs/auth-guard.js
@@ -348,5 +348,8 @@ grep -Fq '.account-menu{' docs/app.css
 grep -Fq 'data-theme-menu-label' docs/app.js
 
 ! grep -Fq 'menu.addEventListener("click", event => event.stopPropagation())' docs/auth-guard.js
-grep -Fq 'if (!event.target.closest("[data-theme-toggle]")) return;' docs/app.js
+grep -Fq 'button.addEventListener("click", event =>' docs/app.js
+grep -Fq 'button.dataset.themeBound = "1"' docs/app.js
+grep -Fq 'window.AllaisoTheme = { apply, toggle, bind }' docs/app.js
+! grep -Fq 'document.addEventListener("click", event =>' docs/app.js
 grep -Fq 'id="homeThemeAction"' docs/index.html

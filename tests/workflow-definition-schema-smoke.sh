@@ -375,6 +375,8 @@ grep -Fq 'create trigger workflow_execution_notifications_v1' "$workflow_notific
 
 # Web Push: sin polling, secretos fuera del cliente y entrega idempotente.
 grep -Fq 'create table if not exists public.web_push_subscriptions_v1' "$web_push"
+grep -Fq "create extension if not exists pg_net" "$web_push"
+! grep -Fq "pg_net with schema" "$web_push"
 grep -Fq 'create table if not exists public.web_push_deliveries_v1' "$web_push"
 grep -Fq 'register_web_push_subscription_v1' "$web_push"
 grep -Fq 'unregister_web_push_subscription_v1' "$web_push"

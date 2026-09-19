@@ -587,6 +587,9 @@ begin
   if v_item_key is null or length(v_item_key)>80 then
     raise exception 'workflow_checklist_item_key_invalid' using errcode='22023';
   end if;
+  if p_completed is null then
+    raise exception 'workflow_checklist_completed_invalid' using errcode='22023';
+  end if;
 
   select * into v_task
   from public.tenant_tasks_v2
@@ -625,14 +628,8 @@ begin
     raise exception 'workflow_checklist_not_configured' using errcode='22023';
   end if;
 
-  v_requires_accept:=coalesce((v_execution.spec_snapshot#>>'{steps,accept}')::boolean,false);
-  if v_requires_accept and v_task.status='pending' then
-    raise exception 'workflow_checklist_accept_required' using errcode='55000';
-  end if;
-  if v_task.status not in ('pending','active') then
-    raise exception 'workflow_checklist_not_actionable' using errcode='55000';
-  end if;
-
+  -- Idempotency receipts are checked before current actionability so a retry
+  -- can recover a transition that already closed the task.
   select * into v_previous
   from public.workflow_execution_events_v2 ev
   where ev.execution_id=v_execution.id
@@ -657,6 +654,14 @@ begin
     select v_task.id,v_task.status,v_execution.id,v_execution.status,
            v_execution.checklist_state,v_all_required,false;
     return;
+  end if;
+
+  v_requires_accept:=coalesce((v_execution.spec_snapshot#>>'{steps,accept}')::boolean,false);
+  if v_requires_accept and v_task.status='pending' then
+    raise exception 'workflow_checklist_accept_required' using errcode='55000';
+  end if;
+  if v_task.status not in ('pending','active') then
+    raise exception 'workflow_checklist_not_actionable' using errcode='55000';
   end if;
 
   select value,ord::integer

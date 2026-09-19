@@ -14,6 +14,7 @@ Usar estos documentos en este orden:
 10. **`WORKFLOW_CHECKLIST_CONTRACT.md`** — contrato específico del primer checklist genérico: autoría, snapshot, permisos, idempotencia y cierre.
 11. **`WORKFLOW_DOCUMENT_EVIDENCE_CONTRACT.md`** — contrato del paso Documento: Storage privado, permisos, idempotencia y cierre coordinado con Foto/Checklist.
 12. **`WORKFLOW_HISTORY_CONTRACT.md`** — contrato de la vista Historial: fuentes de verdad, RLS, eventos, evidencias e inmutabilidad.
+13. **`WORKFLOW_TEMPORAL_CONTRACT.md`** — contrato de Fecha concreta/Recurrente: ancla local, zona IANA, asignación automática y compatibilidad legacy.
 
 ## Regla de mantenimiento
 
@@ -27,6 +28,7 @@ Usar estos documentos en este orden:
 - Cambios en **patrones/snapshots/captura fotográfica de workflows** → actualizar `WORKFLOW_PHOTO_EVIDENCE_CONTRACT.md`.
 - Cambios en **evidencia documental de workflows** → actualizar `WORKFLOW_DOCUMENT_EVIDENCE_CONTRACT.md`.
 - Cambios en **presentación histórica transversal** → actualizar `WORKFLOW_HISTORY_CONTRACT.md`.
+- Cambios en **autoría o scheduler temporal** → actualizar `WORKFLOW_TEMPORAL_CONTRACT.md`.
 - Cambios de **estado real de implementación** → actualizar `WORKFLOW_STATUS.md` con fecha, sin reescribir decisiones históricas.
 
 La documentación nunca debe presentar como operativo un componente que solo existe como UI, borrador o propuesta.

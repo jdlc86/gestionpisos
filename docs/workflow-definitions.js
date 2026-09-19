@@ -114,10 +114,9 @@ function executionMeta(row){
   const box=document.createElement("div");
   box.className="definition-meta-item";
   const strong=document.createElement("strong");strong.textContent="Ejecuciones";
-  const value=document.createElement("span");value.className="definition-execution-value";
-  const countLine=document.createElement("span");countLine.textContent=String(count);
-  const last=document.createElement("small");last.textContent="Última: "+(latest?dateTime(latest.created_at):"Nunca");
-  value.append(countLine,last);
+  const value=document.createElement("span");
+  value.className="definition-execution-value";
+  value.textContent=String(count)+" · "+(latest?"última "+dateTime(latest.created_at):"nunca ejecutado");
   box.append(strong,value);
   return box;
 }
@@ -378,18 +377,22 @@ function card(row){
   if(row.id===highlightedDefinition)article.classList.add("is-highlighted");
   if(selectedIds.has(row.id))article.classList.add("is-selected");
 
+  const selector=document.createElement("button");
+  selector.type="button";
+  selector.className="definition-select-indicator";
+  selector.setAttribute("aria-pressed",String(selectedIds.has(row.id)));
+  selector.setAttribute("aria-label",(selectedIds.has(row.id)?"Deseleccionar ":"Seleccionar ")+String(spec.flowName||row.name||"flujo"));
+  selector.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6.5 12.5 3.2 3.2L17.8 8"/></svg>';
+  selector.addEventListener("click",event=>{
+    event.stopPropagation();
+    toggleRowSelection(row,article);
+  });
+  article.append(selector);
+
   const head=document.createElement("div");head.className="definition-card-head";
   const headMain=document.createElement("div");headMain.className="definition-card-head-main";
-
-  const selector=document.createElement("label");selector.className="definition-select";
-  const checkbox=document.createElement("input");checkbox.type="checkbox";checkbox.checked=selectedIds.has(row.id);
-  checkbox.setAttribute("aria-label","Seleccionar "+String(spec.flowName||row.name||"flujo"));
-  const selectorText=document.createElement("span");selectorText.textContent="Seleccionar";
-  selector.append(checkbox,selectorText);
-  checkbox.addEventListener("change",()=>toggleRowSelection(row,checkbox.checked,article));
-
   const title=document.createElement("h3");title.textContent=String(spec.flowName||row.name||"Flujo");
-  headMain.append(selector,title);
+  headMain.append(title);
 
   const badge=document.createElement("span");
   badge.className="definition-badge "+(history?"definition-badge--complete":"definition-badge--incomplete");
@@ -462,6 +465,15 @@ function card(row){
   }
 
   article.append(actions);
+
+  article.addEventListener("click",event=>{
+    if(!selectionMode)return;
+    if(event.target.closest(".definition-select-indicator"))return;
+    event.preventDefault();
+    toggleRowSelection(row,article);
+  });
+  bindLongPress(article,row);
+
   return article;
 }
 

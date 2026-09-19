@@ -91,6 +91,115 @@ begin
 end;
 $scheduled_initial$;
 
+-- 1b. Antes de la primera ejecución, editar/reprogramar conserva la misma
+-- definición/version y sustituye la aplicación operativa sin crear tarea.
+select set_config(
+  'gestionpisos.schedule.manual_definition',
+  (
+    select definition_id::text
+    from public.workflow_applications_v2
+    where id=current_setting('gestionpisos.schedule.manual_app')::uuid
+  ),
+  true
+);
+
+select set_config(
+  'gestionpisos.schedule.manual_version',
+  (
+    select definition_version_id::text
+    from public.workflow_applications_v2
+    where id=current_setting('gestionpisos.schedule.manual_app')::uuid
+  ),
+  true
+);
+
+select set_config(
+  'gestionpisos.schedule.manual_app',
+  (
+    select application_id::text
+    from public.update_unexecuted_workflow_v2(
+      current_setting('gestionpisos.schedule.manual_definition')::uuid,
+      jsonb_build_object(
+        'authoringVersion',2,
+        'flowName','Programada manual editada',
+        'flowType','custom',
+        'flowDescription','Reprogramada antes de ejecutar',
+        'scopeType','organization',
+        'triggerType','scheduled_once',
+        'recurrence','',
+        'scheduledAt',to_char((now()+interval '15 minutes') at time zone 'UTC','YYYY-MM-DD"T"HH24:MI'),
+        'scheduledTimezone','UTC',
+        'scheduledAtUtc',to_char((now()+interval '15 minutes') at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+        'customEvery','',
+        'customUnit','',
+        'assignmentType','manual',
+        'steps',jsonb_build_object('accept',true,'photo',false,'checklist',false,'document',false),
+        'checklistItems','[]'::jsonb,
+        'closeType','auto',
+        'notifications',jsonb_build_object('onCreate',true,'onClose',false)
+      ),
+      null,null,null,'{}'::uuid[],
+      (
+        select revision
+        from public.workflow_definitions_v2
+        where id=current_setting('gestionpisos.schedule.manual_definition')::uuid
+      ),
+      false,
+      null,
+      null,
+      'UTC',
+      '22222222-2222-4222-8222-222222222222'::uuid
+    )
+    limit 1
+  ),
+  true
+);
+
+do $scheduled_reprogrammed$
+declare
+  v_app uuid:=current_setting('gestionpisos.schedule.manual_app')::uuid;
+  v_definition uuid:=current_setting('gestionpisos.schedule.manual_definition')::uuid;
+  v_version uuid:=current_setting('gestionpisos.schedule.manual_version')::uuid;
+begin
+  if exists(
+    select 1
+    from public.workflow_executions_v2 e
+    join public.workflow_applications_v2 a on a.id=e.application_id
+    where a.definition_id=v_definition
+  ) then
+    raise exception 'reprogramming created an execution before due time';
+  end if;
+
+  if not exists(
+    select 1
+    from public.workflow_applications_v2 a
+    join public.workflow_definition_versions_v2 v on v.id=a.definition_version_id
+    join public.workflow_application_schedules_v2 s on s.application_id=a.id
+    where a.id=v_app
+      and a.definition_id=v_definition
+      and a.definition_version_id=v_version
+      and v.version=1
+      and v.spec->>'scheduledTimezone'='UTC'
+      and nullif(v.spec->>'scheduledAtUtc','') is not null
+      and s.status='active'
+      and s.schedule_timezone='UTC'
+      and s.scheduled_assigned_user_id='22222222-2222-4222-8222-222222222222'::uuid
+      and s.next_run_at>now()
+  ) then
+    raise exception 'reprogramming did not preserve version and exact schedule';
+  end if;
+
+  if (
+    select count(*)
+    from public.workflow_applications_v2
+    where definition_id=v_definition
+      and status='configured'
+  )<>1 then
+    raise exception 'reprogramming left multiple configured applications';
+  end if;
+end;
+$scheduled_reprogrammed$;
+
 -- Un Fecha concreta no puede crearse por el endpoint manual.
 do $manual_forbidden$
 begin

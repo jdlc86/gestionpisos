@@ -465,3 +465,6 @@ Recurrente reutiliza `workflow_application_schedules_v2` y el mismo cron de Fech
 - no admite ejecución manual ni ejecución masiva.
 
 La regresión PostgreSQL cubre avance, idempotencia, catch-up, fin de mes, DST y cambio de responsable entre ocurrencias.
+
+
+Los flujos recurrentes publicados antes de existir la primera fecha explícita no reciben una fecha inventada ni se migran destructivamente. Mis Flujos los identifica como **Necesita programación** y destaca **Editar programación**; si ya tienen historial, la corrección crea una nueva versión y conserva las ejecuciones anteriores.

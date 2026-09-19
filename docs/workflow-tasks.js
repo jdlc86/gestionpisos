@@ -951,14 +951,48 @@ async function loadManagerAccess(){
 
 async function loadPersonalHidden(){
   hiddenTaskIds=new Set();
-  if(!currentUser?.id)return;
+  if(!currentUser?.id||isManager())return;
 
-  const {data,error}=await supabase.rpc("list_my_hidden_task_cards_v1");
-  if(error)throw error;
+  const pageSize=500;
+  for(let from=0;;from+=pageSize){
+    const {data,error}=await supabase
+      .rpc("list_my_hidden_task_cards_v1")
+      .range(from,from+pageSize-1);
+    if(error)throw error;
 
-  (data||[]).forEach(row=>{
-    if(row?.task_id)hiddenTaskIds.add(row.task_id);
-  });
+    const rows=data||[];
+    rows.forEach(row=>{
+      if(row?.task_id)hiddenTaskIds.add(row.task_id);
+    });
+    if(rows.length<pageSize)break;
+  }
+}
+
+async function loadHiddenTaskRows(){
+  if(isManager()||!hiddenTaskIds.size)return;
+
+  const loadedIds=new Set(tasks.map(task=>task.id));
+  const missing=[...hiddenTaskIds].filter(id=>!loadedIds.has(id));
+  if(!missing.length)return;
+
+  const chunkSize=100;
+  for(let index=0;index<missing.length;index+=chunkSize){
+    const ids=missing.slice(index,index+chunkSize);
+    const {data,error}=await supabase
+      .from("tenant_tasks_v2")
+      .select("id,organization_id,tenant_id,property_id,room_id,task_type,origin,title,description,status,due_at,assigned_user_id,source_kind,source_id,created_at,removed_at")
+      .in("id",ids)
+      .is("removed_at",null);
+    if(error)throw error;
+    (data||[]).forEach(task=>{
+      if(!loadedIds.has(task.id)){
+        tasks.push(task);
+        loadedIds.add(task.id);
+      }
+    });
+  }
+
+  tasks.sort((a,b)=>String(b.created_at||"").localeCompare(String(a.created_at||"")));
 }
 
 async function loadRelated(){
@@ -1100,7 +1134,14 @@ async function load(preserveStatus=false){
   tasks=data||[];
 
   try{
-    await Promise.all([loadManagerAccess(),loadPersonalHidden(),loadRelated(),loadActions(),loadWorkflowExecutions(),loadPhotoResources(),loadDocuments()]);
+    await loadManagerAccess();
+    if(isManager()){
+      hiddenTaskIds=new Set();
+    }else{
+      await loadPersonalHidden();
+      await loadHiddenTaskRows();
+    }
+    await Promise.all([loadRelated(),loadActions(),loadWorkflowExecutions(),loadPhotoResources(),loadDocuments()]);
   }catch{
     list.replaceChildren();
     const empty=document.createElement("article");empty.className="task-empty";

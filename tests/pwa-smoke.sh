@@ -54,7 +54,7 @@ grep -q 'serviceWorker' docs/app.js
 grep -q 'GestionPisos' docs/manifest.webmanifest
 grep -Fq "'./legal.html'" docs/sw.js
 grep -Fq "'./privacy.html'" docs/sw.js
-grep -q 'gestionpisos-shell-v18' docs/sw.js
+grep -q 'gestionpisos-shell-v19' docs/sw.js
 grep -Fq "'./bottom-nav.js'" docs/sw.js
 grep -Fq "'./bottom-nav.css'" docs/sw.js
 grep -Fq 'mountBottomNavigation' docs/auth-guard.js
@@ -335,3 +335,6 @@ grep -Fq '[hidden]{display:none!important}' docs/app.css
 grep -Fq 'input[type="checkbox"],input[type="radio"]' docs/app.css
 grep -Fq '<span>Puede recuperar ROOT</span>' docs/permissions.html
 grep -Fq 'class="builder-editor-state"' docs/workflow-builder.html
+
+grep -Fq './app.css?v=2026091908' docs/index.html
+grep -Fq 'linear-gradient(145deg,#f7f3ec 0%,#f4f0e9 42%,#ede6da 100%)' docs/app.css

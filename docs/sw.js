@@ -1,5 +1,5 @@
-const CACHE='gestionpisos-shell-v12';
-const ASSETS=['./','./index.html','./app.css','./app.js','./login.html','./auth.css','./login.js','./reset-password.html','./reset-password.js','./mfa-common.js','./mfa-setup.html','./mfa-setup.js','./mfa-challenge.html','./mfa-challenge.js','./supabase-client.js','./auth-guard.js','./workflows.html','./workflow-builder.html','./workflow-builder.css','./workflow-builder.js','./workflow-definitions.html','./workflow-definitions.css','./workflow-definitions.js','./workflow-applications.html','./workflow-applications.css','./workflow-applications.js','./workflow-tasks.html','./workflow-tasks.css','./workflow-tasks.js','./manifest.webmanifest'];
+const CACHE='gestionpisos-shell-v13';
+const ASSETS=['./','./index.html','./app.css','./app.js','./login.html','./auth.css','./login.js','./reset-password.html','./reset-password.js','./mfa-common.js','./mfa-setup.html','./mfa-setup.js','./mfa-challenge.html','./mfa-challenge.js','./supabase-client.js','./auth-guard.js','./bottom-nav.js','./bottom-nav.css','./workflows.html','./workflow-builder.html','./workflow-builder.css','./workflow-builder.js','./workflow-definitions.html','./workflow-definitions.css','./workflow-definitions.js','./workflow-applications.html','./workflow-applications.css','./workflow-applications.js','./workflow-tasks.html','./workflow-tasks.css','./workflow-tasks.js','./manifest.webmanifest'];
 
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)));

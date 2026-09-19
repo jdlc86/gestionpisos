@@ -6,6 +6,9 @@ test -s docs/app.css
 test -s docs/app.js
 test -s docs/manifest.webmanifest
 test -s docs/sw.js
+test -s docs/bottom-nav.js
+test -s docs/bottom-nav.css
+node --check docs/bottom-nav.js
 test -s docs/operations.html
 test -s docs/operations.css
 test -s docs/operations.js
@@ -47,7 +50,25 @@ grep -q 'app.css' docs/index.html
 grep -q 'app.js' docs/index.html
 grep -q 'serviceWorker' docs/app.js
 grep -q 'GestionPisos' docs/manifest.webmanifest
-grep -q 'gestionpisos-shell-v12' docs/sw.js
+grep -q 'gestionpisos-shell-v13' docs/sw.js
+grep -Fq "'./bottom-nav.js'" docs/sw.js
+grep -Fq "'./bottom-nav.css'" docs/sw.js
+grep -Fq 'mountBottomNavigation' docs/auth-guard.js
+grep -Fq './bottom-nav.js?v=2026091901' docs/auth-guard.js
+grep -Fq 'Inicio' docs/bottom-nav.js
+grep -Fq 'Cartera' docs/bottom-nav.js
+grep -Fq 'Flujos' docs/bottom-nav.js
+grep -Fq 'Tareas' docs/bottom-nav.js
+grep -Fq 'Más' docs/bottom-nav.js
+grep -Fq '"photo-camera.html"' docs/bottom-nav.js
+grep -Fq '"photo-pattern-editor.html"' docs/bottom-nav.js
+grep -Fq 'env(safe-area-inset-bottom)' docs/bottom-nav.css
+grep -Fq 'position:fixed' docs/bottom-nav.css
+grep -Fq 'grid-template-columns:repeat(5,minmax(0,1fr))' docs/bottom-nav.css
+grep -Fq 'font-size:12px' docs/bottom-nav.css
+grep -Fq 'visualViewport' docs/bottom-nav.js
+grep -Fq 'Gestion de Permisos' docs/bottom-nav.js || grep -Fq 'Gestión de Permisos' docs/bottom-nav.js
+grep -Fq 'Configuración y Recursos' docs/bottom-nav.js
 grep -q 'operations.html' docs/index.html
 grep -q 'Notificaciones' docs/operations.html
 grep -q 'Pagos' docs/operations.html

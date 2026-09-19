@@ -116,7 +116,7 @@ a.card:active{transform:translateY(1px)}
 .locked{opacity:.64}
 
 .module-heading{display:flex;align-items:center;gap:9px}
-.ui-nav-icon{display:inline-flex;flex:0 0 24px;width:24px;align-items:center;justify-content:center;border:0;background:transparent;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif;font-size:20px;font-weight:400;line-height:1}
+.ui-nav-icon{display:inline-flex;flex:0 0 24px;width:24px;align-items:center;justify-content:center;border:0;background:transparent;color:var(--ui-muted);line-height:1}.ui-nav-icon svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 
 .status{display:flex;align-items:center;gap:10px;margin-top:18px;padding:12px 14px;border:1px solid var(--ui-border);border-radius:var(--ui-radius);background:var(--ui-surface);color:var(--ui-muted);font-size:12px;line-height:1.45}
 .status.error{border-color:var(--ui-danger-border);background:var(--ui-danger-soft);color:var(--ui-danger)}
@@ -128,7 +128,7 @@ input,select,textarea{width:100%;border:1px solid var(--ui-border);border-radius
 input:focus,select:focus,textarea:focus{border-color:var(--ui-info);box-shadow:0 0 0 3px color-mix(in srgb,var(--ui-info) 16%,transparent)}
 input::placeholder,textarea::placeholder{color:color-mix(in srgb,var(--ui-muted) 72%,transparent)}
 
-.primary,.secondary,.danger-soft{min-height:42px;border-radius:var(--ui-radius-sm);padding:9px 13px;font-weight:750;cursor:pointer}
+.primary,.secondary,.danger-soft{display:inline-flex;min-height:42px;align-items:center;justify-content:center;border-radius:var(--ui-radius-sm);padding:9px 13px;font-weight:750;text-decoration:none;cursor:pointer}
 .primary{border:1px solid var(--ui-action);background:var(--ui-action);color:var(--ui-action-text)}
 .primary:hover{border-color:var(--ui-action-hover);background:var(--ui-action-hover)}
 .secondary{border:1px solid var(--ui-border);background:transparent;color:var(--ui-text)}

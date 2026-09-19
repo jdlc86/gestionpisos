@@ -54,7 +54,7 @@ grep -q 'serviceWorker' docs/app.js
 grep -q 'GestionPisos' docs/manifest.webmanifest
 grep -Fq "'./legal.html'" docs/sw.js
 grep -Fq "'./privacy.html'" docs/sw.js
-grep -q 'gestionpisos-shell-v20' docs/sw.js
+grep -q 'gestionpisos-shell-v21' docs/sw.js
 grep -Fq "'./bottom-nav.js'" docs/sw.js
 grep -Fq "'./bottom-nav.css'" docs/sw.js
 grep -Fq 'mountBottomNavigation' docs/auth-guard.js
@@ -76,7 +76,12 @@ grep -Fq 'background:var(--ui-info-soft)' docs/bottom-nav.css
 grep -Fq 'const isHomePage = currentPage === "index.html"' docs/auth-guard.js
 grep -Fq 'homeActionHost' docs/auth-guard.js
 grep -Fq 'button.textContent = "MFA"' docs/auth-guard.js
+grep -Fq 'id="homeAccountAction"' docs/index.html
+grep -Fq 'id="homeThemeAction"' docs/index.html
 grep -Fq 'data-theme-toggle' docs/index.html
+grep -Fq 'id="homeAccountMenu" class="account-menu"' docs/index.html
+grep -Fq 'id="mfaSetupAction"' docs/index.html
+grep -Fq 'id="logoutBtn"' docs/index.html
 for non_home_screen in docs/portfolio.html docs/operations.html docs/workflows.html docs/workflow-builder.html docs/workflow-definitions.html docs/workflow-applications.html docs/workflow-tasks.html docs/cleaning.html docs/incidents.html docs/permissions.html docs/configuration-resources.html docs/photo-verifications.html docs/photo-patterns.html; do
   ! grep -Fq 'data-theme-toggle' "$non_home_screen"
 done
@@ -338,3 +343,6 @@ grep -Fq 'class="builder-editor-state"' docs/workflow-builder.html
 
 grep -Fq './app.css?v=2026091909' docs/index.html
 grep -Fq 'linear-gradient(145deg,#2d2a26 0%,#26231f 54%,#1f1d1a 100%)' docs/app.css
+
+grep -Fq '.account-menu{' docs/app.css
+grep -Fq 'data-theme-menu-label' docs/app.js

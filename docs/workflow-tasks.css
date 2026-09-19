@@ -92,3 +92,6 @@ body.tasks-selection-active .task-toolbar{display:none}
 @media(prefers-reduced-motion:reduce){
   .tasks-selection-mode,.tasks-bulk-dock,.task-card{animation:none;transition:none}
 }
+
+.task-badge--personal-hidden{border-color:color-mix(in srgb,var(--ui-info) 42%,var(--ui-border));background:var(--ui-info-soft);color:var(--ui-info)}
+.tasks-bulk-action--personal{color:var(--ui-action)}

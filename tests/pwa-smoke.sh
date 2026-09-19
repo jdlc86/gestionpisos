@@ -393,3 +393,4 @@ grep -Fq "self.addEventListener('notificationclick'" docs/sw.js
 grep -Fq "showNotification" docs/sw.js
 grep -Fq "push_notification" docs/sw.js
 grep -Fq '.notification-push-action{' docs/notification-center.css
+! grep -Fq '\\n.notification-' docs/notification-center.css

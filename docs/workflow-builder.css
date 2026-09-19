@@ -68,7 +68,10 @@
 .builder-editor-heading{min-width:0}
 .builder-editor-heading .eyebrow{margin-bottom:2px}
 .builder-editor-heading h2{margin:0;font-size:18px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.builder-editor-bar .badge{justify-self:end}
+.builder-editor-state{display:inline-flex;align-items:center;justify-self:end;gap:6px;min-width:0;color:var(--ui-muted);font-size:11px;font-weight:750;white-space:nowrap}
+.builder-editor-state::before{content:"";flex:0 0 6px;width:6px;height:6px;border-radius:50%;background:var(--ui-warning)}
+.builder-editor-state.is-complete{color:var(--ui-success)}
+.builder-editor-state.is-complete::before{background:var(--ui-success)}
 
 .builder-exit-dialog{width:min(520px,calc(100vw - 28px));padding:0;border:1px solid var(--ui-border);border-radius:var(--ui-radius);background:var(--ui-surface);color:var(--ui-text);box-shadow:0 20px 70px rgba(0,0,0,.28)}
 .builder-exit-dialog::backdrop{background:rgba(0,0,0,.45)}
@@ -88,7 +91,7 @@
   .builder-draft-actions a,.builder-draft-actions button{width:100%}
   .builder-editor-bar{grid-template-columns:auto minmax(0,1fr) auto;align-items:center}
   .builder-editor-bar>button{justify-self:start}
-  .builder-editor-bar .badge{align-self:center}
+  .builder-editor-state{align-self:center}
 }
 @media(max-width:480px){
   .builder-exit-dialog-actions{grid-template-columns:1fr}
@@ -176,11 +179,7 @@ body.builder-editor-active .builder-editor-bar{
 }
 body.builder-editor-active .builder-editor-heading .eyebrow{display:none}
 body.builder-editor-active .builder-editor-heading h2{font-size:17px}
-body.builder-editor-active .builder-editor-bar .badge{
-  min-height:24px;
-  border-color:var(--ui-border);
-  background:var(--ui-subtle);
-  color:var(--ui-muted);
+body.builder-editor-active .builder-editor-state{
   font-size:10px;
 }
 body.builder-editor-active .builder-card{

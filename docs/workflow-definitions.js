@@ -188,9 +188,9 @@ function card(row){
   const execute=document.createElement("a");
   execute.className="primary";
   execute.textContent="Ejecutar";
-  execute.href=app
-    ?"./workflow-applications.html?definition="+encodeURIComponent(row.id)+"&setup=1&application="+encodeURIComponent(app.id)
-    :"./workflow-applications.html?definition="+encodeURIComponent(row.id);
+  execute.href="./workflow-applications.html?definition="+encodeURIComponent(row.id)
+    +"&setup=1&intent=execute&from=mis-flujos"
+    +(app?"&application="+encodeURIComponent(app.id):"");
   actions.append(execute);
 
   if(history){

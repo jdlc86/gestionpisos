@@ -22,3 +22,39 @@
 .application-complete strong{font-size:14px}
 .application-complete p{margin:0;color:var(--ui-muted);font-size:12px;line-height:1.45}
 @media(max-width:620px){.workflow-journey{gap:5px;padding:9px}.workflow-journey-step{gap:5px;font-size:10px}.workflow-journey-step span{width:21px;height:21px}.application-guided-actions{display:grid}.application-guided-actions a{width:100%}}
+
+
+/* Ejecución asistida desde Mis Flujos */
+.execution-assist-card{gap:12px}
+.execution-assist-banner{display:grid;gap:3px;padding:11px 12px;border:1px solid var(--ui-warning);border-radius:var(--ui-radius-sm);background:var(--ui-warning-soft)}
+.execution-assist-banner strong{font-size:13px}
+.execution-assist-banner p{margin:0;color:var(--ui-muted);font-size:12px;line-height:1.45}
+.execution-assist-banner.is-ready{border-color:var(--ui-success);background:var(--ui-success-soft)}
+.execution-assist-banner.is-blocked{border-color:var(--ui-danger);background:var(--ui-danger-soft)}
+.execution-review-list{display:grid;gap:8px}
+.execution-review-card{overflow:hidden;border:1px solid var(--ui-border);border-radius:var(--ui-radius-sm);background:var(--ui-subtle)}
+.execution-review-card>summary{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;min-height:54px;padding:10px 12px;cursor:pointer;list-style:none}
+.execution-review-card>summary::-webkit-details-marker{display:none}
+.execution-review-card>summary::marker{content:""}
+.execution-review-card>summary:focus-visible{outline:3px solid color-mix(in srgb,var(--ui-action) 30%,transparent);outline-offset:-3px}
+.execution-review-heading{display:grid;gap:2px;min-width:0}
+.execution-review-heading strong{color:var(--ui-muted);font-size:10px;letter-spacing:.05em;text-transform:uppercase}
+.execution-review-value{color:var(--ui-text);font-size:13px;overflow-wrap:anywhere}
+.execution-review-state{display:inline-flex;align-items:center;justify-content:center;padding:4px 7px;border:1px solid var(--ui-success);border-radius:999px;background:var(--ui-success-soft);color:var(--ui-success);font-size:9px;font-weight:850;text-transform:uppercase}
+.execution-review-card.is-pending{border-color:var(--ui-warning);background:var(--ui-warning-soft);box-shadow:0 0 0 2px color-mix(in srgb,var(--ui-warning) 12%,transparent)}
+.execution-review-card.is-pending .execution-review-state{border-color:var(--ui-warning);background:var(--ui-warning-soft);color:var(--ui-text)}
+.execution-review-body{display:grid;gap:9px;padding:0 12px 12px;border-top:1px solid color-mix(in srgb,var(--ui-border) 75%,transparent)}
+.execution-review-body>p{margin:10px 0 0;color:var(--ui-muted);font-size:12px;line-height:1.45}
+.execution-assignment-body{display:grid;gap:8px;padding-top:10px}
+.execution-assignment-body label{display:grid;gap:6px;color:var(--ui-text);font-size:12px;font-weight:750}
+.execution-assignment-body .execution-note{margin:0}
+.execution-assist-actions{align-items:center}
+.execution-assist-actions button,.execution-assist-actions a{min-height:44px}
+.execution-assist-actions .secondary{display:inline-flex;align-items:center;justify-content:center;padding:9px 13px;border-radius:var(--ui-radius-sm);text-decoration:none;font-weight:800}
+.execution-field-missing{padding:10px;border:1px solid var(--ui-warning)!important;border-radius:var(--ui-radius-sm);background:var(--ui-warning-soft);box-shadow:0 0 0 2px color-mix(in srgb,var(--ui-warning) 12%,transparent)}
+.workflow-execution-assist #applicationFormCard.execution-attention{border-color:var(--ui-warning)}
+@media(max-width:620px){
+  .execution-review-card>summary{min-height:50px}
+  .execution-assist-actions{display:grid}
+  .execution-assist-actions button,.execution-assist-actions a{width:100%}
+}

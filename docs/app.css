@@ -130,7 +130,7 @@ a.card:active{transform:translateY(0)}
 .premium-nav-card.locked{opacity:1;background:color-mix(in srgb,var(--ui-surface) 82%,var(--ui-subtle))!important;color:var(--ui-muted);box-shadow:none}
 .premium-nav-card.locked::before{opacity:.18}
 .availability-badge{display:inline-flex;align-items:center;width:max-content;margin-top:10px;padding:4px 8px;border:1px solid var(--ui-border);border-radius:999px;background:var(--ui-subtle);color:var(--ui-muted);font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
-.card>span:not(.module-heading):not(.ui-nav-icon),.card .module-description{display:block;margin-top:7px;color:var(--ui-muted);font-size:12px;line-height:1.42}
+.card>span:not(.module-heading):not(.ui-nav-icon):not(.availability-badge):not(.premium-icon),.card .module-description{display:block;margin-top:7px;color:var(--ui-muted);font-size:12px;line-height:1.42}
 .locked{opacity:.64}
 
 .module-heading{display:flex;align-items:center;gap:10px}

@@ -521,3 +521,10 @@ grep -Fq 'Los flujos seleccionados de Fecha concreta se ejecutarán automáticam
 grep -Fq 'Ejecución automática' docs/workflow-definitions.js
 grep -Fq 'scheduledDateTime(spec)' docs/workflow-definitions.js
 grep -Fq 'workflow_schedule_blocked:"./workflow-definitions.html"' docs/notification-center.js
+
+
+# Fecha concreta: el Creador rechaza horas locales repetidas por cambio DST.
+grep -Fq 'function zonedMinuteString(date,timezone)' docs/workflow-builder.js
+grep -Fq 'function scheduledMinuteIsAmbiguous(date,local,timezone)' docs/workflow-builder.js
+grep -Fq 'Esta hora se repite por el cambio horario. Elige otra hora.' docs/workflow-builder.js
+grep -Fq 'workflow_schedule_local_time_ambiguous' docs/workflow-applications.js

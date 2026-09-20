@@ -48,14 +48,14 @@ begin
     raise exception 'cleaning_task_not_found' using errcode='P0002';
   end if;
 
-  if not exists (
-    select 1
-    from public.occupancies_v2 o
-    where o.property_id=v_cleaning.property_id
-      and o.user_id=v_swap.target_user_id
-      and o.status='active'
-      and o.starts_on<=current_date
-      and (o.ends_on is null or o.ends_on>=current_date)
+  if not private.workflow_assignee_eligible_v1(
+    v_cleaning.organization_id,
+    'property',
+    v_cleaning.property_id,
+    null,
+    null,
+    v_swap.target_user_id,
+    'tenant'
   ) then
     raise exception 'target no longer occupies property' using errcode='55000';
   end if;

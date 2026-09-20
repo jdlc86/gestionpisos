@@ -40,6 +40,8 @@ select set_config('gestionpisos.photo.pattern_a', gen_random_uuid()::text, true)
 select set_config('gestionpisos.photo.pattern_b', gen_random_uuid()::text, true);
 select set_config('gestionpisos.photo.run_own', gen_random_uuid()::text, true);
 select set_config('gestionpisos.photo.run_other', gen_random_uuid()::text, true);
+select set_config('gestionpisos.photo.item_own', gen_random_uuid()::text, true);
+select set_config('gestionpisos.photo.item_other', gen_random_uuid()::text, true);
 
 insert into auth.users (id)
 values
@@ -401,21 +403,27 @@ end;
 $$;
 
 -- The actor can insert an item only in its own run.
-insert into public.photo_verification_items_v2 (run_id, pattern_id, storage_path)
+insert into public.photo_verification_items_v2 (id, run_id, pattern_id, storage_path)
 values (
+  current_setting('gestionpisos.photo.item_own')::uuid,
   current_setting('gestionpisos.photo.run_own')::uuid,
   current_setting('gestionpisos.photo.pattern_a')::uuid,
-  'own/item.webp'
+  current_setting('gestionpisos.photo.org_a') || '/' ||
+    current_setting('gestionpisos.photo.run_own') || '/' ||
+    current_setting('gestionpisos.photo.item_own') || '.jpg'
 );
 
 do $$
 begin
   begin
-    insert into public.photo_verification_items_v2 (run_id, pattern_id, storage_path)
+    insert into public.photo_verification_items_v2 (id, run_id, pattern_id, storage_path)
     values (
+      current_setting('gestionpisos.photo.item_other')::uuid,
       current_setting('gestionpisos.photo.run_other')::uuid,
       current_setting('gestionpisos.photo.pattern_a')::uuid,
-      'other/item.webp'
+      current_setting('gestionpisos.photo.org_a') || '/' ||
+        current_setting('gestionpisos.photo.run_other') || '/' ||
+        current_setting('gestionpisos.photo.item_other') || '.jpg'
     );
     raise exception 'actor insert into another run unexpectedly succeeded';
   exception when insufficient_privilege then null;

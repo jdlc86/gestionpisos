@@ -364,6 +364,9 @@ test -s supabase/migrations/20260920143000_wf03_cleaning_authoring_contract.sql
 grep -Fq "(p_spec->>'flowType')='cleaning'" supabase/migrations/20260920143000_wf03_cleaning_authoring_contract.sql
 grep -Fq "coalesce(p_spec#>>'{steps,accept}','false')<>'true'" supabase/migrations/20260920143000_wf03_cleaning_authoring_contract.sql
 grep -Fq "coalesce(p_spec#>>'{steps,photo}','false')='true'" supabase/migrations/20260920143000_wf03_cleaning_authoring_contract.sql
+test -s supabase/migrations/20260920143100_wf03_cleaning_adapter_opt_in.sql
+grep -Fq "workflow_ensure_cleaning_domain_task_core_v1" supabase/migrations/20260920143100_wf03_cleaning_adapter_opt_in.sql
+grep -Fq "coalesce(v_execution.spec_snapshot->>'closeType','')<>'domain_adapter'" supabase/migrations/20260920143100_wf03_cleaning_adapter_opt_in.sql
 
 grep -Fq './app.css?v=2026091910' docs/index.html
 grep -Fq 'linear-gradient(145deg,#2d2a26 0%,#26231f 54%,#1f1d1a 100%)' docs/app.css

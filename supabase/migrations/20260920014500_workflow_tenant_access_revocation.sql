@@ -42,10 +42,6 @@ begin
        and ur.organization_id=v_execution.organization_id
        and ur.role in ('admin','employee')
        and ur.revoked_at is null
-      join public.profiles p
-        on p.user_id=a.employee_user_id
-       and p.status='active'
-       and p.archived_at is null
       where a.property_id=v_execution.property_id
         and a.employee_user_id=v_actor
         and a.assignment_type='responsible'
@@ -64,13 +60,10 @@ begin
     return exists(
       select 1
       from public.user_roles ur
-      join public.profiles p on p.user_id=ur.user_id
       where ur.user_id=v_actor
         and ur.organization_id=v_execution.organization_id
         and ur.role in ('admin','employee')
         and ur.revoked_at is null
-        and p.status='active'
-        and p.archived_at is null
     );
   end if;
 
@@ -84,10 +77,6 @@ begin
        and ur.organization_id=v_execution.organization_id
        and ur.role in ('admin','employee')
        and ur.revoked_at is null
-      join public.profiles p
-        on p.user_id=a.employee_user_id
-       and p.status='active'
-       and p.archived_at is null
       where a.property_id=v_execution.property_id
         and a.employee_user_id=v_actor
         and a.assignment_type in ('responsible','access')

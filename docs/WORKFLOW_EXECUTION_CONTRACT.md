@@ -167,7 +167,8 @@ Reglas:
 - el dispatcher resuelve aplicaciones publicadas/configuradas cuyo `eventType` coincide y cuyo destino contiene el evento;
 - organización, piso, habitación y ocupación se resuelven server-side desde el evento capturado;
 - la asignación se revalida en el momento del despacho usando el mismo resolver del resto del motor;
-- un fallo de una aplicación produce un recibo `failed` y auditoría, pero no revierte el evento origen ni ejecuciones correctas de otras aplicaciones;
-- un evento procesado no se vuelve a ejecutar por reintentar el consumidor;
+- un fallo de una aplicación produce/actualiza un recibo `failed` y auditoría, pero no revierte el evento origen ni ejecuciones correctas de otras aplicaciones;
+- mientras exista algún despacho fallido, el evento permanece `pending` para reintento; los recibos `executed` se saltan en los intentos siguientes;
+- cuando todos los despachos convergen, el evento pasa a `processed`; reintentar después no crea ejecuciones nuevas;
 - las tablas de outbox/recibos no conceden escritura ni ejecución directa a `authenticated`.
 

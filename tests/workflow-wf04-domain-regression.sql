@@ -11,16 +11,24 @@ select set_config('wf04.staff',gen_random_uuid()::text,true);
 select set_config('wf04.outsider',gen_random_uuid()::text,true);
 select set_config('wf04.tenant_user',gen_random_uuid()::text,true);
 select set_config('wf04.future_user',gen_random_uuid()::text,true);
+select set_config('wf04.stale_user',gen_random_uuid()::text,true);
+select set_config('wf04.reject_user',gen_random_uuid()::text,true);
 select set_config('wf04.tenant',gen_random_uuid()::text,true);
 select set_config('wf04.future_tenant',gen_random_uuid()::text,true);
+select set_config('wf04.stale_tenant',gen_random_uuid()::text,true);
+select set_config('wf04.reject_tenant',gen_random_uuid()::text,true);
 select set_config('wf04.occupancy',gen_random_uuid()::text,true);
 select set_config('wf04.future_occupancy',gen_random_uuid()::text,true);
+select set_config('wf04.stale_occupancy',gen_random_uuid()::text,true);
+select set_config('wf04.reject_occupancy',gen_random_uuid()::text,true);
 
 insert into auth.users(id) values
   (current_setting('wf04.staff')::uuid),
   (current_setting('wf04.outsider')::uuid),
   (current_setting('wf04.tenant_user')::uuid),
-  (current_setting('wf04.future_user')::uuid);
+  (current_setting('wf04.future_user')::uuid),
+  (current_setting('wf04.stale_user')::uuid),
+  (current_setting('wf04.reject_user')::uuid);
 
 insert into public.profiles(user_id,organization_id,display_name,status) values
   (current_setting('wf04.staff')::uuid,current_setting('wf04.org')::uuid,'WF04 staff','active'),
@@ -30,7 +38,9 @@ insert into public.user_roles(user_id,organization_id,role) values
   (current_setting('wf04.staff')::uuid,current_setting('wf04.org')::uuid,'employee'),
   (current_setting('wf04.outsider')::uuid,current_setting('wf04.org')::uuid,'employee'),
   (current_setting('wf04.tenant_user')::uuid,current_setting('wf04.org')::uuid,'tenant'),
-  (current_setting('wf04.future_user')::uuid,current_setting('wf04.org')::uuid,'tenant');
+  (current_setting('wf04.future_user')::uuid,current_setting('wf04.org')::uuid,'tenant'),
+  (current_setting('wf04.stale_user')::uuid,current_setting('wf04.org')::uuid,'tenant'),
+  (current_setting('wf04.reject_user')::uuid,current_setting('wf04.org')::uuid,'tenant');
 
 insert into public.owners(id,organization_id,full_name,status)
 values(current_setting('wf04.owner')::uuid,current_setting('wf04.org')::uuid,
@@ -59,7 +69,13 @@ insert into public.tenants_v2(
    'wf04-tenant@example.invalid','active'),
   (current_setting('wf04.future_tenant')::uuid,current_setting('wf04.org')::uuid,
    current_setting('wf04.future_user')::uuid,'WF04 future tenant','other','WF04-FUTURE',
-   'wf04-future@example.invalid','active');
+   'wf04-future@example.invalid','active'),
+  (current_setting('wf04.stale_tenant')::uuid,current_setting('wf04.org')::uuid,
+   current_setting('wf04.stale_user')::uuid,'WF04 stale tenant','other','WF04-STALE',
+   'wf04-stale@example.invalid','active'),
+  (current_setting('wf04.reject_tenant')::uuid,current_setting('wf04.org')::uuid,
+   current_setting('wf04.reject_user')::uuid,'WF04 reject tenant','other','WF04-REJECT',
+   'wf04-reject@example.invalid','active');
 
 create function pg_temp.wf04_spec(p_flow text)
 returns jsonb language sql stable as $$
@@ -75,7 +91,7 @@ returns jsonb language sql stable as $$
     'assignmentUserId','','assignmentRole','',
     'steps',jsonb_build_object('accept',true,'photo',false,'checklist',false,'document',false),
     'checklistItems','[]'::jsonb,'closeType','domain_adapter',
-    'notifications',jsonb_build_object('onCreate',false,'onClose',false)
+    'notifications',jsonb_build_object('onCreate',false,'onClose',true)
   );
 $$;
 
@@ -95,6 +111,26 @@ select set_config('wf04.checkout_app',(
     null,null,'{}'::uuid[],false,'wf04-checkout-ready',null,null
   ) limit 1
 ),true);
+reset role;
+
+-- Un occupancy.created que envejece antes del despacho es terminal, no
+-- reintentable. La Baja genera además su evento checkout normal.
+insert into public.occupancies_v2(
+  id,organization_id,tenant_id,property_id,room_id,occupant_email,
+  starts_on,ends_on,status,user_id
+) values (
+  current_setting('wf04.stale_occupancy')::uuid,current_setting('wf04.org')::uuid,
+  current_setting('wf04.stale_tenant')::uuid,current_setting('wf04.property')::uuid,
+  current_setting('wf04.room')::uuid,'wf04-stale@example.invalid',
+  current_date-2,null,'active',current_setting('wf04.stale_user')::uuid
+);
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf04.root'),'role','authenticated','aal','aal2'
+)::text,true);
+select public.offboard_tenant_occupancy_v2(
+  current_setting('wf04.stale_occupancy')::uuid,current_date-1
+);
 reset role;
 
 insert into public.occupancies_v2(
@@ -126,6 +162,44 @@ end;
 $event_before_dispatch$;
 
 select private.process_pending_workflow_events_v1(50);
+
+do $stale_event_retired$
+begin
+  if not exists(
+    select 1
+    from public.workflow_event_outbox_v2 e
+    join public.workflow_event_dispatches_v2 d
+      on d.event_id=e.id
+     and d.application_id=current_setting('wf04.checkin_app')::uuid
+    where e.source_id=current_setting('wf04.stale_occupancy')::uuid
+      and e.event_type='occupancy.created'
+      and e.status='processed_with_errors'
+      and e.processed_at is not null
+      and d.status='failed'
+      and d.error_code='55000'
+      and d.error_key='workflow_domain_lifecycle_mismatch'
+  ) then
+    raise exception 'stale check-in event was not retired as terminal';
+  end if;
+  if exists(
+    select 1 from public.workflow_event_outbox_v2
+    where source_id=current_setting('wf04.stale_occupancy')::uuid
+      and event_type='occupancy.created'
+      and status='pending'
+  ) then
+    raise exception 'stale check-in event remained pending';
+  end if;
+  if not exists(
+    select 1 from public.workflow_event_outbox_v2
+    where source_id=current_setting('wf04.occupancy')::uuid
+      and event_type='occupancy.created'
+      and status='processed'
+  ) then
+    raise exception 'later valid check-in event was blocked by stale event';
+  end if;
+end;
+$stale_event_retired$;
+
 select set_config('wf04.checkin_task',(
   select t.id::text from public.tenant_tasks_v2 t
   join public.workflow_executions_v2 e on e.id=t.source_id
@@ -364,6 +438,80 @@ begin
   end if;
 end;
 $checkin_finished$;
+
+-- Rechazar conserva el estado transversal rejected en tarea y ejecución y
+-- dispara la notificación de cierre normal.
+insert into public.occupancies_v2(
+  id,organization_id,tenant_id,property_id,room_id,occupant_email,
+  starts_on,ends_on,status,user_id
+) values (
+  current_setting('wf04.reject_occupancy')::uuid,current_setting('wf04.org')::uuid,
+  current_setting('wf04.reject_tenant')::uuid,current_setting('wf04.property')::uuid,
+  current_setting('wf04.future_room')::uuid,'wf04-reject@example.invalid',
+  current_date-1,null,'active',current_setting('wf04.reject_user')::uuid
+);
+select private.process_pending_workflow_events_v1(50);
+select set_config('wf04.reject_task',(
+  select t.id::text
+  from public.tenant_tasks_v2 t
+  join public.workflow_executions_v2 e on e.id=t.source_id
+  join public.workflow_event_outbox_v2 o on o.id=e.source_event_id
+  where e.application_id=current_setting('wf04.checkin_app')::uuid
+    and o.source_id=current_setting('wf04.reject_occupancy')::uuid
+    and o.event_type='occupancy.created'
+),true);
+
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf04.staff'),'role','authenticated'
+)::text,true);
+select * from public.apply_workflow_task_action_v1(
+  current_setting('wf04.reject_task')::uuid,
+  'reject',
+  'wf04-reject-terminal',
+  'No se puede realizar la entrada'
+);
+reset role;
+
+do $reject_state_and_notification$
+declare v_execution uuid;
+begin
+  select source_id into v_execution
+  from public.tenant_tasks_v2
+  where id=current_setting('wf04.reject_task')::uuid;
+
+  if not exists(
+    select 1
+    from public.tenant_tasks_v2 t
+    join public.workflow_executions_v2 e on e.id=t.source_id
+    where t.id=current_setting('wf04.reject_task')::uuid
+      and t.status='rejected'
+      and e.status='rejected'
+  ) then
+    raise exception 'WF04 reject did not preserve transversal rejected state';
+  end if;
+
+  if not exists(
+    select 1 from public.notifications_v2 n
+    where n.source_kind='workflow_execution'
+      and n.source_id=v_execution
+      and n.event_key='rejected'
+      and n.event_type='workflow_rejected'
+      and n.recipient_user_id=current_setting('wf04.staff')::uuid
+  ) then
+    raise exception 'WF04 reject did not emit workflow_rejected notification';
+  end if;
+
+  if not exists(
+    select 1 from public.tenant_task_history_v2 h
+    where h.task_id=current_setting('wf04.reject_task')::uuid
+      and h.action_key='reject'
+      and h.to_status='rejected'
+  ) then
+    raise exception 'WF04 reject was not recorded in task history';
+  end if;
+end;
+$reject_state_and_notification$;
 
 -- Baja (no Suspensión) corta acceso antes de cualquier acción de llaves.
 set local role authenticated;

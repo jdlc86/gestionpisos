@@ -28,6 +28,7 @@ const draftCount=document.getElementById("builderDraftCount");
 const draftLoadMore=document.getElementById("builderDraftLoadMore");
 const draftStatus=document.getElementById("builderDraftStatus");
 const triggerType=document.getElementById("triggerType");
+const eventTypeRow=document.getElementById("eventTypeRow");
 const recurrenceRow=document.getElementById("recurrenceRow");
 const customRecurrenceRow=document.getElementById("customRecurrenceRow");
 const scheduledAtRow=document.getElementById("scheduledAtRow");
@@ -63,6 +64,7 @@ const labels={
   flowType:{cleaning:"Limpieza",inspection:"Inspección",maintenance:"Mantenimiento",checkin:"Check-in",checkout:"Check-out",custom:"Personalizado"},
   scopeType:{property:"Un piso",organization:"Toda la organización",room:"Una habitación",occupancy:"Una ocupación / inquilino"},
   triggerType:{manual:"Manual",recurring:"Recurrente",scheduled_once:"Fecha concreta",event:"Por evento"},
+  eventType:{"occupancy.created":"Nueva ocupación creada"},
   recurrence:{weekly:"Cada semana",biweekly:"Cada 2 semanas",monthly:"Cada mes",custom:"Personalizada"},
   customUnit:{day:"día(s)",week:"semana(s)",month:"mes(es)"},
   assignmentType:{property_responsible:"Responsable operativo del piso",active_occupants_rotation:"Ocupantes activos en rotación",fixed_person:"Persona fija",role:"Rol o capacidad",manual:"Se decide al iniciar"},
@@ -152,13 +154,17 @@ function updateAssignmentFields({clearHidden=false}={}){
   const typeSelect=field("assignmentType");
   const roleSelect=field("assignmentRole");
   const personSelect=field("assignmentUserId");
+  const eventDriven=value("triggerType")==="event";
   const rotationOption=typeSelect?.querySelector('option[value="active_occupants_rotation"]');
   const responsibleOption=typeSelect?.querySelector('option[value="property_responsible"]');
+  const manualOption=typeSelect?.querySelector('option[value="manual"]');
   const adminRoleOption=roleSelect?.querySelector('option[value="admin"]');
   const employeeRoleOption=roleSelect?.querySelector('option[value="employee"]');
   const tenantRoleOption=roleSelect?.querySelector('option[value="tenant"]');
   if(rotationOption)rotationOption.disabled=scope==="organization";
   if(responsibleOption)responsibleOption.disabled=scope==="organization";
+  if(manualOption)manualOption.disabled=eventDriven;
+  if(eventDriven&&type==="manual")typeSelect.value="";
   if(adminRoleOption)adminRoleOption.disabled=scope==="occupancy";
   if(employeeRoleOption)employeeRoleOption.disabled=scope==="occupancy";
   if(tenantRoleOption)tenantRoleOption.disabled=scope==="organization";
@@ -188,6 +194,7 @@ function updateAssignmentFields({clearHidden=false}={}){
 
 function assignmentConfigurationComplete(data){
   if(!data.assignmentType)return false;
+  if(data.triggerType==="event"&&data.assignmentType==="manual")return false;
   if(data.assignmentType==="property_responsible")return data.scopeType!=="organization";
   if(data.assignmentType==="active_occupants_rotation")return data.scopeType!=="organization";
   if(data.assignmentType==="fixed_person"){
@@ -373,6 +380,7 @@ function draft(){
     flowDescription:value("flowDescription"),
     scopeType:value("scopeType"),
     triggerType:value("triggerType"),
+    eventType:value("eventType"),
     recurrence:value("recurrence"),
     scheduledAt:value("scheduledAt"),
     scheduledTimezone:value("scheduledTimezone"),
@@ -475,7 +483,8 @@ function completion(data=draft()){
 
 function triggerComplete(data){
   if(!data.triggerType)return false;
-  if(data.triggerType==="manual"||data.triggerType==="event")return true;
+  if(data.triggerType==="manual")return true;
+  if(data.triggerType==="event")return ["occupancy.created"].includes(data.eventType);
   if(data.triggerType==="scheduled_once"){
     if(!data.scheduledAt||!data.scheduledTimezone||!data.scheduledAtUtc)return false;
     const runAt=Date.parse(data.scheduledAtUtc);
@@ -499,7 +508,7 @@ function saveLocalDraft(){
 
 function applyDraft(saved,{restoreStep=true}={}){
   if(!saved||typeof saved!=="object")return;
-  for(const name of ["flowName","flowType","flowDescription","scopeType","triggerType","recurrence","scheduledAt","scheduledTimezone","scheduledAtUtc","customEvery","customUnit","assignmentType","assignmentUserId","assignmentRole","closeType"]){
+  for(const name of ["flowName","flowType","flowDescription","scopeType","triggerType","eventType","recurrence","scheduledAt","scheduledTimezone","scheduledAtUtc","customEvery","customUnit","assignmentType","assignmentUserId","assignmentRole","closeType"]){
     const node=field(name);
     if(node&&typeof saved[name]==="string")node.value=saved[name];
   }
@@ -548,6 +557,7 @@ function errorMessage(error){
   if(text.includes("workflow_checklist_too_many_items"))return "El checklist admite un máximo de 30 elementos.";
   if(text.includes("workflow_checklist_item_text_invalid"))return "Cada elemento del checklist admite hasta 160 caracteres.";
   if(text.includes("workflow_checklist_item_invalid")||text.includes("workflow_checklist_item_required_invalid"))return "Hay un elemento de checklist con formato no válido.";
+  if(text.includes("workflow_event_type_invalid"))return "Selecciona un evento compatible para activar este flujo.";
   if(text.includes("workflow_schedule_timezone_invalid"))return "No se pudo identificar una zona horaria válida para la Fecha concreta.";
   if(text.includes("workflow_scheduled_utc_invalid")||text.includes("workflow_schedule_time_mismatch"))return "La fecha y hora concreta no representan un instante válido. Selecciónalas de nuevo.";
   if(text.includes("workflow_name_invalid"))return "El borrador necesita un nombre de al menos 3 caracteres para poder guardarse.";
@@ -564,6 +574,7 @@ function toggleDependentRow(row,enabled){
 
 function updateTriggerFields({clearHidden=false}={}){
   const type=value("triggerType");
+  const eventType=field("eventType");
   const recurrence=field("recurrence");
   const scheduledAt=field("scheduledAt");
   const scheduledTimezone=field("scheduledTimezone");
@@ -572,15 +583,18 @@ function updateTriggerFields({clearHidden=false}={}){
   const customUnit=field("customUnit");
   const recurring=type==="recurring";
   const scheduled=type==="scheduled_once";
+  const eventDriven=type==="event";
   const automatic=scheduled||recurring;
   const custom=recurring&&value("recurrence")==="custom";
 
+  toggleDependentRow(eventTypeRow,eventDriven);
   toggleDependentRow(recurrenceRow,recurring);
   toggleDependentRow(customRecurrenceRow,custom);
   toggleDependentRow(scheduledAtRow,automatic);
   if(scheduledAtLabel)scheduledAtLabel.textContent=recurring?"Primera ejecución":"Fecha y hora";
 
   if(clearHidden){
+    if(!eventDriven&&eventType)eventType.value="";
     if(!recurring&&recurrence)recurrence.value="";
     if(!custom){
       if(customEvery)customEvery.value="";
@@ -595,6 +609,7 @@ function updateTriggerFields({clearHidden=false}={}){
   }
 
   if(automatic)syncScheduledInstant({force:false});
+  updateAssignmentFields({clearHidden:false});
 }
 
 function updatePhotoResource(){
@@ -805,6 +820,9 @@ function activationSummary(data){
       return "Recurrente · Cada "+every+" "+label("customUnit",data.customUnit)+" · desde "+first;
     }
     return label("triggerType",data.triggerType)+" · "+label("recurrence",data.recurrence)+" · desde "+first;
+  }
+  if(data.triggerType==="event"){
+    return "Por evento · "+label("eventType",data.eventType);
   }
   if(data.triggerType==="scheduled_once"){
     if(!data.scheduledAt||!data.scheduledTimezone)return "Fecha concreta · Pendiente";

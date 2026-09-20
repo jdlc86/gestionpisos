@@ -2,11 +2,15 @@
 set -euo pipefail
 
 migration="supabase/migrations/20260920033000_tenant_offboarding_access_enforcement.sql"
+reactivation_migration="supabase/migrations/20260920170000_tenant_reactivation_atomic.sql"
+reactivation_regression="tests/tenant-reactivation-regression.sql"
 regression="tests/tenant-offboarding-access-regression.sql"
 edge="supabase/functions/disable-tenant-auth/index.ts"
 workflow=".github/workflows/tenant-offboarding-auth.yml"
 
 test -s "$migration"
+test -s "$reactivation_migration"
+test -s "$reactivation_regression"
 test -s "$regression"
 test -s "$edge"
 test -s "$workflow"
@@ -25,6 +29,11 @@ grep -Fq "set revoked_at=coalesce(revoked_at,now())" "$migration"
 grep -Fq "role='tenant'" "$migration"
 grep -Fq "'tenant_platform_access_revoked'" "$migration"
 grep -Fq 'create or replace function public.restore_tenant_platform_access_v1' "$migration"
+grep -Fq 'create or replace function public.reactivate_tenant_occupancy_v1' "$reactivation_migration"
+grep -Fq "public.restore_tenant_platform_access_v1(" "$reactivation_migration"
+grep -Fq "'tenant_occupancy_reactivated'" "$reactivation_migration"
+grep -Fq 'reactivated tenant still lacks platform access' "$reactivation_regression"
+grep -Fq 'failed reactivation did not preserve suspended occupancy' "$reactivation_regression"
 grep -Fq "'tenant_platform_access_reactivated'" "$migration"
 grep -Fq "'alter table public.%I enable row level security'" "$migration"
 grep -Fq 'from public,anon,authenticated' "$migration"
@@ -67,6 +76,9 @@ grep -Fq -- '--no-verify-jwt' "$workflow"
 grep -Fq "branches: [main]" "$workflow"
 
 grep -Fq 'supabase.functions.invoke("disable-tenant-auth"' docs/portfolio.js
+grep -Fq 'supabase.rpc("reactivate_tenant_occupancy_v1"' docs/portfolio.js
+grep -Fq 'Acceso suspendido' docs/portfolio-onboarding.js
+grep -Fq 'Acceso pendiente de vincular' docs/portfolio-onboarding.js
 grep -Fq 'supabase.rpc("has_current_platform_access_v1")' docs/auth-guard.js
 grep -Fq 'supabase.rpc("has_current_platform_access_v1")' docs/login.js
 grep -Fq 'supabase.auth.signOut({ scope: "global" })' docs/auth-guard.js

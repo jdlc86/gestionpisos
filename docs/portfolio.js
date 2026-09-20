@@ -757,10 +757,6 @@ async function saveItem(event) {
       };
 
       const isReactivation = existing?.status === "blocked" && data.status === "active";
-      // During reactivation the occupancy transition owns the state change. Keep
-      // the tenant blocked until the new active occupancy is successfully inserted;
-      // the DB trigger then promotes the tenant to active.
-      if (isReactivation) tenantPayload.status = "blocked";
 
       if (!existing) {
         const { error } = await supabase.rpc("create_tenant_occupancy_v3", {
@@ -775,6 +771,27 @@ async function saveItem(event) {
           p_indefinite: Boolean(data.indefinite)
         });
         if (error) throw error;
+      } else if (isReactivation) {
+        const { data: reactivation, error } = await supabase.rpc("reactivate_tenant_occupancy_v1", {
+          p_occupancy_id: existing.id,
+          p_property_id: data.propertyId,
+          p_room_id: data.roomId,
+          p_full_name: tenantPayload.full_name,
+          p_document_type: tenantPayload.document_type,
+          p_document_number: tenantPayload.document_number,
+          p_email: tenantPayload.email,
+          p_starts_on: data.startsOn,
+          p_ends_on: data.indefinite ? null : data.endsOn,
+          p_indefinite: Boolean(data.indefinite)
+        });
+        if (error) throw error;
+        if (
+          reactivation?.auth_user_id
+          && reactivation?.platform_access_restored !== true
+          && reactivation?.platform_access_scheduled !== true
+        ) {
+          throw new Error("tenant_reactivation_access_restore_failed");
+        }
       } else {
         const tenantId = existing.tenantId;
         const { error: tenantError } = await supabase.from("tenants_v2").update(tenantPayload).eq("id", tenantId);
@@ -786,14 +803,8 @@ async function saveItem(event) {
           ends_on: isSuspended ? null : (data.indefinite ? null : data.endsOn), status: data.status,
           suspended_at: isSuspended ? (existing.status === "blocked" ? existing.suspendedAt : now) : null
         };
-        const isReactivation = existing.status === "blocked" && data.status === "active";
-        let query;
-        if (isReactivation) {
-          const closePrevious = await supabase.from("occupancies_v2").update({ starts_on:null,ends_on:null,status:"archived" }).eq("id",existing.id);
-          if (closePrevious.error) throw closePrevious.error;
-          query = supabase.from("occupancies_v2").insert(payload);
-        } else query = supabase.from("occupancies_v2").update(payload).eq("id",existing.id);
-        const { error } = await query; if (error) throw error;
+        const { error } = await supabase.from("occupancies_v2").update(payload).eq("id",existing.id);
+        if (error) throw error;
       }
     } else {
       const payload = {

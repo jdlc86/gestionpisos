@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+trap 'echo "pwa-smoke failed at line $LINENO: $BASH_COMMAND" >&2' ERR
 
 test -s docs/index.html
 test -s docs/app.css
@@ -13,6 +14,14 @@ node --check docs/app.js
 test -s docs/mfa-code-input.js
 node --check docs/mfa-code-input.js
 node --check docs/portfolio.js
+node --check docs/portfolio-onboarding.js
+grep -Fq './portfolio.js?v=2026092002' docs/portfolio.html
+grep -Fq './portfolio-onboarding.js?v=2026092002' docs/portfolio.html
+grep -Fq 'supabase.rpc("reactivate_tenant_occupancy_v1"' docs/portfolio.js
+! grep -Fq 'closePrevious = await supabase.from("occupancies_v2").update({ starts_on:null,ends_on:null,status:"archived" })' docs/portfolio.js
+grep -Fq 'Acceso suspendido' docs/portfolio-onboarding.js
+grep -Fq 'Acceso pendiente de vincular' docs/portfolio-onboarding.js
+grep -Fq 'user_id,starts_on,ends_on' docs/portfolio-onboarding.js
 test -s docs/operations.html
 test -s docs/operations.css
 test -s docs/operations.js
@@ -60,7 +69,7 @@ grep -q 'serviceWorker' docs/app.js
 grep -q 'GestionPisos' docs/manifest.webmanifest
 grep -Fq "'./legal.html'" docs/sw.js
 grep -Fq "'./privacy.html'" docs/sw.js
-grep -q 'gestionpisos-shell-v46' docs/sw.js
+grep -q 'gestionpisos-shell-v47' docs/sw.js
 grep -Fq "'./workflow-history.html'" docs/sw.js
 grep -Fq "'./workflow-history.css'" docs/sw.js
 grep -Fq "'./workflow-history.js'" docs/sw.js

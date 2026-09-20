@@ -19,12 +19,16 @@ grep -q 'from("rooms_v2")' docs/portfolio.js
 grep -q 'from("audit_log_v2")' docs/portfolio.js
 grep -Fq '.from("tenant_tasks_v2")' docs/portfolio.js
 grep -Fq '.is("removed_at",null)' docs/portfolio.js
-grep -Fq './portfolio.js?v=2026092001' docs/portfolio.html
+grep -Fq './portfolio.js?v=2026092002' docs/portfolio.html
 grep -q 'owner_has_active_properties' docs/portfolio.js
 grep -q 'property_has_active_rooms' docs/portfolio.js
 grep -q 'showHistory' docs/portfolio.js
 grep -Fq 'supabase.rpc("offboard_tenant_occupancy_v2"' docs/portfolio.js
 grep -Fq 'supabase.functions.invoke("disable-tenant-auth"' docs/portfolio.js
+grep -Fq 'supabase.rpc("reactivate_tenant_occupancy_v1"' docs/portfolio.js
+grep -Fq './portfolio-onboarding.js?v=2026092002' docs/portfolio.html
+grep -Fq 'Acceso suspendido' docs/portfolio-onboarding.js
+grep -Fq 'Acceso pendiente de vincular' docs/portfolio-onboarding.js
 grep -Fq 'body: { occupancy_id: existing.id }' docs/portfolio.js
 grep -Fq 'La Baja está aplicada y el acceso a datos ya fue revocado' docs/portfolio.js
 if grep -q 'demostración local\|Sin escritura remota\|no envía datos a Supabase' docs/portfolio.html; then

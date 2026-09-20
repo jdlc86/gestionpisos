@@ -39,9 +39,11 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -v "$repo_path:/w
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/local-regression-fixture.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/local-property-staff-v3-alignment.sql
 
-    # Reproduce historical Supabase table grants used by the cleaning swap UI.
-    # Production confirms authenticated has SELECT/INSERT/UPDATE on swaps and SELECT on debts.
-    psql -v ON_ERROR_STOP=1 -U postgres -c "grant select,insert,update on public.cleaning_swap_requests_v2 to authenticated; grant select on public.cleaning_debts_v2 to authenticated"
+    # Reproduce historical Supabase table grants used by RLS and the cleaning swap UI.
+    # Production confirms authenticated can SELECT occupancies_v2; RLS policies depend on that
+    # table-level privilege before row policies can be evaluated.
+    # Production also has SELECT/INSERT/UPDATE on swaps and SELECT on debts.
+    psql -v ON_ERROR_STOP=1 -U postgres -c "grant select on public.occupancies_v2 to authenticated; grant select,insert,update on public.cleaning_swap_requests_v2 to authenticated; grant select on public.cleaning_debts_v2 to authenticated"
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260913192729_beta0_enable_occupancies_v2_rls.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260913192821_beta0_occupancies_v2_read_policies.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260913205141_close_owners_and_occupancy_blockers.sql
@@ -66,13 +68,22 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -v "$repo_path:/w
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915080948_photo_run_purpose_cleaning_link.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915082914_cleaning_photo_requests.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915094134_tenant_identity_model.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915094359_tenant_documents.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915100612_tenant_lifecycle_privacy.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915130911_add_occupancy_suspended_at.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915131641_allow_suspended_occupancy_without_entry_v2.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915132842_sync_tenant_status_from_occupancy.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915133110_allow_archived_suspension_history.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915142534_allow_suspended_tenant_offboarding.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915142555_repair_partial_archived_blocked_tenants.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915145103_tenant_offboarding_transaction.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915155636_cleaning_tasks_tenant_identity.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915161452_tenant_task_workflow_core.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915161841_tenant_task_initial_workflows.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915162747_tenant_task_claims_deposit_workflows.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915163233_tenant_task_rls_and_creator.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915165545_tenant_task_action_actor_authorization.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915203646_property_operational_access.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260917225637_workflow_definition_persistence.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260917230059_workflow_rpc_privilege_hardening.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260917234351_workflow_partial_drafts.sql
@@ -119,6 +130,7 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -v "$repo_path:/w
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260920141000_wf03_cleaning_swap_workflow_sync.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260920143000_wf03_cleaning_authoring_contract.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260920143100_wf03_cleaning_adapter_opt_in.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260920170000_tenant_reactivation_atomic.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/database-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/photo-verification-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-definition-regression.sql
@@ -134,6 +146,7 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -v "$repo_path:/w
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/task-personal-hiding-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-occupancy-tenant-assignee-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/tenant-offboarding-access-regression.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/tenant-reactivation-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-assignment-rules-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-event-trigger-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-cleaning-adapter-regression.sql

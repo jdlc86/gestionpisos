@@ -33,6 +33,17 @@ create table storage.objects (
 
 alter table storage.objects enable row level security;
 
+-- Minimal Supabase Storage helper needed by historical storage policies.
+-- The regression harness only needs folder segment resolution; production
+-- provides this function natively through the Storage schema.
+create function storage.foldername(name text)
+returns text[]
+language sql
+immutable
+as $foldername$
+  select string_to_array(name, '/');
+$foldername$;
+
 create function auth.jwt()
 returns jsonb
 language sql

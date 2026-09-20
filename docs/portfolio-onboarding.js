@@ -234,26 +234,34 @@ document.addEventListener("click",event=>{
   if(action){event.preventDefault();event.stopPropagation();sendWelcome(target.dataset.subjectType,target.dataset.subjectId,target).catch(()=>{});}
 },true);
 
-function onboardingBadge(row,currentEmail){
-  if(!row)return {label:"Sin invitación",button:"Enviar bienvenida"};
-  if(row.status==="pending"){
+function onboardingBadge(row,currentEmail,operationalState="unknown"){
+  let onboardingState;
+  if(!row)onboardingState={label:"Sin invitación",button:"Enviar bienvenida"};
+  else if(row.status==="pending"){
     if(typeof row.email==="string"&&normalizeEmail(row.email)!==normalizeEmail(currentEmail)){
-      return {label:"Email cambiado · nueva invitación necesaria",button:"Enviar nueva bienvenida"};
+      onboardingState={label:"Email cambiado · nueva invitación necesaria",button:"Enviar nueva bienvenida"};
+    }else{
+      const delivery=row.last_delivery_status;
+      onboardingState={
+        label:delivery==="sent"?"Pendiente de activación":delivery==="not_configured"?"Correo pendiente":delivery==="failed"?"Envío no confirmado":"Invitación pendiente",
+        button:"Reenviar bienvenida"
+      };
     }
-    const delivery=row.last_delivery_status;
-    return {
-      label:delivery==="sent"?"Pendiente de activación":delivery==="not_configured"?"Correo pendiente":delivery==="failed"?"Envío no confirmado":"Invitación pendiente",
-      button:"Reenviar bienvenida"
-    };
-  }
-  return {label:"Acceso activado",button:null};
+  }else onboardingState={label:"Acceso activado",button:null};
+
+  if(operationalState==="suspended")return {label:"Acceso suspendido",button:null};
+  if(operationalState==="unlinked")return {label:"Acceso pendiente de vincular",button:onboardingState.button};
+  if(operationalState==="scheduled")return {label:"Acceso aún no vigente",button:onboardingState.button};
+  if(operationalState==="inactive")return {label:"Sin acceso operativo",button:null};
+  if(operationalState==="active")return {label:"Acceso activado",button:null};
+  return onboardingState;
 }
-function decorateCard(card,subjectType,subjectId,row,currentEmail,canSend=true){
+function decorateCard(card,subjectType,subjectId,row,currentEmail,canSend=true,operationalState="unknown"){
   card.querySelectorAll("[data-external-onboarding-ui]").forEach(element=>element.remove());
   const meta=card.querySelector(".record-meta");
   const actions=card.querySelector(".record-actions");
   if(!meta||!actions)return;
-  const state=onboardingBadge(row,currentEmail);
+  const state=onboardingBadge(row,currentEmail,operationalState);
   const badge=document.createElement("span");badge.className="relation-chip";badge.dataset.externalOnboardingUi="1";badge.textContent=`Acceso: ${state.label}`;meta.appendChild(badge);
   if(state.button&&canSend){const button=document.createElement("button");button.type="button";button.className="secondary";button.dataset.externalOnboardingUi="1";button.dataset.externalWelcome="1";button.dataset.subjectType=subjectType;button.dataset.subjectId=subjectId;button.textContent=state.button;actions.appendChild(button);}
 }
@@ -273,9 +281,25 @@ async function refreshExternalOnboarding(){
     }else{
       const occupancyIds=cards.map(card=>card.querySelector('button[data-action="edit"]')?.dataset.id).filter(Boolean);
       if(!occupancyIds.length)return;
-      const {data:occupancies}=await supabase.from("occupancies_v2").select("id,tenant_id,status").in("id",occupancyIds);
-      const byOccupancy=new Map((occupancies||[]).map(row=>[row.id,row]));
-      for(const card of cards){const id=card.querySelector('button[data-action="edit"]')?.dataset.id;const oc=byOccupancy.get(id);if(!oc?.tenant_id)continue;const text=card.querySelector("p")?.textContent||"";const email=text.split(" · ")[0].trim();decorateCard(card,"tenant",oc.tenant_id,statusByKey.get(`tenant:${oc.tenant_id}`),email,oc.status==="active");}
+      const {data:occupancies}=await supabase.from("occupancies_v2").select("id,tenant_id,status,user_id,starts_on,ends_on").in("id",occupancyIds);
+      const rows=occupancies||[];
+      const byOccupancy=new Map(rows.map(row=>[row.id,row]));
+      const byTenant=new Map();
+      for(const row of rows){
+        if(!row.tenant_id)continue;
+        if(!byTenant.has(row.tenant_id))byTenant.set(row.tenant_id,[]);
+        byTenant.get(row.tenant_id).push(row);
+      }
+      const today=new Date().toISOString().slice(0,10);
+      const accessStateForTenant=tenantId=>{
+        const tenantRows=byTenant.get(tenantId)||[];
+        if(tenantRows.some(row=>row.status==="active"&&row.user_id&&row.starts_on&&row.starts_on<=today&&(!row.ends_on||row.ends_on>=today)))return "active";
+        if(tenantRows.some(row=>row.status==="blocked"))return "suspended";
+        if(tenantRows.some(row=>row.status==="active"&&row.starts_on&&row.starts_on<=today&&(!row.ends_on||row.ends_on>=today)&&!row.user_id))return "unlinked";
+        if(tenantRows.some(row=>row.status==="active"&&row.starts_on&&row.starts_on>today))return "scheduled";
+        return "inactive";
+      };
+      for(const card of cards){const id=card.querySelector('button[data-action="edit"]')?.dataset.id;const oc=byOccupancy.get(id);if(!oc?.tenant_id)continue;const text=card.querySelector("p")?.textContent||"";const email=text.split(" · ")[0].trim();const accessState=accessStateForTenant(oc.tenant_id);decorateCard(card,"tenant",oc.tenant_id,statusByKey.get(`tenant:${oc.tenant_id}`),email,oc.status==="active",accessState);}
     }
   }finally{refreshRunning=false;}
 }

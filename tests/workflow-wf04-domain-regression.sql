@@ -7,6 +7,7 @@ select set_config('wf04.owner',gen_random_uuid()::text,true);
 select set_config('wf04.property',gen_random_uuid()::text,true);
 select set_config('wf04.room',gen_random_uuid()::text,true);
 select set_config('wf04.future_room',gen_random_uuid()::text,true);
+select set_config('wf04.reject_room',gen_random_uuid()::text,true);
 select set_config('wf04.staff',gen_random_uuid()::text,true);
 select set_config('wf04.outsider',gen_random_uuid()::text,true);
 select set_config('wf04.tenant_user',gen_random_uuid()::text,true);
@@ -53,7 +54,8 @@ insert into public.properties_v2(
 );
 insert into public.rooms_v2(id,property_id,label,status) values
   (current_setting('wf04.room')::uuid,current_setting('wf04.property')::uuid,'WF04 room','active'),
-  (current_setting('wf04.future_room')::uuid,current_setting('wf04.property')::uuid,'WF04 future room','active');
+  (current_setting('wf04.future_room')::uuid,current_setting('wf04.property')::uuid,'WF04 future room','active'),
+  (current_setting('wf04.reject_room')::uuid,current_setting('wf04.property')::uuid,'WF04 reject room','active');
 insert into public.property_staff_access_v3(
   organization_id,property_id,employee_user_id,assignment_type,can_write,granted_by
 ) values (
@@ -122,14 +124,14 @@ insert into public.occupancies_v2(
   current_setting('wf04.stale_occupancy')::uuid,current_setting('wf04.org')::uuid,
   current_setting('wf04.stale_tenant')::uuid,current_setting('wf04.property')::uuid,
   current_setting('wf04.room')::uuid,'wf04-stale@example.invalid',
-  current_date-2,null,'active',current_setting('wf04.stale_user')::uuid
+  current_date-3,null,'active',current_setting('wf04.stale_user')::uuid
 );
 set local role authenticated;
 select set_config('request.jwt.claims',jsonb_build_object(
   'sub',current_setting('wf04.root'),'role','authenticated','aal','aal2'
 )::text,true);
 select public.offboard_tenant_occupancy_v2(
-  current_setting('wf04.stale_occupancy')::uuid,current_date-1
+  current_setting('wf04.stale_occupancy')::uuid,current_date-2
 );
 reset role;
 
@@ -447,7 +449,7 @@ insert into public.occupancies_v2(
 ) values (
   current_setting('wf04.reject_occupancy')::uuid,current_setting('wf04.org')::uuid,
   current_setting('wf04.reject_tenant')::uuid,current_setting('wf04.property')::uuid,
-  current_setting('wf04.future_room')::uuid,'wf04-reject@example.invalid',
+  current_setting('wf04.reject_room')::uuid,'wf04-reject@example.invalid',
   current_date-1,null,'active',current_setting('wf04.reject_user')::uuid
 );
 select private.process_pending_workflow_events_v1(50);

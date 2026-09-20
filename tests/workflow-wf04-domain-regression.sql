@@ -8,6 +8,7 @@ select set_config('wf04.property',gen_random_uuid()::text,true);
 select set_config('wf04.room',gen_random_uuid()::text,true);
 select set_config('wf04.future_room',gen_random_uuid()::text,true);
 select set_config('wf04.reject_room',gen_random_uuid()::text,true);
+select set_config('wf04.unlinked_room',gen_random_uuid()::text,true);
 select set_config('wf04.staff',gen_random_uuid()::text,true);
 select set_config('wf04.outsider',gen_random_uuid()::text,true);
 select set_config('wf04.tenant_user',gen_random_uuid()::text,true);
@@ -18,10 +19,12 @@ select set_config('wf04.tenant',gen_random_uuid()::text,true);
 select set_config('wf04.future_tenant',gen_random_uuid()::text,true);
 select set_config('wf04.stale_tenant',gen_random_uuid()::text,true);
 select set_config('wf04.reject_tenant',gen_random_uuid()::text,true);
+select set_config('wf04.unlinked_tenant',gen_random_uuid()::text,true);
 select set_config('wf04.occupancy',gen_random_uuid()::text,true);
 select set_config('wf04.future_occupancy',gen_random_uuid()::text,true);
 select set_config('wf04.stale_occupancy',gen_random_uuid()::text,true);
 select set_config('wf04.reject_occupancy',gen_random_uuid()::text,true);
+select set_config('wf04.unlinked_occupancy',gen_random_uuid()::text,true);
 
 insert into auth.users(id) values
   (current_setting('wf04.staff')::uuid),
@@ -55,7 +58,8 @@ insert into public.properties_v2(
 insert into public.rooms_v2(id,property_id,label,status) values
   (current_setting('wf04.room')::uuid,current_setting('wf04.property')::uuid,'WF04 room','active'),
   (current_setting('wf04.future_room')::uuid,current_setting('wf04.property')::uuid,'WF04 future room','active'),
-  (current_setting('wf04.reject_room')::uuid,current_setting('wf04.property')::uuid,'WF04 reject room','active');
+  (current_setting('wf04.reject_room')::uuid,current_setting('wf04.property')::uuid,'WF04 reject room','active'),
+  (current_setting('wf04.unlinked_room')::uuid,current_setting('wf04.property')::uuid,'WF04 unlinked room','active');
 insert into public.property_staff_access_v3(
   organization_id,property_id,employee_user_id,assignment_type,can_write,granted_by
 ) values (
@@ -77,7 +81,10 @@ insert into public.tenants_v2(
    'wf04-stale@example.invalid','active'),
   (current_setting('wf04.reject_tenant')::uuid,current_setting('wf04.org')::uuid,
    current_setting('wf04.reject_user')::uuid,'WF04 reject tenant','other','WF04-REJECT',
-   'wf04-reject@example.invalid','active');
+   'wf04-reject@example.invalid','active'),
+  (current_setting('wf04.unlinked_tenant')::uuid,current_setting('wf04.org')::uuid,
+   null,'WF04 unlinked tenant','other','WF04-UNLINKED',
+   'wf04-unlinked@example.invalid','active');
 
 create function pg_temp.wf04_spec(p_flow text)
 returns jsonb language sql stable as $$
@@ -114,6 +121,18 @@ select set_config('wf04.checkout_app',(
   ) limit 1
 ),true);
 reset role;
+
+-- Una ocupación legacy sin tenant todavía es recuperable: su evento debe
+-- quedar pending hasta que se complete la vinculación.
+insert into public.occupancies_v2(
+  id,organization_id,tenant_id,property_id,room_id,occupant_email,
+  starts_on,ends_on,status,user_id
+) values (
+  current_setting('wf04.unlinked_occupancy')::uuid,current_setting('wf04.org')::uuid,
+  null,current_setting('wf04.property')::uuid,
+  current_setting('wf04.unlinked_room')::uuid,'wf04-unlinked@example.invalid',
+  current_date-1,null,'active',null
+);
 
 -- Un occupancy.created que envejece antes del despacho es terminal, no
 -- reintentable. La Baja genera además su evento checkout normal.
@@ -201,6 +220,53 @@ begin
   end if;
 end;
 $stale_event_retired$;
+
+do $unlinked_event_retryable$
+begin
+  if not exists(
+    select 1
+    from public.workflow_event_outbox_v2 e
+    join public.workflow_event_dispatches_v2 d
+      on d.event_id=e.id
+     and d.application_id=current_setting('wf04.checkin_app')::uuid
+    where e.source_id=current_setting('wf04.unlinked_occupancy')::uuid
+      and e.event_type='occupancy.created'
+      and e.status='pending'
+      and e.processed_at is null
+      and d.status='failed'
+      and d.error_code='55000'
+      and d.error_key='workflow_event_subject_unlinked'
+  ) then
+    raise exception 'unlinked check-in event was incorrectly made terminal';
+  end if;
+end;
+$unlinked_event_retryable$;
+
+update public.occupancies_v2
+set tenant_id=current_setting('wf04.unlinked_tenant')::uuid
+where id=current_setting('wf04.unlinked_occupancy')::uuid;
+
+select private.process_pending_workflow_events_v1(50);
+
+do $unlinked_event_recovers$
+begin
+  if not exists(
+    select 1
+    from public.workflow_event_outbox_v2 e
+    join public.workflow_event_dispatches_v2 d
+      on d.event_id=e.id
+     and d.application_id=current_setting('wf04.checkin_app')::uuid
+    where e.source_id=current_setting('wf04.unlinked_occupancy')::uuid
+      and e.event_type='occupancy.created'
+      and e.status='processed'
+      and e.processed_at is not null
+      and d.status='executed'
+      and d.execution_id is not null
+  ) then
+    raise exception 'unlinked check-in event did not recover after tenant binding';
+  end if;
+end;
+$unlinked_event_recovers$;
 
 select set_config('wf04.checkin_task',(
   select t.id::text from public.tenant_tasks_v2 t

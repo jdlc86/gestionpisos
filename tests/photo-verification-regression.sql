@@ -403,7 +403,7 @@ end;
 $$;
 
 -- The actor can insert an item only in its own run.
-do $
+do $$
 begin
   if public.has_current_platform_access_v1() is distinct from true then
     raise exception 'photo actor unexpectedly lacks current platform access';
@@ -421,7 +421,7 @@ begin
     raise exception 'photo actor cannot read active property pattern';
   end if;
 end;
-$;
+$$;
 
 insert into public.photo_verification_items_v2 (id, run_id, pattern_id, storage_path)
 values (

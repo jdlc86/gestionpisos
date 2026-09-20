@@ -26,6 +26,24 @@ async function pendingExternalOnboarding() {
   return data?.status === "pending" ? data : null;
 }
 
+async function currentPlatformAccess() {
+  const { data, error } = await supabase.rpc("has_current_platform_access_v1");
+  if (error) throw error;
+  return data === true;
+}
+
+async function revokeLocalSessionAndReturnToLogin() {
+  try {
+    const { error } = await supabase.auth.signOut({ scope: "global" });
+    if (error) throw error;
+  } catch {
+    await supabase.auth.signOut({ scope: "local" }).catch(() => {});
+  }
+  const deniedUrl = new URL("./login.html", window.location.href);
+  deniedUrl.searchParams.set("access", "revoked");
+  window.location.replace(deniedUrl.href);
+}
+
 function setupHomeAccountMenu(session) {
   const root = document.getElementById("homeAccount");
   const trigger = document.getElementById("homeAccountAction");
@@ -96,6 +114,11 @@ async function requireSession() {
     if (externalOnboarding) {
       const activationUrl = new URL("./activate-external-account.html", window.location.href);
       window.location.replace(activationUrl.href);
+      return;
+    }
+
+    if (!await currentPlatformAccess()) {
+      await revokeLocalSessionAndReturnToLogin();
       return;
     }
 

@@ -235,7 +235,7 @@ begin
       actor='agency';
   end if;
 end;
-$function$
+$function$;
 
 
 revoke all on function public.workflow_seed_task_actions_internal_v1(uuid)
@@ -503,7 +503,7 @@ begin
   return query
   select v_task.id,v_task.status,v_execution.id,v_execution.status,true;
 end;
-$function$
+$function$;
 
 
 revoke all on function private.apply_workflow_task_action_v1(uuid,text,text,text)

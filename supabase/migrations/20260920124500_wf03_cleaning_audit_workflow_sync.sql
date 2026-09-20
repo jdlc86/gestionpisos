@@ -878,7 +878,17 @@ set search_path=public,private,pg_temp
 as $workflow_cleaning_audit_report$
 begin
   return query
-  with ready as (
+  with locked as materialized (
+    select a.id
+    from public.cleaning_audits_v2 a
+    join public.cleaning_tasks_v2 t on t.id=a.cleaning_task_id
+    where a.report_status='ready'
+      and a.status in ('not_selected','closed','expired')
+      and t.assigned_user_id is not null
+    order by a.created_at,a.id
+    for update of a skip locked
+  ),
+  ready as (
     select
       a.id,
       a.organization_id,
@@ -887,14 +897,11 @@ begin
       count(i.id) filter (where i.result='approved')::int as approved_count,
       count(i.id) filter (where i.result='rejected')::int as rejected_count,
       count(i.id) filter (where i.result='review_expired')::int as expired_count
-    from public.cleaning_audits_v2 a
+    from locked l
+    join public.cleaning_audits_v2 a on a.id=l.id
     join public.cleaning_tasks_v2 t on t.id=a.cleaning_task_id
     left join public.cleaning_audit_items_v2 i on i.audit_id=a.id
-    where a.report_status='ready'
-      and a.status in ('not_selected','closed','expired')
-      and t.assigned_user_id is not null
     group by a.id,a.organization_id,a.property_id,t.assigned_user_id
-    for update of a skip locked
   ),
   ins as (
     insert into public.notifications_v2(

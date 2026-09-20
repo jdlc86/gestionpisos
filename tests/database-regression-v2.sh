@@ -90,6 +90,8 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -v "$repo_path:/w
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260919203000_web_push_notifications.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260919210000_task_card_removal.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260919213000_task_personal_hiding.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260920010000_workflow_occupancy_tenant_assignee.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260920014500_workflow_tenant_access_revocation.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/database-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/photo-verification-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-definition-regression.sql
@@ -103,6 +105,7 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -v "$repo_path:/w
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/web-push-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/task-card-removal-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/task-personal-hiding-regression.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-occupancy-tenant-assignee-regression.sql
 
     trap - EXIT
     cleanup

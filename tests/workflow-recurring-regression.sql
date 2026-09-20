@@ -3,6 +3,17 @@
 
 begin;
 
+-- La regresión histórica usa ROOT como assignee. Bajo el contrato actual solo
+-- es elegible aquí porque el fixture le añade explícitamente rol operativo.
+insert into public.user_roles(user_id,organization_id,role)
+select ur.user_id,ur.organization_id,'employee'
+from public.user_roles ur
+where ur.user_id='22222222-2222-4222-8222-222222222222'::uuid
+  and ur.role='root'
+  and ur.revoked_at is null
+limit 1
+on conflict do nothing;
+
 set local role authenticated;
 select set_config(
   'request.jwt.claims',

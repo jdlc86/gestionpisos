@@ -3,6 +3,17 @@
 
 begin;
 
+-- El ROOT del fixture conserva su papel administrativo, pero para estos casos
+-- de asignación manual también recibe una relación operativa employee explícita.
+insert into public.user_roles(user_id,organization_id,role)
+select ur.user_id,ur.organization_id,'employee'
+from public.user_roles ur
+where ur.user_id='22222222-2222-4222-8222-222222222222'::uuid
+  and ur.role='root'
+  and ur.revoked_at is null
+limit 1
+on conflict do nothing;
+
 -- Actor ROOT del fixture.
 set local role authenticated;
 select set_config(

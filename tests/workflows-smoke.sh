@@ -196,7 +196,7 @@ grep -Fq 'rooms_v2' docs/workflow-applications.js
 grep -Fq 'occupancies_v2' docs/workflow-applications.js
 grep -Fq '.application-card [hidden]{display:none!important}' docs/workflow-applications.css
 grep -Fq './workflow-applications.css?v=2026091915' docs/workflow-applications.html
-grep -Fq './workflow-applications.js?v=2026091922' docs/workflow-applications.html
+grep -Fq './workflow-applications.js?v=2026092002' docs/workflow-applications.html
 grep -Fq '¿Dónde quieres utilizarlo?' docs/workflow-applications.html
 grep -Fq 'Definición → Versión publicada → Aplicación concreta' docs/WORKFLOW_APPLICATIONS_CONTRACT.md
 grep -Fq 'workflow_applications_v2' docs/WORKFLOW_APPLICATIONS_CONTRACT.md
@@ -431,6 +431,17 @@ grep -Fq '&setup=1&intent=execute&from=mis-flujos' docs/workflow-definitions.js
 grep -Fq 'const executionIntent=guidedSetup&&params.get("intent")==="execute"' docs/workflow-applications.js
 grep -Fq 'const executionFromFlows=executionIntent&&params.get("from")==="mis-flujos"' docs/workflow-applications.js
 grep -Fq 'function renderExecutionAssist(app)' docs/workflow-applications.js
+grep -Fq 'roles.includes("tenant")?"INQUILINO"' docs/workflow-applications.js
+grep -Fq 'tenants_v2(user_id,full_name,email,status)' docs/workflow-applications.js
+grep -Fq 'const associatedStaff=new Set()' docs/workflow-applications.js
+grep -Fq 'associatedStaff.add(propertyContext.responsible_user_id)' docs/workflow-applications.js
+grep -Fq '.filter(person=>associatedStaff.has(person.user_id))' docs/workflow-applications.js
+grep -Fq 'if(scope==="room"&&item.room_id!==app?.room_id)return false' docs/workflow-applications.js
+grep -Fq 'if(scope==="occupancy"&&item.id!==app?.occupancy_id)return false' docs/workflow-applications.js
+grep -Fq 'item.tenants_v2?.user_id===item.user_id' docs/workflow-applications.js
+grep -Fq 'roles:["tenant"]' docs/workflow-applications.js
+! grep -Fq 'actorRole==="root"' docs/workflow-applications.js
+
 grep -Fq 'function executionReviewCard' docs/workflow-applications.js
 grep -Fq 'Falta información para ejecutar' docs/workflow-applications.js
 grep -Fq 'Completa únicamente los apartados abiertos para continuar.' docs/workflow-applications.js

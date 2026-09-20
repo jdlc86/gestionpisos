@@ -79,12 +79,13 @@ La autorización se valida en servidor. Ver un botón no concede capacidad. La e
 
 `assignmentType=manual` exige seleccionar un usuario al iniciar.
 
-El usuario elegido debe ser:
+El usuario elegido debe mantener una relación operativa vigente con el destino:
 
-- ROOT activo; o
-- ADMIN activo de la organización; o
-- EMPLOYEE activo con escritura vigente sobre el piso cuando existe ámbito de piso;
-- EMPLOYEE activo de la organización cuando el ámbito es toda la organización.
+- organización: ADMIN o EMPLOYEE activo de la organización;
+- piso/habitación: ADMIN o EMPLOYEE actualmente asociado al piso, o inquilino con ocupación activa dentro del destino;
+- ocupación: únicamente el inquilino activo de esa ocupación.
+
+ROOT no entra como ejecutor por el mero hecho de ser ROOT. La selección manual se revalida server-side y no puede ampliar permisos por interfaz.
 
 No se permite asignar silenciosamente a un usuario sin capacidad operativa.
 

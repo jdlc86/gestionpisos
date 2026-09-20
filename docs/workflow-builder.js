@@ -575,6 +575,8 @@ function toggleDependentRow(row,enabled){
 function updateTriggerFields({clearHidden=false}={}){
   const type=value("triggerType");
   const eventType=field("eventType");
+  const scopeSelect=field("scopeType");
+  const occupancyScopeOption=scopeSelect?.querySelector('option[value="occupancy"]');
   const recurrence=field("recurrence");
   const scheduledAt=field("scheduledAt");
   const scheduledTimezone=field("scheduledTimezone");
@@ -588,6 +590,8 @@ function updateTriggerFields({clearHidden=false}={}){
   const custom=recurring&&value("recurrence")==="custom";
 
   toggleDependentRow(eventTypeRow,eventDriven);
+  if(occupancyScopeOption)occupancyScopeOption.disabled=eventDriven;
+  if(eventDriven&&scopeSelect?.value==="occupancy")scopeSelect.value="";
   toggleDependentRow(recurrenceRow,recurring);
   toggleDependentRow(customRecurrenceRow,custom);
   toggleDependentRow(scheduledAtRow,automatic);
@@ -1244,6 +1248,7 @@ form.addEventListener("input",event=>{
 });
 form.addEventListener("change",event=>{
   if(event.target===triggerType||event.target===field("recurrence"))updateTriggerFields({clearHidden:true});
+  if(event.target===field("eventType"))updateTriggerFields({clearHidden:false});
   if(event.target===field("assignmentType")||event.target===field("scopeType"))updateAssignmentFields({clearHidden:true});
   if(event.target===field("stepChecklist"))updateChecklistEditor();
   saveLocalDraft();

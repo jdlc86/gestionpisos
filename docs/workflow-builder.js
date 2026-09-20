@@ -624,21 +624,32 @@ function updateTriggerFields({clearHidden=false}={}){
 function updateCleaningContract(){
   const cleaning=value("flowType")==="cleaning";
   const accept=field("stepAccept");
-  const photo=field("stepPhoto");
+  const genericSteps=[field("stepPhoto"),field("stepChecklist"),field("stepDocument")];
   const close=field("closeType");
+  const scope=field("scopeType");
 
   if(accept){
     if(cleaning)accept.checked=true;
     accept.disabled=cleaning;
   }
-  if(photo){
-    if(cleaning)photo.checked=false;
-    photo.disabled=cleaning;
-  }
+
+  genericSteps.forEach(control=>{
+    if(!control)return;
+    if(cleaning)control.checked=false;
+    control.disabled=cleaning;
+  });
+
   if(close){
     if(cleaning)close.value="domain_adapter";
     close.disabled=cleaning;
   }
+
+  if(scope){
+    const organizationOption=[...scope.options].find(option=>option.value==="organization");
+    if(organizationOption)organizationOption.disabled=cleaning;
+    if(cleaning&&scope.value==="organization")scope.value="";
+  }
+
   if(cleaningStepNote)cleaningStepNote.hidden=!cleaning;
   if(cleaningCloseNote)cleaningCloseNote.hidden=!cleaning;
 }

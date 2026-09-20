@@ -409,12 +409,12 @@ form.addEventListener("submit", async event => {
   const verifyCode = normalizedCode();
   if (verifyCode.length !== 6) {
     show("Introduce los 6 dígitos de tu app autenticadora.", true);
-    code.focus();
+    otp.focus();
     return;
   }
 
   submit.disabled = true;
-  code.disabled = true;
+  otp.setDisabled(true);
   show("Verificando autenticador…");
 
   try {

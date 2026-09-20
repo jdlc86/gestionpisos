@@ -6,6 +6,7 @@ import {
   requestedNext,
   requiresPrivilegedMfa
 } from "./mfa-common.js?v=2026091701";
+import { createOtpInput } from "./mfa-code-input.js?v=2026092001";
 
 const managePanel = document.getElementById("mfaManagePanel");
 const factorList = document.getElementById("mfaFactorList");
@@ -19,6 +20,7 @@ const secret = document.getElementById("mfaSecret");
 const copySecretBtn = document.getElementById("copySecretBtn");
 const form = document.getElementById("mfaSetupForm");
 const code = document.getElementById("mfaCode");
+const codeBoxes = document.getElementById("mfaCodeBoxes");
 const submit = document.getElementById("mfaSetupBtn");
 const cancelEnrollmentBtn = document.getElementById("cancelEnrollmentBtn");
 const cancel = document.getElementById("cancelMfaBtn");
@@ -43,6 +45,13 @@ function syncCode() {
   if (code.value !== value) code.value = value;
   submit.disabled = !setupReady || value.length !== 6;
 }
+
+const otp = createOtpInput({
+  container: codeBoxes,
+  valueInput: code,
+  length: 6,
+  onChange: syncCode
+});
 
 function qrDataUrl(svg) {
   if (!svg) return "";
@@ -98,8 +107,8 @@ function resetQrState() {
 function resetEnrollmentPanel() {
   factorId = null;
   setupReady = false;
-  code.value = "";
-  code.disabled = false;
+  otp.clear({notify:false});
+  otp.setDisabled(false);
   submit.disabled = true;
   resetQrState();
   secret.textContent = "";
@@ -284,7 +293,7 @@ async function startEnrollment(mode) {
     show(mode === "initial"
       ? "Escanea el QR e introduce el código de 6 dígitos para activar MFA."
       : `Escanea el QR de “${friendlyName}” y confirma el código de 6 dígitos.`);
-    code.focus();
+    otp.focus();
   } catch (error) {
     console.error("mfa_enrollment_start_failed", error);
     setupReady = false;
@@ -375,7 +384,6 @@ async function bootstrap() {
   }
 }
 
-code.addEventListener("input", syncCode);
 addBackupBtn.addEventListener("click", () => void startEnrollment("backup"));
 finishMfaBtn.addEventListener("click", () => window.location.replace(protectedTarget(requestedNext())));
 cancelEnrollmentBtn.addEventListener("click", () => void cancelPendingEnrollment());
@@ -433,10 +441,11 @@ form.addEventListener("submit", async event => {
     await loadAndShowManagement("Factor de respaldo activado correctamente.");
   } catch (error) {
     console.error("mfa_setup_verification_failed", error);
-    code.disabled = false;
+    otp.setDisabled(false);
     submit.disabled = false;
     show("El código no es válido o ya ha caducado. Espera al siguiente código de tu app e inténtalo de nuevo.", true);
-    code.select();
+    otp.clear();
+    otp.focus();
   }
 });
 

@@ -1090,6 +1090,327 @@ begin
 end;
 $not_selected_report_retry$;
 
+-- Expiración de revisión: review_expired es neutral, no equivale a rechazo.
+update public.cleaning_photo_request_policies_v2
+set cleaning_pattern_count=2,
+    updated_by=current_setting('wf03.root')::uuid,
+    updated_at=now()
+where organization_id=current_setting('wf03.org')::uuid;
+
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf03.root'),
+  'role','authenticated',
+  'aal','aal2'
+)::text,true);
+
+do $create_expiry_execution$
+declare
+  v_result record;
+begin
+  select * into v_result
+  from public.execute_workflow_application_now_v1(
+    current_setting('wf03.cleaning_app')::uuid,
+    'wf03-cleaning-expiry-execution',
+    null
+  )
+  limit 1;
+
+  if v_result.execution_id is null then
+    raise exception 'expiry cleaning execution was not created';
+  end if;
+
+  perform set_config('wf03.expiry_execution',v_result.execution_id::text,true);
+end;
+$create_expiry_execution$;
+
+reset role;
+
+select set_config('wf03.expiry_task',(
+  select id::text
+  from public.tenant_tasks_v2
+  where source_kind='workflow_execution'
+    and source_id=current_setting('wf03.expiry_execution')::uuid
+),true);
+
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf03.tenant_user'),
+  'role','authenticated',
+  'aal','aal1'
+)::text,true);
+
+select *
+from public.apply_workflow_task_action_v1(
+  current_setting('wf03.expiry_task')::uuid,
+  'accept',
+  'wf03-cleaning-expiry-accept',
+  null
+);
+
+reset role;
+
+select *
+from private.ensure_cleaning_photo_requests_v2(
+  (
+    select id
+    from public.cleaning_tasks_v2
+    where workflow_execution_id=current_setting('wf03.expiry_execution')::uuid
+  )
+);
+
+select set_config('wf03.expiry_request_1',(
+  select id::text
+  from public.cleaning_photo_requests_v2
+  where cleaning_task_id=(
+    select id
+    from public.cleaning_tasks_v2
+    where workflow_execution_id=current_setting('wf03.expiry_execution')::uuid
+  )
+  order by ordinal
+  limit 1
+),true);
+select set_config('wf03.expiry_request_2',(
+  select id::text
+  from public.cleaning_photo_requests_v2
+  where cleaning_task_id=(
+    select id
+    from public.cleaning_tasks_v2
+    where workflow_execution_id=current_setting('wf03.expiry_execution')::uuid
+  )
+  order by ordinal
+  offset 1
+  limit 1
+),true);
+select set_config('wf03.expiry_pattern_1',(
+  select pattern_id::text
+  from public.cleaning_photo_requests_v2
+  where id=current_setting('wf03.expiry_request_1')::uuid
+),true);
+select set_config('wf03.expiry_pattern_2',(
+  select pattern_id::text
+  from public.cleaning_photo_requests_v2
+  where id=current_setting('wf03.expiry_request_2')::uuid
+),true);
+
+select set_config('wf03.expiry_run_1',gen_random_uuid()::text,true);
+select set_config('wf03.expiry_run_2',gen_random_uuid()::text,true);
+select set_config('wf03.expiry_item_1',gen_random_uuid()::text,true);
+select set_config('wf03.expiry_item_2',gen_random_uuid()::text,true);
+
+insert into public.photo_verification_runs_v2(
+  id,organization_id,property_id,actor_user_id,source_type,source_id,
+  verification_mode,purpose,cleaning_task_id,status
+)
+select
+  ids.run_id,
+  current_setting('wf03.org')::uuid,
+  current_setting('wf03.property')::uuid,
+  current_setting('wf03.tenant_user')::uuid,
+  'cleaning_task',
+  (
+    select id
+    from public.cleaning_tasks_v2
+    where workflow_execution_id=current_setting('wf03.expiry_execution')::uuid
+  ),
+  'manual',
+  'cleaning',
+  (
+    select id
+    from public.cleaning_tasks_v2
+    where workflow_execution_id=current_setting('wf03.expiry_execution')::uuid
+  ),
+  'capturing'
+from (
+  values
+    (current_setting('wf03.expiry_run_1')::uuid),
+    (current_setting('wf03.expiry_run_2')::uuid)
+) ids(run_id);
+
+insert into public.photo_verification_items_v2(
+  id,run_id,pattern_id,storage_path
+) values
+(
+  current_setting('wf03.expiry_item_1')::uuid,
+  current_setting('wf03.expiry_run_1')::uuid,
+  current_setting('wf03.expiry_pattern_1')::uuid,
+  current_setting('wf03.org')||'/'||
+    current_setting('wf03.expiry_run_1')||'/'||
+    current_setting('wf03.expiry_item_1')||'.jpg'
+),
+(
+  current_setting('wf03.expiry_item_2')::uuid,
+  current_setting('wf03.expiry_run_2')::uuid,
+  current_setting('wf03.expiry_pattern_2')::uuid,
+  current_setting('wf03.org')||'/'||
+    current_setting('wf03.expiry_run_2')||'/'||
+    current_setting('wf03.expiry_item_2')||'.jpg'
+);
+
+update public.photo_verification_runs_v2
+set status='submitted',
+    submitted_at=now()
+where id=current_setting('wf03.expiry_run_1')::uuid;
+
+update public.photo_verification_runs_v2
+set status='submitted',
+    submitted_at=now()
+where id=current_setting('wf03.expiry_run_2')::uuid;
+
+do $select_expiry_audit$
+declare
+  v_audit public.cleaning_audits_v2;
+begin
+  select * into v_audit
+  from private.select_cleaning_audit_v2(
+    (
+      select id
+      from public.cleaning_tasks_v2
+      where workflow_execution_id=current_setting('wf03.expiry_execution')::uuid
+    ),
+    current_setting('wf03.expiry_run_2')::uuid,
+    0.0,
+    now()
+  );
+
+  if v_audit.id is null
+    or not v_audit.selected_for_review
+    or v_audit.status<>'open' then
+    raise exception 'expiry scenario was not selected for human review';
+  end if;
+
+  perform set_config('wf03.expiry_audit',v_audit.id::text,true);
+
+  if not exists(
+    select 1
+    from public.workflow_executions_v2
+    where id=current_setting('wf03.expiry_execution')::uuid
+      and status='waiting_review'
+  ) then
+    raise exception 'expiry scenario did not enter waiting_review';
+  end if;
+end;
+$select_expiry_audit$;
+
+-- Una foto sí se revisa a tiempo; la otra debe quedar neutralmente expirada.
+do $review_before_expiry$
+declare
+  v_result jsonb;
+begin
+  v_result:=public.apply_workflow_cleaning_photo_review_v1(
+    current_setting('wf03.expiry_run_1')::uuid,
+    current_setting('wf03.root')::uuid,
+    'approved',
+    null
+  );
+
+  if v_result->>'audit_status'<>'open'
+    or v_result->>'execution_status'<>'waiting_review'
+    or coalesce((v_result->>'all_reviewed')::boolean,false) then
+    raise exception 'partial review closed expiry scenario too early';
+  end if;
+end;
+$review_before_expiry$;
+
+select *
+from private.close_expired_cleaning_audits_v2(now()+interval '2 days');
+
+do $expired_review_is_neutral$
+begin
+  if not exists(
+    select 1
+    from public.cleaning_audits_v2
+    where id=current_setting('wf03.expiry_audit')::uuid
+      and status='expired'
+      and report_status='ready'
+      and closed_at is not null
+  ) then
+    raise exception 'expired cleaning audit envelope did not close correctly';
+  end if;
+
+  if not exists(
+    select 1
+    from public.cleaning_audit_items_v2
+    where audit_id=current_setting('wf03.expiry_audit')::uuid
+      and photo_item_id=current_setting('wf03.expiry_item_1')::uuid
+      and result='approved'
+      and reviewed_by=current_setting('wf03.root')::uuid
+  ) then
+    raise exception 'reviewed cleaning audit item was lost during expiry';
+  end if;
+
+  if not exists(
+    select 1
+    from public.cleaning_audit_items_v2
+    where audit_id=current_setting('wf03.expiry_audit')::uuid
+      and photo_item_id=current_setting('wf03.expiry_item_2')::uuid
+      and result='review_expired'
+      and reviewed_by is null
+      and reviewed_at is null
+  ) then
+    raise exception 'pending cleaning audit item did not become neutral review_expired';
+  end if;
+
+  if not exists(
+    select 1
+    from public.cleaning_tasks_v2
+    where workflow_execution_id=current_setting('wf03.expiry_execution')::uuid
+      and status='approved'
+      and reviewed_by is null
+      and reviewed_at is null
+  ) or not exists(
+    select 1
+    from public.workflow_executions_v2
+    where id=current_setting('wf03.expiry_execution')::uuid
+      and status='completed'
+  ) or not exists(
+    select 1
+    from public.tenant_tasks_v2
+    where id=current_setting('wf03.expiry_task')::uuid
+      and status='completed'
+  ) then
+    raise exception 'review expiry was incorrectly treated as rejection';
+  end if;
+
+  if not exists(
+    select 1
+    from public.workflow_execution_events_v2
+    where execution_id=current_setting('wf03.expiry_execution')::uuid
+      and event_type='domain_adapter_review_closed'
+      and actor_user_id is null
+      and details->>'audit_status'='expired'
+      and details->>'reason'='review_window_expired'
+  ) then
+    raise exception 'expiry close was not recorded as an automatic system transition';
+  end if;
+end;
+$expired_review_is_neutral$;
+
+select *
+from private.queue_ready_cleaning_audit_reports_v2(now()+interval '2 days');
+
+do $expired_report_once$
+begin
+  if (
+    select count(*)
+    from public.notifications_v2
+    where event_type='cleaning_audit_report:'||current_setting('wf03.expiry_audit')
+      and recipient_user_id=current_setting('wf03.tenant_user')::uuid
+  )<>1 then
+    raise exception 'expired cleaning audit did not queue exactly one final report';
+  end if;
+
+  if not exists(
+    select 1
+    from public.notifications_v2
+    where event_type='cleaning_audit_report:'||current_setting('wf03.expiry_audit')
+      and body like '%plazo%'
+  ) then
+    raise exception 'expired cleaning final report lost neutral expiry semantics';
+  end if;
+end;
+$expired_report_once$;
+
 -- Another execution of the same cleaning application exercises explicit rejection.
 set local role authenticated;
 select set_config('request.jwt.claims',jsonb_build_object(

@@ -29,6 +29,7 @@ recurring='supabase/migrations/20260919193000_workflow_recurring.sql'
 web_push='supabase/migrations/20260919203000_web_push_notifications.sql'
 task_card_removal='supabase/migrations/20260919210000_task_card_removal.sql'
 task_personal_hiding='supabase/migrations/20260919213000_task_personal_hiding.sql'
+tenant_assignee='supabase/migrations/20260920010000_workflow_occupancy_tenant_assignee.sql'
 scheduled_cron='supabase/migrations/20260919190100_workflow_schedule_cron.sql'
 checklist='supabase/migrations/20260919103000_workflow_checklist_step.sql'
 
@@ -60,6 +61,7 @@ test -s "$recurring"
 test -s "$web_push"
 test -s "$task_card_removal"
 test -s "$task_personal_hiding"
+test -s "$tenant_assignee"
 test -s "$scheduled_cron"
 test -s tests/workflow-notifications-regression.sql
 test -s tests/workflow-scheduled-once-regression.sql
@@ -67,6 +69,7 @@ test -s tests/workflow-recurring-regression.sql
 test -s tests/web-push-regression.sql
 test -s tests/task-card-removal-regression.sql
 test -s tests/task-personal-hiding-regression.sql
+test -s tests/workflow-occupancy-tenant-assignee-regression.sql
 test -s tests/local-property-staff-v3-alignment.sql
 test -s tests/workflow-draft-discard-regression.sql
 test -s tests/workflow-publish-execute-lifecycle-regression.sql
@@ -416,6 +419,16 @@ grep -Fq "'task_card_removed'" "$task_card_removal"
 grep -Fq "'tenant_task'" "$task_card_removal"
 grep -Fq 'revoke all on function public.delete_task_card_v1(uuid)' "$task_card_removal"
 grep -Fq 'grant execute on function public.delete_task_card_v1(uuid)' "$task_card_removal"
+
+# Asignación manual a inquilino: solo el inquilino activo del destino occupancy.
+grep -Fq 'create or replace function private.workflow_resolve_execution_assignee_v1' "$tenant_assignee"
+grep -Fq "v_scope_type='occupancy'" "$tenant_assignee"
+grep -Fq 'o.user_id=p_requested_user_id' "$tenant_assignee"
+grep -Fq 't.user_id=p_requested_user_id' "$tenant_assignee"
+grep -Fq "t.status='active'" "$tenant_assignee"
+grep -Fq "o.status='active'" "$tenant_assignee"
+grep -Fq 'workflow_manual_assignee_not_eligible' "$tenant_assignee"
+grep -Fq 'revoke all on function private.workflow_resolve_execution_assignee_v1(uuid,uuid)' "$tenant_assignee"
 
 # Ocultamiento personal de Tareas: preferencia privada, sin borrar la tarea global.
 grep -Fq 'create table if not exists public.tenant_task_personal_hidden_v1' "$task_personal_hiding"

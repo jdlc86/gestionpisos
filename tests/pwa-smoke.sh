@@ -363,7 +363,8 @@ grep -Fq 'if(cleaning)accept.checked=true' docs/workflow-builder.js
 grep -Fq 'if(cleaning)close.value="domain_adapter"' docs/workflow-builder.js
 grep -Fq 'organizationOption.disabled=cleaning' docs/workflow-builder.js
 test -s supabase/migrations/20260920143000_wf03_cleaning_authoring_contract.sql
-grep -Fq "(p_spec->>'flowType')='cleaning'" supabase/migrations/20260920143000_wf03_cleaning_authoring_contract.sql
+grep -Fq "workflow_authoring_complete_core_v1" supabase/migrations/20260920143000_wf03_cleaning_authoring_contract.sql
+grep -Fq "coalesce(p_spec->>'flowType','')='cleaning'" supabase/migrations/20260920143000_wf03_cleaning_authoring_contract.sql
 grep -Fq "coalesce(p_spec#>>'{steps,accept}','false')<>'true'" supabase/migrations/20260920143000_wf03_cleaning_authoring_contract.sql
 grep -Fq "coalesce(p_spec#>>'{steps,photo}','false')='true'" supabase/migrations/20260920143000_wf03_cleaning_authoring_contract.sql
 test -s supabase/migrations/20260920143100_wf03_cleaning_adapter_opt_in.sql

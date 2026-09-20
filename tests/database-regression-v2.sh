@@ -134,10 +134,12 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -e WF04_FOCUSED="
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260920192346_wf04_offboarding_event.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260920193646_wf04_event_subject_binding.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260920194226_wf04_lifecycle_authoring_contract.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260920194659_wf04_lifecycle_domain_actions.sql
     if [ "$WF04_FOCUSED" = "1" ]; then
       psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/tenant-offboarding-access-regression.sql
       psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/tenant-reactivation-regression.sql
       psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-event-trigger-regression.sql
+      psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-wf04-domain-regression.sql
       trap - EXIT
       cleanup
       exit 0
@@ -161,6 +163,7 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -e WF04_FOCUSED="
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-assignment-rules-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-event-trigger-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-cleaning-adapter-regression.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-wf04-domain-regression.sql
 
     trap - EXIT
     cleanup

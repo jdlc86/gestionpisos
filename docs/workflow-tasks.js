@@ -24,6 +24,7 @@ let currentUser=null;
 let tasks=[];
 let properties=new Map();
 let rooms=new Map();
+let tenants=new Map();
 let profiles=new Map();
 let actionsByTask=new Map();
 let managerOrganizationIds=new Set();
@@ -287,6 +288,10 @@ function errorText(error){
   if(message.includes("workflow_task_execution_state_mismatch"))return "Tarea y ejecución no están sincronizadas. No se ha aplicado ningún cambio.";
   if(message.includes("workflow_action_request_key_conflict"))return "El identificador de reintento pertenece a otra acción. Recarga la pantalla.";
   if(message.includes("workflow_action_note_required"))return "Esta acción requiere una nota.";
+  if(message.includes("workflow_wf04_subject_not_current"))return "La ocupación ya no coincide con el destino o el estado de esta tarea. No se ha aplicado nada.";
+  if(message.includes("workflow_wf04_assignee_not_eligible")||message.includes("workflow_assignee_access_revoked"))return "La persona asignada ya no tiene autorización vigente para actuar en este piso.";
+  if(message.includes("workflow_wf04_checkin_not_current"))return "La entrada solo puede confirmarse durante las fechas vigentes de la ocupación.";
+  if(message.includes("workflow_wf04_key_required"))return "Confirma primero el paso de llaves.";
   if(message.includes("workflow_review_actor_forbidden"))return "Solo un gestor autorizado puede revisar este workflow.";
   if(message.includes("workflow_photo_review_requires_photo_review_flow"))return "Este workflow debe revisarse desde Fotoverificaciones.";
   if(message.includes("workflow_review_action_not_supported"))return "La revisión ya no está disponible para el estado actual.";
@@ -351,6 +356,14 @@ function cleaningExecutionForTask(task){
   const execution=executionForTask(task);
   return execution
     && execution.spec_snapshot?.flowType==="cleaning"
+    && execution.spec_snapshot?.closeType==="domain_adapter"
+      ?execution
+      :null;
+}
+function lifecycleExecutionForTask(task){
+  const execution=executionForTask(task);
+  return execution
+    && ["checkin","checkout"].includes(execution.spec_snapshot?.flowType)
     && execution.spec_snapshot?.closeType==="domain_adapter"
       ?execution
       :null;
@@ -838,6 +851,14 @@ function renderActions(task,article){
       const note=document.createElement("span");note.className="task-action-note";
       note.textContent="Rechazar requiere un motivo y deja el workflow en estado Rechazado.";
       box.append(note);
+    }else if(["key_pickup","key_delivery"].includes(action.action_key)){
+      const note=document.createElement("span");note.className="task-action-note";
+      note.textContent="La confirmación de llaves habilita la confirmación final de "+(action.action_key==="key_pickup"?"entrada":"salida")+".";
+      box.append(note);
+    }else if(["check_in","check_out"].includes(action.action_key)){
+      const note=document.createElement("span");note.className="task-action-note";
+      note.textContent="Confirma el hito real; se cerrarán esta tarea y su ejecución.";
+      box.append(note);
     }else if(action.to_status==="completed"){
       const note=document.createElement("span");note.className="task-action-note";
       note.textContent="Esta es la única etapa pendiente; al aceptar se cerrarán tarea y ejecución.";
@@ -910,6 +931,9 @@ function render(){
       meta("Creada",fmtDate(task.created_at)),
       meta("Origen",task.source_kind==="workflow_execution"?"Ejecución de flujo":task.origin==="automatic"?"Automática":"Manual")
     );
+    if(lifecycleExecutionForTask(task)){
+      details.append(meta("Inquilino",tenants.get(task.tenant_id)?.full_name||task.tenant_id||"Sin vínculo"));
+    }
     article.append(details);
 
     renderCleaningAdapter(task,article);
@@ -970,6 +994,14 @@ async function applyWorkflowAction(task,action,button){
 
   if(result?.applied_new===false){
     setStatus("El reintento recuperó la transición ya aplicada; no se duplicó el histórico.");
+  }else if(action.action_key==="key_pickup"){
+    setStatus("Recogida de llaves registrada. Ya puedes confirmar la entrada cuando la ocupación esté vigente.");
+  }else if(action.action_key==="key_delivery"){
+    setStatus("Entrega de llaves registrada. Ya puedes confirmar la salida.");
+  }else if(action.action_key==="check_in"){
+    setStatus("Entrada confirmada. Tarea y ejecución completadas.");
+  }else if(action.action_key==="check_out"){
+    setStatus("Salida confirmada. Tarea y ejecución completadas.");
   }else if(action.action_key==="review_approve"){
     setStatus("Revisión aprobada. Tarea y ejecución completadas.");
   }else if(action.action_key==="review_reject"){
@@ -1050,6 +1082,7 @@ async function loadRelated(){
   properties=new Map();
   rooms=new Map();
   profiles=new Map();
+  tenants=new Map();
 
   const propertyIds=[...new Set(tasks.map(task=>task.property_id).filter(Boolean))];
   if(propertyIds.length){
@@ -1061,6 +1094,12 @@ async function loadRelated(){
   if(roomIds.length){
     const {data}=await supabase.from("rooms_v2").select("id,property_id,label").in("id",roomIds);
     (data||[]).forEach(item=>rooms.set(item.id,item));
+  }
+
+  const tenantIds=[...new Set(tasks.map(task=>task.tenant_id).filter(Boolean))];
+  if(tenantIds.length){
+    const {data}=await supabase.from("tenants_v2").select("id,full_name").in("id",tenantIds);
+    (data||[]).forEach(item=>tenants.set(item.id,item));
   }
 
   const userIds=[...new Set(tasks.map(task=>task.assigned_user_id).filter(Boolean))];

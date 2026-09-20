@@ -248,7 +248,7 @@ grep -Fq 'managerOrganizationIds' docs/workflow-tasks.js
 grep -Fq 'review_reject' docs/workflow-tasks.js
 grep -Fq 'task-actions' docs/workflow-tasks.css
 grep -Fq './workflow-tasks.css?v=2026092001' docs/workflow-tasks.html
-grep -Fq './workflow-tasks.js?v=2026092024' docs/workflow-tasks.html
+grep -Fq './workflow-tasks.js?v=2026092025' docs/workflow-tasks.html
 grep -Fq 'cambian tarea y ejecución juntas' docs/workflow-tasks.html
 grep -Fq 'id="taskSelectionToggle"' docs/workflow-tasks.html
 grep -Fq 'id="tasksSelectionHeader"' docs/workflow-tasks.html
@@ -550,7 +550,7 @@ grep -Fq 'if(activeFilter==="rejected"&&execution.status!=="rejected")return fal
 grep -Fq 'const historyNote=taskHistoryNote(' docs/workflow-history.js
 grep -Fq 'rejected?"review_reject":"review_approve"' docs/workflow-history.js
 grep -Fq 'if(historyNote)return historyNote;' docs/workflow-history.js
-grep -Fq './workflow-history.js?v=2026091911' docs/workflow-history.html
+grep -Fq './workflow-history.js?v=2026092012' docs/workflow-history.html
 
 
 # Fecha concreta: instante exacto + Programar + sin ejecución manual.
@@ -636,4 +636,14 @@ grep -Fq 'id="wf04StepNote"' docs/workflow-builder.html
 grep -Fq 'const lifecycle=["checkin","checkout"].includes(value("flowType"));' docs/workflow-builder.js
 grep -Fq 'eventType.value=value("flowType")==="checkin"?"occupancy.created":"occupancy.offboarded"' docs/workflow-builder.js
 test -s supabase/migrations/20260920194226_wf04_lifecycle_authoring_contract.sql
+test -s supabase/migrations/20260920194659_wf04_lifecycle_domain_actions.sql
+test -s tests/workflow-wf04-domain-regression.sql
+grep -Fq '20260920194659_wf04_lifecycle_domain_actions.sql' tests/database-regression-v2.sh
+grep -Fq 'workflow-wf04-domain-regression.sql' tests/database-regression-v2.sh
+grep -Fq 'function lifecycleExecutionForTask(task)' docs/workflow-tasks.js
+grep -Fq 'meta("Inquilino",tenants.get(task.tenant_id)' docs/workflow-tasks.js
+grep -Fq '["key_pickup","key_delivery"].includes(action.action_key)' docs/workflow-tasks.js
+grep -Fq '["check_in","check_out"].includes(action.action_key)' docs/workflow-tasks.js
+grep -Fq 'case "wf04_domain_action"' docs/workflow-history.js
+grep -Fq 'case "event_subject_bound"' docs/workflow-history.js
 

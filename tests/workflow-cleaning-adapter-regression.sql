@@ -367,6 +367,321 @@ begin
 end;
 $accept_retry_no_duplicate$;
 
+-- Dos patrones activos fuerzan un checklist congelado de dos fotos.
+select set_config('wf03.pattern_a',gen_random_uuid()::text,true);
+select set_config('wf03.pattern_b',gen_random_uuid()::text,true);
+
+insert into public.photo_patterns_v2(
+  id,organization_id,property_id,name,target_type,reference_storage_path,contour_data
+) values
+(
+  current_setting('wf03.pattern_a')::uuid,
+  current_setting('wf03.org')::uuid,
+  current_setting('wf03.property')::uuid,
+  'WF03 cleaning pattern A',
+  'zone',
+  'wf03/pattern-a.webp',
+  '{"shapes":[]}'::jsonb
+),
+(
+  current_setting('wf03.pattern_b')::uuid,
+  current_setting('wf03.org')::uuid,
+  current_setting('wf03.property')::uuid,
+  'WF03 cleaning pattern B',
+  'zone',
+  'wf03/pattern-b.webp',
+  '{"shapes":[]}'::jsonb
+);
+
+select *
+from private.ensure_cleaning_photo_requests_v2(
+  (
+    select id
+    from public.cleaning_tasks_v2
+    where workflow_execution_id=current_setting('wf03.cleaning_execution')::uuid
+  )
+);
+
+select set_config('wf03.request_1',(
+  select id::text
+  from public.cleaning_photo_requests_v2
+  where cleaning_task_id=(
+    select id
+    from public.cleaning_tasks_v2
+    where workflow_execution_id=current_setting('wf03.cleaning_execution')::uuid
+  )
+  order by ordinal
+  limit 1
+),true);
+select set_config('wf03.request_2',(
+  select id::text
+  from public.cleaning_photo_requests_v2
+  where cleaning_task_id=(
+    select id
+    from public.cleaning_tasks_v2
+    where workflow_execution_id=current_setting('wf03.cleaning_execution')::uuid
+  )
+  order by ordinal
+  offset 1
+  limit 1
+),true);
+select set_config('wf03.request_pattern_1',(
+  select pattern_id::text
+  from public.cleaning_photo_requests_v2
+  where id=current_setting('wf03.request_1')::uuid
+),true);
+select set_config('wf03.request_pattern_2',(
+  select pattern_id::text
+  from public.cleaning_photo_requests_v2
+  where id=current_setting('wf03.request_2')::uuid
+),true);
+
+do $two_photo_requests_frozen$
+begin
+  if (select count(*)
+      from public.cleaning_photo_requests_v2
+      where cleaning_task_id=(
+        select id
+        from public.cleaning_tasks_v2
+        where workflow_execution_id=current_setting('wf03.cleaning_execution')::uuid
+      )
+        and request_kind='cleaning')<>2 then
+    raise exception 'cleaning checklist did not freeze exactly two photo requests';
+  end if;
+end;
+$two_photo_requests_frozen$;
+
+-- Primera foto: completa solo su request, pasa el expediente a in_progress
+-- y NO puede crear todavía auditoría.
+select set_config('wf03.run_1',gen_random_uuid()::text,true);
+select set_config('wf03.item_1',gen_random_uuid()::text,true);
+
+insert into public.photo_verification_runs_v2(
+  id,organization_id,property_id,actor_user_id,source_type,source_id,
+  verification_mode,purpose,cleaning_task_id,status
+) values (
+  current_setting('wf03.run_1')::uuid,
+  current_setting('wf03.org')::uuid,
+  current_setting('wf03.property')::uuid,
+  current_setting('wf03.tenant_user')::uuid,
+  'cleaning_task',
+  (
+    select id
+    from public.cleaning_tasks_v2
+    where workflow_execution_id=current_setting('wf03.cleaning_execution')::uuid
+  ),
+  'manual',
+  'cleaning',
+  (
+    select id
+    from public.cleaning_tasks_v2
+    where workflow_execution_id=current_setting('wf03.cleaning_execution')::uuid
+  ),
+  'capturing'
+);
+
+insert into public.photo_verification_items_v2(
+  id,run_id,pattern_id,storage_path
+) values (
+  current_setting('wf03.item_1')::uuid,
+  current_setting('wf03.run_1')::uuid,
+  current_setting('wf03.request_pattern_1')::uuid,
+  current_setting('wf03.org')||'/'||
+    current_setting('wf03.run_1')||'/'||
+    current_setting('wf03.item_1')||'.jpg'
+);
+
+update public.photo_verification_runs_v2
+set status='submitted',
+    submitted_at=now()
+where id=current_setting('wf03.run_1')::uuid;
+
+do $first_photo_progress$
+declare
+  v_audit public.cleaning_audits_v2;
+begin
+  if not exists(
+    select 1
+    from public.cleaning_photo_requests_v2
+    where id=current_setting('wf03.request_1')::uuid
+      and completed_run_id=current_setting('wf03.run_1')::uuid
+      and completed_at is not null
+  ) then
+    raise exception 'first cleaning photo request was not completed by submitted run';
+  end if;
+
+  if exists(
+    select 1
+    from public.cleaning_photo_requests_v2
+    where id=current_setting('wf03.request_2')::uuid
+      and completed_run_id is not null
+  ) then
+    raise exception 'first photo incorrectly completed another request';
+  end if;
+
+  if not exists(
+    select 1
+    from public.cleaning_tasks_v2
+    where workflow_execution_id=current_setting('wf03.cleaning_execution')::uuid
+      and status='in_progress'
+      and submitted_at is null
+  ) then
+    raise exception 'first cleaning photo did not move domain task to in_progress';
+  end if;
+
+  select * into v_audit
+  from private.select_cleaning_audit_v2(
+    (
+      select id
+      from public.cleaning_tasks_v2
+      where workflow_execution_id=current_setting('wf03.cleaning_execution')::uuid
+    ),
+    current_setting('wf03.run_1')::uuid,
+    0.0,
+    now()
+  );
+
+  if v_audit.id is not null
+    or exists(
+      select 1
+      from public.cleaning_audits_v2
+      where cleaning_task_id=(
+        select id
+        from public.cleaning_tasks_v2
+        where workflow_execution_id=current_setting('wf03.cleaning_execution')::uuid
+      )
+    ) then
+    raise exception 'cleaning audit was selected before all requested photos completed';
+  end if;
+end;
+$first_photo_progress$;
+
+-- Segunda foto: ahora sí termina el checklist y el expediente pasa a submitted.
+select set_config('wf03.run_2',gen_random_uuid()::text,true);
+select set_config('wf03.item_2',gen_random_uuid()::text,true);
+
+insert into public.photo_verification_runs_v2(
+  id,organization_id,property_id,actor_user_id,source_type,source_id,
+  verification_mode,purpose,cleaning_task_id,status
+) values (
+  current_setting('wf03.run_2')::uuid,
+  current_setting('wf03.org')::uuid,
+  current_setting('wf03.property')::uuid,
+  current_setting('wf03.tenant_user')::uuid,
+  'cleaning_task',
+  (
+    select id
+    from public.cleaning_tasks_v2
+    where workflow_execution_id=current_setting('wf03.cleaning_execution')::uuid
+  ),
+  'manual',
+  'cleaning',
+  (
+    select id
+    from public.cleaning_tasks_v2
+    where workflow_execution_id=current_setting('wf03.cleaning_execution')::uuid
+  ),
+  'capturing'
+);
+
+insert into public.photo_verification_items_v2(
+  id,run_id,pattern_id,storage_path
+) values (
+  current_setting('wf03.item_2')::uuid,
+  current_setting('wf03.run_2')::uuid,
+  current_setting('wf03.request_pattern_2')::uuid,
+  current_setting('wf03.org')||'/'||
+    current_setting('wf03.run_2')||'/'||
+    current_setting('wf03.item_2')||'.jpg'
+);
+
+update public.photo_verification_runs_v2
+set status='submitted',
+    submitted_at=now()
+where id=current_setting('wf03.run_2')::uuid;
+
+do $second_photo_and_audit$
+declare
+  v_audit public.cleaning_audits_v2;
+begin
+  if exists(
+    select 1
+    from public.cleaning_photo_requests_v2
+    where cleaning_task_id=(
+      select id
+      from public.cleaning_tasks_v2
+      where workflow_execution_id=current_setting('wf03.cleaning_execution')::uuid
+    )
+      and completed_run_id is null
+  ) then
+    raise exception 'cleaning checklist still has incomplete photo requests';
+  end if;
+
+  if not exists(
+    select 1
+    from public.cleaning_tasks_v2
+    where workflow_execution_id=current_setting('wf03.cleaning_execution')::uuid
+      and status='submitted'
+      and submitted_at is not null
+  ) then
+    raise exception 'all cleaning photos did not move domain task to submitted';
+  end if;
+
+  -- El workflow sigue activo: el cierre lo resolverá el adaptador de auditoría.
+  if not exists(
+    select 1
+    from public.workflow_executions_v2
+    where id=current_setting('wf03.cleaning_execution')::uuid
+      and status='active'
+  ) or not exists(
+    select 1
+    from public.tenant_tasks_v2
+    where id=current_setting('wf03.cleaning_task')::uuid
+      and status='active'
+  ) then
+    raise exception 'photo submission closed workflow before cleaning audit decision';
+  end if;
+
+  select * into v_audit
+  from private.select_cleaning_audit_v2(
+    (
+      select id
+      from public.cleaning_tasks_v2
+      where workflow_execution_id=current_setting('wf03.cleaning_execution')::uuid
+    ),
+    current_setting('wf03.run_2')::uuid,
+    0.0,
+    now()
+  );
+
+  if v_audit.id is null
+    or v_audit.selected_for_review is distinct from true
+    or v_audit.status<>'open' then
+    raise exception 'completed cleaning did not create selected audit';
+  end if;
+
+  if (select count(*)
+      from public.cleaning_audit_items_v2
+      where audit_id=v_audit.id)<>2 then
+    raise exception 'cleaning audit did not aggregate both submitted photo runs';
+  end if;
+
+  if not exists(
+    select 1
+    from public.cleaning_audit_items_v2
+    where audit_id=v_audit.id
+      and photo_item_id=current_setting('wf03.item_1')::uuid
+  ) or not exists(
+    select 1
+    from public.cleaning_audit_items_v2
+    where audit_id=v_audit.id
+      and photo_item_id=current_setting('wf03.item_2')::uuid
+  ) then
+    raise exception 'cleaning audit lost one of the requested photo items';
+  end if;
+end;
+$second_photo_and_audit$;
+
 -- A second execution of the same cleaning application exercises explicit rejection.
 set local role authenticated;
 select set_config('request.jwt.claims',jsonb_build_object(
@@ -518,6 +833,18 @@ begin
     'EXECUTE'
   ) then
     raise exception 'authenticated client gained direct cleaning decision adapter execution';
+  end if;
+
+  if has_function_privilege(
+    'authenticated',
+    'private.workflow_capture_cleaning_photo_submission_v1()',
+    'EXECUTE'
+  ) or has_function_privilege(
+    'authenticated',
+    'private.select_cleaning_audit_v2(uuid,uuid,double precision,timestamp with time zone)',
+    'EXECUTE'
+  ) then
+    raise exception 'authenticated client gained direct cleaning photo/audit adapter execution';
   end if;
 end;
 $private_adapter_privilege$;

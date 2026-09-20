@@ -174,3 +174,12 @@ Reglas:
 - cuando todos los despachos recuperables convergen, el evento pasa a `processed` o `processed_with_errors` si coexistió algún fallo terminal; reintentar después no crea ejecuciones nuevas;
 - las tablas de outbox/recibos no conceden escritura ni ejecución directa a `authenticated`.
 
+### Reglas adicionales WF-04 — Entrada / Salida / llaves
+
+- las recetas nuevas de `checkin` y `checkout` con `closeType=domain_adapter` se asignan solo a personal interno operativo; no a tenants;
+- para `assignmentType=role`, la selección determinista filtra primero la elegibilidad WF-01 **y** la capacidad de escritura vigente sobre el piso. Un empleado de solo lectura no puede ser elegido para luego fallar durante la acción;
+- `fixed_person` y `property_responsible` también deben conservar capacidad de escritura vigente cuando se ejecuta/actúa;
+- si el asignado es ADMIN (o ROOT en cualquier ruta excepcional autorizada), toda acción WF-04 exige `aal2` server-side; AAL1 no puede aceptar/rechazar, confirmar custodia de llaves ni confirmar Entrada/Salida;
+- la recogida/entrega de llaves no modifica Auth, roles ni la vigencia de `occupancies_v2`; las fechas/estado de ocupación siguen siendo autoridad del acceso.
+
+

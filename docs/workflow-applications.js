@@ -398,7 +398,14 @@ function scheduledDisplay(spec){
 }
 
 function isAutomaticTrigger(spec){
+  return ["scheduled_once","recurring","event"].includes(String(spec?.triggerType||""));
+}
+function isScheduledTrigger(spec){
   return ["scheduled_once","recurring"].includes(String(spec?.triggerType||""));
+}
+function eventDisplay(spec){
+  const eventType=String(spec?.eventType||"");
+  return eventType==="occupancy.created"?"Nueva ocupación creada":"Evento pendiente";
 }
 function recurrenceDisplay(spec){
   const recurrence=String(spec?.recurrence||"");
@@ -421,11 +428,12 @@ function transientAssignmentControls(app){
   const assignmentType=String(spec.assignmentType||"");
   const scheduled=String(spec.triggerType||"")==="scheduled_once";
   const recurring=String(spec.triggerType||"")==="recurring";
-  const automatic=scheduled||recurring;
+  const eventDriven=String(spec.triggerType||"")==="event";
+  const automatic=scheduled||recurring||eventDriven;
   const wrap=document.createElement("div");
   wrap.className="execution-controls";
   const title=document.createElement("strong");
-  title.textContent=automatic?"Programación":"Decisión final";
+  title.textContent=eventDriven?"Activación automática":automatic?"Programación":"Decisión final";
   wrap.append(title);
 
   let assigneeSelect=null;
@@ -433,25 +441,29 @@ function transientAssignmentControls(app){
   if(assignmentType==="manual"){
     const candidates=executionCandidates(app);
     const label=document.createElement("label");
-    label.textContent=recurring
-      ?"¿Quién realizará las tareas de este flujo recurrente?"
-      :scheduled
-        ?"¿Quién realizará esta tarea cuando llegue la fecha?"
-        :"¿Quién realizará esta tarea si eliges Ejecutar?";
+    label.textContent=eventDriven
+      ?"Los flujos por evento necesitan una regla de asignación automática."
+      :recurring
+        ?"¿Quién realizará las tareas de este flujo recurrente?"
+        :scheduled
+          ?"¿Quién realizará esta tarea cuando llegue la fecha?"
+          :"¿Quién realizará esta tarea si eliges Ejecutar?";
     assigneeSelect=document.createElement("select");
     assigneeSelect.append(option("","Selecciona una persona"));
     assigneeSelect.append(...candidates.map(person=>option(person.user_id,candidateLabel(person))));
     label.append(assigneeSelect);
     wrap.append(label);
-    if(!candidates.length)executable=false;
+    if(!candidates.length||eventDriven)executable=false;
   }else if(assignmentType==="property_responsible"){
     const note=document.createElement("span");
     note.className="execution-note";
-    note.textContent=recurring
-      ?"El responsable operativo se resolverá de nuevo en cada ejecución recurrente."
-      :scheduled
-        ?"El responsable operativo se resolverá de nuevo cuando llegue la fecha programada."
-        :"Si ejecutas, se validará de nuevo el responsable operativo vigente del piso.";
+    note.textContent=eventDriven
+      ?"El responsable operativo vigente se resolverá cuando ocurra "+eventDisplay(spec)+"."
+      :recurring
+        ?"El responsable operativo se resolverá de nuevo en cada ejecución recurrente."
+        :scheduled
+          ?"El responsable operativo se resolverá de nuevo cuando llegue la fecha programada."
+          :"Si ejecutas, se validará de nuevo el responsable operativo vigente del piso.";
     wrap.append(note);
   }else if(["fixed_person","role","active_occupants_rotation"].includes(assignmentType)){
     const candidates=ruleCandidates(app,spec);
@@ -462,9 +474,11 @@ function transientAssignmentControls(app){
       ?(candidates.length
         ?"La persona fija se revalidará al ejecutar cada tarea."
         :"La persona fija no tiene una relación vigente con este destino.")
-      :automatic
-        ?"El ejecutor se elegirá entre personas vigentes en cada ejecución programada."
-        :candidates.length
+      :eventDriven
+        ?"El ejecutor se elegirá entre personas vigentes cuando ocurra "+eventDisplay(spec)+"."
+        :automatic
+          ?"El ejecutor se elegirá entre personas vigentes en cada ejecución programada."
+          :candidates.length
           ?"El ejecutor se resolverá en el servidor al crear la tarea."
           :"No hay personas vigentes elegibles para esta regla.";
     wrap.append(note);
@@ -478,11 +492,13 @@ function transientAssignmentControls(app){
 
   const explanation=document.createElement("div");
   explanation.className="application-note";
-  explanation.textContent=recurring
-    ?"Programar guarda el flujo sin crear una tarea ahora. La primera se creará el "+scheduledDisplay(spec)+" y después continuará "+recurrenceDisplay(spec)+"."
-    :scheduled
-      ?"Programar guarda el flujo y su destino sin crear una tarea ahora. La tarea se creará automáticamente el "+scheduledDisplay(spec)+"."
-      :"Publicar lo guarda en Mis Flujos sin crear tareas. Mientras nunca se ejecute podrás editarlo o eliminarlo. Ejecutar lo publica y crea la tarea; desde ese momento conservará historial y solo podrá archivarse.";
+  explanation.textContent=eventDriven
+    ?"Activar guarda el flujo sin crear una tarea ahora. Quedará esperando: "+eventDisplay(spec)+"."
+    :recurring
+      ?"Programar guarda el flujo sin crear una tarea ahora. La primera se creará el "+scheduledDisplay(spec)+" y después continuará "+recurrenceDisplay(spec)+"."
+      :scheduled
+        ?"Programar guarda el flujo y su destino sin crear una tarea ahora. La tarea se creará automáticamente el "+scheduledDisplay(spec)+"."
+        :"Publicar lo guarda en Mis Flujos sin crear tareas. Mientras nunca se ejecute podrás editarlo o eliminarlo. Ejecutar lo publica y crea la tarea; desde ese momento conservará historial y solo podrá archivarse.";
   wrap.append(explanation);
 
   const actions=document.createElement("div");
@@ -491,17 +507,19 @@ function transientAssignmentControls(app){
   const publish=document.createElement("button");
   publish.type="button";
   publish.className=automatic?"primary":"secondary";
-  publish.textContent=automatic?"Programar":"Publicar";
+  publish.textContent=eventDriven?"Activar":automatic?"Programar":"Publicar";
   publish.disabled=automatic&&!executable;
   publish.addEventListener("click",()=>{
     const assignee=assigneeSelect?.value||null;
-    if(automatic&&assignmentType==="manual"&&!assignee){
-      setStatus(recurring
-        ?"Selecciona quién realizará las tareas recurrentes."
-        :"Selecciona quién realizará la tarea cuando llegue la fecha.",true);
+    if(automatic&&assignmentType==="manual"){
+      setStatus(eventDriven
+        ?"Los flujos por evento necesitan una asignación automática."
+        :recurring
+          ?"Selecciona quién realizará las tareas recurrentes."
+          :"Selecciona quién realizará la tarea cuando llegue la fecha.",true);
       return;
     }
-    finalizeTransient(false,automatic?assignee:null,publish);
+    finalizeTransient(false,isScheduledTrigger(spec)?assignee:null,publish);
   });
 
   const execute=document.createElement("button");
@@ -568,7 +586,9 @@ function renderTransientReady(){
     meta("Qué hará",stepsSummary({spec})),
     meta("Asignación",assignmentLabels[String(spec.assignmentType||"")]||"Configurada")
   );
-  if(String(spec.triggerType||"")==="scheduled_once"){
+  if(String(spec.triggerType||"")==="event"){
+    details.append(meta("Se activará cuando",eventDisplay(spec)));
+  }else if(String(spec.triggerType||"")==="scheduled_once"){
     details.append(meta("Programada para",scheduledDisplay(spec)));
   }else if(String(spec.triggerType||"")==="recurring"){
     details.append(
@@ -584,7 +604,7 @@ function renderTransientReady(){
   applicationsList.append(article);
 }
 
-function renderTransientResult(result,{executed=false,scheduled=false,recurring=false,assigneeId=null}={}){
+function renderTransientResult(result,{executed=false,scheduled=false,recurring=false,eventDriven=false,assigneeId=null}={}){
   const spec=transientPayload.spec;
   const app={
     scope_type:transientTarget.scope_type,
@@ -598,15 +618,18 @@ function renderTransientResult(result,{executed=false,scheduled=false,recurring=
   article.className="application-card application-ready-card";
   const head=document.createElement("div");head.className="application-item-head";
   const title=document.createElement("h3");title.textContent=spec.flowName||"Flujo";
-  const badge=document.createElement("span");badge.className="application-badge";badge.textContent=executed?"Ejecutado":scheduled?"Programado":"Publicado";
+  const badge=document.createElement("span");badge.className="application-badge";badge.textContent=executed?"Ejecutado":eventDriven?"Activo":scheduled?"Programado":"Publicado";
   head.append(title,badge);
 
   const details=document.createElement("div");details.className="application-meta application-ready-summary";
   details.append(
     meta("Destino",targetLabel(app)),
     meta("Qué hará",stepsSummary({spec})),
-    meta("Estado",executed?"Tarea creada":scheduled?"Programación activa":"Sin tareas")
+    meta("Estado",executed?"Tarea creada":eventDriven?"Esperando evento":scheduled?"Programación activa":"Sin tareas")
   );
+  if(eventDriven){
+    details.append(meta("Se activará cuando",eventDisplay(spec)));
+  }
   if(scheduled){
     details.append(meta(recurring?"Primera ejecución":"Programada para",scheduledDisplay(spec)));
     if(recurring)details.append(meta("Frecuencia",recurrenceDisplay(spec)));
@@ -619,10 +642,12 @@ function renderTransientResult(result,{executed=false,scheduled=false,recurring=
 
   const done=document.createElement("div");done.className="application-complete";
   const strong=document.createElement("strong");
-  strong.textContent=executed?"Tarea creada":scheduled?"Flujo programado":"Flujo publicado";
+  strong.textContent=executed?"Tarea creada":eventDriven?"Flujo activo":scheduled?"Flujo programado":"Flujo publicado";
   const p=document.createElement("p");
   p.textContent=executed
     ?"El flujo quedó publicado en Mis Flujos y la tarea ya está disponible para la persona asignada."
+    :eventDriven
+      ?"No se ha creado ninguna tarea. El flujo queda activo y esperará "+eventDisplay(spec)+"; entonces GestionPisos creará la ejecución automáticamente."
     :recurring
       ?"No se ha creado ninguna tarea todavía. GestionPisos creará la primera en la fecha indicada y continuará automáticamente con la frecuencia configurada."
       :scheduled
@@ -645,24 +670,30 @@ async function finalizeTransient(execute,assigneeId,button){
   const spec=transientPayload.spec||{};
   const scheduled=String(spec.triggerType||"")==="scheduled_once";
   const recurring=String(spec.triggerType||"")==="recurring";
-  const automatic=scheduled||recurring;
+  const eventDriven=String(spec.triggerType||"")==="event";
+  const scheduledAutomatic=scheduled||recurring;
+  const automatic=scheduledAutomatic||eventDriven;
   if(!execute){
-    const confirmed=window.confirm(recurring
-      ?"Programar guardará el flujo. La primera tarea se creará el "+scheduledDisplay(spec)+" y después continuará "+recurrenceDisplay(spec)+". ¿Programar?"
-      :scheduled
-        ?"Programar guardará el flujo y creará la tarea automáticamente el "+scheduledDisplay(spec)+". ¿Programar?"
-        :"Publicar guardará este flujo en Mis Flujos sin crear ninguna tarea. Mientras siga sin ejecutarse podrá editarse o eliminarse. ¿Publicar?");
+    const confirmed=window.confirm(eventDriven
+      ?"Activar guardará el flujo sin crear una tarea. Quedará esperando "+eventDisplay(spec)+". ¿Activar?"
+      :recurring
+        ?"Programar guardará el flujo. La primera tarea se creará el "+scheduledDisplay(spec)+" y después continuará "+recurrenceDisplay(spec)+". ¿Programar?"
+        :scheduled
+          ?"Programar guardará el flujo y creará la tarea automáticamente el "+scheduledDisplay(spec)+". ¿Programar?"
+          :"Publicar guardará este flujo en Mis Flujos sin crear ninguna tarea. Mientras siga sin ejecutarse podrá editarse o eliminarse. ¿Publicar?");
     if(!confirmed)return;
   }
 
   const original=button.textContent;
   button.disabled=true;
-  button.textContent=execute?"Ejecutando…":automatic?"Programando…":"Publicando…";
+  button.textContent=execute?"Ejecutando…":eventDriven?"Activando…":automatic?"Programando…":"Publicando…";
   setStatus(execute
     ?"Validando condiciones, publicando y creando la tarea…"
-    :automatic
-      ?"Guardando el flujo y preparando su ejecución automática…"
-      :"Publicando el flujo sin crear tareas…");
+    :eventDriven
+      ?"Guardando el flujo y dejándolo a la espera del evento…"
+      :automatic
+        ?"Guardando el flujo y preparando su ejecución automática…"
+        :"Publicando el flujo sin crear tareas…");
 
   const common={
     p_property_id:transientTarget.property_id,
@@ -673,7 +704,7 @@ async function finalizeTransient(execute,assigneeId,button){
     p_idempotency_key:execute?transientPayload.requestKey:null,
     p_assigned_user_id:execute?assigneeId:null
   };
-  if(automatic){
+  if(scheduledAutomatic){
     common.p_schedule_timezone=spec.scheduledTimezone||null;
     common.p_schedule_assigned_user_id=String(spec.assignmentType||"")==="manual"?assigneeId:null;
   }
@@ -681,14 +712,14 @@ async function finalizeTransient(execute,assigneeId,button){
   let rpc="";
   let args={};
   if(transientPayload.mode==="create"){
-    rpc=automatic?"publish_workflow_ready_v2":"publish_workflow_ready_v1";
+    rpc=scheduledAutomatic?"publish_workflow_ready_v2":"publish_workflow_ready_v1";
     args={
       p_spec:transientPayload.spec,
       ...common,
       p_request_key:transientPayload.requestKey
     };
   }else if(transientPayload.mode==="edit_unexecuted"){
-    rpc=automatic?"update_unexecuted_workflow_v2":"update_unexecuted_workflow_v1";
+    rpc=scheduledAutomatic?"update_unexecuted_workflow_v2":"update_unexecuted_workflow_v1";
     args={
       p_definition_id:transientPayload.definitionId,
       p_spec:transientPayload.spec,
@@ -696,7 +727,7 @@ async function finalizeTransient(execute,assigneeId,button){
       ...common
     };
   }else{
-    rpc=automatic?"publish_workflow_revision_ready_v2":"publish_workflow_revision_ready_v1";
+    rpc=scheduledAutomatic?"publish_workflow_revision_ready_v2":"publish_workflow_revision_ready_v1";
     args={
       p_definition_id:transientPayload.definitionId,
       p_expected_revision:transientPayload.expectedRevision,
@@ -724,9 +755,11 @@ async function finalizeTransient(execute,assigneeId,button){
   formCard.hidden=true;
   applicationsSection.hidden=false;
   setSetupStage(execute||automatic?"done":"ready");
-  renderTransientResult(result,{executed:execute,scheduled:automatic,recurring,assigneeId});
+  renderTransientResult(result,{executed:execute,scheduled:scheduledAutomatic,recurring,eventDriven,assigneeId});
   setStatus(execute
     ?"Tarea creada. El flujo queda protegido por historial desde esta primera ejecución."
+    :eventDriven
+      ?"Flujo activo. No se ha creado ninguna tarea: queda esperando "+eventDisplay(spec)+"."
     :recurring
       ?"Flujo recurrente programado. La primera tarea se creará el "+scheduledDisplay(spec)+" y después continuará "+recurrenceDisplay(spec)+"."
       :scheduled
@@ -1502,9 +1535,21 @@ function renderExecutionAssist(app){
 
 function buildExecutionControls(app,{guided=false}={}){
   const version=versionForApplication(app);
-  const assignmentType=String(version?.spec?.assignmentType||"");
+  const spec=version?.spec||{};
+  const assignmentType=String(spec.assignmentType||"");
   const controls=document.createElement("div");controls.className="execution-controls";
   const controlTitle=document.createElement("strong");
+
+  if(String(spec.triggerType||"")==="event"){
+    controlTitle.textContent="Activación automática";
+    controls.append(controlTitle);
+    const note=document.createElement("span");
+    note.className="execution-note";
+    note.textContent="Activo · esperando "+eventDisplay(spec)+". La tarea se creará automáticamente cuando ocurra el evento.";
+    controls.append(note);
+    return controls;
+  }
+
   controlTitle.textContent=guided?"Último paso":"Ejecutar ahora";
   controls.append(controlTitle);
 

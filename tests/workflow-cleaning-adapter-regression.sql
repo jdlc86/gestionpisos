@@ -123,6 +123,59 @@ as $spec$
   );
 $spec$;
 
+do $cleaning_authoring_contract$
+declare
+  v_valid jsonb:=pg_temp.wf03_spec('cleaning','WF03 cleaning authoring');
+  v_bad jsonb;
+begin
+  if not public.workflow_authoring_complete_v1(v_valid) then
+    raise exception 'valid cleaning authoring contract was rejected';
+  end if;
+
+  v_bad:=jsonb_set(v_valid,'{steps,accept}','false'::jsonb,false);
+  if public.workflow_authoring_complete_v1(v_bad) then
+    raise exception 'cleaning authoring allowed accept=false';
+  end if;
+
+  v_bad:=jsonb_set(v_valid,'{steps,photo}','true'::jsonb,false);
+  if public.workflow_authoring_complete_v1(v_bad) then
+    raise exception 'cleaning authoring allowed generic photo step';
+  end if;
+
+  v_bad:=jsonb_set(v_valid,'{steps,checklist}','true'::jsonb,false);
+  v_bad:=jsonb_set(
+    v_bad,
+    '{checklistItems}',
+    '[{"text":"No debe convivir con el adaptador","required":true}]'::jsonb,
+    false
+  );
+  if public.workflow_authoring_complete_v1(v_bad) then
+    raise exception 'cleaning authoring allowed generic checklist step';
+  end if;
+
+  v_bad:=jsonb_set(v_valid,'{steps,document}','true'::jsonb,false);
+  if public.workflow_authoring_complete_v1(v_bad) then
+    raise exception 'cleaning authoring allowed generic document step';
+  end if;
+
+  v_bad:=jsonb_set(v_valid,'{closeType}',to_jsonb('auto'::text),false);
+  if public.workflow_authoring_complete_v1(v_bad) then
+    raise exception 'cleaning authoring allowed non-domain close';
+  end if;
+
+  v_bad:=jsonb_set(v_valid,'{scopeType}',to_jsonb('organization'::text),false);
+  if public.workflow_authoring_complete_v1(v_bad) then
+    raise exception 'cleaning authoring allowed organization scope';
+  end if;
+
+  if not public.workflow_authoring_complete_v1(
+    pg_temp.wf03_spec('custom','WF03 non-cleaning authoring control')
+  ) then
+    raise exception 'cleaning authoring contract regressed non-cleaning workflow';
+  end if;
+end;
+$cleaning_authoring_contract$;
+
 set local role authenticated;
 select set_config('request.jwt.claims',jsonb_build_object(
   'sub',current_setting('wf03.root'),

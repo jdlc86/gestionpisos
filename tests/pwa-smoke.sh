@@ -350,6 +350,21 @@ grep -Fq 'input[type="checkbox"],input[type="radio"]' docs/app.css
 grep -Fq '<span>Puede recuperar ROOT</span>' docs/permissions.html
 grep -Fq 'class="builder-editor-state"' docs/workflow-builder.html
 
+# WF-03 authoring: Limpieza uses only the specialized domain adapter path.
+node --check docs/workflow-builder.js
+grep -Fq './workflow-builder.js?v=2026092003' docs/workflow-builder.html
+grep -Fq 'id="cleaningStepNote"' docs/workflow-builder.html
+grep -Fq 'id="cleaningCloseNote"' docs/workflow-builder.html
+grep -Fq 'function updateCleaningContract()' docs/workflow-builder.js
+grep -Fq 'const genericSteps=[field("stepPhoto"),field("stepChecklist"),field("stepDocument")]' docs/workflow-builder.js
+grep -Fq 'if(cleaning)accept.checked=true' docs/workflow-builder.js
+grep -Fq 'if(cleaning)close.value="domain_adapter"' docs/workflow-builder.js
+grep -Fq 'organizationOption.disabled=cleaning' docs/workflow-builder.js
+test -s supabase/migrations/20260920143000_wf03_cleaning_authoring_contract.sql
+grep -Fq "(p_spec->>'flowType')='cleaning'" supabase/migrations/20260920143000_wf03_cleaning_authoring_contract.sql
+grep -Fq "coalesce(p_spec#>>'{steps,accept}','false')<>'true'" supabase/migrations/20260920143000_wf03_cleaning_authoring_contract.sql
+grep -Fq "coalesce(p_spec#>>'{steps,photo}','false')='true'" supabase/migrations/20260920143000_wf03_cleaning_authoring_contract.sql
+
 grep -Fq './app.css?v=2026091910' docs/index.html
 grep -Fq 'linear-gradient(145deg,#2d2a26 0%,#26231f 54%,#1f1d1a 100%)' docs/app.css
 

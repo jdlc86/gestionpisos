@@ -92,14 +92,19 @@ Reglas de autoría de activación:
 - `scheduled_once` exige una fecha/hora concreta antes de considerarse configurado;
 - `recurring` exige frecuencia; si es personalizada, además exige intervalo entero y unidad (`día`, `semana` o `mes`);
 - los campos que no corresponden al tipo seleccionado se eliminan server-side para impedir estado residual;
-- `event` no usa frecuencia temporal; la fuente concreta del evento deberá validarse antes de publicación cuando se habilite esa capacidad.
+- `event` no usa frecuencia temporal y exige un `eventType` soportado antes de publicación;
+- en WF-02 el primer evento soportado es `occupancy.created`;
+- un flujo por evento no admite asignación `manual`: el ejecutor debe poder resolverse sin interacción humana cuando llegue el evento;
+- un evento de negocio no ejecuta workflows dentro de la misma transacción: se registra en `workflow_event_outbox_v2` y un dispatcher lo consume después.
 
 Todo disparador automático debe producir una `idempotency_key` determinista para impedir duplicados ante reintentos.
 
-Ejemplos conceptuales:
+Ejemplos:
 
 - recurrencia semanal: `workflow_application + periodo`;
-- evento: `workflow_version + source_event_id`.
+- evento: `event:<workflow_event_outbox_v2.id>`, única dentro de cada aplicación.
+
+Para eventos, `workflow_event_dispatches_v2` conserva un recibo único por `event_id + application_id`. Un fallo de una aplicación no revierte el evento de negocio ni impide despachar las demás aplicaciones compatibles. Las aplicaciones ya ejecutadas quedan recibidas como `executed`; las fallidas permanecen reintentables y pueden converger después sin duplicar las correctas.
 
 La idempotencia se valida en servidor/BD, nunca solo en cliente.
 

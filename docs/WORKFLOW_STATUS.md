@@ -277,7 +277,7 @@ Se cerraron dos recorridos manuales completos sobre el motor persistente:
    - una captura válida completa recurso + tarea + ejecución;
    - un único run/ítem/objeto de Storage.
 
-Estas pruebas demuestran que el motor genérico ya cubre ejecución manual, Fecha concreta y Recurrente, además de Foto, Checklist, Documento y revisión humana. Los disparadores recurrentes tienen primera ejecución explícita, zona horaria, idempotencia y regresión automatizada.
+Estas pruebas demuestran que el motor genérico cubre ejecución manual, Fecha concreta y Recurrente, además de Foto, Checklist, Documento y revisión humana. WF-02 añade el cuarto disparador, `event`, mediante outbox + dispatcher; su fuente representativa inicial es `occupancy.created`. Los disparadores automáticos conservan idempotencia server-side.
 
 ### PR #216 + #217 — Evidencia fotográfica y decisión del asignado
 
@@ -468,3 +468,20 @@ La regresión PostgreSQL cubre avance, idempotencia, catch-up, fin de mes, DST y
 
 
 Los flujos recurrentes publicados antes de existir la primera fecha explícita no reciben una fecha inventada ni se migran destructivamente. Mis Flujos los identifica como **Necesita programación** y destaca **Editar programación**; si ya tienen historial, la corrección crea una nueva versión y conserva las ejecuciones anteriores.
+
+### Incremento — WF-02 · Disparador genérico por evento
+
+El valor declarativo `triggerType=event` pasa a ser capacidad ejecutable del motor:
+
+- el Creador exige un evento concreto; inicialmente `occupancy.created`;
+- un flujo de evento no permite asignación manual ni ofrece Ejecutar/Ejecutar en lote;
+- `workflow_event_outbox_v2` desacopla el evento de negocio de la creación de tareas;
+- `workflow_event_dispatches_v2` registra exactamente un resultado por evento/aplicación;
+- el dispatcher reutiliza `workflow_execute_application_internal_v1` con `trigger_kind=event`;
+- el mismo resolver de asignaciones de WF-01 se aplica al llegar el evento;
+- el destino se compara server-side contra organización/piso/habitación/ocupación;
+- un fallo de un workflow no revierte la operación de negocio ni otras ejecuciones correctas;
+- los fallos quedan reintentables; las aplicaciones ya ejecutadas no se duplican durante los reintentos;
+- el consumidor corre por `pg_cron` cada minuto;
+- la regresión PostgreSQL cubre desacoplamiento, idempotencia, ejecución/tarea, aislamiento de fallos y privilegios.
+

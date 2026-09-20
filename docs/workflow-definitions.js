@@ -96,6 +96,15 @@ function scheduledRuntimeDate(value,timezone){
 function isScheduledAutomatic(row){
   return ["scheduled_once","recurring"].includes(String(publishedSpec(row).triggerType||""));
 }
+function isEventDriven(row){
+  return String(publishedSpec(row).triggerType||"")==="event";
+}
+function canExecuteNow(row){
+  return !isScheduledAutomatic(row)&&!isEventDriven(row);
+}
+function eventDisplay(spec){
+  return String(spec?.eventType||"")==="occupancy.created"?"Nueva ocupación creada":"Evento pendiente";
+}
 function latestVersion(row){return versionsByDefinition.get(row.id)?.[0]||null}
 function publishedSpec(row){return latestVersion(row)?.spec||{}}
 function applicationsFor(row){return applicationsByDefinition.get(row.id)||[]}
@@ -154,6 +163,9 @@ function activationText(row){
   }
   if(trigger==="scheduled_once"){
     return base+" · "+scheduledDateTime(spec);
+  }
+  if(trigger==="event"){
+    return base+" · "+eventDisplay(spec);
   }
   return base;
 }
@@ -341,7 +353,7 @@ function updateBulkState(){
   const selected=selectedRows();
   const deletable=selected.filter(row=>!hasHistory(row));
   const archivable=selected.filter(row=>hasHistory(row));
-  const executable=selected.filter(row=>!isScheduledAutomatic(row));
+  const executable=selected.filter(canExecuteNow);
 
   if(selectionSummary){
     selectionSummary.textContent=selected.length
@@ -452,9 +464,10 @@ function card(row){
   headMain.append(title);
 
   const needsSchedule=needsScheduleConfiguration(row);
+  const eventDriven=isEventDriven(row);
   const badge=document.createElement("span");
-  badge.className="definition-badge "+(needsSchedule||!history?"definition-badge--incomplete":"definition-badge--complete");
-  badge.textContent=needsSchedule?"Necesita programación":history?"Con historial":"Sin ejecuciones";
+  badge.className="definition-badge "+(needsSchedule||(!history&&!eventDriven)?"definition-badge--incomplete":"definition-badge--complete");
+  badge.textContent=needsSchedule?"Necesita programación":eventDriven&&!history?"Activo":history?"Con historial":"Sin ejecuciones";
   head.append(headMain,badge);
 
   const details=document.createElement("div");details.className="definition-meta";
@@ -483,7 +496,7 @@ function card(row){
 
   const actions=document.createElement("div");actions.className="definition-actions";
 
-  if(!isScheduledAutomatic(row)){
+  if(canExecuteNow(row)){
     const execute=document.createElement("a");
     execute.className="primary";
     execute.textContent="Ejecutar";
@@ -494,7 +507,7 @@ function card(row){
   }else if(!needsSchedule){
     const automatic=document.createElement("span");
     automatic.className="definition-action-note";
-    automatic.textContent="Ejecución automática";
+    automatic.textContent=isEventDriven(row)?"Activo · esperando evento":"Ejecución automática";
     actions.append(automatic);
   }
 
@@ -643,16 +656,16 @@ async function bulkArchiveSelected(){
 
 function startBulkExecution(){
   const allSelected=selectedRows();
-  const selected=allSelected.filter(row=>!isScheduledAutomatic(row));
+  const selected=allSelected.filter(canExecuteNow);
   const skipped=allSelected.length-selected.length;
   if(!selected.length){
-    setStatus("Los flujos seleccionados de Fecha concreta se ejecutarán automáticamente en su programación.");
+    setStatus("Los flujos seleccionados son automáticos: los programados se ejecutarán por fecha y los de evento cuando ocurra su evento.");
     return;
   }
 
   const confirmed=window.confirm(
     "Se prepararán "+selected.length+" flujo"+(selected.length===1?"":"s")+" para ejecución. "
-    +(skipped?skipped+" flujo"+(skipped===1?" programado se omitirá. ":"s programados se omitirán. "):"")
+    +(skipped?skipped+" flujo"+(skipped===1?" automático se omitirá. ":"s automáticos se omitirán. "):"")
     +"Si alguno necesita datos, el sistema te mostrará solo lo que falta antes de crear su tarea. ¿Continuar?"
   );
   if(!confirmed)return;

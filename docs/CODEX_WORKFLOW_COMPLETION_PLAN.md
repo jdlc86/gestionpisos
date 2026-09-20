@@ -284,9 +284,35 @@ Pruebas mínimas:
 ---
 
 ### BLOQUE WF-02 — Disparador genérico por evento
-**Estado:** ACTIVO / PLANNED
+**Estado:** VERIFIED
 
-**Instrucción de arranque:** este es el único bloque activo después de verificar WF-01. ChatGPT continuará la implementación directamente; si Codex se retoma más adelante, debe partir del `main` real y del estado actualizado de este documento.
+**Verificación independiente:** completada por ChatGPT antes del merge. WF-03 permanece en `PLANNED` hasta verificar despliegue post-merge.
+
+Handoff final:
+- Rama: `feat/wf-02-event-trigger`
+- PR: [#270](https://github.com/jdlc86/gestionpisos/pull/270)
+- Main observado al comenzar y base actual del PR: `da21d32adfff66a2ca99c5e025f7db53bfbf6828`
+- HEAD de implementación verificado antes de este cierre documental: `322673def4313947b7bf9ae9f6713cbc1cd0c6d8`
+- Divergencia observada: 0 commits detrás de `main`; PR mergeable; sin hilos de revisión abiertos.
+- Arquitectura implementada: outbox + dispatcher común. El evento de negocio no crea tareas dentro de su transacción.
+- Evento representativo inicial: `occupancy.created`, válido para ámbito organización, piso o habitación; ámbito ocupación se rechaza por ser temporalmente imposible.
+- Persistencia: `workflow_event_outbox_v2` + `workflow_event_dispatches_v2`; rutas de negocio guardadas como snapshots, sin FKs destructivas a piso/habitación/ocupación/aplicación.
+- Ejecución: `trigger_kind='event'` reutiliza `private.workflow_execute_application_internal_v1` y materializa trabajo exclusivamente en `tenant_tasks_v2`.
+- Idempotencia: clave `event:<event_id>` por aplicación + recibo único evento/aplicación; ejecuciones correctas no se repiten.
+- Fallos: una aplicación fallida no revierte el evento ni otras ejecuciones; queda reintentable, puede converger después y no duplica las ya correctas.
+- Temporalidad: una aplicación/versión creada después de `occurred_at` no puede consumir retroactivamente un evento pendiente anterior.
+- Seguridad: payload mínimo sin email del ocupante; tablas/funciones privadas sin escritura/ejecución directa para cliente autenticado; enrutamiento y asignación server-side.
+- UX: Creador exige evento explícito, bloquea asignación manual y ámbito ocupación para `occupancy.created`; Listo usa **Activar**; Destinos/Mis Flujos muestran **Activo · esperando evento**; ejecución manual y masiva quedan excluidas, incluso ante URLs antiguas.
+- PWA: shell `gestionpisos-shell-v43`; assets de Builder/Applications/Definitions versionados.
+- Migraciones nuevas: `20260920103000_wf02_event_trigger_core.sql` y `20260920103100_wf02_event_trigger_cron.sql`. No se aplicaron manualmente a Supabase remoto.
+- Cron previsto tras merge: `gestionpisos-workflow-events` cada minuto → `private.process_pending_workflow_events_v1(50)`.
+- Factory reset: actualizado aditivamente para incluir outbox/recibos sin reescribir migraciones históricas.
+- Regresión específica: `tests/workflow-event-trigger-regression.sql`; cubre autoría inválida, prohibición manual, captura desacoplada, no-PII, ejecución/tarea, aislamiento de fallos, recuperación por reintento, idempotencia, eliminación de flujo fallido sin historial, no consumo retroactivo y privilegios.
+- Checks verificados sobre `322673def4313947b7bf9ae9f6713cbc1cd0c6d8`: Governance Guard ✅, PWA Smoke ✅, Schema Guard ✅ (regresión PostgreSQL aislada incluida).
+- Documentación actualizada: Engine Contract, Execution Contract, Applications Contract, Implementation Map y Workflow Status; se corrigió también la regla heredada que trataba ROOT como ejecutor manual por defecto.
+- Riesgo residual: despliegue real aún pendiente del workflow normal de merge; no se considera validación humana E2E hasta probar un evento real tras el despliegue.
+- Prueba humana sugerida post-merge: activar un flujo de prueba por `occupancy.created`, confirmar 0 tareas iniciales, crear una ocupación temporal y verificar en <=1 ciclo del cron una sola tarea `trigger_kind=event` sin duplicados.
+- Siguiente acción exacta: comprobar los tres checks del HEAD documental final, convertir PR #270 de draft a ready, comparar de nuevo contra `main`, fusionar por squash y verificar Supabase Migrations + Pages + checks + tablas/trigger/cron en producción. Solo después activar WF-03.
 
 Objetivo: convertir `event` de opción declarativa a capacidad real del motor.
 

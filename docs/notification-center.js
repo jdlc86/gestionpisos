@@ -5,7 +5,7 @@ const EVENT_DESTINATIONS={
   workflow_schedule_blocked:"./workflow-definitions.html"
 };
 
-const NOTIFICATION_STYLE_VERSION="2026091920";
+const NOTIFICATION_STYLE_VERSION="2026092001";
 
 function fmtDate(value){
   if(!value)return "";
@@ -36,6 +36,27 @@ function closeIcon(){
   return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"/></svg>';
 }
 
+function notificationIcon(row){
+  const type=String(row?.event_type||"");
+  if(type==="workflow_completed"){
+    return '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="m8.5 12 2.2 2.2 4.8-5"/></svg>';
+  }
+  if(type==="workflow_rejected"){
+    return '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="m9 9 6 6M15 9l-6 6"/></svg>';
+  }
+  if(type==="workflow_schedule_blocked"){
+    return '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.5 1.5"/><path d="M18 6l2-2"/></svg>';
+  }
+  if(type==="workflow_task_created"){
+    return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h10v14H7z"/><path d="M9.5 9h5M9.5 13h5"/></svg>';
+  }
+  return bellIcon();
+}
+
+function chevronIcon(){
+  return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>';
+}
+
 function ensureStyles(){
   if([...document.querySelectorAll('link[rel="stylesheet"]')].some(link=>String(link.href||"").includes("notification-center.css")))return;
   const link=document.createElement("link");
@@ -49,7 +70,10 @@ function notificationActionsHost(){
   const existing=document.querySelector(
     ".topbar .global-actions, .topbar .toolbar-actions, #definitionsNormalHeader .definitions-header-actions"
   );
-  if(existing)return existing;
+  if(existing){
+    existing.classList.add("notification-actions-host");
+    return existing;
+  }
   const topbar=document.querySelector(".topbar");
   if(!topbar)return null;
   const host=document.createElement("div");
@@ -164,7 +188,7 @@ export async function mountNotificationCenter({supabase,session}={}){
   card.append(head,toolbar,list);
   dialog.append(card);
   document.body.append(dialog);
-  actions.insertBefore(root,actions.firstChild);
+  actions.append(root);
 
   let rows=[];
   let loading=false;
@@ -229,9 +253,14 @@ export async function mountNotificationCenter({supabase,session}={}){
       item.className="notification-item"+(unread(row)?" is-unread":"");
       item.dataset.notificationId=row.id;
 
+      const visual=document.createElement("span");
+      visual.className="notification-item-visual";
+      visual.setAttribute("aria-hidden","true");
+      visual.innerHTML=notificationIcon(row);
+
       const marker=document.createElement("span");
       marker.className="notification-item-marker";
-      marker.setAttribute("aria-hidden","true");
+      visual.append(marker);
 
       const body=document.createElement("span");
       body.className="notification-item-body";
@@ -247,8 +276,13 @@ export async function mountNotificationCenter({supabase,session}={}){
       meta.className="notification-item-meta";
       meta.textContent=fmtDate(row.created_at);
 
+      const chevron=document.createElement("span");
+      chevron.className="notification-item-chevron";
+      chevron.setAttribute("aria-hidden","true");
+      chevron.innerHTML=chevronIcon();
+
       body.append(title,message,meta);
-      item.append(marker,body);
+      item.append(visual,body,chevron);
 
       item.addEventListener("click",async()=>{
         item.disabled=true;

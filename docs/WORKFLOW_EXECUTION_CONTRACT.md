@@ -12,9 +12,11 @@ Cadena canónica:
 
 “Ejecutar ahora” es un disparo manual explícito de una aplicación concreta.
 
-No cambia el disparador configurado en la receta. Una receta recurrente puede ejecutarse manualmente sin perder su regla recurrente futura. La ejecución registra `trigger_kind=manual_now`.
+No cambia el disparador configurado en la receta. `Ejecutar ahora` solo está permitido para recetas de activación manual. `scheduled_once`, `recurring` y `event` se ejecutan exclusivamente por su disparador automático y la UI no los ofrece en ejecución manual o masiva.
 
-Cada pulsación intencional puede crear una ejecución nueva. Los reintentos técnicos de la misma pulsación reutilizan la misma `idempotency_key` y no duplican la ejecución.
+Una ejecución manual registra `trigger_kind=manual_now`. Una ejecución originada por WF-02 registra `trigger_kind=event`.
+
+Cada pulsación manual intencional puede crear una ejecución nueva. Los reintentos técnicos de la misma pulsación reutilizan la misma `idempotency_key` y no duplican la ejecución. Para eventos, el dispatcher usa `event:<event_id>` y `workflow_event_dispatches_v2` impide despachar dos veces la misma pareja evento/aplicación.
 
 ## 2. Entidad de ejecución
 
@@ -149,3 +151,23 @@ Siguen fuera:
 - cancelación genérica y adaptadores especializados.
 
 La UI debe mostrar únicamente acciones realmente derivadas de la receta y soportadas por el servidor.
+
+## Ejecución por evento — WF-02
+
+La fuente inicial soportada es `occupancy.created`.
+
+Cadena operativa:
+
+`Evento de negocio → workflow_event_outbox_v2 → dispatcher → workflow_execute_application_internal_v1 → workflow_executions_v2 → tenant_tasks_v2`
+
+Reglas:
+
+- el trigger de la tabla de negocio solo inserta el evento en el outbox; no materializa trabajo;
+- el payload es mínimo y no persiste correo u otra PII innecesaria;
+- el dispatcher resuelve aplicaciones publicadas/configuradas cuyo `eventType` coincide y cuyo destino contiene el evento;
+- organización, piso, habitación y ocupación se resuelven server-side desde el evento capturado;
+- la asignación se revalida en el momento del despacho usando el mismo resolver del resto del motor;
+- un fallo de una aplicación produce un recibo `failed` y auditoría, pero no revierte el evento origen ni ejecuciones correctas de otras aplicaciones;
+- un evento procesado no se vuelve a ejecutar por reintentar el consumidor;
+- las tablas de outbox/recibos no conceden escritura ni ejecución directa a `authenticated`.
+

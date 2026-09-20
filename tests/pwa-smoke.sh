@@ -60,7 +60,7 @@ grep -q 'serviceWorker' docs/app.js
 grep -q 'GestionPisos' docs/manifest.webmanifest
 grep -Fq "'./legal.html'" docs/sw.js
 grep -Fq "'./privacy.html'" docs/sw.js
-grep -q 'gestionpisos-shell-v45' docs/sw.js
+grep -q 'gestionpisos-shell-v46' docs/sw.js
 grep -Fq "'./workflow-history.html'" docs/sw.js
 grep -Fq "'./workflow-history.css'" docs/sw.js
 grep -Fq "'./workflow-history.js'" docs/sw.js
@@ -421,9 +421,11 @@ test -s docs/notification-center.js
 test -s docs/notification-center.css
 node --check docs/notification-center.js
 grep -Fq './notification-center.css?v=2026092001' docs/index.html
-grep -Fq './notification-center.js?v=2026092001' docs/auth-guard.js
+grep -Fq './notification-center.js?v=2026092002' docs/auth-guard.js
 grep -Fq 'mountNotificationCenter({ supabase, session })' docs/auth-guard.js
 grep -Fq 'id="notificationBell"' docs/notification-center.js
+grep -Fq 'actions.querySelector(":scope > #homeAccount")' docs/notification-center.js
+grep -Fq 'actions.insertBefore(root,homeAccount)' docs/notification-center.js
 grep -Fq '.from("notifications_v2")' docs/notification-center.js
 grep -Fq 'supabase.rpc("mark_notification_read"' docs/notification-center.js
 grep -Fq 'Marcar todo como leído' docs/notification-center.js

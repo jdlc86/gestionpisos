@@ -82,6 +82,7 @@ declare
   v_tenant_status public.record_status;
   v_other_active boolean:=false;
   v_active_tenant_role boolean:=false;
+  v_other_active_role boolean:=false;
 begin
   if v_actor is null then
     raise exception 'not_authenticated' using errcode='42501';
@@ -169,6 +170,14 @@ begin
         and ur.role='tenant'
         and ur.revoked_at is null
     ) into v_active_tenant_role;
+
+    select exists(
+      select 1
+      from public.user_roles ur
+      where ur.user_id=v_user_id
+        and ur.revoked_at is null
+        and ur.role<>'tenant'
+    ) into v_other_active_role;
   end if;
 
   return jsonb_build_object(
@@ -178,7 +187,11 @@ begin
     'target_user_id',v_user_id,
     'other_active_occupancy',v_other_active,
     'active_tenant_role',v_active_tenant_role,
-    'disable_auth',v_user_id is not null and not v_other_active and not v_active_tenant_role
+    'other_active_role',v_other_active_role,
+    'disable_auth',v_user_id is not null
+      and not v_other_active
+      and not v_active_tenant_role
+      and not v_other_active_role
   );
 end;
 $$;

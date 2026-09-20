@@ -682,6 +682,175 @@ begin
 end;
 $second_photo_and_audit$;
 
+do $selected_audit_waits_for_review$
+begin
+  if not exists(
+    select 1
+    from public.workflow_executions_v2
+    where id=current_setting('wf03.cleaning_execution')::uuid
+      and status='waiting_review'
+  ) or not exists(
+    select 1
+    from public.tenant_tasks_v2
+    where id=current_setting('wf03.cleaning_task')::uuid
+      and status='waiting_review'
+  ) or not exists(
+    select 1
+    from public.cleaning_tasks_v2
+    where workflow_execution_id=current_setting('wf03.cleaning_execution')::uuid
+      and status='submitted'
+  ) then
+    raise exception 'selected cleaning audit did not project waiting_review atomically';
+  end if;
+
+  if (
+    select count(*)
+    from public.workflow_execution_events_v2
+    where execution_id=current_setting('wf03.cleaning_execution')::uuid
+      and event_type='domain_adapter_review_selected'
+  )<>1 then
+    raise exception 'cleaning review selection event missing or duplicated';
+  end if;
+
+  if exists(
+    select 1
+    from public.workflow_execution_events_v2
+    where execution_id=current_setting('wf03.cleaning_execution')::uuid
+      and event_type='domain_adapter_review_selected'
+      and actor_user_id is not null
+  ) then
+    raise exception 'automatic cleaning audit selection was attributed to a human actor';
+  end if;
+end;
+$selected_audit_waits_for_review$;
+
+-- Revisión humana por fotografía: la primera decisión no cierra el workflow.
+do $review_first_photo$
+declare
+  v_result jsonb;
+begin
+  v_result:=public.apply_workflow_cleaning_photo_review_v1(
+    current_setting('wf03.run_1')::uuid,
+    current_setting('wf03.root')::uuid,
+    'approved',
+    null
+  );
+
+  if v_result->>'run_status'<>'approved'
+    or v_result->>'audit_status'<>'open'
+    or v_result->>'cleaning_status'<>'submitted'
+    or v_result->>'task_status'<>'waiting_review'
+    or v_result->>'execution_status'<>'waiting_review'
+    or coalesce((v_result->>'all_reviewed')::boolean,false) then
+    raise exception 'first cleaning audit item incorrectly closed the workflow';
+  end if;
+
+  if not exists(
+    select 1
+    from public.cleaning_audit_items_v2 i
+    join public.cleaning_audits_v2 a on a.id=i.audit_id
+    where a.cleaning_task_id=(
+      select id
+      from public.cleaning_tasks_v2
+      where workflow_execution_id=current_setting('wf03.cleaning_execution')::uuid
+    )
+      and i.photo_item_id=current_setting('wf03.item_1')::uuid
+      and i.result='approved'
+      and i.reviewed_by=current_setting('wf03.root')::uuid
+  ) then
+    raise exception 'first cleaning audit item did not persist human approval';
+  end if;
+end;
+$review_first_photo$;
+
+-- La última decisión cierra auditoría + expediente + workflow + tarjeta común
+-- en la misma transacción. Un rechazo explícito domina sobre aprobaciones previas.
+do $review_second_photo_rejects$
+declare
+  v_result jsonb;
+begin
+  v_result:=public.apply_workflow_cleaning_photo_review_v1(
+    current_setting('wf03.run_2')::uuid,
+    current_setting('wf03.root')::uuid,
+    'rejected',
+    'La evidencia final requiere repetir la limpieza.'
+  );
+
+  if v_result->>'run_status'<>'rejected'
+    or v_result->>'audit_status'<>'closed'
+    or v_result->>'cleaning_status'<>'rejected'
+    or v_result->>'task_status'<>'rejected'
+    or v_result->>'execution_status'<>'rejected'
+    or coalesce((v_result->>'all_reviewed')::boolean,false) is distinct from true then
+    raise exception 'last cleaning audit item did not reject all linked states atomically';
+  end if;
+
+  if not exists(
+    select 1
+    from public.cleaning_audits_v2
+    where cleaning_task_id=(
+      select id
+      from public.cleaning_tasks_v2
+      where workflow_execution_id=current_setting('wf03.cleaning_execution')::uuid
+    )
+      and status='closed'
+      and report_status='ready'
+      and closed_at is not null
+  ) then
+    raise exception 'closed cleaning audit was not left ready for its single final report';
+  end if;
+
+  if not exists(
+    select 1
+    from public.cleaning_tasks_v2
+    where workflow_execution_id=current_setting('wf03.cleaning_execution')::uuid
+      and status='rejected'
+      and reviewed_by=current_setting('wf03.root')::uuid
+      and reviewed_at is not null
+  ) then
+    raise exception 'cleaning domain did not record the human reviewer on final close';
+  end if;
+
+  if (
+    select count(*)
+    from public.workflow_execution_events_v2
+    where execution_id=current_setting('wf03.cleaning_execution')::uuid
+      and event_type='domain_adapter_review_closed'
+  )<>1 then
+    raise exception 'cleaning audit close event missing or duplicated';
+  end if;
+end;
+$review_second_photo_rejects$;
+
+-- Mismo resultado final + misma foto: reintento puro, sin segundo cierre.
+do $review_retry_is_idempotent$
+declare
+  v_result jsonb;
+begin
+  v_result:=public.apply_workflow_cleaning_photo_review_v1(
+    current_setting('wf03.run_2')::uuid,
+    current_setting('wf03.root')::uuid,
+    'rejected',
+    'La evidencia final requiere repetir la limpieza.'
+  );
+
+  if coalesce((v_result->>'applied_new')::boolean,true)
+    or v_result->>'execution_status'<>'rejected'
+    or v_result->>'cleaning_status'<>'rejected' then
+    raise exception 'cleaning human review retry was not idempotent';
+  end if;
+
+  if (
+    select count(*)
+    from public.workflow_execution_events_v2
+    where execution_id=current_setting('wf03.cleaning_execution')::uuid
+      and event_type='domain_adapter_review_closed'
+  )<>1 then
+    raise exception 'cleaning human review retry duplicated final history';
+  end if;
+end;
+$review_retry_is_idempotent$;
+
 -- A second execution of the same cleaning application exercises explicit rejection.
 set local role authenticated;
 select set_config('request.jwt.claims',jsonb_build_object(
@@ -845,6 +1014,30 @@ begin
     'EXECUTE'
   ) then
     raise exception 'authenticated client gained direct cleaning photo/audit adapter execution';
+  end if;
+
+  if has_function_privilege(
+    'authenticated',
+    'private.workflow_sync_cleaning_audit_selection_v1(uuid,uuid)',
+    'EXECUTE'
+  ) or has_function_privilege(
+    'authenticated',
+    'private.workflow_finalize_cleaning_audit_v1(uuid,uuid,text)',
+    'EXECUTE'
+  ) or has_function_privilege(
+    'authenticated',
+    'public.apply_workflow_cleaning_photo_review_v1(uuid,uuid,text,text)',
+    'EXECUTE'
+  ) then
+    raise exception 'authenticated client gained direct cleaning audit/workflow execution';
+  end if;
+
+  if not has_function_privilege(
+    'service_role',
+    'public.apply_workflow_cleaning_photo_review_v1(uuid,uuid,text,text)',
+    'EXECUTE'
+  ) then
+    raise exception 'service_role lost cleaning audit review bridge execution';
   end if;
 end;
 $private_adapter_privilege$;

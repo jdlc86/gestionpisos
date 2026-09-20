@@ -60,4 +60,4 @@ dialog::backdrop{background:rgba(9,10,12,.62)}
 .confirmation-summary dt{color:var(--ui-muted);font-size:12px}
 .confirmation-summary dd{margin:0;font-weight:600;overflow-wrap:anywhere}
 .welcome-actions{flex-wrap:wrap}
-@media(max-width:680px){.segmented{grid-template-columns:repeat(2,1fr)}.toolbar,.toolbar-actions{align-items:stretch}.toolbar{flex-direction:column}.toolbar-actions{display:grid;grid-template-columns:1fr 1fr}.relationship-summary{grid-template-columns:1fr}.record-card{grid-template-columns:1fr}.record-actions{justify-content:start}.editor-actions{flex-direction:column-reverse}.editor-actions button{width:100%}}
+@media(max-width:680px){.segmented{grid-template-columns:repeat(2,1fr)}.toolbar,.toolbar-actions{align-items:stretch}.toolbar{flex-direction:column}.toolbar-actions{display:grid;grid-template-columns:1fr 1fr}.topbar .toolbar-actions{display:flex;align-items:center;justify-content:flex-end}.relationship-summary{grid-template-columns:1fr}.record-card{grid-template-columns:1fr}.record-actions{justify-content:start}.editor-actions{flex-direction:column-reverse}.editor-actions button{width:100%}}

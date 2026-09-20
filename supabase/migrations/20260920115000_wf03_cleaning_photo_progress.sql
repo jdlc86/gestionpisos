@@ -2,6 +2,15 @@
 -- El envío de cada run completa exactamente una solicitud congelada.
 -- La auditoría solo se decide cuando todas las fotos solicitadas están completas.
 
+-- El modelo legacy imponía un único run por cleaning_task_id, incompatible
+-- con el checklist actual (un run por foto). La identidad idempotente vive en
+-- cleaning_photo_requests_v2, no en el sobre de run.
+drop index if exists public.photo_verification_runs_cleaning_task_uidx;
+
+create index if not exists photo_verification_runs_cleaning_task_idx
+  on public.photo_verification_runs_v2(cleaning_task_id)
+  where cleaning_task_id is not null;
+
 create or replace function private.workflow_capture_cleaning_photo_submission_v1()
 returns trigger
 language plpgsql

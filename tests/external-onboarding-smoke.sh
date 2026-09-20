@@ -47,7 +47,7 @@ grep -Fq 'scheduleRefresh(250);' docs/portfolio-onboarding.js
 grep -Fq 'gestionpisos:portfolio-rendered' docs/portfolio.js
 grep -Fq 'gestionpisos:portfolio-rendered' docs/portfolio-onboarding.js
 ! grep -Fq 'new MutationObserver' docs/portfolio-onboarding.js
-grep -Fq 'portfolio.js?v=2026091921' docs/portfolio.html
+grep -Fq 'portfolio.js?v=2026092001' docs/portfolio.html
 grep -Fq 'external_active_account_email_change_requires_account_flow' docs/portfolio-onboarding.js
 grep -Fq 'external_onboarding_email_change_requires_revocation' docs/portfolio.js
 

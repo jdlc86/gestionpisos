@@ -473,7 +473,7 @@ Los flujos recurrentes publicados antes de existir la primera fecha explícita n
 
 El valor declarativo `triggerType=event` pasa a ser capacidad ejecutable del motor:
 
-- el Creador exige un evento concreto; inicialmente `occupancy.created`;
+- el Creador exige un evento concreto; WF-02 introduce `occupancy.created` y WF-04 añade `occupancy.offboarded` para la Baja real;
 - un flujo de evento no permite asignación manual ni ofrece Ejecutar/Ejecutar en lote;
 - `workflow_event_outbox_v2` desacopla el evento de negocio de la creación de tareas;
 - `workflow_event_dispatches_v2` registra exactamente un resultado por evento/aplicación;
@@ -481,7 +481,8 @@ El valor declarativo `triggerType=event` pasa a ser capacidad ejecutable del mot
 - el mismo resolver de asignaciones de WF-01 se aplica al llegar el evento;
 - el destino se compara server-side contra organización/piso/habitación/ocupación;
 - un fallo de un workflow no revierte la operación de negocio ni otras ejecuciones correctas;
-- los fallos quedan reintentables; las aplicaciones ya ejecutadas no se duplican durante los reintentos;
+- los fallos recuperables quedan reintentables; las aplicaciones ya ejecutadas no se duplican durante los reintentos;
+- WF-04 retira como `processed_with_errors` un `workflow_domain_lifecycle_mismatch` permanente para que un evento histórico obsoleto no bloquee la cola; una ocupación legacy todavía sin `tenant_id` sigue siendo recuperable y vuelve a intentarse tras vincularse;
 - el consumidor corre por `pg_cron` cada minuto;
 - la regresión PostgreSQL cubre desacoplamiento, idempotencia, ejecución/tarea, aislamiento de fallos y privilegios.
 

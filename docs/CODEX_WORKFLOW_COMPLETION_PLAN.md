@@ -1,7 +1,7 @@
 # CODEX WORKFLOW COMPLETION PLAN
 
 Fecha de baseline: 2026-09-20  
-Baseline verificado por ChatGPT: `main@825a70c224cc3dc3a05f97a7477134d582f1c478`
+Último `main` verificado por ChatGPT: `main@98242d6bb2aa61fdaea813dcb180659cc2ce07d3`
 
 Este documento es el **tablero operativo persistente** para terminar la implantación de Flujos de Trabajo en GestionPisos/Allaiso sin perder contexto entre sesiones de Codex.
 
@@ -338,81 +338,116 @@ No conectar todos los dominios en este bloque; solo infraestructura + una prueba
 ---
 
 ### BLOQUE WF-03 — Adaptador Limpieza
-**Estado:** ACTIVO / IN_PROGRESS
+**Estado:** VERIFIED
 
-Primer adaptador legacy obligatorio.
+**Cierre verificado por ChatGPT (2026-09-20):**
+- Rama de implementación: `feat/wf-03-cleaning-adapter`.
+- PR: #271, fusionado.
+- Commit de merge/resultado en `main`: `b14fc58c39a4c40c03fea5c7e0bd341df1743489`.
+- El adaptador es **opt-in**: `flowType=cleaning` + `closeType=domain_adapter`. Las limpiezas legacy/genéricas conservan su comportamiento previo.
+- `tenant_tasks_v2` sigue siendo la única tarjeta operativa transversal; `cleaning_tasks_v2` es expediente especializado enlazado al workflow, no un segundo motor de tareas.
+- Se preservan decisión Aceptar/Rechazar, varias fotos, auditoría/revisión, informe final único, swaps entre ocupantes y deuda legacy, con sincronización atómica de asignado/estado.
+- La UI transversal elimina la dependencia normal de introducir manualmente IDs legacy de limpieza.
+- Seguridad revisada: autorización server-side, RLS mantenida, AAL2 en revisión sensible, bridge de revisión no expuesto al cliente y regresiones negativas.
+- Checks requeridos del HEAD de WF-03 fueron verificados verdes antes del merge: Governance Guard ✅, PWA Smoke ✅, Schema Guard ✅.
+- Producción verificada tras merge: migraciones `20260920113000`, `114000`, `115000`, `124500`, `134000`, `141000`, `143000` y `143100` presentes.
+- Edge Functions de WF-03 verificadas ACTIVE en producción: `review-photo-verification` v8 y `my-cleaning-checklist` v5, con JWT requerido.
+- No quedan pendientes que bloqueen el siguiente dominio. No reabrir WF-03 salvo regresión concreta.
 
-Handoff en curso:
-- Rama: `feat/wf-03-cleaning-adapter`
-- PR: #271 (DRAFT; NO MERGEAR todavía).
-- Main observado al comenzar WF-03: `5b9296f87c259bba214201b1ddcc3410b61e69c9`.
-- Main real verificado durante este handoff: `f8682517f5f6b139d626dfb637b225462b49e872` (PR #272 visual ya fusionado).
-- HEAD WF-03 verificado en este handoff: `7b16174b052aeb5e96f31b0ad0e66b7846e7c82c`.
-- Divergencia observada: rama 26 commits por delante y 1 por detrás de main; el commit detrás corresponde al PR visual #272 y deberá reconciliarse de forma controlada antes del merge final.
-- Ejecutor actual: ChatGPT.
-- Producción Supabase verificada: continúa únicamente hasta WF-02 (`20260920103000` + `20260920103100`); ninguna migración WF-03 ni el Edge WF-03 se han desplegado manualmente.
-- Producción al comenzar: 0 filas en `cleaning_plans_v2`, `cleaning_tasks_v2`, swaps, deudas, auditorías y solicitudes de foto; no hay datos vivos legacy que migrar.
-- Arquitectura confirmada: `tenant_tasks_v2` es la única tarjeta operativa. `cleaning_tasks_v2` es expediente especializado enlazado por `workflow_execution_id`; no existe un segundo motor de tareas.
-- Subbloque 1 — dominio: migración `20260920113000_wf03_cleaning_domain_link.sql`; materialización idempotente ejecución→expediente Limpieza sin duplicar `tenant_tasks_v2`.
-- Subbloque 2 — decisión: migración `20260920114000_wf03_cleaning_decision_state.sql`; Aceptar/Rechazar sincroniza tarjeta, ejecución y expediente en una transacción.
-- Subbloque 3 — fotos: migración `20260920115000_wf03_cleaning_photo_progress.sql`; varias solicitudes/fotos por limpieza, primera foto→`in_progress`, última→`submitted`, workflow sigue `active` hasta auditoría; se eliminó la unicidad legacy 1 tarea=1 run.
-- Subbloque 4 — auditoría/revisión: migración `20260920124500_wf03_cleaning_audit_workflow_sync.sql`; auditoría seleccionada proyecta `waiting_review`, no seleccionada cierra automáticamente, revisión humana sincroniza todos los estados, expiración `review_expired` es neutral y genera informe final.
-- El generador legacy de informes tenía `GROUP BY ... FOR UPDATE SKIP LOCKED`, SQL inválido en PostgreSQL. WF-03 lo redefine aditivamente bloqueando primero expedientes y agregando después; regresión añadida.
-- Edge `review-photo-verification`: el source WF-03 enruta únicamente limpiezas enlazadas al bridge `apply_workflow_cleaning_photo_review_v1`; las limpiezas legacy conservan su camino previo. Además se añadió verificación AAL2 server-side usando el JWT actual. El Edge remoto de producción sigue en su versión previa hasta el despliegue post-merge.
-- Subbloque 5 — comunicación final: migración `20260920134000_wf03_cleaning_final_notification_dedupe.sql`; cuando existe informe final de Limpieza, el asignado no recibe además `workflow_completed/rejected`. El creador distinto puede conservar su cierre genérico. Rechazos tempranos sin auditoría siguen notificando normalmente.
-- Regresión principal: `tests/workflow-cleaning-adapter-regression.sql` cubre materialización, decisiones, 2 fotos, espera de auditoría, revisión por foto, rechazo final, reintentos, no-selección, expiración neutral, informe único y deduplicación de comunicación final.
-- Runner: `tests/database-regression-v2.sh` carga todas las migraciones WF-03 actuales, incluida `20260920134000`.
-- Seguridad verificada: bridge de revisión de Limpieza ejecutable solo por `service_role`, autorización ROOT/ADMIN revalidada server-side, transiciones automáticas sin falsa atribución humana, AAL2 exigido en Edge, sin nuevas políticas RLS permisivas.
-- Checks GitHub verificados por ChatGPT sobre `7b16174b052aeb5e96f31b0ad0e66b7846e7c82c`: Governance Guard ✅, PWA Smoke ✅, Schema Guard ✅. Schema Guard ejecutó la migración de deduplicación y la regresión PostgreSQL aislada.
-- Reviews/hilos de PR #271 observados: ninguno abierto.
-- Hallazgo para el siguiente subbloque: el legacy de swaps actualiza solo `cleaning_tasks_v2.assigned_user_id` y crea `cleaning_debts_v2`; en una limpieza enlazada eso divergiría de `workflow_executions_v2.assigned_user_id` y `tenant_tasks_v2.assigned_user_id`. Debe adaptarse atómicamente sin crear otra tarea.
-- Pendientes WF-03: swaps + deuda sincronizados con workflow; revisar UI/E2E de Limpieza; reconciliar rama con main; revisión final/ready; merge; despliegue ordenado migraciones→Edge; verificación producción y prueba humana.
-- Subbloque 6 — swaps + deuda: migración `20260920141000_wf03_cleaning_swap_workflow_sync.sql`; un swap aceptado sincroniza atómicamente asignado/estado entre `cleaning_tasks_v2`, `workflow_executions_v2` y `tenant_tasks_v2`, conserva deuda legacy de 1 unidad, registra historial/evento, revalida ocupante con la elegibilidad compartida de WF-01 y mantiene compatibilidad con tareas legacy no enlazadas.
-- Regresión de swaps verificada: aceptación positiva, deuda única, reintento interno idempotente, objetivo que deja de ser elegible bloqueado por RLS o por revalidación server-side, y contrato legacy preservado.
-- Corrección del falso negativo del test: cuando el objetivo pierde acceso de plataforma, RLS convierte el UPDATE cliente en 0 filas antes de que el trigger pueda ejecutarse. La prueba ahora exige 0 filas o rechazo server-side y además confirma que swap/tarea/workflow/deuda quedan intactos.
-- Checks GitHub verificados por ChatGPT sobre `884643269d8ff5b4c7ecc18b96ce30e5b52e80a6`: Governance Guard ✅, PWA Smoke ✅, Schema Guard ✅.
-- Siguiente acción exacta: revisar y cerrar la integración UI/E2E de Limpieza sobre `tenant_tasks_v2`, eliminando dependencias de interfaz provisional como introducir manualmente el ID de `cleaning_tasks_v2`, sin crear una segunda tarjeta operativa. Después reconciliar la rama con main y hacer revisión final antes de merge/despliegue.
+**Contexto posterior que Codex debe respetar:**
+- Tras WF-03 se cerró el bug crítico de reactivación de inquilino en PR #274.
+- `main` actual verificado al activar WF-04: `98242d6bb2aa61fdaea813dcb180659cc2ce07d3`.
+- La reactivación ya no debe depender de multi-escrituras cliente. Existen `reactivate_tenant_occupancy_v1`, `restore_tenant_platform_access_v1` y `has_current_platform_access_v1()`; no debilitarlas ni sustituirlas.
+- La prueba humana final del caso real Suspendido → Alta → acceso fue satisfactoria después de reparar una inconsistencia histórica previa a #274.
+- El estado UI `Acceso pendiente de vincular` es diagnóstico de inconsistencia, no un estado normal estable del lifecycle.
 
-Objetivo:
-- expresar Limpieza usando el motor transversal sin perder funcionalidades legacy.
-
-Debe conservar:
-- recurrencia;
-- rotación real entre ocupantes;
-- cambios entre compañeros;
-- deuda no monetaria;
-- fotoverificación/auditoría;
-- revisión;
-- informe único;
-- histórico.
-
-Estrategia:
-- coexistencia primero;
-- equivalencia E2E;
-- no borrar tablas legacy;
-- no migrar histórico antiguo sin evidencia;
-- solo retirar entrada legacy cuando ChatGPT valide equivalencia.
+Objetivo cumplido:
+- expresar Limpieza mediante el motor transversal sin perder semántica legacy;
+- mantener coexistencia e histórico;
+- no crear tareas operativas paralelas.
 
 ---
 
 ### BLOQUE WF-04 — Check-in / Check-out + llaves
-**Estado:** PLANNED
+**Estado:** PLANNED  
+**Bloque ACTIVO:** sí — autorizado por ChatGPT para iniciar después del cierre de WF-03 y del bug de reactivación #274.
 
-Unificar mediante el motor transversal:
+**Instrucción de arranque para Codex:**
+1. Leer `AGENTS.md`, este documento completo y todos los contratos workflow obligatorios.
+2. Consultar el HEAD real de `main`. Debe ser `98242d6bb2aa61fdaea813dcb180659cc2ce07d3` o un descendiente; si ha avanzado, inspeccionar primero qué cambió.
+3. Crear una rama **nueva** desde el `main` real. No reutilizar ramas de WF-03 ni de #274.
+4. Antes de modificar lógica, inspeccionar y documentar:
+   - tipos legacy de Recogida de llaves, Entrega de llaves, Entrada y Salida;
+   - RPC/triggers/funciones que hoy mutan ocupaciones o acceso;
+   - eventos lifecycle ya emitidos por WF-02 y su outbox/dispatcher;
+   - `tenant_tasks_v2`, definiciones/aplicaciones/ejecuciones y reglas de asignación WF-01;
+   - contratos de Auth/lifecycle que fueron endurecidos en #274.
+5. En el primer commit de WF-04, cambiar este estado a `IN_PROGRESS` y registrar rama, HEAD base y mapa de implementación observado.
+6. Implementar en bloques pequeños: inspección → cambio concreto → regresión → commit. No hacer una migración o refactor masivo de una sola vez.
+
+**Objetivo de WF-04:** unificar mediante el motor transversal:
 - Recogida de llaves.
 - Entrega de llaves.
-- Entrada.
-- Salida.
+- Entrada / check-in.
+- Salida / check-out.
 
-Debe aprovechar `event` del lifecycle de ocupación.
+**Principios de dominio obligatorios:**
+- Las fechas y estados de `occupancies_v2` son la autoridad del lifecycle.
+- Una acción de llaves **nunca** concede, reactiva ni conserva acceso de plataforma por sí sola.
+- Check-in/check-out no pueden crear una segunda verdad de ocupación ni un segundo motor de tareas.
+- `tenant_tasks_v2` sigue siendo la tarjeta operativa única; cualquier expediente específico debe enlazarse al workflow, no duplicarlo.
+- Baja/Suspensión pueden cortar acceso según los contratos existentes, pero nunca destruyen el histórico.
+- Reactivación debe reutilizar el camino atómico introducido por #274; está prohibido volver a una secuencia cliente de varias escrituras.
+- No debilitar `has_current_platform_access_v1()`, RLS ni las restricciones de ocupación para “hacer pasar” el workflow.
+- El destino debe ser exacto y el asignado debe seguir siendo elegible en el momento de ejecutar/actuar.
+- Reintentos del mismo evento no pueden duplicar ejecución, tarea, entrega/recogida ni efectos de lifecycle.
+- Las acciones operativas deben ser auditables y conservar actor/origen.
 
-Reglas:
-- destino exacto;
-- asignado vigente;
-- Baja corta acceso pero no destruye histórico;
-- fechas y estados de ocupación son autoridad;
-- acciones de llave no deben conceder acceso a vivienda por sí mismas;
-- idempotencia ante reintentos del evento.
+**Uso de eventos:**
+- Debe aprovechar la infraestructura genérica `event` de WF-02.
+- Codex debe verificar qué eventos lifecycle existen realmente antes de añadir ninguno.
+- Si falta un evento necesario, extender el outbox/dispatcher común; no crear listeners paralelos específicos del dominio.
+- La creación/cambio de ocupación no debe acoplarse transaccionalmente a la creación de tareas: evento de negocio primero, despacho workflow después, con idempotencia.
+- No consumir retroactivamente eventos anteriores a la activación de una aplicación salvo que el contrato lo defina explícitamente.
+
+**Alcance inicial recomendado tras inspección:**
+1. Mapear semántica legacy → workflow sin cambiar comportamiento.
+2. Conectar un caso representativo de Entrada/check-in al evento lifecycle existente.
+3. Añadir Salida/check-out preservando histórico y reglas de acceso.
+4. Integrar Recogida/Entrega de llaves como acciones de dominio sin autoridad sobre Auth.
+5. Cerrar equivalencia UI/E2E y compatibilidad legacy.
+6. Solo entonces preparar el PR para revisión de ChatGPT.
+
+**Pruebas mínimas obligatorias:**
+- evento válido → exactamente una ejecución y una tarjeta;
+- reintento del mismo evento → 0 duplicados;
+- destino incorrecto/no vigente → rechazo;
+- asignado revocado/no vigente → no puede actuar;
+- acción de llave → no modifica Auth, rol tenant ni vigencia de ocupación;
+- check-in → no concede acceso antes de la fecha/estado autorizado;
+- check-out/Baja → conserva histórico y no deja acceso operativo indebido;
+- Suspensión → no se confunde con Salida ni con Entrega de llaves;
+- reactivación posterior → usa el lifecycle seguro vigente y no recrea el bug #274;
+- RLS/autorización negativa para inquilino/empleado fuera de alcance;
+- compatibilidad con registros legacy existentes;
+- idempotencia y auditoría.
+
+**Fuera de alcance de WF-04:**
+- Incidencias/mantenimiento/inspección (WF-05).
+- Pago/reclamación de alquiler (WF-06).
+- Daños/fianza (WF-07).
+- Presets generales de dominio (WF-08).
+- Retirada global del legacy (WF-09).
+- Rediseños visuales no necesarios para cerrar este dominio.
+
+**Entrega obligatoria de Codex:**
+- un solo PR de WF-04 salvo autorización explícita;
+- migraciones aditivas y versionadas;
+- regresiones nuevas para cada bug o regla crítica;
+- Governance Guard, PWA Smoke y Schema Guard verdes sobre el mismo HEAD;
+- actualizar aquí el handoff completo;
+- detenerse en `READY_FOR_CHATGPT_REVIEW`;
+- **no fusionar, no desplegar manualmente y no activar WF-05**.
 
 ---
 

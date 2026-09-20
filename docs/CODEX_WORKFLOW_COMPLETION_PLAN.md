@@ -207,7 +207,7 @@ No deben duplicarse; deben adaptarse gradualmente preservando histórico y compo
 La razón del orden es evitar que cada dominio implemente su propia solución para capacidades que pertenecen al motor común.
 
 ### BLOQUE WF-00 — Baseline y protocolo Codex
-**Estado:** READY_FOR_CHATGPT_REVIEW  
+**Estado:** VERIFIED  
 **Objetivo:** instalar este protocolo en el repo y dejar la línea base verificable.
 
 Aceptación:
@@ -225,13 +225,18 @@ Handoff:
 - HEAD de rama: `644ca96bcce11d2ac59a1d9511eb9e273fd3e6e1`
 - Main observado al comenzar: `825a70c224cc3dc3a05f97a7477134d582f1c478`
 - Cambios realizados: documento maestro + regla de descubrimiento en AGENTS
-- Pruebas: cambios documentales; Governance/PWA/Schema pendientes del PR
-- Siguiente acción: ChatGPT verifica checks del mismo HEAD; si están verdes, marca WF-00 VERIFIED y activa WF-01
+- Pruebas: cambios documentales; Governance Guard ✅, PWA Smoke ✅, Schema Guard ✅ sobre `6cd6d6a6c46e2231f69516f63e8f1f83abc10367`
+- Verificación ChatGPT: completada; rama 0 behind y tres checks requeridos verdes antes de activar WF-01
+- Siguiente acción: fusionar PR #268 tras checks verdes del HEAD final
 
 ---
 
 ### BLOQUE WF-01 — Asignaciones genéricas faltantes
-**Estado:** PLANNED
+**Estado:** ACTIVO / PLANNED
+
+
+**Instrucción de arranque para Codex:** este es el único bloque que puede implementar tras el merge de WF-00. Debe crear una rama NUEVA desde el `main` real, inspeccionar la implementación actual y cambiar este estado a `IN_PROGRESS` en su primer commit del bloque.
+
 
 Implementar en el motor común, server-side:
 1. `fixed_person`

@@ -2261,6 +2261,41 @@ begin
 end;
 $non_cleaning_no_domain_row$;
 
+-- Compatibilidad: una definición histórica de tipo Limpieza con cierre genérico
+-- no debe quedar absorbida por WF-03 después del despliegue.
+update public.workflow_executions_v2
+set spec_snapshot=jsonb_set(
+  jsonb_set(
+    spec_snapshot,
+    '{flowType}',
+    to_jsonb('cleaning'::text),
+    false
+  ),
+  '{closeType}',
+  to_jsonb('auto'::text),
+  false
+)
+where id=current_setting('wf03.custom_execution')::uuid;
+
+do $historical_generic_cleaning_stays_generic$
+declare
+  v_domain public.cleaning_tasks_v2;
+begin
+  v_domain:=private.workflow_ensure_cleaning_domain_task_v1(
+    current_setting('wf03.custom_execution')::uuid,
+    current_setting('wf03.root')::uuid
+  );
+
+  if v_domain.id is not null or exists(
+    select 1
+    from public.cleaning_tasks_v2
+    where workflow_execution_id=current_setting('wf03.custom_execution')::uuid
+  ) then
+    raise exception 'historical generic cleaning was captured by WF-03 adapter';
+  end if;
+end;
+$historical_generic_cleaning_stays_generic$;
+
 do $private_adapter_privilege$
 begin
   if has_function_privilege(
@@ -2269,6 +2304,14 @@ begin
     'EXECUTE'
   ) then
     raise exception 'authenticated client gained direct cleaning adapter execution';
+  end if;
+
+  if has_function_privilege(
+    'authenticated',
+    'private.workflow_ensure_cleaning_domain_task_core_v1(uuid,uuid)',
+    'EXECUTE'
+  ) then
+    raise exception 'authenticated client gained direct cleaning adapter core execution';
   end if;
 
   if has_function_privilege(

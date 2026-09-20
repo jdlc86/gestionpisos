@@ -14,6 +14,7 @@ test -s docs/MFA_RECOVERY_RUNBOOK.md
 node --check docs/mfa-common.js
 node --check docs/mfa-setup.js
 node --check docs/mfa-challenge.js
+node --check docs/mfa-code-input.js
 node --check docs/auth-guard.js
 node --check docs/login.js
 
@@ -38,18 +39,19 @@ grep -Fq 'id="mfaQrLoading"' docs/mfa-setup.html
 grep -Fq 'id="mfaQr" class="mfa-qr"' docs/mfa-setup.html
 grep -Fq 'Cancelar y cerrar sesión' docs/mfa-setup.html
 grep -Fq 'No la compartas con nadie.' docs/mfa-setup.html
-grep -Fq 'auth.css?v=2026091704' docs/mfa-setup.html
-grep -Fq 'mfa-setup.js?v=2026091703' docs/mfa-setup.html
+grep -Fq 'auth.css?v=2026092001' docs/mfa-setup.html
+grep -Fq 'mfa-setup.js?v=2026092001' docs/mfa-setup.html
 grep -Fq '.auth-card [hidden]{display:none!important}' docs/auth.css
 
 grep -Fq 'listFactors' docs/mfa-challenge.js
 grep -Fq 'factor.status === "verified"' docs/mfa-challenge.js
 grep -Fq 'factorSelect.addEventListener("change"' docs/mfa-challenge.js
 grep -Fq 'id="mfaFactorSelect"' docs/mfa-challenge.html
-grep -Fq 'autocomplete="one-time-code"' docs/mfa-challenge.html
+grep -Fq 'id="mfaCodeBoxes" class="mfa-code-boxes"' docs/mfa-challenge.html
+grep -Fq 'autocomplete=index===0?"one-time-code":"off"' docs/mfa-code-input.js
 grep -Fq 'No tengo acceso a mis autenticadores' docs/mfa-challenge.html
 grep -Fq 'id="mfaRecoveryRequestId"' docs/mfa-challenge.html
-grep -Fq 'mfa-challenge.js?v=2026091703' docs/mfa-challenge.html
+grep -Fq 'mfa-challenge.js?v=2026092001' docs/mfa-challenge.html
 grep -Fq 'supabase.functions.invoke("request-mfa-recovery"' docs/mfa-challenge.js
 grep -Fq 'lost_all_available_authenticators' docs/mfa-challenge.js
 ! grep -Fq 'recover-privileged-mfa' docs/mfa-challenge.js
@@ -120,8 +122,9 @@ grep -Fq 'verification_note' supabase/functions/recover-privileged-mfa/index.ts
 grep -Fq 'Nunca aprobar una recuperación únicamente por conocer el código de solicitud' docs/MFA_RECOVERY_RUNBOOK.md
 grep -Fq 'el navegador nunca llama directamente a `recover-privileged-mfa`' docs/MFA_RECOVERY_RUNBOOK.md
 
-grep -Fq "gestionpisos-shell-v43" docs/sw.js
+grep -Fq "gestionpisos-shell-v44" docs/sw.js
 grep -Fq "'./mfa-setup.html'" docs/sw.js
 grep -Fq "'./mfa-challenge.html'" docs/sw.js
+grep -Fq "'./mfa-code-input.js'" docs/sw.js
 
 echo 'MFA smoke checks passed'

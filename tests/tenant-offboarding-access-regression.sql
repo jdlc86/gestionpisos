@@ -24,8 +24,8 @@ select set_config('gestionpisos.offboard.room3',gen_random_uuid()::text,true);
 select set_config('gestionpisos.offboard.user1','99999999-9999-4999-8999-999999999901',true);
 select set_config('gestionpisos.offboard.user2','99999999-9999-4999-8999-999999999902',true);
 select set_config('gestionpisos.offboard.tenant1',gen_random_uuid()::text,true);
-select set_config('gestionpisos.offboard.tenant2a',gen_random_uuid()::text,true);
-select set_config('gestionpisos.offboard.tenant2b',gen_random_uuid()::text,true);
+select set_config('gestionpisos.offboard.tenant2',gen_random_uuid()::text,true);
+select set_config('gestionpisos.offboard.reactivated_occ',gen_random_uuid()::text,true);
 select set_config('gestionpisos.offboard.occ1',gen_random_uuid()::text,true);
 select set_config('gestionpisos.offboard.occ2a',gen_random_uuid()::text,true);
 select set_config('gestionpisos.offboard.occ2b',gen_random_uuid()::text,true);
@@ -101,23 +101,13 @@ insert into public.tenants_v2(
   'active'
 ),
 (
-  current_setting('gestionpisos.offboard.tenant2a')::uuid,
+  current_setting('gestionpisos.offboard.tenant2')::uuid,
   current_setting('gestionpisos.offboard.org')::uuid,
   current_setting('gestionpisos.offboard.user2')::uuid,
-  'Tenant two first stay',
+  'Tenant two shared identity',
   'other',
-  'OFFBOARD-TWO-A',
-  'tenant-two-a@example.invalid',
-  'active'
-),
-(
-  current_setting('gestionpisos.offboard.tenant2b')::uuid,
-  current_setting('gestionpisos.offboard.org')::uuid,
-  current_setting('gestionpisos.offboard.user2')::uuid,
-  'Tenant two second stay',
-  'other',
-  'OFFBOARD-TWO-B',
-  'tenant-two-b@example.invalid',
+  'OFFBOARD-TWO',
+  'tenant-two@example.invalid',
   'active'
 );
 
@@ -141,24 +131,24 @@ insert into public.occupancies_v2(
   current_setting('gestionpisos.offboard.org')::uuid,
   current_setting('gestionpisos.offboard.property')::uuid,
   current_setting('gestionpisos.offboard.room2')::uuid,
-  'tenant-two-a@example.invalid',
+  'tenant-two@example.invalid',
   current_date-10,
   null,
   'active',
   current_setting('gestionpisos.offboard.user2')::uuid,
-  current_setting('gestionpisos.offboard.tenant2a')::uuid
+  current_setting('gestionpisos.offboard.tenant2')::uuid
 ),
 (
   current_setting('gestionpisos.offboard.occ2b')::uuid,
   current_setting('gestionpisos.offboard.org')::uuid,
   current_setting('gestionpisos.offboard.property')::uuid,
   current_setting('gestionpisos.offboard.room3')::uuid,
-  'tenant-two-b@example.invalid',
+  'tenant-two@example.invalid',
   current_date-5,
   null,
   'active',
   current_setting('gestionpisos.offboard.user2')::uuid,
-  current_setting('gestionpisos.offboard.tenant2b')::uuid
+  current_setting('gestionpisos.offboard.tenant2')::uuid
 );
 
 insert into public.tenant_tasks_v2(
@@ -326,7 +316,93 @@ begin
 end;
 $stale_jwt_denied$;
 
--- A second active occupancy for the same user prevents global revocation.
+-- Returning tenant: a new Alta reuses the same canonical identity/UUID. The
+-- backend-only restoration reopens DB access and links the new occupancy.
+reset role;
+update public.tenants_v2
+set status='active',
+    archived_at=null,
+    deletion_requested_at=null,
+    deletion_requested_by=null,
+    updated_at=now()
+where id=current_setting('gestionpisos.offboard.tenant1')::uuid;
+
+insert into public.occupancies_v2(
+  id,organization_id,property_id,room_id,occupant_email,starts_on,ends_on,status,user_id,tenant_id
+) values(
+  current_setting('gestionpisos.offboard.reactivated_occ')::uuid,
+  current_setting('gestionpisos.offboard.org')::uuid,
+  current_setting('gestionpisos.offboard.property')::uuid,
+  current_setting('gestionpisos.offboard.room1')::uuid,
+  'tenant-one@example.invalid',
+  current_date,
+  null,
+  'active',
+  null,
+  current_setting('gestionpisos.offboard.tenant1')::uuid
+);
+
+set local role service_role;
+select public.restore_tenant_platform_access_v1(
+  current_setting('gestionpisos.offboard.tenant1')::uuid,
+  current_setting('gestionpisos.offboard.user1')::uuid,
+  current_setting('gestionpisos.offboard.root')::uuid
+);
+reset role;
+
+do $reactivated_identity$
+begin
+  if not exists(
+    select 1 from public.user_roles
+    where user_id=current_setting('gestionpisos.offboard.user1')::uuid
+      and organization_id=current_setting('gestionpisos.offboard.org')::uuid
+      and role='tenant'
+      and revoked_at is null
+  ) then
+    raise exception 'returning tenant role was not restored';
+  end if;
+
+  if not exists(
+    select 1 from public.occupancies_v2
+    where id=current_setting('gestionpisos.offboard.reactivated_occ')::uuid
+      and user_id=current_setting('gestionpisos.offboard.user1')::uuid
+  ) then
+    raise exception 'returning tenant occupancy was not relinked to Auth identity';
+  end if;
+
+  if not exists(
+    select 1 from public.audit_log_v2
+    where action='tenant_platform_access_reactivated'
+      and entity_id=current_setting('gestionpisos.offboard.tenant1')
+  ) then
+    raise exception 'tenant platform reactivation was not audited';
+  end if;
+end;
+$reactivated_identity$;
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub',current_setting('gestionpisos.offboard.user1'),
+    'role','authenticated',
+    'app_metadata',jsonb_build_object(
+      'role','tenant',
+      'organization_id',current_setting('gestionpisos.offboard.org')
+    )
+  )::text,
+  true
+);
+do $reactivated_access$
+begin
+  if public.has_current_platform_access_v1() is distinct from true then
+    raise exception 'reactivated tenant did not regain platform access';
+  end if;
+end;
+$reactivated_access$;
+
+-- A second active occupancy sharing the SAME canonical tenant identity prevents
+-- archival/revocation when only one stay is ended.
 reset role;
 set local role authenticated;
 select set_config(
@@ -356,6 +432,23 @@ begin
       and revoked_at is not null
   ) then
     raise exception 'tenant role revoked despite another active occupancy';
+  end if;
+
+  if not exists(
+    select 1 from public.tenants_v2
+    where id=current_setting('gestionpisos.offboard.tenant2')::uuid
+      and status='active'
+      and archived_at is null
+  ) then
+    raise exception 'shared canonical tenant was archived while another occupancy remained active';
+  end if;
+
+  if not exists(
+    select 1 from public.occupancies_v2
+    where id=current_setting('gestionpisos.offboard.occ2a')::uuid
+      and status='archived'
+  ) then
+    raise exception 'selected occupancy was not archived';
   end if;
 end;
 $other_occupancy_preserves_role$;

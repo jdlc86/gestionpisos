@@ -357,7 +357,7 @@ returns jsonb
 language plpgsql
 security definer
 set search_path=''
-as $
+as $$
 declare
   v_org uuid;
   v_linked_user uuid;
@@ -466,7 +466,7 @@ begin
     'platform_access_restored',true
   );
 end;
-$;
+$$;
 
 revoke all on function public.restore_tenant_platform_access_v1(uuid,uuid,uuid)
   from public,anon,authenticated;

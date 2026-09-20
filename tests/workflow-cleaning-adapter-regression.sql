@@ -851,7 +851,246 @@ begin
 end;
 $review_retry_is_idempotent$;
 
--- A second execution of the same cleaning application exercises explicit rejection.
+-- Camino sin auditoría humana: una sola foto basta para este expediente nuevo.
+insert into public.cleaning_photo_request_policies_v2(
+  organization_id,cleaning_pattern_count,updated_by
+) values (
+  current_setting('wf03.org')::uuid,
+  1,
+  current_setting('wf03.root')::uuid
+)
+on conflict(organization_id)
+do update set
+  cleaning_pattern_count=excluded.cleaning_pattern_count,
+  updated_by=excluded.updated_by,
+  updated_at=now();
+
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf03.root'),
+  'role','authenticated',
+  'aal','aal2'
+)::text,true);
+
+do $create_auto_close_execution$
+declare
+  v_result record;
+begin
+  select * into v_result
+  from public.execute_workflow_application_now_v1(
+    current_setting('wf03.cleaning_app')::uuid,
+    'wf03-cleaning-auto-close-execution',
+    null
+  )
+  limit 1;
+
+  if v_result.execution_id is null then
+    raise exception 'auto-close cleaning execution was not created';
+  end if;
+
+  perform set_config('wf03.auto_execution',v_result.execution_id::text,true);
+end;
+$create_auto_close_execution$;
+
+reset role;
+
+select set_config('wf03.auto_task',(
+  select id::text
+  from public.tenant_tasks_v2
+  where source_kind='workflow_execution'
+    and source_id=current_setting('wf03.auto_execution')::uuid
+),true);
+
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf03.tenant_user'),
+  'role','authenticated',
+  'aal','aal1'
+)::text,true);
+
+select *
+from public.apply_workflow_task_action_v1(
+  current_setting('wf03.auto_task')::uuid,
+  'accept',
+  'wf03-cleaning-auto-close-accept',
+  null
+);
+
+reset role;
+
+select *
+from private.ensure_cleaning_photo_requests_v2(
+  (
+    select id
+    from public.cleaning_tasks_v2
+    where workflow_execution_id=current_setting('wf03.auto_execution')::uuid
+  )
+);
+
+select set_config('wf03.auto_request',(
+  select id::text
+  from public.cleaning_photo_requests_v2
+  where cleaning_task_id=(
+    select id
+    from public.cleaning_tasks_v2
+    where workflow_execution_id=current_setting('wf03.auto_execution')::uuid
+  )
+  order by ordinal
+  limit 1
+),true);
+
+select set_config('wf03.auto_pattern',(
+  select pattern_id::text
+  from public.cleaning_photo_requests_v2
+  where id=current_setting('wf03.auto_request')::uuid
+),true);
+
+select set_config('wf03.auto_run',gen_random_uuid()::text,true);
+select set_config('wf03.auto_item',gen_random_uuid()::text,true);
+
+insert into public.photo_verification_runs_v2(
+  id,organization_id,property_id,actor_user_id,source_type,source_id,
+  verification_mode,purpose,cleaning_task_id,status
+) values (
+  current_setting('wf03.auto_run')::uuid,
+  current_setting('wf03.org')::uuid,
+  current_setting('wf03.property')::uuid,
+  current_setting('wf03.tenant_user')::uuid,
+  'cleaning_task',
+  (
+    select id
+    from public.cleaning_tasks_v2
+    where workflow_execution_id=current_setting('wf03.auto_execution')::uuid
+  ),
+  'manual',
+  'cleaning',
+  (
+    select id
+    from public.cleaning_tasks_v2
+    where workflow_execution_id=current_setting('wf03.auto_execution')::uuid
+  ),
+  'capturing'
+);
+
+insert into public.photo_verification_items_v2(
+  id,run_id,pattern_id,storage_path
+) values (
+  current_setting('wf03.auto_item')::uuid,
+  current_setting('wf03.auto_run')::uuid,
+  current_setting('wf03.auto_pattern')::uuid,
+  current_setting('wf03.org')||'/'||
+    current_setting('wf03.auto_run')||'/'||
+    current_setting('wf03.auto_item')||'.jpg'
+);
+
+update public.photo_verification_runs_v2
+set status='submitted',
+    submitted_at=now()
+where id=current_setting('wf03.auto_run')::uuid;
+
+do $not_selected_auto_closes$
+declare
+  v_audit public.cleaning_audits_v2;
+begin
+  select * into v_audit
+  from private.select_cleaning_audit_v2(
+    (
+      select id
+      from public.cleaning_tasks_v2
+      where workflow_execution_id=current_setting('wf03.auto_execution')::uuid
+    ),
+    current_setting('wf03.auto_run')::uuid,
+    0.9999,
+    now()
+  );
+
+  if v_audit.id is null
+    or v_audit.selected_for_review
+    or v_audit.status<>'not_selected'
+    or v_audit.report_status<>'ready' then
+    raise exception 'non-selected cleaning audit envelope is inconsistent';
+  end if;
+
+  perform set_config('wf03.auto_audit',v_audit.id::text,true);
+
+  if not exists(
+    select 1
+    from public.cleaning_tasks_v2
+    where workflow_execution_id=current_setting('wf03.auto_execution')::uuid
+      and status='approved'
+      and reviewed_at is null
+      and reviewed_by is null
+  ) or not exists(
+    select 1
+    from public.workflow_executions_v2
+    where id=current_setting('wf03.auto_execution')::uuid
+      and status='completed'
+      and completed_at is not null
+  ) or not exists(
+    select 1
+    from public.tenant_tasks_v2
+    where id=current_setting('wf03.auto_task')::uuid
+      and status='completed'
+  ) then
+    raise exception 'non-selected cleaning did not auto-close all linked states';
+  end if;
+
+  if exists(
+    select 1
+    from public.workflow_execution_events_v2
+    where execution_id=current_setting('wf03.auto_execution')::uuid
+      and event_type in ('domain_adapter_review_selected','domain_adapter_review_closed')
+      and actor_user_id is not null
+  ) then
+    raise exception 'automatic cleaning audit transition was attributed to a human actor';
+  end if;
+end;
+$not_selected_auto_closes$;
+
+-- El expediente no seleccionado también debe producir exactamente un informe final.
+select *
+from private.queue_ready_cleaning_audit_reports_v2(now());
+
+do $not_selected_report_once$
+begin
+  if (
+    select count(*)
+    from public.notifications_v2
+    where event_type='cleaning_audit_report:'||current_setting('wf03.auto_audit')
+      and recipient_user_id=current_setting('wf03.tenant_user')::uuid
+  )<>1 then
+    raise exception 'non-selected cleaning did not queue exactly one final report';
+  end if;
+
+  if not exists(
+    select 1
+    from public.cleaning_audits_v2
+    where id=current_setting('wf03.auto_audit')::uuid
+      and report_status='sent'
+      and report_sent_at is not null
+  ) then
+    raise exception 'non-selected cleaning report was not marked sent';
+  end if;
+end;
+$not_selected_report_once$;
+
+-- Segundo barrido: no duplica el informe.
+select *
+from private.queue_ready_cleaning_audit_reports_v2(now());
+
+do $not_selected_report_retry$
+begin
+  if (
+    select count(*)
+    from public.notifications_v2
+    where event_type='cleaning_audit_report:'||current_setting('wf03.auto_audit')
+  )<>1 then
+    raise exception 'cleaning final report retry duplicated notification';
+  end if;
+end;
+$not_selected_report_retry$;
+
+-- Another execution of the same cleaning application exercises explicit rejection.
 set local role authenticated;
 select set_config('request.jwt.claims',jsonb_build_object(
   'sub',current_setting('wf03.root'),

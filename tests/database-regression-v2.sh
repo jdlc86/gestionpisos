@@ -38,6 +38,10 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -v "$repo_path:/w
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/fixtures/20260913_remote_baseline.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/local-regression-fixture.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/local-property-staff-v3-alignment.sql
+
+    # Reproduce historical Supabase table grants used by the cleaning swap UI.
+    # Production confirms authenticated has SELECT/INSERT/UPDATE on swaps and SELECT on debts.
+    psql -v ON_ERROR_STOP=1 -U postgres -c "grant select,insert,update on public.cleaning_swap_requests_v2 to authenticated; grant select on public.cleaning_debts_v2 to authenticated"
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260913192729_beta0_enable_occupancies_v2_rls.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260913192821_beta0_occupancies_v2_read_policies.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260913205141_close_owners_and_occupancy_blockers.sql
@@ -45,16 +49,25 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -v "$repo_path:/w
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260913225223_beta0_notifications_rls.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260913225231_beta0_notifications_mark_read.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260914123439_beta0_notification_read_invoker.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260914064224_beta0_cleaning_swap_participant_read.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260914064231_beta0_cleaning_swap_write_policies.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260914064239_beta0_cleaning_swap_integrity.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260914064248_beta0_cleaning_swap_validation_trigger.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260914064258_beta0_cleaning_swap_decision_trigger.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260914064353_beta0_photo_verification_tables.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260914064402_beta0_photo_verification_rls.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260914074246_beta0_photo_verification_write_policies.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260914135759_beta0_photo_alignment_meta.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260914135829_beta0_photo_alignment_meta_check_add.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260914225214_photo_verification_manual_review.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915075548_cleaning_audit_core.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915080008_cleaning_audit_lifecycle.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915080455_cleaning_audit_selection.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915080948_photo_run_purpose_cleaning_link.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915082914_cleaning_photo_requests.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915094134_tenant_identity_model.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915100612_tenant_lifecycle_privacy.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915155636_cleaning_tasks_tenant_identity.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915161452_tenant_task_workflow_core.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915161841_tenant_task_initial_workflows.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915162747_tenant_task_claims_deposit_workflows.sql
@@ -98,6 +111,14 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -v "$repo_path:/w
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260920033000_tenant_offboarding_access_enforcement.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260920080723_wf01_generic_assignment_rules.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260920103000_wf02_event_trigger_core.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260920113000_wf03_cleaning_domain_link.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260920114000_wf03_cleaning_decision_state.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260920115000_wf03_cleaning_photo_progress.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260920124500_wf03_cleaning_audit_workflow_sync.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260920134000_wf03_cleaning_final_notification_dedupe.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260920141000_wf03_cleaning_swap_workflow_sync.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260920143000_wf03_cleaning_authoring_contract.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260920143100_wf03_cleaning_adapter_opt_in.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/database-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/photo-verification-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-definition-regression.sql
@@ -115,6 +136,7 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -v "$repo_path:/w
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/tenant-offboarding-access-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-assignment-rules-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-event-trigger-regression.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-cleaning-adapter-regression.sql
 
     trap - EXIT
     cleanup

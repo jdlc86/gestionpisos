@@ -12,17 +12,13 @@
   <section class="hero">
     <span class="badge">Fotoverificación</span>
     <h2 id="cleaningTitle">Tu limpieza</h2>
-    <p id="cleaningIntro">Consulta las zonas que debes fotografiar. Las zonas asignadas no cambian si sales y vuelves.</p>
+    <p id="cleaningIntro">Completa las zonas fotográficas desde la tarea que tienes asignada.</p>
   </section>
 
-  <section id="taskLookup" class="card premium-nav-card">
-    <strong class="module-heading"><span class="premium-icon" data-premium-icon="cleaning" aria-hidden="true"></span>Abrir tarea de limpieza</strong>
-    <span>Introduce el identificador de la tarea asignada para esta primera prueba del flujo.</span>
-    <form id="taskForm">
-      <label for="taskId">ID de tarea</label>
-      <input id="taskId" name="task_id" autocomplete="off" required placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
-      <button class="primary" type="submit">Abrir limpieza</button>
-    </form>
+  <section id="cleaningEntry" class="card premium-nav-card" hidden>
+    <strong class="module-heading"><span class="premium-icon" data-premium-icon="cleaning" aria-hidden="true"></span>Abre la limpieza desde Tareas</strong>
+    <span>La limpieza se abre directamente desde su tarjeta. Ya no necesitas copiar ni introducir identificadores.</span>
+    <a class="primary" href="./workflow-tasks.html">Ir a Tareas</a>
   </section>
 
   <section id="cleaningTask" hidden>
@@ -31,7 +27,7 @@
   </section>
   <p id="cleaningMessage" class="status" role="status" aria-live="polite"></p>
 </main>
-<script type="module" src="./cleaning.js?v=2026091501"></script>
+<script type="module" src="./cleaning.js?v=2026092001"></script>
 <script type="module" src="./auth-guard.js"></script>
-  <script src="./app.js?v=2026091902" defer></script>
+<script src="./app.js?v=2026091902" defer></script>
 </body></html>

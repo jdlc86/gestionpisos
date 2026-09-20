@@ -37,6 +37,8 @@ const scheduledAtLabel=document.getElementById("scheduledAtLabel");
 const assignmentPersonRow=document.getElementById("assignmentPersonRow");
 const assignmentRoleRow=document.getElementById("assignmentRoleRow");
 const photoBankLink=document.getElementById("photoBankLink");
+const cleaningStepNote=document.getElementById("cleaningStepNote");
+const cleaningCloseNote=document.getElementById("cleaningCloseNote");
 const checklistEditor=document.getElementById("checklistEditor");
 const checklistItemsBox=document.getElementById("checklistItems");
 const addChecklistItemButton=document.getElementById("addChecklistItem");
@@ -619,11 +621,45 @@ function updateTriggerFields({clearHidden=false}={}){
   updateAssignmentFields({clearHidden:false});
 }
 
+function updateCleaningContract(){
+  const cleaning=value("flowType")==="cleaning";
+  const accept=field("stepAccept");
+  const genericSteps=[field("stepPhoto"),field("stepChecklist"),field("stepDocument")];
+  const close=field("closeType");
+  const scope=field("scopeType");
+
+  if(accept){
+    if(cleaning)accept.checked=true;
+    accept.disabled=cleaning;
+  }
+
+  genericSteps.forEach(control=>{
+    if(!control)return;
+    if(cleaning)control.checked=false;
+    control.disabled=cleaning;
+  });
+
+  if(close){
+    if(cleaning)close.value="domain_adapter";
+    close.disabled=cleaning;
+  }
+
+  if(scope){
+    const organizationOption=[...scope.options].find(option=>option.value==="organization");
+    if(organizationOption)organizationOption.disabled=cleaning;
+    if(cleaning&&scope.value==="organization")scope.value="";
+  }
+
+  if(cleaningStepNote)cleaningStepNote.hidden=!cleaning;
+  if(cleaningCloseNote)cleaningCloseNote.hidden=!cleaning;
+}
+
 function updatePhotoResource(){
-  if(photoBankLink)photoBankLink.hidden=!checked("stepPhoto");
+  if(photoBankLink)photoBankLink.hidden=value("flowType")==="cleaning"||!checked("stepPhoto");
 }
 
 function updateCompletionUI(){
+  updateCleaningContract();
   updatePhotoResource();
   updateChecklistEditor();
   const state=completion();
@@ -1250,6 +1286,7 @@ form.addEventListener("input",event=>{
   if(currentStep===panels.length-1)renderSummary();
 });
 form.addEventListener("change",event=>{
+  if(event.target===field("flowType"))updateCleaningContract();
   if(event.target===triggerType||event.target===field("recurrence"))updateTriggerFields({clearHidden:true});
   if(event.target===field("eventType"))updateTriggerFields({clearHidden:false});
   if(event.target===field("assignmentType")||event.target===field("scopeType"))updateAssignmentFields({clearHidden:true});
@@ -1321,6 +1358,7 @@ clearButton.addEventListener("click",async()=>{
 
   form.reset();
   renderChecklistItems([]);
+  updateCleaningContract();
   currentStep=0;
   legacyDraftNeedsReview=false;
   updateTriggerFields();
@@ -1353,6 +1391,7 @@ window.addEventListener("beforeunload",event=>{
 
   form.reset();
   renderChecklistItems([]);
+  updateCleaningContract();
   clearLocalDraftCache();
   markSavedSnapshot();
   updateTriggerFields();

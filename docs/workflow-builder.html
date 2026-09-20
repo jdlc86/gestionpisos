@@ -195,6 +195,7 @@
             <label class="check-row"><input type="checkbox" name="stepChecklist"> Completar checklist o formulario</label>
             <label class="check-row"><input type="checkbox" name="stepDocument"> Adjuntar o revisar documento</label>
           </fieldset>
+          <div id="cleaningStepNote" class="builder-note" hidden>En Limpieza, Aceptar/Rechazar es obligatorio. La fotoverificación se prepara automáticamente con los patrones activos del piso y los pasos genéricos adicionales quedan desactivados.</div>
           <section id="checklistEditor" class="builder-checklist-editor" hidden aria-labelledby="checklistEditorTitle">
             <div class="builder-checklist-heading">
               <div>
@@ -219,6 +220,7 @@
             <option value="human_review">Tras revisión humana</option>
             <option value="domain_adapter">Según regla especializada del flujo</option>
           </select></label>
+          <div id="cleaningCloseNote" class="builder-note" hidden>La Limpieza se cierra mediante su adaptador especializado después de fotos, auditoría y revisión cuando corresponda.</div>
           <label class="check-row"><input type="checkbox" id="notifyOnCreate" name="notifyOnCreate"> Notificar al asignado al crear la tarea</label>
           <label class="check-row"><input type="checkbox" id="notifyOnClose" name="notifyOnClose"> Notificar al cerrar el flujo</label>
           <div class="builder-note">El tipo de cierre es obligatorio. Las notificaciones son opcionales.</div>
@@ -261,7 +263,7 @@
   </main>
 
   <script src="./app.js?v=2026091902" defer></script>
-  <script type="module" src="./workflow-builder.js?v=2026092002"></script>
+  <script type="module" src="./workflow-builder.js?v=2026092003"></script>
   <script type="module" src="./auth-guard.js"></script>
 </body>
 </html>

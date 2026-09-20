@@ -40,6 +40,10 @@ grep -q 'createSignedUrl' docs/photo-verifications.js
 test -s supabase/functions/review-photo-verification/index.ts
 grep -q 'apply_photo_verification_review_v2' supabase/functions/review-photo-verification/index.ts
 grep -q 'apply_workflow_photo_review_v1' supabase/functions/review-photo-verification/index.ts
+grep -q 'apply_workflow_cleaning_photo_review_v1' supabase/functions/review-photo-verification/index.ts
+grep -q 'getAuthenticatorAssuranceLevel(token)' supabase/functions/review-photo-verification/index.ts
+grep -q 'aal2_required' supabase/functions/review-photo-verification/index.ts
+grep -q 'workflow_execution_id' supabase/functions/review-photo-verification/index.ts
 grep -q '.from("user_roles")' supabase/functions/review-photo-verification/index.ts
 grep -q 'isAdminForRun' supabase/functions/review-photo-verification/index.ts
 ! grep -q 'user.app_metadata?.role' supabase/functions/review-photo-verification/index.ts
@@ -56,10 +60,12 @@ grep -q 'serviceWorker' docs/app.js
 grep -q 'GestionPisos' docs/manifest.webmanifest
 grep -Fq "'./legal.html'" docs/sw.js
 grep -Fq "'./privacy.html'" docs/sw.js
-grep -q 'gestionpisos-shell-v44' docs/sw.js
+grep -q 'gestionpisos-shell-v45' docs/sw.js
 grep -Fq "'./workflow-history.html'" docs/sw.js
 grep -Fq "'./workflow-history.css'" docs/sw.js
 grep -Fq "'./workflow-history.js'" docs/sw.js
+grep -Fq "'./cleaning.html'" docs/sw.js
+grep -Fq "'./cleaning.js'" docs/sw.js
 grep -Fq "'./bottom-nav.js'" docs/sw.js
 grep -Fq "'./bottom-nav.css'" docs/sw.js
 grep -Fq 'mountBottomNavigation' docs/auth-guard.js
@@ -346,6 +352,25 @@ grep -Fq 'input[type="checkbox"],input[type="radio"]' docs/app.css
 grep -Fq '<span>Puede recuperar ROOT</span>' docs/permissions.html
 grep -Fq 'class="builder-editor-state"' docs/workflow-builder.html
 
+# WF-03 authoring: Limpieza uses only the specialized domain adapter path.
+node --check docs/workflow-builder.js
+grep -Fq './workflow-builder.js?v=2026092003' docs/workflow-builder.html
+grep -Fq 'id="cleaningStepNote"' docs/workflow-builder.html
+grep -Fq 'id="cleaningCloseNote"' docs/workflow-builder.html
+grep -Fq 'function updateCleaningContract()' docs/workflow-builder.js
+grep -Fq 'const genericSteps=[field("stepPhoto"),field("stepChecklist"),field("stepDocument")]' docs/workflow-builder.js
+grep -Fq 'if(cleaning)accept.checked=true' docs/workflow-builder.js
+grep -Fq 'if(cleaning)close.value="domain_adapter"' docs/workflow-builder.js
+grep -Fq 'organizationOption.disabled=cleaning' docs/workflow-builder.js
+test -s supabase/migrations/20260920143000_wf03_cleaning_authoring_contract.sql
+grep -Fq "workflow_authoring_complete_core_v1" supabase/migrations/20260920143000_wf03_cleaning_authoring_contract.sql
+grep -Fq "coalesce(p_spec->>'flowType','')='cleaning'" supabase/migrations/20260920143000_wf03_cleaning_authoring_contract.sql
+grep -Fq "coalesce(p_spec#>>'{steps,accept}','false')<>'true'" supabase/migrations/20260920143000_wf03_cleaning_authoring_contract.sql
+grep -Fq "coalesce(p_spec#>>'{steps,photo}','false')='true'" supabase/migrations/20260920143000_wf03_cleaning_authoring_contract.sql
+test -s supabase/migrations/20260920143100_wf03_cleaning_adapter_opt_in.sql
+grep -Fq "workflow_ensure_cleaning_domain_task_core_v1" supabase/migrations/20260920143100_wf03_cleaning_adapter_opt_in.sql
+grep -Fq "coalesce(v_execution.spec_snapshot->>'closeType','')<>'domain_adapter'" supabase/migrations/20260920143100_wf03_cleaning_adapter_opt_in.sql
+
 grep -Fq './app.css?v=2026091910' docs/index.html
 grep -Fq 'linear-gradient(145deg,#2d2a26 0%,#26231f 54%,#1f1d1a 100%)' docs/app.css
 
@@ -363,6 +388,30 @@ grep -Fq "const backLink = \$('cameraBackLink');" docs/photo-camera.js
 grep -Fq "return './workflow-tasks.html';" docs/photo-camera.js
 grep -Fq "'./cleaning.html?task_id='" docs/photo-camera.js
 grep -Fq "return './photo-patterns.html';" docs/photo-camera.js
+
+# WF-03 cleaning UI must enter through the transversal tenant task.
+test -s docs/cleaning.html
+test -s docs/cleaning.js
+node --check docs/cleaning.js
+node --check docs/workflow-tasks.js
+grep -Fq './workflow-tasks.js?v=2026092024' docs/workflow-tasks.html
+grep -Fq 'function cleaningExecutionForTask(task)' docs/workflow-tasks.js
+grep -Fq 'url.searchParams.set("workflow_task_id",task.id)' docs/workflow-tasks.js
+grep -Fq 'renderCleaningAdapter(task,article)' docs/workflow-tasks.js
+! grep -Fq 'id="taskForm"' docs/cleaning.html
+! grep -Fq 'Introduce el identificador' docs/cleaning.html
+grep -Fq 'params.get("workflow_task_id")' docs/cleaning.js
+grep -Fq 'workflow_task_id:workflowTaskId' docs/cleaning.js
+grep -Fq 'supabase.functions.invoke("my-cleaning-checklist"' docs/cleaning.js
+test -s supabase/functions/my-cleaning-checklist/index.ts
+grep -Fq '.from("tenant_tasks_v2")' supabase/functions/my-cleaning-checklist/index.ts
+grep -Fq '.from("workflow_executions_v2")' supabase/functions/my-cleaning-checklist/index.ts
+grep -Fq '.eq("workflow_execution_id",execution.id)' supabase/functions/my-cleaning-checklist/index.ts
+grep -Fq 'workflow_task_not_assigned_to_user' supabase/functions/my-cleaning-checklist/index.ts
+grep -Fq 'workflow_task_reference_required' supabase/functions/my-cleaning-checklist/index.ts
+grep -Fq 'workflow_accept_required' supabase/functions/my-cleaning-checklist/index.ts
+grep -Fq 'capture_url:readOnly?null:captureUrl' supabase/functions/my-cleaning-checklist/index.ts
+grep -Fq 'return_to=' supabase/functions/my-cleaning-checklist/index.ts
 grep -Fq "const back = document.getElementById(\"cameraBackLink\");" docs/photo-persistence.js
 ! grep -Fq 'document.querySelector(".topbar a.ghost")' docs/photo-persistence.js
 

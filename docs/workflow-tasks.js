@@ -347,6 +347,56 @@ function executionForTask(task){
     ?workflowExecutionsById.get(task.source_id)||null
     :null;
 }
+function cleaningExecutionForTask(task){
+  const execution=executionForTask(task);
+  return execution
+    && execution.spec_snapshot?.flowType==="cleaning"
+    && execution.spec_snapshot?.closeType==="domain_adapter"
+      ?execution
+      :null;
+}
+function cleaningWorkflowUrl(task){
+  const url=new URL("./cleaning.html",window.location.href);
+  url.searchParams.set("workflow_task_id",task.id);
+  return url.href;
+}
+function renderCleaningAdapter(task,article){
+  if(!cleaningExecutionForTask(task)||task.assigned_user_id!==currentUser?.id)return;
+
+  const box=document.createElement("div");
+  box.className="task-actions";
+  const heading=document.createElement("strong");
+  heading.textContent="Limpieza";
+  box.append(heading);
+
+  const note=document.createElement("span");
+  note.className="task-action-note";
+
+  if(task.status==="pending"){
+    note.textContent="Acepta la tarea para preparar las zonas y comenzar la fotoverificación.";
+    box.append(note);
+    article.append(box);
+    return;
+  }
+
+  if(!["active","waiting_review","completed","rejected"].includes(task.status))return;
+
+  note.textContent=task.status==="active"
+    ?"Abre la limpieza para completar las zonas fotográficas asignadas."
+    :task.status==="waiting_review"
+      ?"Las fotos ya fueron enviadas. Puedes consultar las zonas mientras esperan revisión."
+      :task.status==="completed"
+        ?"La limpieza terminó. Puedes consultar las fotografías solicitadas."
+        :"La limpieza quedó rechazada. Puedes consultar las fotografías enviadas.";
+  box.append(note);
+
+  const link=document.createElement("a");
+  link.className="primary task-photo-button";
+  link.href=cleaningWorkflowUrl(task);
+  link.textContent=task.status==="active"?"Abrir limpieza":"Ver limpieza";
+  box.append(link);
+  article.append(box);
+}
 function actionNote(task){
   if(task.status==="completed")return "Tarea y ejecución completadas de forma sincronizada.";
   if(task.status==="waiting_review")return "La ejecución está esperando una decisión de revisión humana.";
@@ -862,6 +912,7 @@ function render(){
     );
     article.append(details);
 
+    renderCleaningAdapter(task,article);
     renderPhotoResources(task,article);
     renderChecklist(task,article);
     renderDocuments(task,article);

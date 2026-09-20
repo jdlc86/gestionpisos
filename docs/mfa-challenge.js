@@ -6,11 +6,13 @@ import {
   requestedNext,
   requiresPrivilegedMfa
 } from "./mfa-common.js?v=2026091701";
+import { createOtpInput } from "./mfa-code-input.js?v=2026092001";
 
 const form = document.getElementById("mfaChallengeForm");
 const factorField = document.getElementById("mfaFactorField");
 const factorSelect = document.getElementById("mfaFactorSelect");
 const code = document.getElementById("mfaCode");
+const codeBoxes = document.getElementById("mfaCodeBoxes");
 const submit = document.getElementById("mfaChallengeBtn");
 const recoveryBtn = document.getElementById("mfaRecoveryBtn");
 const recoveryBox = document.getElementById("mfaRecoveryBox");
@@ -38,6 +40,13 @@ function syncCode() {
   if (code.value !== value) code.value = value;
   submit.disabled = !ready || !factorId || value.length !== 6;
 }
+
+const otp = createOtpInput({
+  container: codeBoxes,
+  valueInput: code,
+  length: 6,
+  onChange: syncCode
+});
 
 function factorFriendlyName(factor, index = 0) {
   const value = String(factor?.friendly_name || factor?.friendlyName || "").trim();
@@ -126,17 +135,17 @@ async function bootstrap() {
 
     renderFactorChooser(verifiedFactors);
     ready = Boolean(factorId);
-    code.disabled = !ready;
+    otp.setDisabled(!ready);
     recoveryBtn.disabled = false;
     syncCode();
     show(verifiedFactors.length > 1
       ? "Elige el autenticador que tienes disponible e introduce su código actual."
       : "Introduce el código actual de tu app autenticadora.");
-    code.focus();
+    otp.focus();
   } catch (error) {
     console.error("mfa_challenge_bootstrap_failed", error);
     ready = false;
-    code.disabled = true;
+    otp.setDisabled(true);
     submit.disabled = true;
     recoveryBtn.disabled = true;
     show("No se pudo preparar la verificación MFA. Cierra sesión y vuelve a intentarlo.", true);
@@ -145,11 +154,10 @@ async function bootstrap() {
 
 factorSelect.addEventListener("change", () => {
   factorId = factorSelect.value || null;
-  code.value = "";
+  otp.clear();
   syncCode();
-  code.focus();
+  otp.focus();
 });
-code.addEventListener("input", syncCode);
 recoveryBtn.addEventListener("click", () => void requestEmergencyRecovery());
 copyRecoveryRequestBtn.addEventListener("click", async () => {
   const value = recoveryRequestId.textContent.trim();
@@ -171,12 +179,12 @@ form.addEventListener("submit", async event => {
   const verifyCode = normalizedCode();
   if (verifyCode.length !== 6) {
     show("Introduce los 6 dígitos de tu app autenticadora.", true);
-    code.focus();
+    otp.focus();
     return;
   }
 
   submit.disabled = true;
-  code.disabled = true;
+  otp.setDisabled(true);
   factorSelect.disabled = true;
   recoveryBtn.disabled = true;
   show("Verificando código…");
@@ -199,12 +207,13 @@ form.addEventListener("submit", async event => {
     setTimeout(() => window.location.replace(protectedTarget(requestedNext())), 500);
   } catch (error) {
     console.error("mfa_challenge_verification_failed", error);
-    code.disabled = false;
+    otp.setDisabled(false);
     factorSelect.disabled = false;
     submit.disabled = false;
     recoveryBtn.disabled = recoveryPending;
     show("El código no es válido o ya ha caducado. Espera al siguiente código e inténtalo de nuevo.", true);
-    code.select();
+    otp.clear();
+    otp.focus();
   }
 });
 

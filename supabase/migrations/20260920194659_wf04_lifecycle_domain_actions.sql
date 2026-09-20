@@ -71,7 +71,7 @@ language plpgsql
 stable
 security definer
 set search_path=''
-as $
+as $wf04_resolver$
 declare
   v_org uuid;
   v_scope_type text;
@@ -159,7 +159,7 @@ begin
 
   return v_user;
 end;
-$;
+$wf04_resolver$;
 revoke all on function private.workflow_resolve_execution_assignee_v1(uuid,uuid)
   from public,anon,authenticated,service_role;
 
@@ -172,7 +172,7 @@ language plpgsql
 stable
 security definer
 set search_path=''
-as $
+as $wf04_aal2$
 begin
   if exists(
     select 1
@@ -190,7 +190,7 @@ begin
     raise exception 'workflow_wf04_mfa_required' using errcode='42501';
   end if;
 end;
-$;
+$wf04_aal2$;
 revoke all on function private.workflow_wf04_require_privileged_aal2_v1(uuid,uuid)
   from public,anon,authenticated,service_role;
 

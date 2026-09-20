@@ -369,8 +369,15 @@ Objetivo cumplido:
 ---
 
 ### BLOQUE WF-04 — Check-in / Check-out + llaves
-**Estado:** PLANNED  
+**Estado:** IN_PROGRESS
 **Bloque ACTIVO:** sí — autorizado por ChatGPT para iniciar después del cierre de WF-03 y del bug de reactivación #274.
+
+**Arranque y mapa real observado (primer commit WF-04):**
+- Rama nueva: `codex/wf-04-checkin-checkout-keys`. Base: `main` remoto `6e9d35018968407bcbb42faf98298c4eedd37a8b`, descendiente del `98242d6bb2aa61fdaea813dcb180659cc2ce07d3` exigido. Entre ambos solo cambió este plan para cerrar WF-03 y activar WF-04.
+- Legacy: `tenant_tasks_v2` conserva `key_pickup`, `key_delivery`, `check_in` y `check_out`. `tenant_task_workflow_templates_v2` da a las llaves `requested → accepted/rejected → completed` y a Entrada/Salida `scheduled → completed` o reprogramación. `docs/portfolio.html` ofrece los cuatro tipos; `docs/portfolio.js` crea mediante `create_tenant_task_v2` y actúa mediante `apply_tenant_task_action_v2`. El guard de `20260918114500_workflow_atomic_task_actions.sql` reserva `apply_workflow_task_action_v1` para tarjetas workflow, sin retirar la ruta legacy.
+- Lifecycle y acceso: `occupancies_v2` mantiene estado/fechas autoritativos. Cartera aún edita ocupaciones directamente en casos ordinarios, pero Baja usa `offboard_tenant_occupancy_v2`; Suspensión se representa con `blocked`; Suspendido → Alta usa la RPC atómica `reactivate_tenant_occupancy_v1` de #274. `restore_tenant_platform_access_v1` y `has_current_platform_access_v1()` condicionan el acceso al rol e identidad vigentes y a una ocupación `active` dentro de fechas. Ni una tarea ni la entrega/recogida de llaves son autoridad de acceso.
+- Eventos: WF-02 solo admite y emite `occupancy.created`, mediante trigger de inserción → `workflow_event_outbox_v2` → `private.process_pending_workflow_events_v1` → `workflow_event_dispatches_v2`. El despacho exige aplicación configurada/publicada con antigüedad suficiente y clave idempotente `event:<id>`; no existe aún evento lifecycle para Baja/Suspensión o cambios de ocupación.
+- Motor común: definiciones/versiones publicadas y aplicaciones configuradas seleccionan destino exacto; `private.workflow_execute_application_internal_v1` crea `workflow_executions_v2` y materializa una sola tarjeta `tenant_tasks_v2` por ejecución. WF-01 resuelve el asignado según alcance, rol, asociación vigente o inquilino de la ocupación; la acción atómica workflow conserva historia/auditoría y comprueba identidad. El trabajo WF-04 deberá reutilizar estas piezas y probar de nuevo vigencia de destino/asignado al actuar, sin motor paralelo ni replay retroactivo.
 
 **Instrucción de arranque para Codex:**
 1. Leer `AGENTS.md`, este documento completo y todos los contratos workflow obligatorios.

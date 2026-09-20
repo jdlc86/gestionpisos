@@ -100,6 +100,151 @@ Deno.serve(async (req: Request) => {
   }
   if (!authorized && !isRoot) return json(403, { error: "external_welcome_permission_required" });
 
+  // Returning tenant: reuse the historical Auth identity instead of creating a
+  // duplicate account. This is the recovery path for a legitimate new Alta
+  // after a prior Baja/ban.
+  if (subjectType === "tenant" && linkedUserId) {
+    const { data: linkedAuth, error: linkedAuthError } = await admin.auth.admin.getUserById(linkedUserId);
+    if (linkedAuthError || !linkedAuth?.user) {
+      console.error(linkedAuthError);
+      return json(404, { error: "linked_auth_user_not_found" });
+    }
+
+    const authEmail = String(linkedAuth.user.email || "").trim().toLowerCase();
+    if (!authEmail || authEmail !== email) {
+      return json(409, { error: "tenant_auth_email_mismatch" });
+    }
+
+    const auditBase = {
+      organization_id: organizationId,
+      actor_user_id: actor.id,
+      entity_type: "tenant",
+      entity_id: subjectId,
+      details: {
+        auth_user_id: linkedUserId,
+        reason: "tenant_reactivation",
+      },
+    };
+
+    const { error: startAuditError } = await admin.from("audit_log_v2").insert({
+      ...auditBase,
+      action: "tenant_auth_reactivation_started",
+      result: "started",
+    });
+    if (startAuditError) {
+      console.error("tenant_auth_reactivation_audit_start_failed", startAuditError);
+      return json(500, { error: "tenant_auth_reactivation_audit_start_failed" });
+    }
+
+    const restoredMetadata = { ...(linkedAuth.user.app_metadata || {}) } as Record<string, unknown>;
+    const existingRole = String(restoredMetadata.role || "");
+    if (!existingRole || existingRole === "tenant") {
+      restoredMetadata.role = "tenant";
+      restoredMetadata.organization_id = organizationId;
+    }
+
+    const { error: unbanError } = await admin.auth.admin.updateUserById(linkedUserId, {
+      ban_duration: "none",
+      app_metadata: restoredMetadata,
+    });
+    if (unbanError) {
+      console.error("tenant_auth_reactivation_unban_failed", unbanError);
+      return json(500, { error: "tenant_auth_reactivation_unban_failed" });
+    }
+
+    const { error: restoreError } = await admin.rpc("restore_tenant_platform_access_v1", {
+      p_tenant_id: subjectId,
+      p_auth_user_id: linkedUserId,
+      p_actor_user_id: actor.id,
+    });
+    if (restoreError) {
+      console.error("tenant_platform_access_restore_failed", restoreError);
+      return json(500, { error: "tenant_platform_access_restore_failed" });
+    }
+
+    const now = new Date().toISOString();
+    const { data: onboardingRows, error: onboardingLookupError } = await admin
+      .from("external_account_onboarding")
+      .select("id,subject_type,tenant_id,auth_user_id")
+      .eq("auth_user_id", linkedUserId)
+      .limit(2);
+    if (onboardingLookupError) {
+      console.error("tenant_reactivation_onboarding_lookup_failed", onboardingLookupError);
+      return json(500, { error: "tenant_reactivation_onboarding_lookup_failed" });
+    }
+
+    const onboarding = onboardingRows?.[0] || null;
+    if (
+      onboarding &&
+      (onboarding.subject_type !== "tenant" || String(onboarding.tenant_id || "") !== subjectId)
+    ) {
+      return json(409, { error: "tenant_reactivation_identity_conflict" });
+    }
+
+    if (onboarding) {
+      const { error: onboardingUpdateError } = await admin
+        .from("external_account_onboarding")
+        .update({
+          status: "active",
+          email,
+          activated_at: now,
+          revoked_at: null,
+          updated_at: now,
+          last_delivery_status: "not_required",
+          last_delivery_error: null,
+        })
+        .eq("id", onboarding.id);
+      if (onboardingUpdateError) {
+        console.error("tenant_reactivation_onboarding_update_failed", onboardingUpdateError);
+        return json(500, { error: "tenant_reactivation_onboarding_update_failed" });
+      }
+    } else {
+      const { error: onboardingInsertError } = await admin
+        .from("external_account_onboarding")
+        .insert({
+          organization_id: organizationId,
+          subject_type: "tenant",
+          tenant_id: subjectId,
+          auth_user_id: linkedUserId,
+          email,
+          intended_role: "tenant",
+          status: "active",
+          created_by: actor.id,
+          activated_at: now,
+          updated_at: now,
+          last_delivery_status: "not_required",
+        });
+      if (onboardingInsertError) {
+        console.error("tenant_reactivation_onboarding_insert_failed", onboardingInsertError);
+        return json(500, { error: "tenant_reactivation_onboarding_insert_failed" });
+      }
+    }
+
+    const { error: successAuditError } = await admin.from("audit_log_v2").insert({
+      ...auditBase,
+      action: "tenant_auth_reactivated",
+      result: "success",
+    });
+    if (successAuditError) {
+      console.error("tenant_auth_reactivation_audit_failed", successAuditError);
+      return json(500, {
+        error: "tenant_auth_reactivation_audit_failed",
+        auth_reactivated: true,
+        audit_pending: true,
+      });
+    }
+
+    return json(200, {
+      ok: true,
+      subject_type: "tenant",
+      subject_id: subjectId,
+      onboarding_status: "active",
+      invitation_status: "not_required",
+      restored_identity: true,
+      auth_user_id: linkedUserId,
+    });
+  }
+
   const subjectColumn = subjectType === "owner" ? "owner_id" : "tenant_id";
   const { data: existingData, error: existingError } = await admin.from("external_account_onboarding")
     .select("id,auth_user_id,status,email,last_delivery_status")

@@ -180,7 +180,8 @@ async function sendWelcome(subjectType,subjectId,button=null){
     const {data,error}=await supabase.functions.invoke("send-external-welcome",{body:{subject_type:subjectType,subject_id:subjectId}});
     if(error)throw error;
     const status=data?.invitation_status;
-    if(status==="sent")setPortfolioStatus("Correo de bienvenida enviado. La cuenta seguirá pendiente hasta que el usuario cree su contraseña.","Invitación enviada.");
+    if(data?.restored_identity===true)setPortfolioStatus("La identidad existente quedó reactivada. El inquilino puede volver a entrar con su cuenta anterior.","Acceso reactivado.");
+    else if(status==="sent")setPortfolioStatus("Correo de bienvenida enviado. La cuenta seguirá pendiente hasta que el usuario cree su contraseña.","Invitación enviada.");
     else if(status==="not_configured")setPortfolioStatus("La identidad quedó preparada, pero el proveedor profesional de correo todavía no está configurado. Podrás reenviar la invitación después.","Correo pendiente.");
     else if(status==="failed")setPortfolioStatus("La identidad quedó preparada, pero el proveedor de correo no confirmó el envío. Usa Reenviar bienvenida cuando se resuelva.","Envío no confirmado.");
     else setPortfolioStatus("La invitación está preparada.","Bienvenida.");

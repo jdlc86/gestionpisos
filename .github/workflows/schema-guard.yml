@@ -41,6 +41,9 @@ jobs:
       - name: Verify external owner/tenant onboarding contract
         run: bash tests/external-onboarding-schema-smoke.sh
 
+      - name: Verify tenant offboarding access contract
+        run: bash tests/tenant-offboarding-access-schema-smoke.sh
+
       - name: Verify workflow definition persistence contract
         run: bash tests/workflow-definition-schema-smoke.sh
 

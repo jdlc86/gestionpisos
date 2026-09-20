@@ -30,6 +30,7 @@ select set_config('gestionpisos.photo.org_b', gen_random_uuid()::text, true);
 select set_config('gestionpisos.photo.admin_uid', gen_random_uuid()::text, true);
 select set_config('gestionpisos.photo.actor_uid', gen_random_uuid()::text, true);
 select set_config('gestionpisos.photo.other_uid', gen_random_uuid()::text, true);
+select set_config('gestionpisos.photo.tenant_a', gen_random_uuid()::text, true);
 select set_config('gestionpisos.photo.owner_a', gen_random_uuid()::text, true);
 select set_config('gestionpisos.photo.owner_b', gen_random_uuid()::text, true);
 select set_config('gestionpisos.photo.property_a', gen_random_uuid()::text, true);
@@ -39,6 +40,8 @@ select set_config('gestionpisos.photo.pattern_a', gen_random_uuid()::text, true)
 select set_config('gestionpisos.photo.pattern_b', gen_random_uuid()::text, true);
 select set_config('gestionpisos.photo.run_own', gen_random_uuid()::text, true);
 select set_config('gestionpisos.photo.run_other', gen_random_uuid()::text, true);
+select set_config('gestionpisos.photo.item_own', gen_random_uuid()::text, true);
+select set_config('gestionpisos.photo.item_other', gen_random_uuid()::text, true);
 
 insert into auth.users (id)
 values
@@ -48,6 +51,35 @@ values
 
 insert into public.organizations (id, name)
 values (current_setting('gestionpisos.photo.org_b')::uuid, 'Other test organization');
+
+-- These actors represent real platform identities. Authorization must come
+-- from DB state, not only from app_metadata claims in the synthetic JWT.
+insert into public.user_roles(user_id,organization_id,role)
+values
+  (
+    current_setting('gestionpisos.photo.admin_uid')::uuid,
+    current_setting('gestionpisos.photo.org_a')::uuid,
+    'admin'
+  ),
+  (
+    current_setting('gestionpisos.photo.actor_uid')::uuid,
+    current_setting('gestionpisos.photo.org_a')::uuid,
+    'tenant'
+  );
+
+insert into public.tenants_v2(
+  id,organization_id,user_id,full_name,document_type,document_number,email,status
+)
+values(
+  current_setting('gestionpisos.photo.tenant_a')::uuid,
+  current_setting('gestionpisos.photo.org_a')::uuid,
+  current_setting('gestionpisos.photo.actor_uid')::uuid,
+  'Photo tenant actor',
+  'other',
+  'PHOTO-ACTOR-001',
+  'photo-actor@example.invalid',
+  'active'
+);
 
 insert into public.owners (id, organization_id, full_name)
 values
@@ -89,7 +121,7 @@ values (
 );
 
 insert into public.occupancies_v2 (
-  organization_id, property_id, room_id, occupant_email, starts_on, status, user_id
+  organization_id, property_id, room_id, occupant_email, starts_on, status, user_id, tenant_id
 )
 values (
   current_setting('gestionpisos.photo.org_a')::uuid,
@@ -98,7 +130,8 @@ values (
   'photo-actor@example.invalid',
   current_date,
   'active',
-  current_setting('gestionpisos.photo.actor_uid')::uuid
+  current_setting('gestionpisos.photo.actor_uid')::uuid,
+  current_setting('gestionpisos.photo.tenant_a')::uuid
 );
 
 insert into public.photo_patterns_v2 (
@@ -370,21 +403,47 @@ end;
 $$;
 
 -- The actor can insert an item only in its own run.
-insert into public.photo_verification_items_v2 (run_id, pattern_id, storage_path)
+do $$
+begin
+  if public.has_current_platform_access_v1() is distinct from true then
+    raise exception 'photo actor unexpectedly lacks current platform access';
+  end if;
+  if not exists(
+    select 1 from public.photo_verification_runs_v2
+    where id=current_setting('gestionpisos.photo.run_own')::uuid
+  ) then
+    raise exception 'photo actor cannot read own verification run';
+  end if;
+  if not exists(
+    select 1 from public.photo_patterns_v2
+    where id=current_setting('gestionpisos.photo.pattern_a')::uuid
+  ) then
+    raise exception 'photo actor cannot read active property pattern';
+  end if;
+end;
+$$;
+
+insert into public.photo_verification_items_v2 (id, run_id, pattern_id, storage_path)
 values (
+  current_setting('gestionpisos.photo.item_own')::uuid,
   current_setting('gestionpisos.photo.run_own')::uuid,
   current_setting('gestionpisos.photo.pattern_a')::uuid,
-  'own/item.webp'
+  current_setting('gestionpisos.photo.org_a') || '/' ||
+    current_setting('gestionpisos.photo.run_own') || '/' ||
+    current_setting('gestionpisos.photo.item_own') || '.jpg'
 );
 
 do $$
 begin
   begin
-    insert into public.photo_verification_items_v2 (run_id, pattern_id, storage_path)
+    insert into public.photo_verification_items_v2 (id, run_id, pattern_id, storage_path)
     values (
+      current_setting('gestionpisos.photo.item_other')::uuid,
       current_setting('gestionpisos.photo.run_other')::uuid,
       current_setting('gestionpisos.photo.pattern_a')::uuid,
-      'other/item.webp'
+      current_setting('gestionpisos.photo.org_a') || '/' ||
+        current_setting('gestionpisos.photo.run_other') || '/' ||
+        current_setting('gestionpisos.photo.item_other') || '.jpg'
     );
     raise exception 'actor insert into another run unexpectedly succeeded';
   exception when insufficient_privilege then null;

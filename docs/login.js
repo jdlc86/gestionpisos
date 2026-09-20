@@ -45,6 +45,23 @@ function withTimeout(promise, milliseconds, code) {
 
 async function routeAuthenticatedSession(session) {
   const next = targetPage();
+
+  const { data: platformAccess, error: platformAccessError } = await withTimeout(
+    supabase.rpc("has_current_platform_access_v1"),
+    5000,
+    "platform_access_check_timeout"
+  );
+  if (platformAccessError) throw platformAccessError;
+  if (platformAccess !== true) {
+    try {
+      const { error } = await supabase.auth.signOut({ scope: "global" });
+      if (error) throw error;
+    } catch {
+      await supabase.auth.signOut({ scope: "local" }).catch(() => {});
+    }
+    throw new Error("platform_access_revoked");
+  }
+
   const mfa = await withTimeout(
     privilegedMfaRoute(supabase, session, { requireEnrollment: true }),
     5000,
@@ -58,7 +75,9 @@ async function routeAuthenticatedSession(session) {
 }
 
 const params = new URLSearchParams(window.location.search);
-if (params.get("password") === "updated") {
+if (params.get("access") === "revoked") {
+  show("Tu acceso a Allaiso ya no está activo. Contacta con tu gestoría si necesitas recuperar el acceso.", true);
+} else if (params.get("password") === "updated") {
   show("Contraseña actualizada. Ya puedes iniciar sesión.");
 } else if (params.get("activated") === "1") {
   show("Cuenta activada. Ya puedes iniciar sesión.");
@@ -95,6 +114,10 @@ form.addEventListener("submit", async event => {
     const code = String(error?.message || "");
     if (code === "login_timeout") {
       show("El servicio de acceso no respondió a tiempo. Cierra GestionPisos, vuelve a abrirlo e inténtalo otra vez.", true);
+    } else if (code === "platform_access_revoked") {
+      show("Tu acceso a Allaiso ya no está activo. Contacta con tu gestoría si necesitas recuperarlo.", true);
+    } else if (code === "platform_access_check_timeout") {
+      show("No se pudo comprobar si tu acceso sigue activo. Comprueba tu conexión e inténtalo de nuevo.", true);
     } else if (code === "mfa_check_timeout") {
       show("No se pudo comprobar el segundo factor. Comprueba tu conexión e inténtalo de nuevo.", true);
     } else {
@@ -148,4 +171,10 @@ void withTimeout(getCurrentSession(), 4000, "session_check_timeout")
   .then(existing => {
     if (existing && !loginInProgress) return routeAuthenticatedSession(existing);
   })
-  .catch(error => console.warn("login_session_check_skipped", error));
+  .catch(error => {
+    if (String(error?.message || "") === "platform_access_revoked") {
+      show("Tu acceso a Allaiso ya no está activo. Contacta con tu gestoría si necesitas recuperarlo.", true);
+      return;
+    }
+    console.warn("login_session_check_skipped", error);
+  });

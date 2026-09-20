@@ -270,6 +270,80 @@ $reactivated_login_gate$;
 
 reset role;
 
+-- Una identidad Auth inconsistente entre tenant y occupancy debe abortar
+-- antes de reactivar nada, también en el camino de fecha futura.
+update public.occupancies_v2
+set user_id=current_setting('gestionpisos.reactivate.user2')::uuid
+where id=current_setting('gestionpisos.reactivate.future_blocked_occ')::uuid;
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub',current_setting('gestionpisos.reactivate.root'),
+    'role','authenticated',
+    'app_metadata',jsonb_build_object('role','root')
+  )::text,
+  true
+);
+
+do $identity_mismatch_must_fail$
+begin
+  begin
+    perform public.reactivate_tenant_occupancy_v1(
+      current_setting('gestionpisos.reactivate.future_blocked_occ')::uuid,
+      current_setting('gestionpisos.reactivate.property')::uuid,
+      current_setting('gestionpisos.reactivate.future_room')::uuid,
+      'Future suspended tenant',
+      'dni',
+      'REACTIVATE-FUTURE',
+      'reactivate-future@example.invalid',
+      current_date+1,
+      null,
+      true
+    );
+    raise exception 'identity-mismatched reactivation unexpectedly succeeded';
+  exception
+    when sqlstate '42501' then
+      null;
+  end;
+end;
+$identity_mismatch_must_fail$;
+
+reset role;
+
+do $identity_mismatch_state$
+begin
+  if not exists(
+    select 1 from public.occupancies_v2
+    where id=current_setting('gestionpisos.reactivate.future_blocked_occ')::uuid
+      and status='blocked'
+  ) then
+    raise exception 'identity mismatch changed suspended occupancy';
+  end if;
+  if not exists(
+    select 1 from public.tenants_v2
+    where id=current_setting('gestionpisos.reactivate.future_tenant')::uuid
+      and status='blocked'
+  ) then
+    raise exception 'identity mismatch changed tenant status';
+  end if;
+  if not exists(
+    select 1 from public.user_roles
+    where user_id=current_setting('gestionpisos.reactivate.future_user')::uuid
+      and organization_id=current_setting('gestionpisos.reactivate.org')::uuid
+      and role='tenant'
+      and revoked_at is not null
+  ) then
+    raise exception 'identity mismatch restored tenant role';
+  end if;
+end;
+$identity_mismatch_state$;
+
+update public.occupancies_v2
+set user_id=current_setting('gestionpisos.reactivate.future_user')::uuid
+where id=current_setting('gestionpisos.reactivate.future_blocked_occ')::uuid;
+
 -- Una reactivación futura prepara identidad/rol, pero no debe conceder acceso
 -- antes de starts_on ni fallar por exigir una ocupación vigente hoy.
 set local role authenticated;

@@ -24,6 +24,7 @@ declare
   v_org uuid;
   v_tenant_id uuid;
   v_auth_user_id uuid;
+  v_tenant_user_id uuid;
   v_old_property_id uuid;
   v_old_status public.record_status;
   v_new_occupancy_id uuid;
@@ -58,12 +59,14 @@ begin
     o.organization_id,
     o.tenant_id,
     coalesce(o.user_id,t.user_id),
+    t.user_id,
     o.property_id,
     o.status
   into
     v_org,
     v_tenant_id,
     v_auth_user_id,
+    v_tenant_user_id,
     v_old_property_id,
     v_old_status
   from public.occupancies_v2 o
@@ -79,6 +82,11 @@ begin
 
   if v_old_status<>'blocked' then
     raise exception 'tenant_reactivation_invalid_state' using errcode='22023';
+  end if;
+
+  if v_auth_user_id is not null
+    and v_tenant_user_id is distinct from v_auth_user_id then
+    raise exception 'tenant_auth_identity_mismatch' using errcode='42501';
   end if;
 
   if not public.can_operate_property_v3(v_old_property_id,true)

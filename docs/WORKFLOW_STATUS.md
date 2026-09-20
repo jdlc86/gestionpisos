@@ -481,6 +481,7 @@ El valor declarativo `triggerType=event` pasa a ser capacidad ejecutable del mot
 - el mismo resolver de asignaciones de WF-01 se aplica al llegar el evento;
 - el destino se compara server-side contra organización/piso/habitación/ocupación;
 - un fallo de un workflow no revierte la operación de negocio ni otras ejecuciones correctas;
+- los fallos quedan reintentables; las aplicaciones ya ejecutadas no se duplican durante los reintentos;
 - el consumidor corre por `pg_cron` cada minuto;
 - la regresión PostgreSQL cubre desacoplamiento, idempotencia, ejecución/tarea, aislamiento de fallos y privilegios.
 

@@ -108,12 +108,45 @@ Deno.serve(async (req: Request) => {
     delete metadata.organization_id;
   }
 
+  // Audit the privileged Auth mutation BEFORE changing Auth. If this durable
+  // record cannot be created, do not perform the sensitive operation.
+  const auditBase = {
+    organization_id: organizationId || null,
+    actor_user_id: actor.id,
+    entity_type: "tenant",
+    entity_id: tenantId || targetUserId,
+    details: {
+      occupancy_id: occupancyId,
+      auth_user_id: targetUserId,
+      reason: "tenant_offboarding",
+    },
+  };
+  const { error: startAuditError } = await admin.from("audit_log_v2").insert({
+    ...auditBase,
+    action: "tenant_auth_disable_started",
+    result: "started",
+  });
+  if (startAuditError) {
+    console.error("tenant_auth_disable_audit_start_failed", startAuditError);
+    return json(500, {
+      error: "tenant_auth_disable_audit_start_failed",
+      database_access_revoked: true,
+      target_user_id: targetUserId,
+    });
+  }
+
   const { error: disableError } = await admin.auth.admin.updateUserById(targetUserId, {
     ban_duration: "876000h",
     app_metadata: metadata,
   });
   if (disableError) {
     console.error(disableError);
+    await admin.from("audit_log_v2").insert({
+      ...auditBase,
+      action: "tenant_auth_disable_failed",
+      result: "failed",
+      details: { ...auditBase.details, auth_error: String(disableError.message || "unknown") },
+    }).catch(() => {});
     return json(500, {
       error: "tenant_auth_disable_failed",
       database_access_revoked: true,
@@ -133,25 +166,31 @@ Deno.serve(async (req: Request) => {
       .eq("auth_user_id", targetUserId)
       .in("status", ["pending", "active"]);
     if (onboardingError) {
-      // Auth is already disabled and DB access revoked. Do not roll those back.
       console.error("tenant_external_onboarding_revoke_failed", onboardingError);
+      return json(500, {
+        error: "tenant_external_onboarding_revoke_failed",
+        auth_disabled: true,
+        database_access_revoked: true,
+        target_user_id: targetUserId,
+      });
     }
   }
 
   const { error: auditError } = await admin.from("audit_log_v2").insert({
-    organization_id: organizationId || null,
-    actor_user_id: actor.id,
+    ...auditBase,
     action: "tenant_auth_disabled",
-    entity_type: "tenant",
-    entity_id: tenantId || targetUserId,
     result: "success",
-    details: {
-      occupancy_id: occupancyId,
-      auth_user_id: targetUserId,
-      reason: "tenant_offboarding",
-    },
   });
-  if (auditError) console.error("tenant_auth_disable_audit_failed", auditError);
+  if (auditError) {
+    console.error("tenant_auth_disable_audit_failed", auditError);
+    return json(500, {
+      error: "tenant_auth_disable_audit_failed",
+      auth_disabled: true,
+      database_access_revoked: true,
+      audit_pending: true,
+      target_user_id: targetUserId,
+    });
+  }
 
   return json(200, {
     ok: true,

@@ -31,6 +31,28 @@ begin
 end;
 $privileges$;
 
+select set_config(
+  'gestionpisos.lifecycle_executor',
+  '77777777-7777-4777-8777-777777777771',
+  true
+);
+
+insert into auth.users(id)
+values(current_setting('gestionpisos.lifecycle_executor')::uuid)
+on conflict(id) do nothing;
+
+insert into public.user_roles(user_id,organization_id,role)
+select
+  current_setting('gestionpisos.lifecycle_executor')::uuid,
+  ur.organization_id,
+  'employee'
+from public.user_roles ur
+where ur.user_id='22222222-2222-4222-8222-222222222222'::uuid
+  and ur.role='root'
+  and ur.revoked_at is null
+limit 1
+on conflict do nothing;
+
 set local role authenticated;
 
 select set_config(
@@ -266,7 +288,7 @@ select set_config(
       null,null,null,'{}'::uuid[],true,
       'regression-publish-execute-1',
       'regression-execute-1',
-      '22222222-2222-4222-8222-222222222222'::uuid
+      current_setting('gestionpisos.lifecycle_executor')::uuid
     )
     limit 1
   ),
@@ -298,7 +320,7 @@ select set_config(
       null,null,null,'{}'::uuid[],true,
       'regression-publish-execute-1',
       'regression-execute-1',
-      '22222222-2222-4222-8222-222222222222'::uuid
+      current_setting('gestionpisos.lifecycle_executor')::uuid
     )
     limit 1
   ),

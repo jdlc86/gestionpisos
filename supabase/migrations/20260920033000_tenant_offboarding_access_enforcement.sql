@@ -507,6 +507,10 @@ begin
   loop
     if to_regclass(format('public.%I',v_table)) is not null then
       execute format(
+        'alter table public.%I enable row level security',
+        v_table
+      );
+      execute format(
         'drop policy if exists platform_access_required_v1 on public.%I',
         v_table
       );

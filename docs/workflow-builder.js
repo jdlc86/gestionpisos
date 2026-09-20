@@ -484,7 +484,10 @@ function completion(data=draft()){
 function triggerComplete(data){
   if(!data.triggerType)return false;
   if(data.triggerType==="manual")return true;
-  if(data.triggerType==="event")return ["occupancy.created"].includes(data.eventType);
+  if(data.triggerType==="event"){
+    return ["occupancy.created"].includes(data.eventType)
+      && !(data.eventType==="occupancy.created"&&data.scopeType==="occupancy");
+  }
   if(data.triggerType==="scheduled_once"){
     if(!data.scheduledAt||!data.scheduledTimezone||!data.scheduledAtUtc)return false;
     const runAt=Date.parse(data.scheduledAtUtc);

@@ -134,7 +134,9 @@ begin
   update public.cleaning_tasks_v2
   set status=v_domain_target,
       reviewed_at=case
-        when v_audit.selected_for_review then coalesce(reviewed_at,now())
+        when v_audit.selected_for_review
+          and v_audit.status='closed'
+          then coalesce(reviewed_at,now())
         else reviewed_at
       end,
       reviewed_by=case
@@ -433,11 +435,7 @@ begin
   if found then
     perform private.workflow_sync_cleaning_audit_selection_v1(
       p_cleaning_task_id,
-      (
-        select actor_user_id
-        from public.photo_verification_runs_v2
-        where id=p_photo_run_id
-      )
+      null
     );
     return v_audit;
   end if;
@@ -521,7 +519,7 @@ begin
 
     perform private.workflow_sync_cleaning_audit_selection_v1(
       p_cleaning_task_id,
-      v_run.actor_user_id
+      null
     );
     return v_audit;
   end if;
@@ -562,7 +560,7 @@ begin
 
   perform private.workflow_sync_cleaning_audit_selection_v1(
     p_cleaning_task_id,
-    v_run.actor_user_id
+    null
   );
 
   return v_audit;

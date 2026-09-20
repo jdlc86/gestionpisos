@@ -346,7 +346,7 @@ async function preloadTransientTarget(){
   if(app.property_id){
     propertySelect.value=app.property_id;
     if(versionScope()==="room")await loadRoomsFor(app.property_id);
-    if(versionScope()==="occupancy")await loadOccupanciesFor(app.property_id);
+    if(["property","room","occupancy"].includes(versionScope()))await loadOccupanciesFor(app.property_id);
     if(versionNeedsPhoto())await loadPhotoPatternsFor(app.property_id);
   }
   if(app.room_id)roomSelect.value=app.room_id;
@@ -840,17 +840,22 @@ async function loadOccupanciesFor(propertyId){
     .from("occupancies_v2")
     .select("id,property_id,room_id,occupant_email,starts_on,ends_on,status,user_id,tenant_id,tenants_v2(user_id,full_name,email,status)")
     .eq("property_id",propertyId)
-    .eq("status","active")
     .order("starts_on",{ascending:false});
   if(error)throw error;
-  const today=new Date();today.setHours(0,0,0,0);
-  const received=(data||[]).filter(item=>{
-    const starts=item.starts_on?new Date(item.starts_on+"T00:00:00"):null;
-    const ends=item.ends_on?new Date(item.ends_on+"T23:59:59"):null;
-    return (!starts||starts<=today)&&(!ends||ends>=today);
-  });
-  received.forEach(item=>{if(!occupancies.some(existing=>existing.id===item.id))occupancies.push(item)});
-  occupancySelect.append(...received.map(item=>{
+
+  const received=data||[];
+  occupancies=[
+    ...occupancies.filter(item=>item.property_id!==propertyId),
+    ...received
+  ];
+
+  const current=received.filter(item=>
+    occupancyIsCurrent(item)
+    && item.user_id
+    && item.tenants_v2?.user_id===item.user_id
+    && item.tenants_v2?.status==="active"
+  );
+  occupancySelect.append(...current.map(item=>{
     const person=item.tenants_v2?.full_name||item.occupant_email||"Ocupación";
     return option(item.id,person);
   }));
@@ -1061,62 +1066,67 @@ function candidateLabel(person){
 function executionCandidates(app){
   const candidates=[];
   const seen=new Set();
-  const actorRole=String(currentUser?.app_metadata?.role||"").toLowerCase();
+  const scope=String(app?.scope_type||"");
+  const propertyContext=(permissionContext?.properties||[]).find(item=>item.id===app?.property_id)||null;
+  const associatedStaff=new Set();
 
-  if(actorRole==="root"&&currentUser?.id){
-    candidates.push({
-      user_id:currentUser.id,
-      display_name:currentUser.user_metadata?.display_name||currentUser.email||"ROOT",
-      email:currentUser.email||"",
-      roles:["root"]
-    });
-    seen.add(currentUser.id);
+  if(propertyContext?.responsible_user_id){
+    associatedStaff.add(propertyContext.responsible_user_id);
   }
-
-  const propertyContext=(permissionContext?.properties||[]).find(item=>item.id===app.property_id);
-  const responsibleId=propertyContext?.responsible_user_id||null;
-  const writableAccess=new Set(
-    (propertyContext?.staff_access||[])
-      .filter(item=>item.can_write===true)
-      .map(item=>item.employee_user_id)
-  );
-
-  (permissionContext?.people||[]).forEach(person=>{
-    if(!person?.user_id||seen.has(person.user_id))return;
-    if(person.profile_status==="archived")return;
-    const roles=Array.isArray(person.roles)?person.roles:[];
-    const isAdmin=roles.includes("admin");
-    const isEmployee=roles.includes("employee");
-    const employeeEligible=isEmployee&&(
-      !app.property_id
-      || person.user_id===responsibleId
-      || writableAccess.has(person.user_id)
-    );
-    if(!isAdmin&&!employeeEligible)return;
-    candidates.push(person);
-    seen.add(person.user_id);
+  (propertyContext?.staff_access||[]).forEach(item=>{
+    if(item?.employee_user_id)associatedStaff.add(item.employee_user_id);
   });
 
-  if(app.scope_type==="occupancy"&&app.occupancy_id){
-    const occupancy=occupancies.find(item=>item.id===app.occupancy_id)||null;
-    const tenant=occupancy?.tenants_v2||null;
-    const tenantUserId=tenant?.user_id||null;
-    const sameIdentity=Boolean(
-      tenantUserId
-      && occupancy?.user_id===tenantUserId
-      && tenant?.status==="active"
-      && occupancyIsCurrent(occupancy)
-    );
-    if(sameIdentity&&!seen.has(tenantUserId)){
-      candidates.push({
-        user_id:tenantUserId,
-        display_name:tenant.full_name||tenant.email||"Inquilino",
-        email:tenant.email||occupancy.occupant_email||"",
-        roles:["tenant"]
-      });
-      seen.add(tenantUserId);
-    }
+  const addCandidate=person=>{
+    if(!person?.user_id||seen.has(person.user_id))return;
+    candidates.push(person);
+    seen.add(person.user_id);
+  };
+
+  const activeInternal=(permissionContext?.people||[]).filter(person=>{
+    if(!person?.user_id)return false;
+    if(person.profile_status!=="active")return false;
+    if(person.onboarding_status&&person.onboarding_status!=="active")return false;
+    const roles=Array.isArray(person.roles)?person.roles:[];
+    return roles.includes("admin")||roles.includes("employee");
+  });
+
+  if(scope==="organization"){
+    activeInternal.forEach(addCandidate);
+    return candidates;
   }
+
+  if(scope==="property"||scope==="room"){
+    activeInternal
+      .filter(person=>associatedStaff.has(person.user_id))
+      .forEach(addCandidate);
+  }
+
+  const tenantOccupancies=occupancies.filter(item=>{
+    if(!occupancyIsCurrent(item))return false;
+    if(item.property_id!==app?.property_id)return false;
+    if(scope==="room"&&item.room_id!==app?.room_id)return false;
+    if(scope==="occupancy"&&item.id!==app?.occupancy_id)return false;
+    if(!["property","room","occupancy"].includes(scope))return false;
+
+    const tenant=item.tenants_v2||null;
+    return Boolean(
+      item.user_id
+      && tenant?.user_id
+      && item.user_id===tenant.user_id
+      && tenant.status==="active"
+    );
+  });
+
+  tenantOccupancies.forEach(item=>{
+    const tenant=item.tenants_v2;
+    addCandidate({
+      user_id:item.user_id,
+      display_name:tenant?.full_name||tenant?.email||item.occupant_email||"Inquilino",
+      email:tenant?.email||item.occupant_email||"",
+      roles:["tenant"]
+    });
+  });
 
   return candidates;
 }
@@ -1681,10 +1691,18 @@ async function loadApplications(){
     const {data}=await supabase.from("rooms_v2").select("id,property_id,label,status,archived_at").in("id",roomIds);
     (data||[]).forEach(item=>{if(!rooms.some(existing=>existing.id===item.id))rooms.push(item)});
   }
-  const occupancyIds=[...new Set(applications.map(x=>x.occupancy_id).filter(Boolean))];
-  if(occupancyIds.length){
-    const {data}=await supabase.from("occupancies_v2").select("id,property_id,room_id,occupant_email,starts_on,ends_on,status,user_id,tenant_id,tenants_v2(user_id,full_name,email,status)").in("id",occupancyIds);
-    (data||[]).forEach(item=>{if(!occupancies.some(existing=>existing.id===item.id))occupancies.push(item)});
+  const propertyIds=[...new Set(applications.map(x=>x.property_id).filter(Boolean))];
+  if(propertyIds.length){
+    const {data,error:occupancyError}=await supabase
+      .from("occupancies_v2")
+      .select("id,property_id,room_id,occupant_email,starts_on,ends_on,status,user_id,tenant_id,tenants_v2(user_id,full_name,email,status)")
+      .in("property_id",propertyIds)
+      .order("starts_on",{ascending:false});
+    if(occupancyError)throw occupancyError;
+    occupancies=[
+      ...occupancies.filter(item=>!propertyIds.includes(item.property_id)),
+      ...(data||[])
+    ];
   }
   renderApplications();
 }
@@ -1756,7 +1774,7 @@ propertySelect.addEventListener("change",async()=>{
   const scope=versionScope();
   try{
     if(scope==="room")await loadRoomsFor(propertySelect.value);
-    if(scope==="occupancy")await loadOccupanciesFor(propertySelect.value);
+    if(["property","room","occupancy"].includes(scope))await loadOccupanciesFor(propertySelect.value);
     roomSelect.disabled=scope!=="room"||!propertySelect.value;
     occupancySelect.disabled=scope!=="occupancy"||!propertySelect.value;
     if(versionNeedsPhoto())await loadPhotoPatternsFor(propertySelect.value);

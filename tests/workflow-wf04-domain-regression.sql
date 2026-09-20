@@ -733,8 +733,13 @@ begin
     where source_id=current_setting('wf04.occupancy')::uuid
       and event_type='occupancy.offboarded' and status='pending'
   ) or exists(
-    select 1 from public.workflow_executions_v2
-    where application_id=current_setting('wf04.checkout_app')::uuid
+    select 1
+    from public.workflow_executions_v2 e
+    join public.workflow_event_outbox_v2 o
+      on o.id=e.source_event_id
+    where e.application_id=current_setting('wf04.checkout_app')::uuid
+      and o.source_id=current_setting('wf04.occupancy')::uuid
+      and o.event_type='occupancy.offboarded'
   ) then
     raise exception 'Baja failed outbox decoupling';
   end if;

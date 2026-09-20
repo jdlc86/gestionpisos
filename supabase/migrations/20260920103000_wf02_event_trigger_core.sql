@@ -8,9 +8,9 @@ create table public.workflow_event_outbox_v2 (
   source_kind text not null check (source_kind in ('occupancy')),
   source_id uuid not null,
   event_key text not null check (length(btrim(event_key)) between 1 and 120),
-  property_id uuid references public.properties_v2(id) on delete restrict,
-  room_id uuid references public.rooms_v2(id) on delete restrict,
-  occupancy_id uuid references public.occupancies_v2(id) on delete restrict,
+  property_id uuid,
+  room_id uuid,
+  occupancy_id uuid,
   payload jsonb not null default '{}'::jsonb check (jsonb_typeof(payload)='object'),
   actor_user_id uuid references auth.users(id) on delete set null,
   status text not null default 'pending'
@@ -33,7 +33,7 @@ create index workflow_event_outbox_v2_pending_idx
 create table public.workflow_event_dispatches_v2 (
   id uuid primary key default gen_random_uuid(),
   event_id uuid not null references public.workflow_event_outbox_v2(id) on delete restrict,
-  application_id uuid not null references public.workflow_applications_v2(id) on delete restrict,
+  application_id uuid not null,
   execution_id uuid references public.workflow_executions_v2(id) on delete restrict,
   status text not null check (status in ('executed','failed')),
   error_code text,
@@ -763,6 +763,8 @@ begin
       where a.organization_id=v_event.organization_id
         and a.status='configured'
         and d.status='published'
+        and a.created_at<=v_event.occurred_at
+        and wv.published_at<=v_event.occurred_at
         and wv.spec->>'triggerType'='event'
         and wv.spec->>'eventType'=v_event.event_type
         and (

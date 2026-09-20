@@ -298,9 +298,9 @@ begin
     end if;
   end if;
 
-  v_target_execution_status:=case p_action_key
-    when 'reject' then 'failed'
-    else v_action.to_status end;
+  -- Rechazar conserva la semántica transversal: tarea y ejecución quedan
+  -- ambas en rejected para Historial, notificaciones y filtros comunes.
+  v_target_execution_status:=v_action.to_status;
 
   update public.tenant_tasks_v2
   set status=v_action.to_status,updated_at=now()

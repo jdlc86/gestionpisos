@@ -2007,13 +2007,22 @@ select set_config('request.jwt.claims',jsonb_build_object(
 )::text,true);
 
 do $reject_stale_swap_target$
+declare
+  v_rows integer:=0;
 begin
   begin
     update public.cleaning_swap_requests_v2
     set status='accepted'
     where id=current_setting('wf03.swap_negative_request')::uuid;
 
-    raise exception 'stale cleaning swap target was accepted';
+    get diagnostics v_rows=row_count;
+
+    -- Si el usuario ya perdió acceso de plataforma, RLS oculta la fila y
+    -- el UPDATE afecta 0 registros. Si todavía llega al trigger, el helper
+    -- server-side debe rechazarlo por elegibilidad. Ambos caminos son válidos.
+    if v_rows<>0 then
+      raise exception 'stale cleaning swap target mutated % row(s)',v_rows;
+    end if;
   exception
     when others then
       if position('target no longer occupies property' in sqlerrm)=0 then

@@ -156,13 +156,7 @@ Deno.serve(async(req)=>{
 
   const checklist=requests.map((r:any)=>{
     const p=byId.get(r.pattern_id) as any;
-    const captureUrl=new URL("./photo-camera.html",url);
-    captureUrl.searchParams.set("mode","verify");
-    captureUrl.searchParams.set("pattern_id",r.pattern_id);
-    captureUrl.searchParams.set("source_type","cleaning_task");
-    captureUrl.searchParams.set("source_id",task.id);
-    captureUrl.searchParams.set("purpose","cleaning");
-    captureUrl.searchParams.set("return_to",returnTarget);
+    const captureUrl=`./photo-camera.html?mode=verify&pattern_id=${encodeURIComponent(r.pattern_id)}&source_type=cleaning_task&source_id=${encodeURIComponent(task.id)}&purpose=cleaning&return_to=${encodeURIComponent(returnTarget)}`;
     return {
       request_id:r.id,
       kind:r.request_kind,
@@ -170,7 +164,7 @@ Deno.serve(async(req)=>{
       completed:Boolean(r.completed_at),
       completed_at:r.completed_at,
       pattern:{id:r.pattern_id,name:p?.name||"Zona",target_key:p?.target_key||null},
-      capture_url:readOnly?null:captureUrl.href
+      capture_url:readOnly?null:captureUrl
     };
   });
 

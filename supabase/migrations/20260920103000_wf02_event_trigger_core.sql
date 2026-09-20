@@ -730,6 +730,7 @@ declare
   v_execution_created_at timestamptz;
   v_created_new boolean;
   v_errors integer;
+  v_prior_status text;
   v_processed integer:=0;
   v_key text;
 begin
@@ -782,12 +783,13 @@ begin
         )
       order by a.id
     loop
-      if exists(
-        select 1
-        from public.workflow_event_dispatches_v2 d
-        where d.event_id=v_event.id
-          and d.application_id=v_app.application_id
-      ) then
+      select d.status
+      into v_prior_status
+      from public.workflow_event_dispatches_v2 d
+      where d.event_id=v_event.id
+        and d.application_id=v_app.application_id;
+
+      if v_prior_status='executed' then
         continue;
       end if;
 
@@ -810,7 +812,12 @@ begin
           event_id,application_id,execution_id,status
         ) values (
           v_event.id,v_app.application_id,v_execution_id,'executed'
-        );
+        )
+        on conflict(event_id,application_id) do update
+        set execution_id=excluded.execution_id,
+            status='executed',
+            error_code=null,
+            error_key=null;
 
         insert into public.audit_log_v2(
           organization_id,actor_user_id,action,entity_type,entity_id,result,details
@@ -833,27 +840,33 @@ begin
         ) values (
           v_event.id,v_app.application_id,'failed',sqlstate,left(sqlerrm,120)
         )
-        on conflict(event_id,application_id) do nothing;
+        on conflict(event_id,application_id) do update
+        set execution_id=null,
+            status='failed',
+            error_code=excluded.error_code,
+            error_key=excluded.error_key;
 
-        insert into public.audit_log_v2(
-          organization_id,actor_user_id,action,entity_type,entity_id,result,details
-        ) values (
-          v_event.organization_id,v_app.created_by,
-          'workflow_event_dispatch_failed','workflow_event',v_event.id::text,'failure',
-          jsonb_build_object(
-            'event_type',v_event.event_type,
-            'source_kind',v_event.source_kind,
-            'source_id',v_event.source_id,
-            'application_id',v_app.application_id,
-            'sqlstate',sqlstate
-          )
-        );
+        if v_prior_status is distinct from 'failed' then
+          insert into public.audit_log_v2(
+            organization_id,actor_user_id,action,entity_type,entity_id,result,details
+          ) values (
+            v_event.organization_id,v_app.created_by,
+            'workflow_event_dispatch_failed','workflow_event',v_event.id::text,'failure',
+            jsonb_build_object(
+              'event_type',v_event.event_type,
+              'source_kind',v_event.source_kind,
+              'source_id',v_event.source_id,
+              'application_id',v_app.application_id,
+              'sqlstate',sqlstate
+            )
+          );
+        end if;
       end;
     end loop;
 
     update public.workflow_event_outbox_v2
-    set status=case when v_errors>0 then 'processed_with_errors' else 'processed' end,
-        processed_at=now()
+    set status=case when v_errors>0 then 'pending' else 'processed' end,
+        processed_at=case when v_errors>0 then null else now() end
     where id=v_event.id;
 
     v_processed:=v_processed+1;
@@ -871,7 +884,7 @@ comment on table public.workflow_event_outbox_v2 is
 comment on table public.workflow_event_dispatches_v2 is
   'Recibo idempotente por evento y aplicación, enlazando el evento origen con la ejecución creada o el fallo de despacho.';
 comment on function private.process_pending_workflow_events_v1(integer) is
-  'Despacha eventos pendientes hacia el motor común; un fallo de una aplicación no revierte el evento de negocio ni otros despachos.';
+  'Despacha eventos pendientes hacia el motor común; éxitos quedan congelados y fallos se reintentan sin duplicar otras aplicaciones ni revertir el evento de negocio.';
 
 -- Mantener operativo el factory reset explícito de pruebas: las nuevas tablas
 -- participan en el mismo TRUNCATE para no bloquear el reset por FKs.

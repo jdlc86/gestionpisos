@@ -188,7 +188,13 @@ export async function mountNotificationCenter({supabase,session}={}){
   card.append(head,toolbar,list);
   dialog.append(card);
   document.body.append(dialog);
-  actions.append(root);
+
+  const homeAccount=actions.querySelector(":scope > #homeAccount");
+  if(homeAccount){
+    actions.insertBefore(root,homeAccount);
+  }else{
+    actions.append(root);
+  }
 
   let rows=[];
   let loading=false;

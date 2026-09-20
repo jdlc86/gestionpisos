@@ -272,10 +272,10 @@ begin
     select 1
     from public.workflow_event_outbox_v2 e
     where e.id=v_event_id
-      and e.status='processed_with_errors'
-      and e.processed_at is not null
+      and e.status='pending'
+      and e.processed_at is null
   ) then
-    raise exception 'event with one failed application did not preserve partial result';
+    raise exception 'event with one failed application was not left pending for retry';
   end if;
 
   select e.id into v_good_execution
@@ -332,16 +332,72 @@ begin
 end;
 $dispatch_results$;
 
-do $idempotency$
+-- El fallo se vuelve elegible después. El siguiente intento debe crear solo
+-- la ejecución que faltaba y conservar intacta la ya creada.
+insert into auth.users(id)
+values(current_setting('wf02.bad_user')::uuid);
+
+insert into public.profiles(user_id,organization_id,display_name,status)
+values(
+  current_setting('wf02.bad_user')::uuid,
+  current_setting('wf02.org')::uuid,
+  'WF02 retry employee',
+  'active'
+);
+
+insert into public.user_roles(user_id,organization_id,role)
+values(
+  current_setting('wf02.bad_user')::uuid,
+  current_setting('wf02.org')::uuid,
+  'employee'
+);
+
+insert into public.property_staff_access_v3(
+  organization_id,property_id,employee_user_id,assignment_type,can_write,granted_by
+) values (
+  current_setting('wf02.org')::uuid,
+  current_setting('wf02.property')::uuid,
+  current_setting('wf02.bad_user')::uuid,
+  'access',
+  false,
+  current_setting('wf02.root')::uuid
+);
+
+select private.process_pending_workflow_events_v1(50);
+
+do $retry_and_idempotency$
 declare
   v_event_id uuid;
   v_same_event uuid;
-  v_count integer;
+  v_good_count integer;
+  v_bad_count integer;
 begin
   select id into v_event_id
   from public.workflow_event_outbox_v2
   where source_id=current_setting('wf02.occupancy')::uuid
     and event_type='occupancy.created';
+
+  if not exists(
+    select 1
+    from public.workflow_event_outbox_v2 e
+    where e.id=v_event_id
+      and e.status='processed'
+      and e.processed_at is not null
+  ) then
+    raise exception 'retried event did not converge to processed';
+  end if;
+
+  if not exists(
+    select 1
+    from public.workflow_event_dispatches_v2 d
+    where d.event_id=v_event_id
+      and d.application_id=current_setting('wf02.bad_app')::uuid
+      and d.execution_id is not null
+      and d.status='executed'
+      and d.error_code is null
+  ) then
+    raise exception 'failed dispatch did not recover on retry';
+  end if;
 
   v_same_event:=private.workflow_enqueue_event_v1(
     current_setting('wf02.org')::uuid,
@@ -365,16 +421,21 @@ begin
     raise exception 'already processed event was dispatched twice';
   end if;
 
-  select count(*) into v_count
+  select count(*) into v_good_count
   from public.workflow_executions_v2 e
   where e.application_id=current_setting('wf02.good_app')::uuid
     and e.idempotency_key='event:'||v_event_id::text;
 
-  if v_count<>1 then
-    raise exception 'event idempotency created duplicate executions';
+  select count(*) into v_bad_count
+  from public.workflow_executions_v2 e
+  where e.application_id=current_setting('wf02.bad_app')::uuid
+    and e.idempotency_key='event:'||v_event_id::text;
+
+  if v_good_count<>1 or v_bad_count<>1 then
+    raise exception 'event retry duplicated or missed an execution';
   end if;
 end;
-$idempotency$;
+$retry_and_idempotency$;
 
 do $privileges$
 begin

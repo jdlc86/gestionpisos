@@ -4,6 +4,16 @@
 
 begin;
 
+-- Supabase grants authenticated table privileges outside the migration files.
+-- The isolated PostgreSQL harness needs the minimum equivalent grants so this
+-- regression can exercise RLS rather than fail earlier at table ACL level.
+grant select on table
+  public.occupancies_v2,
+  public.tenants_v2,
+  public.tenant_tasks_v2,
+  public.user_roles
+to authenticated;
+
 select set_config('gestionpisos.offboard.org','11111111-1111-4111-8111-111111111111',true);
 select set_config('gestionpisos.offboard.root','22222222-2222-4222-8222-222222222222',true);
 select set_config('gestionpisos.offboard.owner',gen_random_uuid()::text,true);

@@ -174,7 +174,7 @@ grep -Fq 'id="photoBankLink"' docs/workflow-builder.html
 grep -Fq 'href="./photo-patterns.html?from=workflow-builder" hidden' docs/workflow-builder.html
 grep -Fq 'function updatePhotoResource()' docs/workflow-builder.js
 grep -Fq 'photoBankLink.hidden=!checked("stepPhoto")' docs/workflow-builder.js
-grep -Fq './workflow-builder.js?v=2026092001' docs/workflow-builder.html
+grep -Fq './workflow-builder.js?v=2026092002' docs/workflow-builder.html
 grep -Fq 'id="assignmentUserId"' docs/workflow-builder.html
 grep -Fq 'id="assignmentRole"' docs/workflow-builder.html
 grep -Fq 'function assignmentConfigurationComplete(data)' docs/workflow-builder.js
@@ -189,7 +189,7 @@ grep -Fq 'start_workflow_definition_revision_v1' docs/workflow-definitions.js
 ! grep -Fq 'Crear nueva versión' docs/workflow-definitions.js
 ! grep -Fq 'Continuar nueva versión' docs/workflow-definitions.js
 grep -Fq 'workflow-applications.html?definition=' docs/workflow-definitions.js
-grep -Fq './workflow-definitions.js?v=2026091923' docs/workflow-definitions.html
+grep -Fq './workflow-definitions.js?v=2026092001' docs/workflow-definitions.html
 grep -Fq './workflow-definitions.css?v=2026091912' docs/workflow-definitions.html
 grep -Fq 'Tus flujos terminados. Ejecuta, edita y elimina o archiva según exista historial.' docs/workflow-definitions.html
 ! grep -Fq 'Completar borrador' docs/workflow-definitions.js
@@ -202,7 +202,7 @@ grep -Fq 'rooms_v2' docs/workflow-applications.js
 grep -Fq 'occupancies_v2' docs/workflow-applications.js
 grep -Fq '.application-card [hidden]{display:none!important}' docs/workflow-applications.css
 grep -Fq './workflow-applications.css?v=2026091915' docs/workflow-applications.html
-grep -Fq './workflow-applications.js?v=2026092003' docs/workflow-applications.html
+grep -Fq './workflow-applications.js?v=2026092004' docs/workflow-applications.html
 grep -Fq '¿Dónde quieres utilizarlo?' docs/workflow-applications.html
 grep -Fq 'Definición → Versión publicada → Aplicación concreta' docs/WORKFLOW_APPLICATIONS_CONTRACT.md
 grep -Fq 'workflow_applications_v2' docs/WORKFLOW_APPLICATIONS_CONTRACT.md
@@ -396,7 +396,7 @@ grep -Fq 'const transientSetup=guidedSetup&&Boolean(handoffToken)' docs/workflow
 grep -Fq 'function consumeTransientHandoff()' docs/workflow-applications.js
 grep -Fq 'sessionStorage.removeItem(HANDOFF_KEY_PREFIX+handoffToken)' docs/workflow-applications.js
 grep -Fq 'renderTransientReady' docs/workflow-applications.js
-grep -Fq 'publish.textContent=automatic?"Programar":"Publicar"' docs/workflow-applications.js
+grep -Fq 'publish.textContent=eventDriven?"Activar":automatic?"Programar":"Publicar"' docs/workflow-applications.js
 grep -Fq 'execute.textContent="Ejecutar"' docs/workflow-applications.js
 grep -Fq 'discard.textContent="Descartar todo"' docs/workflow-applications.js
 grep -Fq 'changeTarget.textContent="Cambiar destino"' docs/workflow-applications.js
@@ -560,15 +560,15 @@ grep -Fq 'scheduledAtUtc:value("scheduledAtUtc")' docs/workflow-builder.js
 grep -Fq 'runAt>Date.now()' docs/workflow-builder.js
 grep -Fq 'Zona horaria · ' docs/workflow-builder.js
 grep -Fq 'function scheduledDisplay(spec)' docs/workflow-applications.js
-grep -Fq 'title.textContent=automatic?"Programación":"Decisión final"' docs/workflow-applications.js
-grep -Fq 'publish.textContent=automatic?"Programar":"Publicar"' docs/workflow-applications.js
+grep -Fq 'title.textContent=eventDriven?"Activación automática":automatic?"Programación":"Decisión final"' docs/workflow-applications.js
+grep -Fq 'publish.textContent=eventDriven?"Activar":automatic?"Programar":"Publicar"' docs/workflow-applications.js
 grep -Fq 'execute.hidden=automatic' docs/workflow-applications.js
 grep -Fq 'common.p_schedule_timezone=spec.scheduledTimezone||null' docs/workflow-applications.js
 grep -Fq 'common.p_schedule_assigned_user_id=' docs/workflow-applications.js
 grep -Fq 'Flujo programado.' docs/workflow-applications.js
 grep -Fq 'function isScheduledAutomatic(row)' docs/workflow-definitions.js
-grep -Fq 'if(!isScheduledAutomatic(row))' docs/workflow-definitions.js
-grep -Fq 'Los flujos seleccionados de Fecha concreta se ejecutarán automáticamente' docs/workflow-definitions.js
+grep -Fq 'if(canExecuteNow(row))' docs/workflow-definitions.js
+grep -Fq 'Los flujos seleccionados son automáticos: los programados se ejecutarán por fecha y los de evento cuando ocurra su evento.' docs/workflow-definitions.js
 grep -Fq 'Ejecución automática' docs/workflow-definitions.js
 grep -Fq 'scheduledDateTime(spec)' docs/workflow-definitions.js
 grep -Fq 'workflow_schedule_blocked:"./workflow-definitions.html"' docs/notification-center.js
@@ -604,3 +604,22 @@ grep -Fq '"Necesita programación"' docs/workflow-definitions.js
 grep -Fq 'edit.textContent=needsSchedule?"Editar programación":"Editar"' docs/workflow-definitions.js
 grep -Fq 'edit.textContent=needsSchedule?"Continuar programación":"Editar"' docs/workflow-definitions.js
 grep -Fq 'else if(!needsSchedule)' docs/workflow-definitions.js
+
+# WF-02: evento explícito, activación automática y sin ejecución manual.
+grep -Fq 'id="eventTypeRow"' docs/workflow-builder.html
+grep -Fq 'value="occupancy.created">Nueva ocupación creada</option>' docs/workflow-builder.html
+grep -Fq 'eventType:value("eventType")' docs/workflow-builder.js
+grep -Fq 'data.triggerType==="event"&&data.assignmentType==="manual"' docs/workflow-builder.js
+grep -Fq 'manualOption.disabled=eventDriven' docs/workflow-builder.js
+grep -Fq 'return "Por evento · "+label("eventType",data.eventType)' docs/workflow-builder.js
+grep -Fq 'function eventDisplay(spec)' docs/workflow-applications.js
+grep -Fq 'Activo · esperando ' docs/workflow-applications.js
+grep -Fq 'function isEventDriven(row)' docs/workflow-definitions.js
+grep -Fq 'function canExecuteNow(row)' docs/workflow-definitions.js
+grep -Fq 'Activo · esperando evento' docs/workflow-definitions.js
+test -s supabase/migrations/20260920103000_wf02_event_trigger_core.sql
+test -s supabase/migrations/20260920103100_wf02_event_trigger_cron.sql
+test -s tests/workflow-event-trigger-regression.sql
+grep -Fq '20260920103000_wf02_event_trigger_core.sql' tests/database-regression-v2.sh
+grep -Fq 'workflow-event-trigger-regression.sql' tests/database-regression-v2.sh
+

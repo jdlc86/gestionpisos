@@ -40,9 +40,9 @@ create function storage.foldername(name text)
 returns text[]
 language sql
 immutable
-as $
+as $foldername$
   select string_to_array(name, '/');
-$;
+$foldername$;
 
 create function auth.jwt()
 returns jsonb

@@ -30,7 +30,7 @@ grep -Fq 'auth_metadata_synced' docs/activate-external-account.js
 grep -Fq 'get_my_external_account_onboarding' docs/auth-guard.js
 grep -Fq 'activate-external-account.html' docs/auth-guard.js
 
-grep -Fq 'portfolio-onboarding.js?v=2026091803' docs/portfolio.html
+grep -Fq 'portfolio-onboarding.js?v=2026092001' docs/portfolio.html
 grep -Fq 'Guardar y enviar bienvenida' docs/portfolio.html
 grep -Fq 'Bienvenida del propietario' docs/portfolio-onboarding.js
 grep -Fq 'Enviar bienvenida' docs/portfolio-onboarding.js
@@ -65,6 +65,12 @@ grep -Fq 'can_operate_property_v3' supabase/functions/send-external-welcome/inde
 ! grep -Fq 'password:' supabase/functions/send-external-welcome/index.ts
 grep -Fq 'disableAndRevokeExternalOnboarding' supabase/functions/send-external-welcome/index.ts
 grep -Fq 'external_stale_onboarding_revoke_failed' supabase/functions/send-external-welcome/index.ts
+grep -Fq 'ban_duration: "none"' supabase/functions/send-external-welcome/index.ts
+grep -Fq 'restore_tenant_platform_access_v1' supabase/functions/send-external-welcome/index.ts
+grep -Fq 'restored_identity: true' supabase/functions/send-external-welcome/index.ts
+grep -Fq 'tenant_auth_reactivation_started' supabase/functions/send-external-welcome/index.ts
+grep -Fq 'tenant_auth_reactivated' supabase/functions/send-external-welcome/index.ts
+grep -Fq 'Acceso reactivado.' docs/portfolio-onboarding.js
 grep -Fq 'admin.auth.admin.deleteUser(input.authUserId, true)' supabase/functions/_shared/external-onboarding-revocation.ts
 grep -Fq 'revoke_external_account_onboarding_v1' supabase/functions/_shared/external-onboarding-revocation.ts
 grep -Fq 'disableAndRevokeExternalOnboarding' supabase/functions/revoke-external-welcome/index.ts

@@ -834,10 +834,10 @@ begin
     order by a.review_deadline,a.id
     for update skip locked
   loop
-    update public.cleaning_audit_items_v2
+    update public.cleaning_audit_items_v2 as item
     set result='review_expired'
-    where audit_id=v_audit_id
-      and result='pending';
+    where item.audit_id=v_audit_id
+      and item.result='pending';
 
     get diagnostics v_expired=row_count;
 

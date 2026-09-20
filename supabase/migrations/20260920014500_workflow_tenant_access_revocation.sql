@@ -15,7 +15,6 @@ as $$
 declare
   v_actor uuid:=auth.uid();
   v_execution public.workflow_executions_v2;
-  v_is_linked_tenant boolean:=false;
 begin
   if v_actor is null or p_execution_id is null then
     return false;
@@ -26,81 +25,125 @@ begin
   from public.workflow_executions_v2
   where id=p_execution_id;
 
-  if v_execution.id is null then
+  if v_execution.id is null
+    or v_execution.assigned_user_id is distinct from v_actor then
     return false;
   end if;
 
-  -- ROOT/ADMIN conservan acceso administrativo aunque la misma cuenta hubiera
-  -- tenido previamente una relación personal con la ocupación.
-  if public.workflow_can_read_definitions_v1(v_execution.organization_id) then
-    return true;
+  -- Asignación automática al responsable: debe seguir siendo el responsable
+  -- operativo vigente del piso. Si se transfiere la responsabilidad, la tarea
+  -- histórica permanece pero el antiguo responsable deja de actuar sobre ella.
+  if v_execution.assignment_type='property_responsible' then
+    return exists(
+      select 1
+      from public.property_staff_access_v3 a
+      join public.user_roles ur
+        on ur.user_id=a.employee_user_id
+       and ur.organization_id=v_execution.organization_id
+       and ur.role in ('admin','employee')
+       and ur.revoked_at is null
+      join public.profiles p
+        on p.user_id=a.employee_user_id
+       and p.status='active'
+       and p.archived_at is null
+      where a.property_id=v_execution.property_id
+        and a.employee_user_id=v_actor
+        and a.assignment_type='responsible'
+        and a.can_write=true
+        and a.revoked_at is null
+        and (a.valid_until is null or a.valid_until>now())
+    );
   end if;
 
-  -- Un empleado activo asignado conserva el contrato operativo existente.
-  if v_execution.assigned_user_id=v_actor
-    and exists(
+  if v_execution.assignment_type<>'manual' then
+    return false;
+  end if;
+
+  -- Organización: solo personal interno activo. ROOT administra, no ejecuta.
+  if v_execution.scope_type='organization' then
+    return exists(
       select 1
       from public.user_roles ur
+      join public.profiles p on p.user_id=ur.user_id
       where ur.user_id=v_actor
         and ur.organization_id=v_execution.organization_id
-        and ur.role='employee'
+        and ur.role in ('admin','employee')
         and ur.revoked_at is null
-    ) then
-    return true;
+        and p.status='active'
+        and p.archived_at is null
+    );
   end if;
 
-  -- Un propietario activo asignado no queda sometido por accidente a la
-  -- vigencia de una ocupación si una cuenta acumula relaciones históricas.
-  if v_execution.assigned_user_id=v_actor
+  -- Piso/Habitación: personal asociado actualmente al piso.
+  if v_execution.scope_type in ('property','room')
     and exists(
       select 1
-      from public.owners o
-      where o.user_id=v_actor
-        and o.organization_id=v_execution.organization_id
-        and o.status='active'
-    ) then
+      from public.property_staff_access_v3 a
+      join public.user_roles ur
+        on ur.user_id=a.employee_user_id
+       and ur.organization_id=v_execution.organization_id
+       and ur.role in ('admin','employee')
+       and ur.revoked_at is null
+      join public.profiles p
+        on p.user_id=a.employee_user_id
+       and p.status='active'
+       and p.archived_at is null
+      where a.property_id=v_execution.property_id
+        and a.employee_user_id=v_actor
+        and a.assignment_type in ('responsible','access')
+        and a.revoked_at is null
+        and (a.valid_until is null or a.valid_until>now())
+    )
+  then
     return true;
   end if;
 
-  if v_execution.scope_type='occupancy'
-    and v_execution.occupancy_id is not null then
-
-    select exists(
+  -- Piso/Habitación: el inquilino debe seguir viviendo dentro del destino.
+  if v_execution.scope_type in ('property','room') then
+    return exists(
       select 1
       from public.occupancies_v2 o
-      left join public.tenants_v2 t
+      join public.tenants_v2 t
+        on t.id=o.tenant_id
+       and t.organization_id=o.organization_id
+      where o.organization_id=v_execution.organization_id
+        and o.property_id=v_execution.property_id
+        and (v_execution.scope_type<>'room' or o.room_id=v_execution.room_id)
+        and o.status='active'
+        and o.starts_on is not null
+        and o.starts_on<=current_date
+        and (o.ends_on is null or o.ends_on>=current_date)
+        and o.user_id=v_actor
+        and t.user_id=v_actor
+        and t.status='active'
+        and t.archived_at is null
+    );
+  end if;
+
+  -- Ocupación/Inquilino: solo el inquilino activo exacto del destino.
+  if v_execution.scope_type='occupancy'
+    and v_execution.occupancy_id is not null then
+    return exists(
+      select 1
+      from public.occupancies_v2 o
+      join public.tenants_v2 t
         on t.id=o.tenant_id
        and t.organization_id=o.organization_id
       where o.id=v_execution.occupancy_id
         and o.organization_id=v_execution.organization_id
-        and (o.user_id=v_actor or t.user_id=v_actor)
-    )
-    into v_is_linked_tenant;
-
-    if v_is_linked_tenant then
-      return exists(
-        select 1
-        from public.occupancies_v2 o
-        join public.tenants_v2 t
-          on t.id=o.tenant_id
-         and t.organization_id=o.organization_id
-        where o.id=v_execution.occupancy_id
-          and o.organization_id=v_execution.organization_id
-          and o.property_id=v_execution.property_id
-          and o.status='active'
-          and o.starts_on is not null
-          and o.starts_on<=current_date
-          and (o.ends_on is null or o.ends_on>=current_date)
-          and o.user_id=v_actor
-          and t.user_id=v_actor
-          and t.status='active'
-          and t.archived_at is null
-      );
-    end if;
+        and o.property_id=v_execution.property_id
+        and o.status='active'
+        and o.starts_on is not null
+        and o.starts_on<=current_date
+        and (o.ends_on is null or o.ends_on>=current_date)
+        and o.user_id=v_actor
+        and t.user_id=v_actor
+        and t.status='active'
+        and t.archived_at is null
+    );
   end if;
 
-  -- Para actores no-tenants se conserva el contrato de asignación existente.
-  return v_execution.assigned_user_id=v_actor;
+  return false;
 end;
 $$;
 

@@ -838,7 +838,7 @@ async function loadOccupanciesFor(propertyId){
   if(!propertyId)return;
   const {data,error}=await supabase
     .from("occupancies_v2")
-    .select("id,property_id,room_id,occupant_email,starts_on,ends_on,status,tenants_v2(full_name,email)")
+    .select("id,property_id,room_id,occupant_email,starts_on,ends_on,status,user_id,tenant_id,tenants_v2(user_id,full_name,email,status)")
     .eq("property_id",propertyId)
     .eq("status","active")
     .order("starts_on",{ascending:false});
@@ -1055,7 +1055,7 @@ function executionLabel(execution){
 }
 function candidateLabel(person){
   const roles=Array.isArray(person.roles)?person.roles:[];
-  const role=roles.includes("admin")?"ADMIN":roles.includes("employee")?"EMPLEADO":roles.includes("root")?"ROOT":"USUARIO";
+  const role=roles.includes("admin")?"ADMIN":roles.includes("employee")?"EMPLEADO":roles.includes("root")?"ROOT":roles.includes("tenant")?"INQUILINO":"USUARIO";
   return (person.display_name||person.email||"Usuario")+" · "+role;
 }
 function executionCandidates(app){
@@ -1096,6 +1096,28 @@ function executionCandidates(app){
     candidates.push(person);
     seen.add(person.user_id);
   });
+
+  if(app.scope_type==="occupancy"&&app.occupancy_id){
+    const occupancy=occupancies.find(item=>item.id===app.occupancy_id)||null;
+    const tenant=occupancy?.tenants_v2||null;
+    const tenantUserId=tenant?.user_id||null;
+    const sameIdentity=Boolean(
+      tenantUserId
+      && occupancy?.user_id===tenantUserId
+      && tenant?.status==="active"
+      && occupancyIsCurrent(occupancy)
+    );
+    if(sameIdentity&&!seen.has(tenantUserId)){
+      candidates.push({
+        user_id:tenantUserId,
+        display_name:tenant.full_name||tenant.email||"Inquilino",
+        email:tenant.email||occupancy.occupant_email||"",
+        roles:["tenant"]
+      });
+      seen.add(tenantUserId);
+    }
+  }
+
   return candidates;
 }
 function requestKey(appId){
@@ -1661,7 +1683,7 @@ async function loadApplications(){
   }
   const occupancyIds=[...new Set(applications.map(x=>x.occupancy_id).filter(Boolean))];
   if(occupancyIds.length){
-    const {data}=await supabase.from("occupancies_v2").select("id,property_id,room_id,occupant_email,starts_on,ends_on,status,tenants_v2(full_name,email)").in("id",occupancyIds);
+    const {data}=await supabase.from("occupancies_v2").select("id,property_id,room_id,occupant_email,starts_on,ends_on,status,user_id,tenant_id,tenants_v2(user_id,full_name,email,status)").in("id",occupancyIds);
     (data||[]).forEach(item=>{if(!occupancies.some(existing=>existing.id===item.id))occupancies.push(item)});
   }
   renderApplications();

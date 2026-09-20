@@ -60,13 +60,10 @@ begin
       and exists(
         select 1
         from public.user_roles ur
-        join public.profiles p on p.user_id=ur.user_id
         where ur.user_id=p_requested_user_id
           and ur.organization_id=v_org
           and ur.role in ('admin','employee')
           and ur.revoked_at is null
-          and p.status='active'
-          and p.archived_at is null
       )
     then
       v_assigned_user:=p_requested_user_id;
@@ -84,10 +81,6 @@ begin
          and ur.organization_id=v_org
          and ur.role in ('admin','employee')
          and ur.revoked_at is null
-        join public.profiles p
-          on p.user_id=a.employee_user_id
-         and p.status='active'
-         and p.archived_at is null
         where a.property_id=v_property_id
           and a.employee_user_id=p_requested_user_id
           and a.assignment_type in ('responsible','access')

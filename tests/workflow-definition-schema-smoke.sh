@@ -30,6 +30,7 @@ web_push='supabase/migrations/20260919203000_web_push_notifications.sql'
 task_card_removal='supabase/migrations/20260919210000_task_card_removal.sql'
 task_personal_hiding='supabase/migrations/20260919213000_task_personal_hiding.sql'
 tenant_assignee='supabase/migrations/20260920010000_workflow_occupancy_tenant_assignee.sql'
+tenant_access_revocation='supabase/migrations/20260920014500_workflow_tenant_access_revocation.sql'
 scheduled_cron='supabase/migrations/20260919190100_workflow_schedule_cron.sql'
 checklist='supabase/migrations/20260919103000_workflow_checklist_step.sql'
 
@@ -62,6 +63,7 @@ test -s "$web_push"
 test -s "$task_card_removal"
 test -s "$task_personal_hiding"
 test -s "$tenant_assignee"
+test -s "$tenant_access_revocation"
 test -s "$scheduled_cron"
 test -s tests/workflow-notifications-regression.sql
 test -s tests/workflow-scheduled-once-regression.sql
@@ -429,6 +431,24 @@ grep -Fq "t.status='active'" "$tenant_assignee"
 grep -Fq "o.status='active'" "$tenant_assignee"
 grep -Fq 'workflow_manual_assignee_not_eligible' "$tenant_assignee"
 grep -Fq 'revoke all on function private.workflow_resolve_execution_assignee_v1(uuid,uuid)' "$tenant_assignee"
+
+# Un tenant asignado se revalida durante toda la vida operativa del workflow.
+grep -Fq 'create or replace function public.workflow_execution_actor_current_v1' "$tenant_access_revocation"
+grep -Fq "v_execution.scope_type='occupancy'" "$tenant_access_revocation"
+grep -Fq "o.status='active'" "$tenant_access_revocation"
+grep -Fq "t.status='active'" "$tenant_access_revocation"
+grep -Fq 'workflow_assignee_access_revoked' "$tenant_access_revocation"
+grep -Fq 'drop policy if exists workflow_executions_v2_read_authorized' "$tenant_access_revocation"
+grep -Fq 'drop policy if exists tenant_tasks_v2_assignee_read' "$tenant_access_revocation"
+grep -Fq 'drop policy if exists tenant_tasks_v2_tenant_read' "$tenant_access_revocation"
+grep -Fq 'drop policy if exists tenant_task_actions_v2_workflow_actor_gate' "$tenant_access_revocation"
+grep -Fq 'alter function public.apply_workflow_task_action_v1(uuid,text,text,text)' "$tenant_access_revocation"
+grep -Fq 'alter function public.set_workflow_checklist_item_v1(uuid,text,boolean,text)' "$tenant_access_revocation"
+grep -Fq 'alter function public.prepare_workflow_document_upload_v1(uuid,text,text,bigint,text)' "$tenant_access_revocation"
+grep -Fq 'alter function public.submit_workflow_document_v1(uuid,text)' "$tenant_access_revocation"
+grep -Fq 'alter function public.start_workflow_photo_verification_v1(uuid)' "$tenant_access_revocation"
+grep -Fq 'alter function public.submit_workflow_photo_verification_v1(uuid,uuid,text)' "$tenant_access_revocation"
+grep -Fq 'grant execute on function public.workflow_execution_actor_current_v1(uuid)' "$tenant_access_revocation"
 
 # Ocultamiento personal de Tareas: preferencia privada, sin borrar la tarea global.
 grep -Fq 'create table if not exists public.tenant_task_personal_hidden_v1' "$task_personal_hiding"

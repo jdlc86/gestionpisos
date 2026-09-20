@@ -1639,6 +1639,470 @@ begin
 end;
 $rejected_domain_state$;
 
+-- Swap/deuda: segundo ocupante activo del mismo piso.
+select set_config('wf03.swap_target_user',gen_random_uuid()::text,true);
+select set_config('wf03.swap_target_tenant',gen_random_uuid()::text,true);
+select set_config('wf03.swap_room',gen_random_uuid()::text,true);
+select set_config('wf03.swap_target_occupancy',gen_random_uuid()::text,true);
+
+insert into auth.users(id)
+values(current_setting('wf03.swap_target_user')::uuid);
+
+insert into public.user_roles(user_id,organization_id,role)
+values(
+  current_setting('wf03.swap_target_user')::uuid,
+  current_setting('wf03.org')::uuid,
+  'tenant'
+);
+
+insert into public.rooms_v2(id,property_id,label,status)
+values(
+  current_setting('wf03.swap_room')::uuid,
+  current_setting('wf03.property')::uuid,
+  'WF03 swap room',
+  'active'
+);
+
+insert into public.tenants_v2(
+  id,organization_id,user_id,full_name,document_type,document_number,email,status
+) values (
+  current_setting('wf03.swap_target_tenant')::uuid,
+  current_setting('wf03.org')::uuid,
+  current_setting('wf03.swap_target_user')::uuid,
+  'WF03 swap target',
+  'other',
+  'WF03-SWAP-TARGET',
+  'wf03-swap-target@example.invalid',
+  'active'
+);
+
+insert into public.occupancies_v2(
+  id,organization_id,property_id,room_id,occupant_email,
+  starts_on,ends_on,status,user_id,tenant_id
+) values (
+  current_setting('wf03.swap_target_occupancy')::uuid,
+  current_setting('wf03.org')::uuid,
+  current_setting('wf03.property')::uuid,
+  current_setting('wf03.swap_room')::uuid,
+  'wf03-swap-target@example.invalid',
+  current_date-2,
+  null,
+  'active',
+  current_setting('wf03.swap_target_user')::uuid,
+  current_setting('wf03.swap_target_tenant')::uuid
+);
+
+-- Positivo: aceptar el swap de una limpieza workflow pendiente equivale a asumirla.
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf03.root'),
+  'role','authenticated',
+  'aal','aal2'
+)::text,true);
+
+do $create_swap_execution$
+declare
+  v_result record;
+begin
+  select * into v_result
+  from public.execute_workflow_application_now_v1(
+    current_setting('wf03.cleaning_app')::uuid,
+    'wf03-cleaning-swap-execution',
+    null
+  )
+  limit 1;
+
+  if v_result.execution_id is null then
+    raise exception 'swap cleaning execution was not created';
+  end if;
+
+  perform set_config('wf03.swap_execution',v_result.execution_id::text,true);
+end;
+$create_swap_execution$;
+
+reset role;
+
+select set_config('wf03.swap_task',(
+  select id::text
+  from public.tenant_tasks_v2
+  where source_kind='workflow_execution'
+    and source_id=current_setting('wf03.swap_execution')::uuid
+),true);
+
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf03.tenant_user'),
+  'role','authenticated',
+  'aal','aal1'
+)::text,true);
+
+do $request_swap$
+declare
+  v_swap_id uuid;
+begin
+  insert into public.cleaning_swap_requests_v2(
+    cleaning_task_id,requester_user_id,target_user_id,status
+  ) values (
+    (
+      select id
+      from public.cleaning_tasks_v2
+      where workflow_execution_id=current_setting('wf03.swap_execution')::uuid
+    ),
+    current_setting('wf03.tenant_user')::uuid,
+    current_setting('wf03.swap_target_user')::uuid,
+    'pending'
+  )
+  returning id into v_swap_id;
+
+  perform set_config('wf03.swap_request',v_swap_id::text,true);
+end;
+$request_swap$;
+
+reset role;
+
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf03.swap_target_user'),
+  'role','authenticated',
+  'aal','aal1'
+)::text,true);
+
+update public.cleaning_swap_requests_v2
+set status='accepted'
+where id=current_setting('wf03.swap_request')::uuid;
+
+reset role;
+
+do $accepted_swap_synchronizes_all$
+begin
+  if not exists(
+    select 1
+    from public.cleaning_swap_requests_v2
+    where id=current_setting('wf03.swap_request')::uuid
+      and status='accepted'
+      and decided_by=current_setting('wf03.swap_target_user')::uuid
+      and decided_at is not null
+  ) then
+    raise exception 'accepted cleaning swap did not persist decision identity';
+  end if;
+
+  if not exists(
+    select 1
+    from public.cleaning_tasks_v2
+    where workflow_execution_id=current_setting('wf03.swap_execution')::uuid
+      and assigned_user_id=current_setting('wf03.swap_target_user')::uuid
+      and status='accepted'
+  ) or not exists(
+    select 1
+    from public.workflow_executions_v2
+    where id=current_setting('wf03.swap_execution')::uuid
+      and assigned_user_id=current_setting('wf03.swap_target_user')::uuid
+      and status='active'
+      and started_at is not null
+  ) or not exists(
+    select 1
+    from public.tenant_tasks_v2
+    where id=current_setting('wf03.swap_task')::uuid
+      and assigned_user_id=current_setting('wf03.swap_target_user')::uuid
+      and status='active'
+  ) then
+    raise exception 'accepted cleaning swap diverged domain/workflow/task assignment or state';
+  end if;
+
+  if (
+    select count(*)
+    from public.cleaning_debts_v2
+    where swap_request_id=current_setting('wf03.swap_request')::uuid
+      and debtor_user_id=current_setting('wf03.tenant_user')::uuid
+      and creditor_user_id=current_setting('wf03.swap_target_user')::uuid
+      and amount=1
+      and status='open'
+  )<>1 then
+    raise exception 'accepted workflow cleaning swap did not create exactly one unit debt';
+  end if;
+
+  if (
+    select count(*)
+    from public.workflow_execution_events_v2
+    where execution_id=current_setting('wf03.swap_execution')::uuid
+      and event_type='domain_adapter_assignee_changed'
+      and actor_user_id=current_setting('wf03.swap_target_user')::uuid
+      and details->>'swap_request_id'=current_setting('wf03.swap_request')
+      and details->>'from_assigned_user_id'=current_setting('wf03.tenant_user')
+      and details->>'to_assigned_user_id'=current_setting('wf03.swap_target_user')
+  )<>1 then
+    raise exception 'accepted workflow cleaning swap did not record assignee transfer once';
+  end if;
+
+  if (
+    select count(*)
+    from public.tenant_task_history_v2
+    where task_id=current_setting('wf03.swap_task')::uuid
+      and action_key='cleaning_swap_accepted'
+  )<>1 then
+    raise exception 'accepted workflow cleaning swap did not record task history once';
+  end if;
+end;
+$accepted_swap_synchronizes_all$;
+
+-- Reintento interno: mismo swap aceptado no duplica deuda ni historial.
+do $accepted_swap_retry$
+declare
+  v_result jsonb;
+begin
+  v_result:=private.workflow_apply_cleaning_swap_accept_v1(
+    current_setting('wf03.swap_request')::uuid,
+    current_setting('wf03.swap_target_user')::uuid
+  );
+
+  if coalesce((v_result->>'applied_new')::boolean,true)
+    or v_result->>'assigned_user_id'<>current_setting('wf03.swap_target_user')
+    or v_result->>'execution_status'<>'active' then
+    raise exception 'cleaning swap internal retry was not idempotent';
+  end if;
+
+  if (
+    select count(*)
+    from public.cleaning_debts_v2
+    where swap_request_id=current_setting('wf03.swap_request')::uuid
+  )<>1 or (
+    select count(*)
+    from public.workflow_execution_events_v2
+    where execution_id=current_setting('wf03.swap_execution')::uuid
+      and event_type='domain_adapter_assignee_changed'
+      and details->>'swap_request_id'=current_setting('wf03.swap_request')
+  )<>1 or (
+    select count(*)
+    from public.tenant_task_history_v2
+    where task_id=current_setting('wf03.swap_task')::uuid
+      and action_key='cleaning_swap_accepted'
+  )<>1 then
+    raise exception 'cleaning swap retry duplicated debt/event/history';
+  end if;
+end;
+$accepted_swap_retry$;
+
+-- Negativo: la elegibilidad del objetivo se revalida al aceptar, no solo al solicitar.
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf03.root'),
+  'role','authenticated',
+  'aal','aal2'
+)::text,true);
+
+do $create_swap_negative_execution$
+declare
+  v_result record;
+begin
+  select * into v_result
+  from public.execute_workflow_application_now_v1(
+    current_setting('wf03.cleaning_app')::uuid,
+    'wf03-cleaning-swap-negative-execution',
+    null
+  )
+  limit 1;
+
+  perform set_config('wf03.swap_negative_execution',v_result.execution_id::text,true);
+end;
+$create_swap_negative_execution$;
+
+reset role;
+
+select set_config('wf03.swap_negative_task',(
+  select id::text
+  from public.tenant_tasks_v2
+  where source_kind='workflow_execution'
+    and source_id=current_setting('wf03.swap_negative_execution')::uuid
+),true);
+
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf03.tenant_user'),
+  'role','authenticated',
+  'aal','aal1'
+)::text,true);
+
+do $request_swap_negative$
+declare
+  v_swap_id uuid;
+begin
+  insert into public.cleaning_swap_requests_v2(
+    cleaning_task_id,requester_user_id,target_user_id,status
+  ) values (
+    (
+      select id
+      from public.cleaning_tasks_v2
+      where workflow_execution_id=current_setting('wf03.swap_negative_execution')::uuid
+    ),
+    current_setting('wf03.tenant_user')::uuid,
+    current_setting('wf03.swap_target_user')::uuid,
+    'pending'
+  )
+  returning id into v_swap_id;
+
+  perform set_config('wf03.swap_negative_request',v_swap_id::text,true);
+end;
+$request_swap_negative$;
+
+reset role;
+
+-- Entre solicitud y aceptación el ocupante objetivo deja de ser elegible.
+update public.occupancies_v2
+set ends_on=current_date-1
+where id=current_setting('wf03.swap_target_occupancy')::uuid;
+
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf03.swap_target_user'),
+  'role','authenticated',
+  'aal','aal1'
+)::text,true);
+
+do $reject_stale_swap_target$
+begin
+  begin
+    update public.cleaning_swap_requests_v2
+    set status='accepted'
+    where id=current_setting('wf03.swap_negative_request')::uuid;
+
+    raise exception 'stale cleaning swap target was accepted';
+  exception
+    when others then
+      if position('target no longer occupies property' in sqlerrm)=0 then
+        raise;
+      end if;
+  end;
+end;
+$reject_stale_swap_target$;
+
+reset role;
+
+do $stale_swap_left_states_untouched$
+begin
+  if not exists(
+    select 1
+    from public.cleaning_swap_requests_v2
+    where id=current_setting('wf03.swap_negative_request')::uuid
+      and status='pending'
+      and decided_at is null
+      and decided_by is null
+  ) or not exists(
+    select 1
+    from public.cleaning_tasks_v2
+    where workflow_execution_id=current_setting('wf03.swap_negative_execution')::uuid
+      and assigned_user_id=current_setting('wf03.tenant_user')::uuid
+      and status='pending'
+  ) or not exists(
+    select 1
+    from public.workflow_executions_v2
+    where id=current_setting('wf03.swap_negative_execution')::uuid
+      and assigned_user_id=current_setting('wf03.tenant_user')::uuid
+      and status='pending'
+  ) or not exists(
+    select 1
+    from public.tenant_tasks_v2
+    where id=current_setting('wf03.swap_negative_task')::uuid
+      and assigned_user_id=current_setting('wf03.tenant_user')::uuid
+      and status='pending'
+  ) then
+    raise exception 'failed swap acceptance partially mutated linked state';
+  end if;
+
+  if exists(
+    select 1
+    from public.cleaning_debts_v2
+    where swap_request_id=current_setting('wf03.swap_negative_request')::uuid
+  ) or exists(
+    select 1
+    from public.workflow_execution_events_v2
+    where execution_id=current_setting('wf03.swap_negative_execution')::uuid
+      and event_type='domain_adapter_assignee_changed'
+  ) then
+    raise exception 'failed swap acceptance created debt or workflow event';
+  end if;
+end;
+$stale_swap_left_states_untouched$;
+
+-- Restaurar elegibilidad y verificar que el camino legacy sigue intacto.
+update public.occupancies_v2
+set ends_on=null
+where id=current_setting('wf03.swap_target_occupancy')::uuid;
+
+select set_config('wf03.legacy_cleaning',gen_random_uuid()::text,true);
+
+insert into public.cleaning_tasks_v2(
+  id,organization_id,property_id,assigned_user_id,task_date,status,verification_mode
+) values (
+  current_setting('wf03.legacy_cleaning')::uuid,
+  current_setting('wf03.org')::uuid,
+  current_setting('wf03.property')::uuid,
+  current_setting('wf03.tenant_user')::uuid,
+  current_date,
+  'pending',
+  'manual'
+);
+
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf03.tenant_user'),
+  'role','authenticated',
+  'aal','aal1'
+)::text,true);
+
+do $legacy_swap_request$
+declare
+  v_swap_id uuid;
+begin
+  insert into public.cleaning_swap_requests_v2(
+    cleaning_task_id,requester_user_id,target_user_id,status
+  ) values (
+    current_setting('wf03.legacy_cleaning')::uuid,
+    current_setting('wf03.tenant_user')::uuid,
+    current_setting('wf03.swap_target_user')::uuid,
+    'pending'
+  )
+  returning id into v_swap_id;
+
+  perform set_config('wf03.legacy_swap_request',v_swap_id::text,true);
+end;
+$legacy_swap_request$;
+
+reset role;
+
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf03.swap_target_user'),
+  'role','authenticated',
+  'aal','aal1'
+)::text,true);
+
+update public.cleaning_swap_requests_v2
+set status='accepted'
+where id=current_setting('wf03.legacy_swap_request')::uuid;
+
+reset role;
+
+do $legacy_swap_preserved$
+begin
+  if not exists(
+    select 1
+    from public.cleaning_tasks_v2
+    where id=current_setting('wf03.legacy_cleaning')::uuid
+      and workflow_execution_id is null
+      and assigned_user_id=current_setting('wf03.swap_target_user')::uuid
+      and status='accepted'
+  ) or (
+    select count(*)
+    from public.cleaning_debts_v2
+    where swap_request_id=current_setting('wf03.legacy_swap_request')::uuid
+      and amount=1
+      and status='open'
+  )<>1 then
+    raise exception 'WF-03 broke the legacy cleaning swap/debt contract';
+  end if;
+end;
+$legacy_swap_preserved$;
+
 set local role authenticated;
 select set_config('request.jwt.claims',jsonb_build_object(
   'sub',current_setting('wf03.root'),
@@ -1738,6 +2202,14 @@ begin
     'EXECUTE'
   ) then
     raise exception 'service_role lost cleaning audit review bridge execution';
+  end if;
+
+  if has_function_privilege(
+    'authenticated',
+    'private.workflow_apply_cleaning_swap_accept_v1(uuid,uuid)',
+    'EXECUTE'
+  ) then
+    raise exception 'authenticated client gained direct cleaning swap adapter execution';
   end if;
 end;
 $private_adapter_privilege$;

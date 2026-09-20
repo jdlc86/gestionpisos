@@ -1611,12 +1611,13 @@ function assignedUserLabel(userId,app){
 }
 
 function renderGuidedReady(app){
-  if(executionIntent&&!guidedExecutionId){
+  const version=versionForApplication(app);
+  const eventDriven=String(version?.spec?.triggerType||"")==="event";
+  if(executionIntent&&!guidedExecutionId&&!eventDriven){
     renderExecutionAssist(app);
     return;
   }
 
-  const version=versionForApplication(app);
   const guidedExecution=guidedExecutionId
     ?executions.find(item=>item.id===guidedExecutionId&&item.application_id===app.id)||null
     :null;
@@ -1807,6 +1808,10 @@ async function loadApplications(){
 
 async function executeNow(app,assigneeId,button){
   const version=versionForApplication(app);
+  if(String(version?.spec?.triggerType||"")==="event"){
+    setStatus("Este flujo se ejecuta automáticamente cuando ocurre su evento.",true);
+    return;
+  }
   const assignmentType=String(version?.spec?.assignmentType||"");
   if(assignmentType==="manual"&&!assigneeId){
     setStatus("Selecciona quién realizará esta tarea.",true);

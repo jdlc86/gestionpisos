@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+trap 'echo "pwa-smoke failed at line $LINENO: $BASH_COMMAND" >&2' ERR
 
 test -s docs/index.html
 test -s docs/app.css

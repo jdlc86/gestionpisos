@@ -2300,6 +2300,14 @@ do $private_adapter_privilege$
 begin
   if has_function_privilege(
     'authenticated',
+    'public.workflow_authoring_complete_core_v1(jsonb)',
+    'EXECUTE'
+  ) then
+    raise exception 'authenticated client gained direct core authoring validator execution';
+  end if;
+
+  if has_function_privilege(
+    'authenticated',
     'private.workflow_ensure_cleaning_domain_task_v1(uuid,uuid)',
     'EXECUTE'
   ) then

@@ -387,6 +387,7 @@ grep -Fq '.from("tenant_tasks_v2")' supabase/functions/my-cleaning-checklist/ind
 grep -Fq '.from("workflow_executions_v2")' supabase/functions/my-cleaning-checklist/index.ts
 grep -Fq '.eq("workflow_execution_id",execution.id)' supabase/functions/my-cleaning-checklist/index.ts
 grep -Fq 'workflow_task_not_assigned_to_user' supabase/functions/my-cleaning-checklist/index.ts
+grep -Fq 'workflow_task_reference_required' supabase/functions/my-cleaning-checklist/index.ts
 grep -Fq 'workflow_accept_required' supabase/functions/my-cleaning-checklist/index.ts
 grep -Fq 'capture_url:readOnly?null:captureUrl' supabase/functions/my-cleaning-checklist/index.ts
 grep -Fq 'return_to=' supabase/functions/my-cleaning-checklist/index.ts

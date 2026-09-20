@@ -403,6 +403,26 @@ end;
 $$;
 
 -- The actor can insert an item only in its own run.
+do $
+begin
+  if public.has_current_platform_access_v1() is distinct from true then
+    raise exception 'photo actor unexpectedly lacks current platform access';
+  end if;
+  if not exists(
+    select 1 from public.photo_verification_runs_v2
+    where id=current_setting('gestionpisos.photo.run_own')::uuid
+  ) then
+    raise exception 'photo actor cannot read own verification run';
+  end if;
+  if not exists(
+    select 1 from public.photo_patterns_v2
+    where id=current_setting('gestionpisos.photo.pattern_a')::uuid
+  ) then
+    raise exception 'photo actor cannot read active property pattern';
+  end if;
+end;
+$;
+
 insert into public.photo_verification_items_v2 (id, run_id, pattern_id, storage_path)
 values (
   current_setting('gestionpisos.photo.item_own')::uuid,

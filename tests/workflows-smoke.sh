@@ -196,7 +196,7 @@ grep -Fq 'rooms_v2' docs/workflow-applications.js
 grep -Fq 'occupancies_v2' docs/workflow-applications.js
 grep -Fq '.application-card [hidden]{display:none!important}' docs/workflow-applications.css
 grep -Fq './workflow-applications.css?v=2026091915' docs/workflow-applications.html
-grep -Fq './workflow-applications.js?v=2026091922' docs/workflow-applications.html
+grep -Fq './workflow-applications.js?v=2026092001' docs/workflow-applications.html
 grep -Fq '¿Dónde quieres utilizarlo?' docs/workflow-applications.html
 grep -Fq 'Definición → Versión publicada → Aplicación concreta' docs/WORKFLOW_APPLICATIONS_CONTRACT.md
 grep -Fq 'workflow_applications_v2' docs/WORKFLOW_APPLICATIONS_CONTRACT.md
@@ -431,6 +431,12 @@ grep -Fq '&setup=1&intent=execute&from=mis-flujos' docs/workflow-definitions.js
 grep -Fq 'const executionIntent=guidedSetup&&params.get("intent")==="execute"' docs/workflow-applications.js
 grep -Fq 'const executionFromFlows=executionIntent&&params.get("from")==="mis-flujos"' docs/workflow-applications.js
 grep -Fq 'function renderExecutionAssist(app)' docs/workflow-applications.js
+grep -Fq 'roles.includes("tenant")?"INQUILINO"' docs/workflow-applications.js
+grep -Fq 'tenants_v2(user_id,full_name,email,status)' docs/workflow-applications.js
+grep -Fq 'if(app.scope_type==="occupancy"&&app.occupancy_id)' docs/workflow-applications.js
+grep -Fq 'occupancy?.user_id===tenantUserId' docs/workflow-applications.js
+grep -Fq 'roles:["tenant"]' docs/workflow-applications.js
+
 grep -Fq 'function executionReviewCard' docs/workflow-applications.js
 grep -Fq 'Falta información para ejecutar' docs/workflow-applications.js
 grep -Fq 'Completa únicamente los apartados abiertos para continuar.' docs/workflow-applications.js

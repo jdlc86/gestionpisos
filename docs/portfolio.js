@@ -617,6 +617,22 @@ async function offboardOccupancy(existing, endsOn) {
     p_ends_on: endsOn
   });
   if (error) throw error;
+
+  // DB revocation is already authoritative at this point. Auth disable is
+  // defense in depth: it blocks future sign-ins/refreshes but must never roll
+  // back a successfully completed Baja.
+  const { data: authResult, error: authError } = await supabase.functions.invoke("disable-tenant-auth", {
+    body: { occupancy_id: existing.id }
+  });
+  if (authError || !authResult?.ok) {
+    console.error("tenant auth disable after offboarding failed", authError || authResult);
+    return { authDisablePending: true };
+  }
+  return {
+    authDisablePending: false,
+    authDisabled: authResult.auth_disabled === true,
+    authDisableReason: authResult.reason || null
+  };
 }
 
 async function saveItem(event) {
@@ -646,10 +662,16 @@ async function saveItem(event) {
   if (current === "occupancies" && data.status === "archived") {
     saveButton.disabled = true;
     try {
-      await offboardOccupancy(existing, data.endsOn);
+      const offboarding = await offboardOccupancy(existing, data.endsOn);
       pendingWelcomeChoice = null;
       editorDialog.close();
       await loadPortfolio();
+      if (offboarding?.authDisablePending) {
+        setStatus(
+          "La Baja está aplicada y el acceso a datos ya fue revocado, pero el bloqueo de inicio de sesión necesita reintento.",
+          "Baja completada."
+        );
+      }
     } catch (error) {
       console.error("tenant offboarding failed", error);
       let message = friendlyWriteError(error, "No se pudo completar la baja.");

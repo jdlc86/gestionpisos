@@ -246,7 +246,7 @@ grep -Fq 'managerOrganizationIds' docs/workflow-tasks.js
 ! grep -Fq 'currentUser?.app_metadata?.role' docs/workflow-tasks.js
 grep -Fq 'review_reject' docs/workflow-tasks.js
 grep -Fq 'task-actions' docs/workflow-tasks.css
-grep -Fq './workflow-tasks.css?v=2026091923' docs/workflow-tasks.html
+grep -Fq './workflow-tasks.css?v=2026092001' docs/workflow-tasks.html
 grep -Fq './workflow-tasks.js?v=2026091923' docs/workflow-tasks.html
 grep -Fq 'cambian tarea y ejecución juntas' docs/workflow-tasks.html
 grep -Fq 'id="taskSelectionToggle"' docs/workflow-tasks.html
@@ -282,6 +282,8 @@ grep -Fq '.is("removed_at",null)' docs/portfolio.js
 grep -Fq 'El historial, la ejecución y sus evidencias se conservarán.' docs/workflow-tasks.js
 grep -Fq '.task-select-indicator{' docs/workflow-tasks.css
 grep -Fq '.tasks-bulk-dock{' docs/workflow-tasks.css
+grep -Fq 'width:min(126px' docs/workflow-tasks.css
+grep -Fq '.tasks-bulk-icon svg{width:26px;height:26px' docs/workflow-tasks.css
 grep -Fq '.task-card.is-selected{' docs/workflow-tasks.css
 
 grep -Fq 'workflow_execution_photo_resources_v2' docs/workflow-tasks.js
@@ -527,7 +529,7 @@ grep -Fq 'loadDocuments()' docs/workflow-tasks.js
 grep -Fq 'renderDocuments(task,article)' docs/workflow-tasks.js
 grep -Fq '.task-documents{' docs/workflow-tasks.css
 grep -Fq '.task-document-row{' docs/workflow-tasks.css
-grep -Fq './workflow-tasks.css?v=2026091923' docs/workflow-tasks.html
+grep -Fq './workflow-tasks.css?v=2026092001' docs/workflow-tasks.html
 grep -Fq './workflow-tasks.js?v=2026091923' docs/workflow-tasks.html
 
 

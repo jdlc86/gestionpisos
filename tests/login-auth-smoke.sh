@@ -16,6 +16,7 @@ node --check docs/sw.js
 node --check docs/mfa-common.js
 node --check docs/mfa-setup.js
 node --check docs/mfa-challenge.js
+node --check docs/mfa-code-input.js
 node --check docs/auth-guard.js
 
 grep -Fq 'id="loginForm" class="auth-form" method="post"' docs/login.html
@@ -61,7 +62,8 @@ grep -Fq 'No la compartas con nadie.' docs/mfa-setup.html
 grep -Fq 'listFactors' docs/mfa-challenge.js
 grep -Fq 'factor.status === "verified"' docs/mfa-challenge.js
 grep -Fq 'id="mfaFactorSelect"' docs/mfa-challenge.html
-grep -Fq 'autocomplete="one-time-code"' docs/mfa-challenge.html
+grep -Fq 'id="mfaCodeBoxes" class="mfa-code-boxes"' docs/mfa-challenge.html
+grep -Fq 'autocomplete=index===0?"one-time-code":"off"' docs/mfa-code-input.js
 
 grep -Fq 'privilegedMfaRoute(supabase, session, { requireEnrollment: true })' docs/auth-guard.js
 grep -Fq 'setupHomeAccountMenu(session)' docs/auth-guard.js
@@ -84,7 +86,7 @@ grep -Fq 'https://esm.sh/@supabase/supabase-js@2.116.0' docs/supabase-client.js
 grep -Fq 'supabase_client_module_load_failed' docs/supabase-client.js
 ! grep -Fq '@supabase/supabase-js@2.57.4' docs/supabase-client.js
 
-grep -Fq "gestionpisos-shell-v43" docs/sw.js
+grep -Fq "gestionpisos-shell-v44" docs/sw.js
 grep -Fq "'./mfa-setup.html'" docs/sw.js
 grep -Fq "'./mfa-challenge.html'" docs/sw.js
 grep -Fq "if(url.origin!==self.location.origin) return;" docs/sw.js

@@ -6,7 +6,7 @@
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="noindex,nofollow">
   <link rel="stylesheet" href="./app.css">
-  <link rel="stylesheet" href="./auth.css?v=2026091704">
+  <link rel="stylesheet" href="./auth.css?v=2026092001">
   <title>Allaiso · Seguridad MFA</title>
 </head>
 <body>
@@ -49,8 +49,9 @@
         </details>
 
         <form id="mfaSetupForm" class="auth-form mfa-code-form">
-          <label>Código de 6 dígitos
-            <input id="mfaCode" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000" required>
+          <label class="mfa-code-label">Código de 6 dígitos
+            <input id="mfaCode" type="hidden" value="">
+            <div id="mfaCodeBoxes" class="mfa-code-boxes" role="group" aria-label="Código de verificación de 6 dígitos"></div>
           </label>
           <button id="mfaSetupBtn" class="primary auth-primary" type="submit" disabled>Activar autenticador</button>
         </form>
@@ -61,6 +62,6 @@
       <p id="authMessage" class="auth-message" role="status" aria-live="polite">Comprobando la seguridad de tu cuenta…</p>
     </section>
   </main>
-  <script type="module" src="./mfa-setup.js?v=2026091703"></script>
+  <script type="module" src="./mfa-setup.js?v=2026092001"></script>
 </body>
 </html>

@@ -248,6 +248,11 @@ begin
       (p_spec->>'triggerType')='event'
       and (p_spec->>'assignmentType')='manual'
     )
+    or (
+      (p_spec->>'triggerType')='event'
+      and (p_spec->>'eventType')='occupancy.created'
+      and (p_spec->>'scopeType')='occupancy'
+    )
     or (p_spec->>'assignmentType') not in ('property_responsible','active_occupants_rotation','fixed_person','role','manual')
     or (
       (p_spec->>'assignmentType')='property_responsible'

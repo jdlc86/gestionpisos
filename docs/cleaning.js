@@ -60,6 +60,7 @@ function errorText(code){
   if(code==="workflow_task_not_assigned_to_user"||code==="task_not_assigned_to_user")return "Esta limpieza no está asignada a tu usuario.";
   if(code==="workflow_accept_required")return "Acepta primero la tarea desde Tareas para comenzar la limpieza.";
   if(code==="workflow_task_not_cleaning")return "La tarea seleccionada no corresponde a un flujo de Limpieza.";
+  if(code==="workflow_task_reference_required")return "Esta limpieza pertenece a un workflow. Ábrela desde su tarjeta en Tareas.";
   if(code==="workflow_cleaning_domain_missing"||code==="workflow_cleaning_identity_mismatch"||code==="workflow_cleaning_state_mismatch"){
     return "La limpieza no está sincronizada correctamente con su tarea. No se ha permitido continuar.";
   }

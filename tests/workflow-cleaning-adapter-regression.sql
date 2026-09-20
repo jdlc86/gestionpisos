@@ -226,6 +226,235 @@ begin
 end;
 $materializer_retry$;
 
+select set_config('wf03.cleaning_task',(
+  select id::text
+  from public.tenant_tasks_v2
+  where source_kind='workflow_execution'
+    and source_id=current_setting('wf03.cleaning_execution')::uuid
+),true);
+
+do $cleaning_actions_seeded$
+begin
+  if not exists(
+    select 1
+    from public.tenant_task_actions_v2
+    where task_id=current_setting('wf03.cleaning_task')::uuid
+      and action_key='accept'
+      and from_status='pending'
+      and to_status='active'
+      and actor='assignee'
+      and active=true
+  ) then
+    raise exception 'cleaning workflow did not seed accept -> active';
+  end if;
+
+  if not exists(
+    select 1
+    from public.tenant_task_actions_v2
+    where task_id=current_setting('wf03.cleaning_task')::uuid
+      and action_key='reject'
+      and from_status='pending'
+      and to_status='rejected'
+      and actor='assignee'
+      and active=true
+  ) then
+    raise exception 'cleaning workflow did not seed reject action';
+  end if;
+end;
+$cleaning_actions_seeded$;
+
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf03.tenant_user'),
+  'role','authenticated',
+  'aal','aal1'
+)::text,true);
+
+do $accept_cleaning$
+declare
+  v_result record;
+begin
+  select * into v_result
+  from public.apply_workflow_task_action_v1(
+    current_setting('wf03.cleaning_task')::uuid,
+    'accept',
+    'wf03-cleaning-accept',
+    null
+  )
+  limit 1;
+
+  if v_result.task_status<>'active'
+    or v_result.execution_status<>'active'
+    or v_result.applied_new is distinct from true then
+    raise exception 'cleaning accept did not activate workflow atomically';
+  end if;
+end;
+$accept_cleaning$;
+
+reset role;
+
+do $accepted_domain_state$
+begin
+  if not exists(
+    select 1
+    from public.workflow_executions_v2
+    where id=current_setting('wf03.cleaning_execution')::uuid
+      and status='active'
+  ) or not exists(
+    select 1
+    from public.tenant_tasks_v2
+    where id=current_setting('wf03.cleaning_task')::uuid
+      and status='active'
+  ) or not exists(
+    select 1
+    from public.cleaning_tasks_v2
+    where workflow_execution_id=current_setting('wf03.cleaning_execution')::uuid
+      and status='accepted'
+  ) then
+    raise exception 'accepted cleaning state diverged between workflow and domain';
+  end if;
+
+  if (select count(*)
+      from public.workflow_execution_events_v2
+      where execution_id=current_setting('wf03.cleaning_execution')::uuid
+        and event_type='domain_adapter_state_changed'
+        and details->>'action_key'='accept')<>1 then
+    raise exception 'cleaning accept domain event missing or duplicated';
+  end if;
+end;
+$accepted_domain_state$;
+
+-- Same request key must be a pure retry and must not duplicate domain history.
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf03.tenant_user'),
+  'role','authenticated',
+  'aal','aal1'
+)::text,true);
+
+do $accept_retry$
+declare
+  v_result record;
+begin
+  select * into v_result
+  from public.apply_workflow_task_action_v1(
+    current_setting('wf03.cleaning_task')::uuid,
+    'accept',
+    'wf03-cleaning-accept',
+    null
+  )
+  limit 1;
+
+  if v_result.applied_new is distinct from false
+    or v_result.task_status<>'active'
+    or v_result.execution_status<>'active' then
+    raise exception 'cleaning accept retry was not idempotent';
+  end if;
+end;
+$accept_retry$;
+
+reset role;
+
+do $accept_retry_no_duplicate$
+begin
+  if (select count(*)
+      from public.workflow_execution_events_v2
+      where execution_id=current_setting('wf03.cleaning_execution')::uuid
+        and event_type='domain_adapter_state_changed'
+        and details->>'action_key'='accept')<>1 then
+    raise exception 'cleaning accept retry duplicated domain history';
+  end if;
+end;
+$accept_retry_no_duplicate$;
+
+-- A second execution of the same cleaning application exercises explicit rejection.
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf03.root'),
+  'role','authenticated',
+  'aal','aal2'
+)::text,true);
+
+do $create_reject_execution$
+declare
+  v_result record;
+begin
+  select * into v_result
+  from public.execute_workflow_application_now_v1(
+    current_setting('wf03.cleaning_app')::uuid,
+    'wf03-cleaning-reject-execution',
+    null
+  )
+  limit 1;
+
+  if v_result.execution_id is null then
+    raise exception 'second cleaning execution was not created';
+  end if;
+
+  perform set_config('wf03.reject_execution',v_result.execution_id::text,true);
+end;
+$create_reject_execution$;
+
+reset role;
+
+select set_config('wf03.reject_task',(
+  select id::text
+  from public.tenant_tasks_v2
+  where source_kind='workflow_execution'
+    and source_id=current_setting('wf03.reject_execution')::uuid
+),true);
+
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf03.tenant_user'),
+  'role','authenticated',
+  'aal','aal1'
+)::text,true);
+
+do $reject_cleaning$
+declare
+  v_result record;
+begin
+  select * into v_result
+  from public.apply_workflow_task_action_v1(
+    current_setting('wf03.reject_task')::uuid,
+    'reject',
+    'wf03-cleaning-reject',
+    'No puedo realizar esta limpieza.'
+  )
+  limit 1;
+
+  if v_result.task_status<>'rejected'
+    or v_result.execution_status<>'rejected'
+    or v_result.applied_new is distinct from true then
+    raise exception 'cleaning reject did not close workflow as rejected';
+  end if;
+end;
+$reject_cleaning$;
+
+reset role;
+
+do $rejected_domain_state$
+begin
+  if not exists(
+    select 1
+    from public.cleaning_tasks_v2
+    where workflow_execution_id=current_setting('wf03.reject_execution')::uuid
+      and status='rejected'
+  ) then
+    raise exception 'cleaning domain state did not follow workflow rejection';
+  end if;
+
+  if (select count(*)
+      from public.workflow_execution_events_v2
+      where execution_id=current_setting('wf03.reject_execution')::uuid
+        and event_type='domain_adapter_state_changed'
+        and details->>'action_key'='reject')<>1 then
+    raise exception 'cleaning reject domain event missing or duplicated';
+  end if;
+end;
+$rejected_domain_state$;
+
 set local role authenticated;
 select set_config('request.jwt.claims',jsonb_build_object(
   'sub',current_setting('wf03.root'),
@@ -281,6 +510,14 @@ begin
     'EXECUTE'
   ) then
     raise exception 'authenticated client gained direct cleaning adapter execution';
+  end if;
+
+  if has_function_privilege(
+    'authenticated',
+    'private.workflow_apply_cleaning_decision_v1(uuid,text,uuid)',
+    'EXECUTE'
+  ) then
+    raise exception 'authenticated client gained direct cleaning decision adapter execution';
   end if;
 end;
 $private_adapter_privilege$;

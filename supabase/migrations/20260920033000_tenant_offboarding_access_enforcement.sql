@@ -114,6 +114,7 @@ begin
   if v_org is null or v_tenant_id is null then
     raise exception 'occupancy_not_found' using errcode='P0002';
   end if;
+
   if not (
     exists(
       select 1 from public.user_roles ur
@@ -139,27 +140,21 @@ begin
   ) then
     raise exception 'property_write_required' using errcode='42501';
   end if;
-  if v_occupancy_status<>'archived' or v_tenant_status<>'archived' then
-    raise exception 'tenant_offboarding_not_completed' using errcode='55000';
-  end if;
 
   if v_user_id is not null then
     select exists(
       select 1
       from public.occupancies_v2 o
-      join public.tenants_v2 t
-        on t.id=o.tenant_id
-       and t.organization_id=o.organization_id
-       and t.user_id=v_user_id
-       and t.status='active'
-       and t.archived_at is null
       where o.organization_id=v_org
         and o.id<>p_occupancy_id
-        and o.user_id=v_user_id
         and o.status='active'
         and o.starts_on is not null
         and o.starts_on<=current_date
         and (o.ends_on is null or o.ends_on>=current_date)
+        and (
+          o.tenant_id=v_tenant_id
+          or o.user_id=v_user_id
+        )
     ) into v_other_active;
 
     select exists(
@@ -178,6 +173,13 @@ begin
         and ur.revoked_at is null
         and ur.role<>'tenant'
     ) into v_other_active_role;
+  end if;
+
+  -- If another live stay shares this canonical tenant identity, the tenant row
+  -- correctly remains active. Otherwise a completed Baja must archive it.
+  if v_occupancy_status<>'archived'
+    or (not v_other_active and v_tenant_status<>'archived') then
+    raise exception 'tenant_offboarding_not_completed' using errcode='55000';
   end if;
 
   return jsonb_build_object(
@@ -218,6 +220,7 @@ declare
   v_org uuid;
   v_property_id uuid;
   v_status public.record_status;
+  v_other_same_tenant boolean:=false;
   v_other_active boolean:=false;
 begin
   if v_actor is null then
@@ -237,6 +240,7 @@ begin
   if v_tenant_id is null then
     raise exception 'occupancy_not_found' using errcode='P0002';
   end if;
+
   if not (
     exists(
       select 1 from public.user_roles ur
@@ -262,8 +266,41 @@ begin
   ) then
     raise exception 'property_write_required' using errcode='42501';
   end if;
+
   if v_status not in ('active','blocked') then
     raise exception 'offboarding_invalid_state' using errcode='22023';
+  end if;
+
+  -- Evaluate remaining stays BEFORE changing the canonical tenant identity.
+  select exists(
+    select 1
+    from public.occupancies_v2 o
+    where o.organization_id=v_org
+      and o.id<>p_occupancy_id
+      and o.tenant_id=v_tenant_id
+      and o.status='active'
+      and o.starts_on is not null
+      and o.starts_on<=current_date
+      and (o.ends_on is null or o.ends_on>=current_date)
+  ) into v_other_same_tenant;
+
+  if v_user_id is not null then
+    select exists(
+      select 1
+      from public.occupancies_v2 o
+      where o.organization_id=v_org
+        and o.id<>p_occupancy_id
+        and o.status='active'
+        and o.starts_on is not null
+        and o.starts_on<=current_date
+        and (o.ends_on is null or o.ends_on>=current_date)
+        and (
+          o.tenant_id=v_tenant_id
+          or o.user_id=v_user_id
+        )
+    ) into v_other_active;
+  else
+    v_other_active:=v_other_same_tenant;
   end if;
 
   update public.occupancies_v2
@@ -272,52 +309,36 @@ begin
       starts_on=case when v_status='blocked' then null else starts_on end
   where id=p_occupancy_id;
 
-  update public.tenants_v2
-  set status='archived',
-      archived_at=coalesce(archived_at,now()),
-      deletion_requested_at=coalesce(deletion_requested_at,now()),
-      deletion_requested_by=coalesce(deletion_requested_by,v_actor),
-      updated_at=now()
-  where id=v_tenant_id;
+  -- The tenant row is canonical across stays. Archive it only when this Baja
+  -- closes the final active occupancy that references that identity.
+  if not v_other_same_tenant then
+    update public.tenants_v2
+    set status='archived',
+        archived_at=coalesce(archived_at,now()),
+        deletion_requested_at=coalesce(deletion_requested_at,now()),
+        deletion_requested_by=coalesce(deletion_requested_by,v_actor),
+        updated_at=now()
+    where id=v_tenant_id;
+  end if;
 
-  if v_user_id is not null then
-    select exists(
-      select 1
-      from public.occupancies_v2 o
-      join public.tenants_v2 t
-        on t.id=o.tenant_id
-       and t.organization_id=o.organization_id
-       and t.user_id=v_user_id
-       and t.status='active'
-       and t.archived_at is null
-      where o.organization_id=v_org
-        and o.id<>p_occupancy_id
-        and o.user_id=v_user_id
-        and o.status='active'
-        and o.starts_on is not null
-        and o.starts_on<=current_date
-        and (o.ends_on is null or o.ends_on>=current_date)
-    ) into v_other_active;
+  if v_user_id is not null and not v_other_active then
+    update public.user_roles
+    set revoked_at=coalesce(revoked_at,now())
+    where user_id=v_user_id
+      and organization_id=v_org
+      and role='tenant'
+      and revoked_at is null;
 
-    if not v_other_active then
-      update public.user_roles
-      set revoked_at=coalesce(revoked_at,now())
-      where user_id=v_user_id
-        and organization_id=v_org
-        and role='tenant'
-        and revoked_at is null;
-
-      insert into public.audit_log_v2(
-        organization_id,actor_user_id,action,entity_type,entity_id,result,details
-      ) values(
-        v_org,v_actor,'tenant_platform_access_revoked','tenant',v_tenant_id::text,'success',
-        jsonb_build_object(
-          'occupancy_id',p_occupancy_id,
-          'auth_user_id',v_user_id,
-          'reason','tenant_offboarding'
-        )
-      );
-    end if;
+    insert into public.audit_log_v2(
+      organization_id,actor_user_id,action,entity_type,entity_id,result,details
+    ) values(
+      v_org,v_actor,'tenant_platform_access_revoked','tenant',v_tenant_id::text,'success',
+      jsonb_build_object(
+        'occupancy_id',p_occupancy_id,
+        'auth_user_id',v_user_id,
+        'reason','tenant_offboarding'
+      )
+    );
   end if;
 end;
 $$;
@@ -326,6 +347,134 @@ revoke all on function public.offboard_tenant_occupancy_v2(uuid,date)
   from public,anon;
 grant execute on function public.offboard_tenant_occupancy_v2(uuid,date)
   to authenticated,service_role;
+
+create or replace function public.restore_tenant_platform_access_v1(
+  p_tenant_id uuid,
+  p_auth_user_id uuid,
+  p_actor_user_id uuid
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path=''
+as $
+declare
+  v_org uuid;
+  v_linked_user uuid;
+  v_tenant_status public.record_status;
+  v_archived_at timestamptz;
+  v_property_ids uuid[];
+begin
+  if p_tenant_id is null or p_auth_user_id is null or p_actor_user_id is null then
+    raise exception 'tenant_reactivation_arguments_required' using errcode='22023';
+  end if;
+
+  select organization_id,user_id,status,archived_at
+  into v_org,v_linked_user,v_tenant_status,v_archived_at
+  from public.tenants_v2
+  where id=p_tenant_id
+  for update;
+
+  if v_org is null then
+    raise exception 'tenant_not_found' using errcode='P0002';
+  end if;
+  if v_tenant_status<>'active' or v_archived_at is not null then
+    raise exception 'tenant_not_active' using errcode='55000';
+  end if;
+  if v_linked_user is distinct from p_auth_user_id then
+    raise exception 'tenant_auth_identity_mismatch' using errcode='42501';
+  end if;
+
+  select array_agg(distinct o.property_id)
+  into v_property_ids
+  from public.occupancies_v2 o
+  where o.tenant_id=p_tenant_id
+    and o.organization_id=v_org
+    and o.status='active'
+    and o.starts_on is not null
+    and o.starts_on<=current_date
+    and (o.ends_on is null or o.ends_on>=current_date);
+
+  if coalesce(cardinality(v_property_ids),0)=0 then
+    raise exception 'tenant_active_occupancy_required' using errcode='55000';
+  end if;
+
+  if not (
+    exists(
+      select 1 from public.user_roles ur
+      where ur.user_id=p_actor_user_id
+        and ur.role='root'
+        and ur.revoked_at is null
+    )
+    or exists(
+      select 1 from public.user_roles ur
+      where ur.user_id=p_actor_user_id
+        and ur.organization_id=v_org
+        and ur.role='admin'
+        and ur.revoked_at is null
+    )
+    or exists(
+      select 1
+      from public.property_staff_access_v3 a
+      where a.property_id=any(v_property_ids)
+        and a.employee_user_id=p_actor_user_id
+        and a.revoked_at is null
+        and (a.valid_until is null or a.valid_until>now())
+        and a.can_write=true
+    )
+  ) then
+    raise exception 'tenant_reactivation_permission_required' using errcode='42501';
+  end if;
+
+  if exists(
+    select 1
+    from public.occupancies_v2 o
+    where o.tenant_id=p_tenant_id
+      and o.status='active'
+      and o.user_id is not null
+      and o.user_id<>p_auth_user_id
+  ) then
+    raise exception 'tenant_occupancy_auth_identity_conflict' using errcode='23505';
+  end if;
+
+  update public.occupancies_v2
+  set user_id=p_auth_user_id
+  where tenant_id=p_tenant_id
+    and organization_id=v_org
+    and status='active'
+    and starts_on is not null
+    and starts_on<=current_date
+    and (ends_on is null or ends_on>=current_date)
+    and user_id is null;
+
+  insert into public.user_roles(user_id,organization_id,role,created_by)
+  values(p_auth_user_id,v_org,'tenant',p_actor_user_id)
+  on conflict(user_id,organization_id,role)
+  do update set revoked_at=null;
+
+  insert into public.audit_log_v2(
+    organization_id,actor_user_id,action,entity_type,entity_id,result,details
+  ) values(
+    v_org,p_actor_user_id,'tenant_platform_access_reactivated','tenant',p_tenant_id::text,'success',
+    jsonb_build_object('auth_user_id',p_auth_user_id,'reason','tenant_reactivation')
+  );
+
+  return jsonb_build_object(
+    'organization_id',v_org,
+    'tenant_id',p_tenant_id,
+    'auth_user_id',p_auth_user_id,
+    'platform_access_restored',true
+  );
+end;
+$;
+
+revoke all on function public.restore_tenant_platform_access_v1(uuid,uuid,uuid)
+  from public,anon,authenticated;
+grant execute on function public.restore_tenant_platform_access_v1(uuid,uuid,uuid)
+  to service_role;
+
+comment on function public.restore_tenant_platform_access_v1(uuid,uuid,uuid) is
+  'Reabre acceso DB de una identidad tenant existente solo tras una nueva ocupación Alta vigente y autorización operativa del actor.';
 
 -- Un JWT antiguo no debe saltarse la Baja mediante políticas self/assignee.
 -- Restrictive = se combina con AND con las policies permisivas existentes.

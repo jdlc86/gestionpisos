@@ -343,14 +343,16 @@ begin
     'workflow_executions_v2'
   ]
   loop
-    execute format(
-      'drop policy if exists platform_access_required_v1 on public.%I',
-      v_table
-    );
-    execute format(
-      'create policy platform_access_required_v1 on public.%I as restrictive for all to authenticated using (public.has_current_platform_access_v1()) with check (public.has_current_platform_access_v1())',
-      v_table
-    );
+    if to_regclass(format('public.%I',v_table)) is not null then
+      execute format(
+        'drop policy if exists platform_access_required_v1 on public.%I',
+        v_table
+      );
+      execute format(
+        'create policy platform_access_required_v1 on public.%I as restrictive for all to authenticated using (public.has_current_platform_access_v1()) with check (public.has_current_platform_access_v1())',
+        v_table
+      );
+    end if;
   end loop;
 end;
 $platform_gate$;

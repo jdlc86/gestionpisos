@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+trap 'echo "workflows-smoke failed at line $LINENO: $BASH_COMMAND" >&2' ERR
 
 test -s docs/WORKFLOW_ARCHITECTURE.md
 test -s docs/WORKFLOW_IMPLEMENTATION_MAP.md

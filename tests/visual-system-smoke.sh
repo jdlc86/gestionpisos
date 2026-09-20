@@ -56,6 +56,8 @@ if grep -Fq '@media(prefers-color-scheme:dark)' docs/app.css docs/operations.css
   exit 1
 fi
 
+grep -Fq './portfolio.css?v=2026092003' docs/portfolio.html
+grep -Fq '.topbar .toolbar-actions{display:flex;align-items:center;justify-content:flex-end}' docs/portfolio.css
 grep -Fq 'var(--ui-card-shadow)' docs/portfolio.css
 grep -Fq 'var(--ui-card-shadow)' docs/operations.css
 grep -Fq 'var(--ui-card-shadow)' docs/configuration-resources.css

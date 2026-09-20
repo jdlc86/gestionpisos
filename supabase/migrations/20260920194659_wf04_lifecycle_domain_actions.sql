@@ -54,6 +54,146 @@ $$;
 revoke all on function private.workflow_wf04_staff_current_v1(uuid,uuid,uuid)
   from public,anon,authenticated,service_role;
 
+-- WF-04 debe filtrar candidatos con capacidad de escritura ANTES de la
+-- selección determinista por rol. Si se filtra después, un empleado de solo
+-- lectura puede ser elegido siempre y dejar el evento en retry infinito.
+alter function private.workflow_resolve_execution_assignee_v1(uuid,uuid)
+  rename to workflow_resolve_execution_assignee_pre_wf04_v1;
+revoke all on function private.workflow_resolve_execution_assignee_pre_wf04_v1(uuid,uuid)
+  from public,anon,authenticated,service_role;
+
+create function private.workflow_resolve_execution_assignee_v1(
+  p_application_id uuid,
+  p_requested_user_id uuid
+)
+returns uuid
+language plpgsql
+stable
+security definer
+set search_path=''
+as $
+declare
+  v_org uuid;
+  v_scope_type text;
+  v_property_id uuid;
+  v_room_id uuid;
+  v_occupancy_id uuid;
+  v_spec jsonb;
+  v_assignment_type text;
+  v_role text;
+  v_user uuid;
+begin
+  select a.organization_id,a.scope_type,a.property_id,a.room_id,a.occupancy_id,
+         wv.spec
+  into v_org,v_scope_type,v_property_id,v_room_id,v_occupancy_id,v_spec
+  from public.workflow_applications_v2 a
+  join public.workflow_definition_versions_v2 wv
+    on wv.id=a.definition_version_id
+   and wv.definition_id=a.definition_id
+   and wv.organization_id=a.organization_id
+  where a.id=p_application_id;
+
+  if v_org is null
+    or v_spec->>'closeType'<>'domain_adapter'
+    or v_spec->>'flowType' not in ('checkin','checkout') then
+    return private.workflow_resolve_execution_assignee_pre_wf04_v1(
+      p_application_id,p_requested_user_id
+    );
+  end if;
+
+  v_assignment_type:=nullif(v_spec->>'assignmentType','');
+
+  if v_assignment_type='role' then
+    if p_requested_user_id is not null then
+      raise exception 'workflow_assignee_must_be_server_resolved' using errcode='22023';
+    end if;
+
+    v_role:=nullif(v_spec->>'assignmentRole','');
+    if v_role not in ('admin','employee') or v_role is null then
+      raise exception 'workflow_assignment_role_invalid' using errcode='22023';
+    end if;
+
+    select ur.user_id
+    into v_user
+    from public.user_roles ur
+    where ur.organization_id=v_org
+      and ur.role::text=v_role
+      and ur.revoked_at is null
+      and private.workflow_assignee_eligible_v1(
+        v_org,v_scope_type,v_property_id,v_room_id,v_occupancy_id,
+        ur.user_id,v_role
+      )
+      and private.workflow_wf04_staff_current_v1(
+        v_org,v_property_id,ur.user_id
+      )
+    order by (
+      select count(*)
+      from public.workflow_executions_v2 e
+      where e.application_id=p_application_id
+        and e.assigned_user_id=ur.user_id
+    ), (
+      select max(e.created_at)
+      from public.workflow_executions_v2 e
+      where e.application_id=p_application_id
+        and e.assigned_user_id=ur.user_id
+    ) nulls first, ur.user_id
+    limit 1;
+
+    if v_user is null then
+      raise exception 'workflow_assignment_role_unavailable' using errcode='55000';
+    end if;
+
+    return v_user;
+  end if;
+
+  v_user:=private.workflow_resolve_execution_assignee_pre_wf04_v1(
+    p_application_id,p_requested_user_id
+  );
+
+  if v_user is not null
+    and not private.workflow_wf04_staff_current_v1(
+      v_org,v_property_id,v_user
+    ) then
+    raise exception 'workflow_wf04_assignee_not_eligible' using errcode='42501';
+  end if;
+
+  return v_user;
+end;
+$;
+revoke all on function private.workflow_resolve_execution_assignee_v1(uuid,uuid)
+  from public,anon,authenticated,service_role;
+
+create function private.workflow_wf04_require_privileged_aal2_v1(
+  p_organization_id uuid,
+  p_user_id uuid
+)
+returns void
+language plpgsql
+stable
+security definer
+set search_path=''
+as $
+begin
+  if exists(
+    select 1
+    from public.user_roles ur
+    where ur.user_id=p_user_id
+      and ur.revoked_at is null
+      and (
+        ur.role='root'
+        or (
+          ur.role='admin'
+          and ur.organization_id=p_organization_id
+        )
+      )
+  ) and coalesce(auth.jwt()->>'aal','aal1')<>'aal2' then
+    raise exception 'workflow_wf04_mfa_required' using errcode='42501';
+  end if;
+end;
+$;
+revoke all on function private.workflow_wf04_require_privileged_aal2_v1(uuid,uuid)
+  from public,anon,authenticated,service_role;
+
 create function private.workflow_wf04_seed_domain_actions_v1()
 returns trigger
 language plpgsql
@@ -209,6 +349,10 @@ begin
   ) then
     raise exception 'workflow_wf04_assignee_not_eligible' using errcode='42501';
   end if;
+
+  perform private.workflow_wf04_require_privileged_aal2_v1(
+    v_execution.organization_id,v_actor
+  );
 
   select * into v_event from public.workflow_event_outbox_v2
   where id=v_execution.source_event_id;

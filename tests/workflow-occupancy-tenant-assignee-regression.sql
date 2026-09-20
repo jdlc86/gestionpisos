@@ -19,29 +19,17 @@ select set_config(
    limit 1),
   true
 );
-select set_config(
-  'gestionpisos.tenant_assignee.property',
-  (
-    select id::text
-    from public.properties_v2
-    where organization_id=current_setting('gestionpisos.tenant_assignee.org')::uuid
-      and archived_at is null
-      and status<>'archived'
-    order by created_at
-    limit 1
-  ),
-  true
-);
-
 do $prerequisites$
 begin
   if nullif(current_setting('gestionpisos.tenant_assignee.org',true),'') is null
-    or nullif(current_setting('gestionpisos.tenant_assignee.root',true),'') is null
-    or nullif(current_setting('gestionpisos.tenant_assignee.property',true),'') is null then
+    or nullif(current_setting('gestionpisos.tenant_assignee.root',true),'') is null then
     raise exception 'tenant workflow assignee prerequisites missing';
   end if;
 end;
 $prerequisites$;
+
+select set_config('gestionpisos.tenant_assignee.owner',gen_random_uuid()::text,true);
+select set_config('gestionpisos.tenant_assignee.property',gen_random_uuid()::text,true);
 
 select set_config('gestionpisos.tenant_assignee.user','88888888-8888-4888-8888-888888888881',true);
 select set_config('gestionpisos.tenant_assignee.foreign_user','88888888-8888-4888-8888-888888888882',true);
@@ -49,6 +37,25 @@ select set_config('gestionpisos.tenant_assignee.tenant',gen_random_uuid()::text,
 select set_config('gestionpisos.tenant_assignee.foreign_tenant',gen_random_uuid()::text,true);
 select set_config('gestionpisos.tenant_assignee.room',gen_random_uuid()::text,true);
 select set_config('gestionpisos.tenant_assignee.occupancy',gen_random_uuid()::text,true);
+
+insert into public.owners(id,organization_id,full_name,status)
+values(
+  current_setting('gestionpisos.tenant_assignee.owner')::uuid,
+  current_setting('gestionpisos.tenant_assignee.org')::uuid,
+  'Workflow tenant assignee owner',
+  'active'
+);
+
+insert into public.properties_v2(
+  id,organization_id,owner_id,name,address_line,status
+) values(
+  current_setting('gestionpisos.tenant_assignee.property')::uuid,
+  current_setting('gestionpisos.tenant_assignee.org')::uuid,
+  current_setting('gestionpisos.tenant_assignee.owner')::uuid,
+  'Workflow tenant assignee property',
+  'Regression only',
+  'active'
+);
 
 insert into auth.users(id)
 values

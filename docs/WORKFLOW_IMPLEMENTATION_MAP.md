@@ -343,6 +343,7 @@ Fotografía, Checklist y Documento ya son pasos operativos del motor mínimo.
 | Versión de flujo | `workflow_definition_versions_v2` | Publicación inmutable implementada |
 | Aplicación concreta | `workflow_applications_v2` | Vinculación real implementada |
 | Disparador manual explícito | `execute_workflow_application_now_v1` | Implementado con idempotencia |
+| Disparador por evento | `workflow_event_outbox_v2` + `workflow_event_dispatches_v2` + `private.process_pending_workflow_events_v1` | WF-02 implementa outbox/dispatcher; fuente inicial `occupancy.created`; sin ejecución síncrona en la transacción de negocio |
 | Regla de asignación | Snapshot en `workflow_executions_v2` | Manual, responsable de piso, persona fija, rol y rotación de ocupantes; resolución server-side y revalidación vigente |
 | Ejecución genérica | `workflow_executions_v2` | Fase inicial `pending` implementada |
 | Tarea materializada | `tenant_tasks_v2` + `source_kind/source_id` | Implementada e idempotente |
@@ -448,3 +449,17 @@ La regla histórica del primer mapeo se mantiene como salvaguarda: **no se crean
 El instante se congela como hora local + zona IANA + UTC exacto. El scheduler nunca interpreta por sí mismo un `datetime-local`.
 
 `triggerType=recurring` exige una primera fecha/hora explícita y mantiene la próxima ocurrencia en `workflow_application_schedules_v2`. Cada fecha se deriva del ancla local original y el mismo cron materializa exactamente una tarea por ocurrencia procesada.
+
+### WF-02 — Dispatcher genérico por evento
+
+Se reutiliza el motor existente; no se crea un segundo runner.
+
+- productor representativo: trigger `AFTER INSERT` de `occupancies_v2` → `occupancy.created`;
+- outbox: `workflow_event_outbox_v2`;
+- recibo idempotente por aplicación: `workflow_event_dispatches_v2`;
+- consumidor: `private.process_pending_workflow_events_v1`;
+- ejecución: `private.workflow_execute_application_internal_v1(..., 'event', ...)`;
+- tarea: `tenant_tasks_v2` con `source_kind='workflow_execution'`;
+- cron Supabase: `gestionpisos-workflow-events` cada minuto;
+- fallo de una aplicación queda aislado y auditado; no revierte el evento de dominio.
+

@@ -464,9 +464,10 @@ function card(row){
   headMain.append(title);
 
   const needsSchedule=needsScheduleConfiguration(row);
+  const eventDriven=isEventDriven(row);
   const badge=document.createElement("span");
-  badge.className="definition-badge "+(needsSchedule||!history?"definition-badge--incomplete":"definition-badge--complete");
-  badge.textContent=needsSchedule?"Necesita programación":history?"Con historial":"Sin ejecuciones";
+  badge.className="definition-badge "+(needsSchedule||(!history&&!eventDriven)?"definition-badge--incomplete":"definition-badge--complete");
+  badge.textContent=needsSchedule?"Necesita programación":eventDriven&&!history?"Activo":history?"Con historial":"Sin ejecuciones";
   head.append(headMain,badge);
 
   const details=document.createElement("div");details.className="definition-meta";

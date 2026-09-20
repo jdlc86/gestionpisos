@@ -117,7 +117,7 @@ insert into public.occupancies_v2(
   current_setting('gestionpisos.tenant_assignee.property')::uuid,
   current_setting('gestionpisos.tenant_assignee.room')::uuid,
   'workflow-occupancy-tenant@example.invalid',
-  current_date,
+  current_date-2,
   null,
   'active',
   current_setting('gestionpisos.tenant_assignee.user')::uuid,
@@ -213,6 +213,18 @@ begin
 end;
 $linked_tenant_assigned$;
 
+select set_config(
+  'gestionpisos.tenant_assignee.task',
+  (
+    select id::text
+    from public.tenant_tasks_v2
+    where source_kind='workflow_execution'
+      and source_id=current_setting('gestionpisos.tenant_assignee.execution')::uuid
+    limit 1
+  ),
+  true
+);
+
 do $foreign_tenant_denied$
 begin
   perform *
@@ -229,6 +241,122 @@ exception
     end if;
 end;
 $foreign_tenant_denied$;
+
+-- Mientras la ocupación sigue vigente, el inquilino asignado ve ejecución,
+-- tarea y acciones.
+reset role;
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub',current_setting('gestionpisos.tenant_assignee.user'),
+    'role','authenticated',
+    'aal','aal1'
+  )::text,
+  true
+);
+
+do $tenant_current_access$
+begin
+  if public.workflow_execution_actor_current_v1(
+    current_setting('gestionpisos.tenant_assignee.execution')::uuid
+  ) is distinct from true then
+    raise exception 'current occupancy tenant unexpectedly lost workflow access';
+  end if;
+
+  if (
+    select count(*)
+    from public.workflow_executions_v2
+    where id=current_setting('gestionpisos.tenant_assignee.execution')::uuid
+  )<>1 then
+    raise exception 'current occupancy tenant cannot read assigned execution';
+  end if;
+
+  if (
+    select count(*)
+    from public.tenant_tasks_v2
+    where id=current_setting('gestionpisos.tenant_assignee.task')::uuid
+  )<>1 then
+    raise exception 'current occupancy tenant cannot read assigned task';
+  end if;
+
+  if (
+    select count(*)
+    from public.tenant_task_actions_v2
+    where task_id=current_setting('gestionpisos.tenant_assignee.task')::uuid
+  )<1 then
+    raise exception 'current occupancy tenant cannot read task actions';
+  end if;
+end;
+$tenant_current_access$;
+
+-- La relación termina después de asignar. La identidad histórica queda intacta,
+-- pero ya no concede lectura ni acción.
+reset role;
+update public.occupancies_v2
+set ends_on=current_date-1
+where id=current_setting('gestionpisos.tenant_assignee.occupancy')::uuid;
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub',current_setting('gestionpisos.tenant_assignee.user'),
+    'role','authenticated',
+    'aal','aal1'
+  )::text,
+  true
+);
+
+do $tenant_expired_access_revoked$
+begin
+  if public.workflow_execution_actor_current_v1(
+    current_setting('gestionpisos.tenant_assignee.execution')::uuid
+  ) is distinct from false then
+    raise exception 'expired occupancy tenant retained workflow access';
+  end if;
+
+  if exists(
+    select 1
+    from public.workflow_executions_v2
+    where id=current_setting('gestionpisos.tenant_assignee.execution')::uuid
+  ) then
+    raise exception 'expired occupancy tenant can still read execution';
+  end if;
+
+  if exists(
+    select 1
+    from public.tenant_tasks_v2
+    where id=current_setting('gestionpisos.tenant_assignee.task')::uuid
+  ) then
+    raise exception 'expired occupancy tenant can still read task';
+  end if;
+
+  if exists(
+    select 1
+    from public.tenant_task_actions_v2
+    where task_id=current_setting('gestionpisos.tenant_assignee.task')::uuid
+  ) then
+    raise exception 'expired occupancy tenant can still read task actions';
+  end if;
+
+  begin
+    perform *
+    from public.apply_workflow_task_action_v1(
+      current_setting('gestionpisos.tenant_assignee.task')::uuid,
+      'accept',
+      'tenant-assignee-expired-action-001',
+      null
+    );
+    raise exception 'expired occupancy tenant unexpectedly applied workflow action';
+  exception
+    when insufficient_privilege then
+      if sqlerrm<>'workflow_assignee_access_revoked' then
+        raise;
+      end if;
+  end;
+end;
+$tenant_expired_access_revoked$;
 
 reset role;
 rollback;

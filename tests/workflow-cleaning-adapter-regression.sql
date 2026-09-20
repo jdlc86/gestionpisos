@@ -1970,6 +1970,35 @@ begin
 end;
 $stale_swap_fixture$;
 
+do $stale_swap_shared_eligibility$
+begin
+  if private.workflow_assignee_eligible_v1(
+    current_setting('wf03.org')::uuid,
+    'property',
+    current_setting('wf03.property')::uuid,
+    null,
+    null,
+    current_setting('wf03.swap_target_user')::uuid,
+    'tenant'
+  ) then
+    raise exception 'shared workflow eligibility still accepts stale swap target';
+  end if;
+
+  begin
+    perform private.workflow_apply_cleaning_swap_accept_v1(
+      current_setting('wf03.swap_negative_request')::uuid,
+      current_setting('wf03.swap_target_user')::uuid
+    );
+    raise exception 'direct cleaning swap adapter accepted stale target';
+  exception
+    when others then
+      if position('target no longer occupies property' in sqlerrm)=0 then
+        raise;
+      end if;
+  end;
+end;
+$stale_swap_shared_eligibility$;
+
 set local role authenticated;
 select set_config('request.jwt.claims',jsonb_build_object(
   'sub',current_setting('wf03.swap_target_user'),

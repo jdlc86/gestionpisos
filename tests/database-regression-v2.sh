@@ -100,6 +100,7 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -v "$repo_path:/w
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260920080723_wf01_generic_assignment_rules.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260920103000_wf02_event_trigger_core.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260920113000_wf03_cleaning_domain_link.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260920114000_wf03_cleaning_decision_state.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/database-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/photo-verification-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-definition-regression.sql

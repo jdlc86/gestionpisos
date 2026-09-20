@@ -207,7 +207,7 @@ No deben duplicarse; deben adaptarse gradualmente preservando histórico y compo
 La razón del orden es evitar que cada dominio implemente su propia solución para capacidades que pertenecen al motor común.
 
 ### BLOQUE WF-00 — Baseline y protocolo Codex
-**Estado:** ACTIVO / IN_PROGRESS  
+**Estado:** READY_FOR_CHATGPT_REVIEW  
 **Objetivo:** instalar este protocolo en el repo y dejar la línea base verificable.
 
 Aceptación:
@@ -221,12 +221,12 @@ Aceptación:
 
 Handoff:
 - Rama: `docs/codex-workflow-orchestration`
-- PR: pendiente
-- HEAD de rama: pendiente
+- PR: #268
+- HEAD de rama: `644ca96bcce11d2ac59a1d9511eb9e273fd3e6e1`
 - Main observado al comenzar: `825a70c224cc3dc3a05f97a7477134d582f1c478`
 - Cambios realizados: documento maestro + regla de descubrimiento en AGENTS
-- Pruebas: pendientes
-- Siguiente acción: abrir PR y esperar verificación ChatGPT
+- Pruebas: cambios documentales; Governance/PWA/Schema pendientes del PR
+- Siguiente acción: ChatGPT verifica checks del mismo HEAD; si están verdes, marca WF-00 VERIFIED y activa WF-01
 
 ---
 

@@ -38,6 +38,10 @@ grep -q 'createSignedUrl' docs/photo-verifications.js
 test -s supabase/functions/review-photo-verification/index.ts
 grep -q 'apply_photo_verification_review_v2' supabase/functions/review-photo-verification/index.ts
 grep -q 'apply_workflow_photo_review_v1' supabase/functions/review-photo-verification/index.ts
+grep -q 'apply_workflow_cleaning_photo_review_v1' supabase/functions/review-photo-verification/index.ts
+grep -q 'getAuthenticatorAssuranceLevel(token)' supabase/functions/review-photo-verification/index.ts
+grep -q 'aal2_required' supabase/functions/review-photo-verification/index.ts
+grep -q 'workflow_execution_id' supabase/functions/review-photo-verification/index.ts
 grep -q '.from("user_roles")' supabase/functions/review-photo-verification/index.ts
 grep -q 'isAdminForRun' supabase/functions/review-photo-verification/index.ts
 ! grep -q 'user.app_metadata?.role' supabase/functions/review-photo-verification/index.ts

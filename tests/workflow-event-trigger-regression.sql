@@ -142,6 +142,15 @@ begin
   if public.workflow_authoring_complete_v1(v_manual) then
     raise exception 'event workflow with manual assignment was accepted';
   end if;
+
+  if public.workflow_authoring_complete_v1(
+    pg_temp.wf02_spec(
+      'WF02 impossible occupancy event',
+      current_setting('wf02.employee')::uuid
+    ) || jsonb_build_object('scopeType','occupancy')
+  ) then
+    raise exception 'occupancy.created accepted an already-existing occupancy scope';
+  end if;
 end;
 $authoring_validation$;
 

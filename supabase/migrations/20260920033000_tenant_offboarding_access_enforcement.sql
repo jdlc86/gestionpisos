@@ -113,7 +113,29 @@ begin
   if v_org is null or v_tenant_id is null then
     raise exception 'occupancy_not_found' using errcode='P0002';
   end if;
-  if not public.can_operate_property_v3(v_property_id,true) then
+  if not (
+    exists(
+      select 1 from public.user_roles ur
+      where ur.user_id=v_actor
+        and ur.role='root'
+        and ur.revoked_at is null
+    )
+    or exists(
+      select 1 from public.user_roles ur
+      where ur.user_id=v_actor
+        and ur.organization_id=v_org
+        and ur.role='admin'
+        and ur.revoked_at is null
+    )
+    or exists(
+      select 1 from public.property_staff_access_v3 a
+      where a.property_id=v_property_id
+        and a.employee_user_id=v_actor
+        and a.revoked_at is null
+        and (a.valid_until is null or a.valid_until>now())
+        and a.can_write=true
+    )
+  ) then
     raise exception 'property_write_required' using errcode='42501';
   end if;
   if v_occupancy_status<>'archived' or v_tenant_status<>'archived' then
@@ -202,7 +224,29 @@ begin
   if v_tenant_id is null then
     raise exception 'occupancy_not_found' using errcode='P0002';
   end if;
-  if not public.can_operate_property_v3(v_property_id,true) then
+  if not (
+    exists(
+      select 1 from public.user_roles ur
+      where ur.user_id=v_actor
+        and ur.role='root'
+        and ur.revoked_at is null
+    )
+    or exists(
+      select 1 from public.user_roles ur
+      where ur.user_id=v_actor
+        and ur.organization_id=v_org
+        and ur.role='admin'
+        and ur.revoked_at is null
+    )
+    or exists(
+      select 1 from public.property_staff_access_v3 a
+      where a.property_id=v_property_id
+        and a.employee_user_id=v_actor
+        and a.revoked_at is null
+        and (a.valid_until is null or a.valid_until>now())
+        and a.can_write=true
+    )
+  ) then
     raise exception 'property_write_required' using errcode='42501';
   end if;
   if v_status not in ('active','blocked') then
@@ -249,14 +293,6 @@ begin
         and organization_id=v_org
         and role='tenant'
         and revoked_at is null;
-
-      update public.external_account_onboarding
-      set status='revoked',
-          revoked_at=coalesce(revoked_at,now()),
-          updated_at=now()
-      where tenant_id=v_tenant_id
-        and auth_user_id=v_user_id
-        and status in ('pending','active');
 
       insert into public.audit_log_v2(
         organization_id,actor_user_id,action,entity_type,entity_id,result,details

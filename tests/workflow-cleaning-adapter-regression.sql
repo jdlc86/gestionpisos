@@ -1728,6 +1728,11 @@ select set_config('wf03.swap_task',(
   where source_kind='workflow_execution'
     and source_id=current_setting('wf03.swap_execution')::uuid
 ),true);
+select set_config('wf03.swap_cleaning_task',(
+  select id::text
+  from public.cleaning_tasks_v2
+  where workflow_execution_id=current_setting('wf03.swap_execution')::uuid
+),true);
 
 set local role authenticated;
 select set_config('request.jwt.claims',jsonb_build_object(
@@ -1743,11 +1748,7 @@ begin
   insert into public.cleaning_swap_requests_v2(
     cleaning_task_id,requester_user_id,target_user_id,status
   ) values (
-    (
-      select id
-      from public.cleaning_tasks_v2
-      where workflow_execution_id=current_setting('wf03.swap_execution')::uuid
-    ),
+    current_setting('wf03.swap_cleaning_task')::uuid,
     current_setting('wf03.tenant_user')::uuid,
     current_setting('wf03.swap_target_user')::uuid,
     'pending'
@@ -1914,6 +1915,11 @@ select set_config('wf03.swap_negative_task',(
   where source_kind='workflow_execution'
     and source_id=current_setting('wf03.swap_negative_execution')::uuid
 ),true);
+select set_config('wf03.swap_negative_cleaning_task',(
+  select id::text
+  from public.cleaning_tasks_v2
+  where workflow_execution_id=current_setting('wf03.swap_negative_execution')::uuid
+),true);
 
 set local role authenticated;
 select set_config('request.jwt.claims',jsonb_build_object(
@@ -1929,11 +1935,7 @@ begin
   insert into public.cleaning_swap_requests_v2(
     cleaning_task_id,requester_user_id,target_user_id,status
   ) values (
-    (
-      select id
-      from public.cleaning_tasks_v2
-      where workflow_execution_id=current_setting('wf03.swap_negative_execution')::uuid
-    ),
+    current_setting('wf03.swap_negative_cleaning_task')::uuid,
     current_setting('wf03.tenant_user')::uuid,
     current_setting('wf03.swap_target_user')::uuid,
     'pending'

@@ -286,7 +286,7 @@ Pruebas mínimas:
 ### BLOQUE WF-02 — Disparador genérico por evento
 **Estado:** VERIFIED
 
-**Verificación independiente:** completada por ChatGPT antes del merge. WF-03 permanece en `PLANNED` hasta verificar despliegue post-merge.
+**Verificación independiente:** completada por ChatGPT antes del merge y post-merge.
 
 Handoff final:
 - Rama: `feat/wf-02-event-trigger`
@@ -338,9 +338,18 @@ No conectar todos los dominios en este bloque; solo infraestructura + una prueba
 ---
 
 ### BLOQUE WF-03 — Adaptador Limpieza
-**Estado:** PLANNED
+**Estado:** ACTIVO / IN_PROGRESS
 
 Primer adaptador legacy obligatorio.
+
+Handoff en curso:
+- Rama: `feat/wf-03-cleaning-adapter`
+- Main observado al comenzar: `5b9296f87c259bba214201b1ddcc3410b61e69c9`
+- Ejecutor actual: ChatGPT.
+- Producción al comenzar: 0 filas en `cleaning_plans_v2`, `cleaning_tasks_v2`, swaps, deudas, auditorías y solicitudes de foto; no hay datos vivos legacy que migrar.
+- Hallazgo de arquitectura: no existe generador automático server-side de `cleaning_tasks_v2`; el motor transversal será la fuente de materialización. `cleaning_tasks_v2` se conservará como expediente de dominio, no como segunda tarjeta operativa.
+- Primer subbloque: enlazar idempotentemente cada ejecución workflow `flowType=cleaning` con una única `cleaning_tasks_v2`, manteniendo una sola tarjeta en `tenant_tasks_v2`.
+
 
 Objetivo:
 - expresar Limpieza usando el motor transversal sin perder funcionalidades legacy.

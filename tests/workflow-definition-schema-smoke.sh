@@ -422,18 +422,27 @@ grep -Fq "'tenant_task'" "$task_card_removal"
 grep -Fq 'revoke all on function public.delete_task_card_v1(uuid)' "$task_card_removal"
 grep -Fq 'grant execute on function public.delete_task_card_v1(uuid)' "$task_card_removal"
 
-# Asignación manual a inquilino: solo el inquilino activo del destino occupancy.
+# Asignación manual: la persona ejecutora deriva del destino, nunca de ser ROOT.
 grep -Fq 'create or replace function private.workflow_resolve_execution_assignee_v1' "$tenant_assignee"
+grep -Fq "v_scope_type='organization'" "$tenant_assignee"
+grep -Fq "v_scope_type in ('property','room')" "$tenant_assignee"
+grep -Fq "a.assignment_type in ('responsible','access')" "$tenant_assignee"
+grep -Fq "(v_scope_type<>'room' or o.room_id=v_room_id)" "$tenant_assignee"
 grep -Fq "v_scope_type='occupancy'" "$tenant_assignee"
 grep -Fq 'o.user_id=p_requested_user_id' "$tenant_assignee"
 grep -Fq 't.user_id=p_requested_user_id' "$tenant_assignee"
 grep -Fq "t.status='active'" "$tenant_assignee"
 grep -Fq "o.status='active'" "$tenant_assignee"
+grep -Fq "ur.role in ('admin','employee')" "$tenant_assignee"
+! grep -Fq "ur.role='root'" "$tenant_assignee"
 grep -Fq 'workflow_manual_assignee_not_eligible' "$tenant_assignee"
 grep -Fq 'revoke all on function private.workflow_resolve_execution_assignee_v1(uuid,uuid)' "$tenant_assignee"
 
-# Un tenant asignado se revalida durante toda la vida operativa del workflow.
+# La relación con el destino se revalida durante toda la vida operativa.
 grep -Fq 'create or replace function public.workflow_execution_actor_current_v1' "$tenant_access_revocation"
+grep -Fq "v_execution.assignment_type='property_responsible'" "$tenant_access_revocation"
+grep -Fq "v_execution.scope_type in ('property','room')" "$tenant_access_revocation"
+grep -Fq "(v_execution.scope_type<>'room' or o.room_id=v_execution.room_id)" "$tenant_access_revocation"
 grep -Fq "v_execution.scope_type='occupancy'" "$tenant_access_revocation"
 grep -Fq "o.status='active'" "$tenant_access_revocation"
 grep -Fq "t.status='active'" "$tenant_access_revocation"

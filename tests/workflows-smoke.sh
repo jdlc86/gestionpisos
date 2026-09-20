@@ -630,3 +630,10 @@ test -s tests/workflow-event-trigger-regression.sql
 grep -Fq '20260920103000_wf02_event_trigger_core.sql' tests/database-regression-v2.sh
 grep -Fq 'workflow-event-trigger-regression.sql' tests/database-regression-v2.sh
 
+# WF-04: Check-in y Check-out se configuran con el evento lifecycle exacto.
+grep -Fq 'value="occupancy.offboarded">Baja de ocupación confirmada' docs/workflow-builder.html
+grep -Fq 'id="wf04StepNote"' docs/workflow-builder.html
+grep -Fq 'const lifecycle=["checkin","checkout"].includes(value("flowType"));' docs/workflow-builder.js
+grep -Fq 'eventType.value=value("flowType")==="checkin"?"occupancy.created":"occupancy.offboarded"' docs/workflow-builder.js
+test -s supabase/migrations/20260920194226_wf04_lifecycle_authoring_contract.sql
+

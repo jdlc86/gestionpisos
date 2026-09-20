@@ -126,6 +126,7 @@
           <label id="eventTypeRow" hidden>Qué evento lo activa<select id="eventType" name="eventType" disabled>
             <option value="">Pendiente · selecciona un evento</option>
             <option value="occupancy.created">Nueva ocupación creada · organización / piso / habitación</option>
+            <option value="occupancy.offboarded">Baja de ocupación confirmada · organización / piso / habitación</option>
           </select></label>
           <label id="recurrenceRow" hidden>Frecuencia<select id="recurrence" name="recurrence" disabled>
             <option value="">Pendiente · selecciona una frecuencia</option>
@@ -196,6 +197,7 @@
             <label class="check-row"><input type="checkbox" name="stepDocument"> Adjuntar o revisar documento</label>
           </fieldset>
           <div id="cleaningStepNote" class="builder-note" hidden>En Limpieza, Aceptar/Rechazar es obligatorio. La fotoverificación se prepara automáticamente con los patrones activos del piso y los pasos genéricos adicionales quedan desactivados.</div>
+          <div id="wf04StepNote" class="builder-note" hidden>Entrada y Salida siguen la ocupación exacta. Aceptar/Rechazar y la gestión de llaves se registran en la misma tarjeta, sin cambiar el acceso del inquilino.</div>
           <section id="checklistEditor" class="builder-checklist-editor" hidden aria-labelledby="checklistEditorTitle">
             <div class="builder-checklist-heading">
               <div>

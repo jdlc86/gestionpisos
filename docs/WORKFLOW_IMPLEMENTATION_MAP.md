@@ -343,7 +343,7 @@ Fotografía, Checklist y Documento ya son pasos operativos del motor mínimo.
 | Versión de flujo | `workflow_definition_versions_v2` | Publicación inmutable implementada |
 | Aplicación concreta | `workflow_applications_v2` | Vinculación real implementada |
 | Disparador manual explícito | `execute_workflow_application_now_v1` | Implementado con idempotencia |
-| Regla de asignación inicial | Snapshot en `workflow_executions_v2` | Manual y responsable de piso soportados; otras bloqueadas explícitamente |
+| Regla de asignación | Snapshot en `workflow_executions_v2` | Manual, responsable de piso, persona fija, rol y rotación de ocupantes; resolución server-side y revalidación vigente |
 | Ejecución genérica | `workflow_executions_v2` | Fase inicial `pending` implementada |
 | Tarea materializada | `tenant_tasks_v2` + `source_kind/source_id` | Implementada e idempotente |
 | Acción atómica | `tenant_task_actions_v2` + `apply_workflow_task_action_v1` | `accept/reject` y revisión `agency` sin Foto; mantiene tarea/ejecución sincronizadas |

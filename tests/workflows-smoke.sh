@@ -174,7 +174,13 @@ grep -Fq 'id="photoBankLink"' docs/workflow-builder.html
 grep -Fq 'href="./photo-patterns.html?from=workflow-builder" hidden' docs/workflow-builder.html
 grep -Fq 'function updatePhotoResource()' docs/workflow-builder.js
 grep -Fq 'photoBankLink.hidden=!checked("stepPhoto")' docs/workflow-builder.js
-grep -Fq './workflow-builder.js?v=2026091921' docs/workflow-builder.html
+grep -Fq './workflow-builder.js?v=2026092001' docs/workflow-builder.html
+grep -Fq 'id="assignmentUserId"' docs/workflow-builder.html
+grep -Fq 'id="assignmentRole"' docs/workflow-builder.html
+grep -Fq 'function assignmentConfigurationComplete(data)' docs/workflow-builder.js
+grep -Fq 'function ruleCandidates(app,spec)' docs/workflow-applications.js
+test -s supabase/migrations/20260920080723_wf01_generic_assignment_rules.sql
+test -s tests/workflow-assignment-rules-regression.sql
 
 grep -Fq 'workflow_definitions_v2' docs/workflow-definitions.js
 grep -Fq '.eq("status","published")' docs/workflow-definitions.js
@@ -196,7 +202,7 @@ grep -Fq 'rooms_v2' docs/workflow-applications.js
 grep -Fq 'occupancies_v2' docs/workflow-applications.js
 grep -Fq '.application-card [hidden]{display:none!important}' docs/workflow-applications.css
 grep -Fq './workflow-applications.css?v=2026091915' docs/workflow-applications.html
-grep -Fq './workflow-applications.js?v=2026092002' docs/workflow-applications.html
+grep -Fq './workflow-applications.js?v=2026092003' docs/workflow-applications.html
 grep -Fq '¿Dónde quieres utilizarlo?' docs/workflow-applications.html
 grep -Fq 'Definición → Versión publicada → Aplicación concreta' docs/WORKFLOW_APPLICATIONS_CONTRACT.md
 grep -Fq 'workflow_applications_v2' docs/WORKFLOW_APPLICATIONS_CONTRACT.md

@@ -367,7 +367,11 @@ Handoff en curso:
 - Reviews/hilos de PR #271 observados: ninguno abierto.
 - Hallazgo para el siguiente subbloque: el legacy de swaps actualiza solo `cleaning_tasks_v2.assigned_user_id` y crea `cleaning_debts_v2`; en una limpieza enlazada eso divergiría de `workflow_executions_v2.assigned_user_id` y `tenant_tasks_v2.assigned_user_id`. Debe adaptarse atómicamente sin crear otra tarea.
 - Pendientes WF-03: swaps + deuda sincronizados con workflow; revisar UI/E2E de Limpieza; reconciliar rama con main; revisión final/ready; merge; despliegue ordenado migraciones→Edge; verificación producción y prueba humana.
-- Siguiente acción exacta: implementar un subbloque pequeño de swap aceptado para una limpieza workflow, preservando validación de ocupante vigente y deuda legacy, pero sincronizando asignado/estado de `cleaning_tasks_v2`, `workflow_executions_v2` y `tenant_tasks_v2` en una sola transacción. Añadir regresión positiva, negativa e idempotencia antes de tocar UI.
+- Subbloque 6 — swaps + deuda: migración `20260920141000_wf03_cleaning_swap_workflow_sync.sql`; un swap aceptado sincroniza atómicamente asignado/estado entre `cleaning_tasks_v2`, `workflow_executions_v2` y `tenant_tasks_v2`, conserva deuda legacy de 1 unidad, registra historial/evento, revalida ocupante con la elegibilidad compartida de WF-01 y mantiene compatibilidad con tareas legacy no enlazadas.
+- Regresión de swaps verificada: aceptación positiva, deuda única, reintento interno idempotente, objetivo que deja de ser elegible bloqueado por RLS o por revalidación server-side, y contrato legacy preservado.
+- Corrección del falso negativo del test: cuando el objetivo pierde acceso de plataforma, RLS convierte el UPDATE cliente en 0 filas antes de que el trigger pueda ejecutarse. La prueba ahora exige 0 filas o rechazo server-side y además confirma que swap/tarea/workflow/deuda quedan intactos.
+- Checks GitHub verificados por ChatGPT sobre `884643269d8ff5b4c7ecc18b96ce30e5b52e80a6`: Governance Guard ✅, PWA Smoke ✅, Schema Guard ✅.
+- Siguiente acción exacta: revisar y cerrar la integración UI/E2E de Limpieza sobre `tenant_tasks_v2`, eliminando dependencias de interfaz provisional como introducir manualmente el ID de `cleaning_tasks_v2`, sin crear una segunda tarjeta operativa. Después reconciliar la rama con main y hacer revisión final antes de merge/despliegue.
 
 Objetivo:
 - expresar Limpieza usando el motor transversal sin perder funcionalidades legacy.

@@ -169,7 +169,8 @@ Reglas:
 - organización, piso, habitación y ocupación se resuelven server-side desde el evento capturado;
 - la asignación se revalida en el momento del despacho usando el mismo resolver del resto del motor;
 - un fallo de una aplicación produce/actualiza un recibo `failed` y auditoría, pero no revierte el evento origen ni ejecuciones correctas de otras aplicaciones;
-- mientras exista algún despacho fallido, el evento permanece `pending` para reintento; los recibos `executed` se saltan en los intentos siguientes;
-- cuando todos los despachos convergen, el evento pasa a `processed`; reintentar después no crea ejecuciones nuevas;
+- los fallos recuperables mantienen el evento `pending` para reintento; los recibos `executed` se saltan en los intentos siguientes;
+- WF-04 considera terminal `workflow_domain_lifecycle_mismatch` cuando el evento ya describe una ocupación histórica incompatible con la operación solicitada. Ese despacho no se reintenta indefinidamente: el outbox termina en `processed_with_errors`. En cambio `workflow_event_subject_unlinked` sigue siendo recuperable y permanece `pending` hasta que exista vínculo de tenant;
+- cuando todos los despachos recuperables convergen, el evento pasa a `processed` o `processed_with_errors` si coexistió algún fallo terminal; reintentar después no crea ejecuciones nuevas;
 - las tablas de outbox/recibos no conceden escritura ni ejecución directa a `authenticated`.
 

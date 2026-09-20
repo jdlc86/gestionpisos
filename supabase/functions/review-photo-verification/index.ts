@@ -37,6 +37,19 @@ Deno.serve(async (req: Request) => {
   const user = userData?.user;
   if (userError || !user) return json(401, { error: "invalid_session" });
 
+  const token = authorization.replace(/^Bearer\\s+/i, "").trim();
+  if (!token) return json(401, { error: "invalid_session" });
+
+  const { data:aalData, error:aalError } =
+    await userClient.auth.mfa.getAuthenticatorAssuranceLevel(token);
+  if (aalError) {
+    console.error(aalError);
+    return json(500, { error: "aal_lookup_failed" });
+  }
+  if (aalData.currentLevel !== "aal2") {
+    return json(403, { error: "aal2_required" });
+  }
+
   const { data: roleRows, error: roleError } = await admin
     .from("user_roles")
     .select("role,organization_id,revoked_at")
@@ -73,7 +86,7 @@ Deno.serve(async (req: Request) => {
 
   const { data:run, error:runError } = await admin
     .from("photo_verification_runs_v2")
-    .select("id,organization_id,status,source_type,source_id")
+    .select("id,organization_id,status,source_type,source_id,purpose,cleaning_task_id")
     .eq("id", runId)
     .maybeSingle();
 
@@ -87,13 +100,58 @@ Deno.serve(async (req: Request) => {
     return json(404, { error: "run_not_found" });
   }
 
+  let isWorkflowCleaning = false;
+  if (run.purpose === "cleaning" && run.cleaning_task_id) {
+    const { data:cleaningTask, error:cleaningTaskError } = await admin
+      .from("cleaning_tasks_v2")
+      .select("id,workflow_execution_id")
+      .eq("id", run.cleaning_task_id)
+      .maybeSingle();
+
+    if (cleaningTaskError) return json(500, { error: "cleaning_task_lookup_failed" });
+    if (!cleaningTask) return json(404, { error: "run_not_found" });
+    isWorkflowCleaning = Boolean(cleaningTask.workflow_execution_id);
+  }
+
   const reviewableStatuses = ["submitted","manual_review","ai_review"];
-  if (run.source_type === "workflow_execution") {
+  if (run.source_type === "workflow_execution" || isWorkflowCleaning) {
     if (!reviewableStatuses.includes(run.status) && run.status !== decision) {
       return json(409, { error: "run_not_reviewable" });
     }
   } else if (!reviewableStatuses.includes(run.status)) {
     return json(409, { error: "run_not_reviewable" });
+  }
+
+  if (isWorkflowCleaning) {
+    const { data, error } = await admin.rpc("apply_workflow_cleaning_photo_review_v1", {
+      p_run_id: runId,
+      p_actor_user_id: user.id,
+      p_decision: decision,
+      p_rejection_reason: decision === "rejected" ? rejectionReason : null,
+    });
+
+    if (error) {
+      console.error(error);
+      const message = String(error.message || "");
+      if (message.includes("workflow_review_actor_forbidden")) {
+        return json(403, { error: "review_not_allowed" });
+      }
+      if (
+        message.includes("workflow_cleaning_review_conflict")
+        || message.includes("workflow_cleaning_review_state_conflict")
+        || message.includes("workflow_cleaning_audit_not_reviewable")
+      ) {
+        return json(409, { error: "workflow_review_state_conflict" });
+      }
+      return json(500, { error: "workflow_cleaning_review_apply_failed" });
+    }
+
+    return json(200, {
+      ok: true,
+      run: { id: runId, status: decision },
+      workflow: data,
+      cleaning: true,
+    });
   }
 
   if (run.source_type === "workflow_execution") {

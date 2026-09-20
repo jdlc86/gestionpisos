@@ -1950,8 +1950,25 @@ reset role;
 
 -- Entre solicitud y aceptación el ocupante objetivo deja de ser elegible.
 update public.occupancies_v2
-set ends_on=current_date-1
+set status='archived',
+    ends_on=current_date-1
 where id=current_setting('wf03.swap_target_occupancy')::uuid;
+
+do $stale_swap_fixture$
+begin
+  if exists(
+    select 1
+    from public.occupancies_v2 o
+    where o.property_id=current_setting('wf03.property')::uuid
+      and o.user_id=current_setting('wf03.swap_target_user')::uuid
+      and o.status='active'
+      and o.starts_on<=current_date
+      and (o.ends_on is null or o.ends_on>=current_date)
+  ) then
+    raise exception 'stale swap fixture still exposes target as active occupant';
+  end if;
+end;
+$stale_swap_fixture$;
 
 set local role authenticated;
 select set_config('request.jwt.claims',jsonb_build_object(
@@ -2027,7 +2044,8 @@ $stale_swap_left_states_untouched$;
 
 -- Restaurar elegibilidad y verificar que el camino legacy sigue intacto.
 update public.occupancies_v2
-set ends_on=null
+set status='active',
+    ends_on=null
 where id=current_setting('wf03.swap_target_occupancy')::uuid;
 
 select set_config('wf03.legacy_cleaning',gen_random_uuid()::text,true);

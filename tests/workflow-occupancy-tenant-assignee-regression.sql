@@ -65,22 +65,6 @@ values
   (current_setting('gestionpisos.tenant_assignee.employee_user')::uuid)
 on conflict(id) do nothing;
 
-insert into public.profiles(user_id,organization_id,display_name,email,status)
-values(
-  current_setting('gestionpisos.tenant_assignee.employee_user')::uuid,
-  current_setting('gestionpisos.tenant_assignee.org')::uuid,
-  'Workflow linked employee',
-  'workflow-linked-employee@example.invalid',
-  'active'
-)
-on conflict(user_id) do update
-set organization_id=excluded.organization_id,
-    display_name=excluded.display_name,
-    email=excluded.email,
-    status='active',
-    archived_at=null,
-    updated_at=now();
-
 insert into public.user_roles(user_id,organization_id,role)
 values
   (

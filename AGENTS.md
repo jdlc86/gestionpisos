@@ -52,3 +52,18 @@ Si implementación y contrato discrepan, manda el contrato hasta que una decisi�
 - No considerar apto para producción un flujo de recuperación que dependa del SMTP incorporado de Supabase o de un límite equivalente a 2 correos/hora.
 - No asignar viviendas, accesos adicionales ni capacidades administrativas a personal interno cuyo onboarding siga pendiente.
 - No cruzar automáticamente una identidad de personal interno con OWNER/TENANT por coincidencia de email.
+
+## Orquestación obligatoria de Flujos de Trabajo
+
+Para cualquier tarea que modifique **Flujos de Trabajo**, su motor, asignaciones, disparadores, adaptadores de dominio, tareas/evidencias o migración de procesos legacy:
+
+1. Leer primero `docs/CODEX_WORKFLOW_COMPLETION_PLAN.md`.
+2. Trabajar exclusivamente el bloque marcado como ACTIVO.
+3. Verificar el HEAD real de `main` antes de modificar; no asumir que el documento o una sesión previa están actualizados.
+4. Codex actúa como ejecutor de implementación, no como autoridad final de verificación.
+5. Codex puede dejar un bloque en `READY_FOR_CHATGPT_REVIEW`, pero **no puede marcarlo `VERIFIED`** ni avanzar por sí mismo al siguiente bloque.
+6. Codex no fusiona PRs, no despliega manualmente producción y no ejecuta DDL manual de producción.
+7. Antes de detenerse debe actualizar el handoff del bloque activo en ese documento con rama, PR, HEAD, cambios, pruebas, checks, bloqueadores y siguiente acción exacta.
+
+El repositorio, no la memoria de una sesión, es la fuente de continuidad entre ChatGPT y Codex.
+

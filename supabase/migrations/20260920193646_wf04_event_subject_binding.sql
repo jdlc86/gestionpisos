@@ -201,3 +201,215 @@ revoke all on function private.workflow_execute_application_internal_v1(
 
 comment on column public.workflow_executions_v2.source_event_id is
   'Evento de negocio exacto que activó la ejecución; para WF-04 permite resolver la ocupación sin convertir el ámbito de la aplicación en otra identidad.';
+
+
+-- Un evento de Entrada puede quedar obsoleto si la ocupación se da de Baja
+-- antes de que el dispatcher lo consuma. Ese mismatch de lifecycle es terminal:
+-- reintentarlo nunca podrá revivir esa ocupación histórica y podría bloquear
+-- los lotes más antiguos. Los demás fallos continúan siendo reintentables.
+create or replace function private.process_pending_workflow_events_v1(
+  p_limit integer default 50
+)
+returns integer
+language plpgsql
+security definer
+set search_path=''
+as $workflow_process_events_wf04$
+declare
+  v_limit integer:=least(greatest(coalesce(p_limit,50),1),500);
+  v_event public.workflow_event_outbox_v2;
+  v_app record;
+  v_execution_id uuid;
+  v_execution_status text;
+  v_execution_assignee uuid;
+  v_execution_created_at timestamptz;
+  v_created_new boolean;
+  v_retryable_errors integer;
+  v_terminal_errors integer;
+  v_prior_status text;
+  v_prior_error_key text;
+  v_processed integer:=0;
+  v_key text;
+  v_error_code text;
+  v_error_key text;
+  v_terminal boolean;
+begin
+  for v_event in
+    select e.*
+    from public.workflow_event_outbox_v2 e
+    where e.status='pending'
+    order by e.occurred_at,e.id
+    limit v_limit
+    for update skip locked
+  loop
+    v_retryable_errors:=0;
+    v_terminal_errors:=0;
+
+    for v_app in
+      select
+        a.id as application_id,
+        a.created_by,
+        a.scope_type,
+        a.property_id,
+        a.room_id,
+        a.occupancy_id
+      from public.workflow_applications_v2 a
+      join public.workflow_definition_versions_v2 wv
+        on wv.id=a.definition_version_id
+       and wv.definition_id=a.definition_id
+       and wv.organization_id=a.organization_id
+      join public.workflow_definitions_v2 d
+        on d.id=a.definition_id
+       and d.organization_id=a.organization_id
+      where a.organization_id=v_event.organization_id
+        and a.status='configured'
+        and d.status='published'
+        and a.created_at<=v_event.occurred_at
+        and wv.published_at<=v_event.occurred_at
+        and wv.spec->>'triggerType'='event'
+        and wv.spec->>'eventType'=v_event.event_type
+        and (
+          a.scope_type='organization'
+          or (
+            a.scope_type='property'
+            and a.property_id=v_event.property_id
+          )
+          or (
+            a.scope_type='room'
+            and a.property_id=v_event.property_id
+            and a.room_id=v_event.room_id
+          )
+          or (
+            a.scope_type='occupancy'
+            and a.occupancy_id=v_event.occupancy_id
+          )
+        )
+      order by a.id
+    loop
+      select d.status,d.error_key
+      into v_prior_status,v_prior_error_key
+      from public.workflow_event_dispatches_v2 d
+      where d.event_id=v_event.id
+        and d.application_id=v_app.application_id;
+
+      if v_prior_status='executed' then
+        continue;
+      end if;
+
+      -- Ya se clasificó como terminal en una pasada anterior mientras otra
+      -- aplicación del mismo evento seguía siendo reintentable.
+      if v_prior_status='failed'
+        and v_prior_error_key='workflow_domain_lifecycle_mismatch' then
+        v_terminal_errors:=v_terminal_errors+1;
+        continue;
+      end if;
+
+      v_key:='event:'||v_event.id::text;
+
+      begin
+        select x.execution_id,x.status,x.assigned_user_id,x.created_at,x.created_new
+        into v_execution_id,v_execution_status,v_execution_assignee,
+             v_execution_created_at,v_created_new
+        from private.workflow_execute_application_internal_v1(
+          v_app.application_id,
+          v_key,
+          null,
+          'event',
+          v_app.created_by
+        ) x
+        limit 1;
+
+        insert into public.workflow_event_dispatches_v2(
+          event_id,application_id,execution_id,status
+        ) values (
+          v_event.id,v_app.application_id,v_execution_id,'executed'
+        )
+        on conflict(event_id,application_id) do update
+        set execution_id=excluded.execution_id,
+            status='executed',
+            error_code=null,
+            error_key=null;
+
+        insert into public.audit_log_v2(
+          organization_id,actor_user_id,action,entity_type,entity_id,result,details
+        ) values (
+          v_event.organization_id,v_app.created_by,
+          'workflow_event_dispatched','workflow_event',v_event.id::text,'success',
+          jsonb_build_object(
+            'event_type',v_event.event_type,
+            'source_kind',v_event.source_kind,
+            'source_id',v_event.source_id,
+            'application_id',v_app.application_id,
+            'execution_id',v_execution_id
+          )
+        );
+      exception when others then
+        v_error_code:=sqlstate;
+        v_error_key:=left(sqlerrm,120);
+        v_terminal:=v_error_code='55000'
+          and v_error_key='workflow_domain_lifecycle_mismatch';
+
+        if v_terminal then
+          v_terminal_errors:=v_terminal_errors+1;
+        else
+          v_retryable_errors:=v_retryable_errors+1;
+        end if;
+
+        insert into public.workflow_event_dispatches_v2(
+          event_id,application_id,status,error_code,error_key
+        ) values (
+          v_event.id,v_app.application_id,'failed',v_error_code,v_error_key
+        )
+        on conflict(event_id,application_id) do update
+        set execution_id=null,
+            status='failed',
+            error_code=excluded.error_code,
+            error_key=excluded.error_key;
+
+        if v_prior_status is distinct from 'failed' then
+          insert into public.audit_log_v2(
+            organization_id,actor_user_id,action,entity_type,entity_id,result,details
+          ) values (
+            v_event.organization_id,v_app.created_by,
+            case when v_terminal
+              then 'workflow_event_dispatch_skipped'
+              else 'workflow_event_dispatch_failed' end,
+            'workflow_event',v_event.id::text,
+            case when v_terminal then 'skipped' else 'failure' end,
+            jsonb_build_object(
+              'event_type',v_event.event_type,
+              'source_kind',v_event.source_kind,
+              'source_id',v_event.source_id,
+              'application_id',v_app.application_id,
+              'sqlstate',v_error_code,
+              'error_key',v_error_key
+            )
+          );
+        end if;
+      end;
+    end loop;
+
+    update public.workflow_event_outbox_v2
+    set status=case
+          when v_retryable_errors>0 then 'pending'
+          when v_terminal_errors>0 then 'processed_with_errors'
+          else 'processed'
+        end,
+        processed_at=case
+          when v_retryable_errors>0 then null
+          else now()
+        end
+    where id=v_event.id;
+
+    v_processed:=v_processed+1;
+  end loop;
+
+  return v_processed;
+end;
+$workflow_process_events_wf04$;
+
+revoke all on function private.process_pending_workflow_events_v1(integer)
+  from public,anon,authenticated,service_role;
+
+comment on function private.process_pending_workflow_events_v1(integer) is
+  'Despacha eventos WF-02. WF-04 trata workflow_domain_lifecycle_mismatch como fallo terminal procesado con errores; los fallos recuperables permanecen pending para reintento.';

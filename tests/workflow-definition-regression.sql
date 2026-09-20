@@ -471,8 +471,8 @@ select set_config(
    from public.save_workflow_definition_draft_v2(
      jsonb_build_object(
        'authoringVersion',2,
-       'flowName','Limpieza personalizada',
-       'flowType','cleaning',
+       'flowName','Flujo personalizado recurrente',
+       'flowType','custom',
        'flowDescription','',
        'scopeType','property',
        'triggerType','recurring',
@@ -524,8 +524,8 @@ select set_config(
    from public.save_workflow_definition_draft_v2(
      jsonb_build_object(
        'authoringVersion',2,
-       'flowName','Limpieza manual por piso',
-       'flowType','cleaning',
+       'flowName','Flujo manual por piso',
+       'flowType','custom',
        'flowDescription','',
        'scopeType','property',
        'triggerType','manual',

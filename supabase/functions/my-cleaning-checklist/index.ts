@@ -119,6 +119,7 @@ Deno.serve(async(req)=>{
     if(taskError) return json(500,{error:"task_lookup_failed"});
     if(!legacyTask) return json(404,{error:"task_not_found"});
     if(legacyTask.assigned_user_id!==user.id) return json(403,{error:"task_not_assigned_to_user"});
+    if(legacyTask.workflow_execution_id) return json(409,{error:"workflow_task_reference_required"});
     if(["cancelled","swapped","missed"].includes(legacyTask.status)) return json(409,{error:"task_not_actionable"});
 
     task=legacyTask;

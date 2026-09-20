@@ -447,10 +447,16 @@ begin
     and (ends_on is null or ends_on>=current_date)
     and user_id is null;
 
-  insert into public.user_roles(user_id,organization_id,role,created_by)
-  values(p_auth_user_id,v_org,'tenant',p_actor_user_id)
-  on conflict(user_id,organization_id,role)
-  do update set revoked_at=null;
+  update public.user_roles
+  set revoked_at=null
+  where user_id=p_auth_user_id
+    and organization_id=v_org
+    and role='tenant';
+
+  if not found then
+    insert into public.user_roles(user_id,organization_id,role,created_by)
+    values(p_auth_user_id,v_org,'tenant',p_actor_user_id);
+  end if;
 
   insert into public.audit_log_v2(
     organization_id,actor_user_id,action,entity_type,entity_id,result,details

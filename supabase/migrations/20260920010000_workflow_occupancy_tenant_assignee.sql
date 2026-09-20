@@ -1,7 +1,6 @@
--- GestionPisos · Flujos · asignación manual al inquilino del destino
--- Permite que un flujo con ámbito occupancy asigne la ejecución al inquilino
--- activo de esa misma ocupación. No habilita inquilinos ajenos ni amplía permisos
--- de administración del workflow.
+-- GestionPisos · Flujos · asignación manual ligada al destino
+-- La persona ejecutora se elige por relación operativa con el destino del flujo.
+-- ROOT administra la plataforma, pero no es candidato de ejecución por defecto.
 
 create or replace function private.workflow_resolve_execution_assignee_v1(
   p_application_id uuid,
@@ -16,6 +15,7 @@ declare
   v_org uuid;
   v_scope_type text;
   v_property_id uuid;
+  v_room_id uuid;
   v_occupancy_id uuid;
   v_spec jsonb;
   v_assignment_type text;
@@ -25,12 +25,14 @@ begin
     wa.organization_id,
     wa.scope_type,
     wa.property_id,
+    wa.room_id,
     wa.occupancy_id,
     wv.spec
   into
     v_org,
     v_scope_type,
     v_property_id,
+    v_room_id,
     v_occupancy_id,
     v_spec
   from public.workflow_applications_v2 wa
@@ -52,44 +54,75 @@ begin
       raise exception 'workflow_manual_assignee_required' using errcode='22023';
     end if;
 
-    if exists(
-      select 1
-      from public.user_roles ur
-      where ur.user_id=p_requested_user_id
-        and ur.role='root'
-        and ur.revoked_at is null
-    ) then
+    -- Organización no tiene un destino residencial concreto. Se limita a
+    -- personal interno activo; ROOT no es ejecutor operativo por defecto.
+    if v_scope_type='organization'
+      and exists(
+        select 1
+        from public.user_roles ur
+        join public.profiles p on p.user_id=ur.user_id
+        where ur.user_id=p_requested_user_id
+          and ur.organization_id=v_org
+          and ur.role in ('admin','employee')
+          and ur.revoked_at is null
+          and p.status='active'
+          and p.archived_at is null
+      )
+    then
       v_assigned_user:=p_requested_user_id;
-    elsif exists(
-      select 1
-      from public.user_roles ur
-      where ur.user_id=p_requested_user_id
-        and ur.organization_id=v_org
-        and ur.role='admin'
-        and ur.revoked_at is null
-    ) then
-      v_assigned_user:=p_requested_user_id;
-    elsif exists(
-      select 1
-      from public.user_roles ur
-      where ur.user_id=p_requested_user_id
-        and ur.organization_id=v_org
-        and ur.role='employee'
-        and ur.revoked_at is null
-    ) and (
-      v_property_id is null
-      or exists(
+
+    -- Piso/Habitación: personal con asociación vigente al piso. La asignación
+    -- explícita de la tarea concede capacidad sobre ESA tarea, aunque el acceso
+    -- general del empleado al piso sea de lectura.
+    elsif v_scope_type in ('property','room')
+      and v_property_id is not null
+      and exists(
         select 1
         from public.property_staff_access_v3 a
+        join public.user_roles ur
+          on ur.user_id=a.employee_user_id
+         and ur.organization_id=v_org
+         and ur.role in ('admin','employee')
+         and ur.revoked_at is null
+        join public.profiles p
+          on p.user_id=a.employee_user_id
+         and p.status='active'
+         and p.archived_at is null
         where a.property_id=v_property_id
           and a.employee_user_id=p_requested_user_id
+          and a.assignment_type in ('responsible','access')
           and a.revoked_at is null
           and (a.valid_until is null or a.valid_until>now())
-          and a.can_write=true
-          and a.assignment_type in ('responsible','access')
       )
-    ) then
+    then
       v_assigned_user:=p_requested_user_id;
+
+    -- Piso/Habitación: inquilino con identidad Auth y ocupación vigente dentro
+    -- del destino. Para habitación debe pertenecer exactamente a esa habitación.
+    elsif v_scope_type in ('property','room')
+      and v_property_id is not null
+      and exists(
+        select 1
+        from public.occupancies_v2 o
+        join public.tenants_v2 t
+          on t.id=o.tenant_id
+         and t.organization_id=o.organization_id
+        where o.organization_id=v_org
+          and o.property_id=v_property_id
+          and (v_scope_type<>'room' or o.room_id=v_room_id)
+          and o.status='active'
+          and o.starts_on is not null
+          and o.starts_on<=current_date
+          and (o.ends_on is null or o.ends_on>=current_date)
+          and o.user_id=p_requested_user_id
+          and t.user_id=p_requested_user_id
+          and t.status='active'
+          and t.archived_at is null
+      )
+    then
+      v_assigned_user:=p_requested_user_id;
+
+    -- Ocupación/Inquilino: solo el propio inquilino activo del destino.
     elsif v_scope_type='occupancy'
       and v_occupancy_id is not null
       and exists(
@@ -102,6 +135,7 @@ begin
           and o.organization_id=v_org
           and o.property_id=v_property_id
           and o.status='active'
+          and o.starts_on is not null
           and o.starts_on<=current_date
           and (o.ends_on is null or o.ends_on>=current_date)
           and o.user_id=p_requested_user_id
@@ -157,4 +191,4 @@ revoke all on function private.workflow_resolve_execution_assignee_v1(uuid,uuid)
   from public,anon,authenticated;
 
 comment on function private.workflow_resolve_execution_assignee_v1(uuid,uuid) is
-  'Resuelve el asignado de una ejecución. En manual admite ROOT/ADMIN/empleado elegible y, para scope occupancy, únicamente el inquilino activo de esa ocupación.';
+  'Resuelve el ejecutor manual por relación con el destino: organización=personal interno; piso=inquilinos activos + personal asociado; habitación=inquilinos activos de la habitación + personal asociado al piso; ocupación=solo su inquilino activo. ROOT no es candidato por defecto.';

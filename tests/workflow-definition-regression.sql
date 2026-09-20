@@ -96,7 +96,11 @@ insert into auth.users(id) values
 insert into public.user_roles(user_id,organization_id,role) values
   (current_setting('gestionpisos.workflow_admin_1')::uuid,current_setting('gestionpisos.workflow_org_1')::uuid,'admin'),
   (current_setting('gestionpisos.workflow_admin_2')::uuid,current_setting('gestionpisos.workflow_org_2')::uuid,'admin'),
-  (current_setting('gestionpisos.workflow_tenant')::uuid,current_setting('gestionpisos.workflow_org_1')::uuid,'tenant');
+  (current_setting('gestionpisos.workflow_tenant')::uuid,current_setting('gestionpisos.workflow_org_1')::uuid,'tenant'),
+  -- El fixture histórico usa ROOT como actor asignado en varios escenarios.
+  -- Desde la regla por destino, solo es elegible porque aquí recibe además
+  -- una relación operativa explícita de empleado dentro de la base desechable.
+  (current_setting('gestionpisos.workflow_root')::uuid,current_setting('gestionpisos.workflow_org_1')::uuid,'employee');
 
 set local role authenticated;
 
@@ -825,6 +829,17 @@ values
     'Calle Ajena 2',
     'active'
   );
+
+insert into public.property_staff_access_v3(
+  organization_id,property_id,employee_user_id,assignment_type,can_write,granted_by
+) values (
+  current_setting('gestionpisos.workflow_org_1')::uuid,
+  current_setting('gestionpisos.workflow_property_1')::uuid,
+  current_setting('gestionpisos.workflow_root')::uuid,
+  'access',
+  false,
+  current_setting('gestionpisos.workflow_root')::uuid
+);
 
 insert into public.rooms_v2(id,property_id,label,status)
 values (

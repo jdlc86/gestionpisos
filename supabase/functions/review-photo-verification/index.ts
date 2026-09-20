@@ -37,7 +37,7 @@ Deno.serve(async (req: Request) => {
   const user = userData?.user;
   if (userError || !user) return json(401, { error: "invalid_session" });
 
-  const token = authorization.replace(/^Bearer\\s+/i, "").trim();
+  const token = authorization.replace(/^Bearer\s+/i, "").trim();
   if (!token) return json(401, { error: "invalid_session" });
 
   const { data:aalData, error:aalError } =

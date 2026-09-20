@@ -142,7 +142,7 @@ insert into public.occupancies_v2(
 ) values (
   current_setting('wf04.stale_occupancy')::uuid,current_setting('wf04.org')::uuid,
   current_setting('wf04.stale_tenant')::uuid,current_setting('wf04.property')::uuid,
-  current_setting('wf04.room')::uuid,'wf04-stale@example.invalid',
+  current_setting('wf04.future_room')::uuid,'wf04-stale@example.invalid',
   current_date-3,null,'active',current_setting('wf04.stale_user')::uuid
 );
 set local role authenticated;
@@ -150,7 +150,7 @@ select set_config('request.jwt.claims',jsonb_build_object(
   'sub',current_setting('wf04.root'),'role','authenticated','aal','aal2'
 )::text,true);
 select public.offboard_tenant_occupancy_v2(
-  current_setting('wf04.stale_occupancy')::uuid,current_date-2
+  current_setting('wf04.stale_occupancy')::uuid,current_date
 );
 reset role;
 

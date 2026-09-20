@@ -33,6 +33,7 @@ select set_config('gestionpisos.tenant_assignee.property',gen_random_uuid()::tex
 
 select set_config('gestionpisos.tenant_assignee.user','88888888-8888-4888-8888-888888888881',true);
 select set_config('gestionpisos.tenant_assignee.foreign_user','88888888-8888-4888-8888-888888888882',true);
+select set_config('gestionpisos.tenant_assignee.employee_user','88888888-8888-4888-8888-888888888883',true);
 select set_config('gestionpisos.tenant_assignee.tenant',gen_random_uuid()::text,true);
 select set_config('gestionpisos.tenant_assignee.foreign_tenant',gen_random_uuid()::text,true);
 select set_config('gestionpisos.tenant_assignee.room',gen_random_uuid()::text,true);
@@ -60,8 +61,25 @@ insert into public.properties_v2(
 insert into auth.users(id)
 values
   (current_setting('gestionpisos.tenant_assignee.user')::uuid),
-  (current_setting('gestionpisos.tenant_assignee.foreign_user')::uuid)
+  (current_setting('gestionpisos.tenant_assignee.foreign_user')::uuid),
+  (current_setting('gestionpisos.tenant_assignee.employee_user')::uuid)
 on conflict(id) do nothing;
+
+insert into public.profiles(user_id,organization_id,display_name,email,status)
+values(
+  current_setting('gestionpisos.tenant_assignee.employee_user')::uuid,
+  current_setting('gestionpisos.tenant_assignee.org')::uuid,
+  'Workflow linked employee',
+  'workflow-linked-employee@example.invalid',
+  'active'
+)
+on conflict(user_id) do update
+set organization_id=excluded.organization_id,
+    display_name=excluded.display_name,
+    email=excluded.email,
+    status='active',
+    archived_at=null,
+    updated_at=now();
 
 insert into public.user_roles(user_id,organization_id,role)
 values
@@ -74,8 +92,24 @@ values
     current_setting('gestionpisos.tenant_assignee.foreign_user')::uuid,
     current_setting('gestionpisos.tenant_assignee.org')::uuid,
     'tenant'
+  ),
+  (
+    current_setting('gestionpisos.tenant_assignee.employee_user')::uuid,
+    current_setting('gestionpisos.tenant_assignee.org')::uuid,
+    'employee'
   )
 on conflict do nothing;
+
+insert into public.property_staff_access_v3(
+  organization_id,property_id,employee_user_id,assignment_type,can_write,granted_by
+) values(
+  current_setting('gestionpisos.tenant_assignee.org')::uuid,
+  current_setting('gestionpisos.tenant_assignee.property')::uuid,
+  current_setting('gestionpisos.tenant_assignee.employee_user')::uuid,
+  'access',
+  false,
+  current_setting('gestionpisos.tenant_assignee.root')::uuid
+);
 
 insert into public.tenants_v2(
   id,organization_id,user_id,full_name,document_type,document_number,email,status
@@ -241,6 +275,143 @@ exception
     end if;
 end;
 $foreign_tenant_denied$;
+
+-- Un destino Inquilino nunca convierte a ROOT en ejecutor por defecto.
+do $occupancy_root_denied$
+begin
+  perform *
+  from public.execute_workflow_application_now_v1(
+    current_setting('gestionpisos.tenant_assignee.application')::uuid,
+    'tenant-assignee-root-forbidden-001',
+    current_setting('gestionpisos.tenant_assignee.root')::uuid
+  );
+  raise exception 'root unexpectedly accepted as occupancy assignee';
+exception
+  when insufficient_privilege then
+    if sqlerrm<>'workflow_manual_assignee_not_eligible' then
+      raise;
+    end if;
+end;
+$occupancy_root_denied$;
+
+-- Piso: puede ejecutar un empleado asociado incluso con acceso general de
+-- lectura; la asignación explícita de la tarea es la capacidad operativa.
+select set_config(
+  'gestionpisos.tenant_assignee.property_application',
+  (
+    select application_id::text
+    from public.publish_workflow_ready_v1(
+      jsonb_build_object(
+        'authoringVersion',2,
+        'flowName','Workflow de piso por relación',
+        'flowType','custom',
+        'flowDescription','Regresión de ejecutores asociados al piso',
+        'scopeType','property',
+        'triggerType','manual',
+        'recurrence','',
+        'scheduledAt','',
+        'customEvery','',
+        'customUnit','',
+        'assignmentType','manual',
+        'steps',jsonb_build_object(
+          'accept',true,
+          'photo',false,
+          'checklist',false,
+          'document',false
+        ),
+        'checklistItems','[]'::jsonb,
+        'closeType','auto',
+        'notifications',jsonb_build_object('onCreate',false,'onClose',false)
+      ),
+      current_setting('gestionpisos.tenant_assignee.property')::uuid,
+      null,
+      null,
+      '{}'::uuid[],
+      true,
+      'property-assignee-ready-001',
+      'property-assignee-employee-001',
+      current_setting('gestionpisos.tenant_assignee.employee_user')::uuid
+    )
+    limit 1
+  ),
+  true
+);
+
+-- El inquilino activo del mismo piso también es ejecutor válido.
+select *
+from public.execute_workflow_application_now_v1(
+  current_setting('gestionpisos.tenant_assignee.property_application')::uuid,
+  'property-assignee-tenant-001',
+  current_setting('gestionpisos.tenant_assignee.user')::uuid
+);
+
+-- ROOT administra el flujo pero no aparece como ejecutor operativo del piso.
+do $property_root_denied$
+begin
+  perform *
+  from public.execute_workflow_application_now_v1(
+    current_setting('gestionpisos.tenant_assignee.property_application')::uuid,
+    'property-assignee-root-forbidden-001',
+    current_setting('gestionpisos.tenant_assignee.root')::uuid
+  );
+  raise exception 'root unexpectedly accepted as property assignee';
+exception
+  when insufficient_privilege then
+    if sqlerrm<>'workflow_manual_assignee_not_eligible' then
+      raise;
+    end if;
+end;
+$property_root_denied$;
+
+-- Habitación: el inquilino que ocupa esa habitación es válido.
+select set_config(
+  'gestionpisos.tenant_assignee.room_application',
+  (
+    select application_id::text
+    from public.publish_workflow_ready_v1(
+      jsonb_build_object(
+        'authoringVersion',2,
+        'flowName','Workflow de habitación por relación',
+        'flowType','custom',
+        'flowDescription','Regresión de ejecutores asociados a habitación',
+        'scopeType','room',
+        'triggerType','manual',
+        'recurrence','',
+        'scheduledAt','',
+        'customEvery','',
+        'customUnit','',
+        'assignmentType','manual',
+        'steps',jsonb_build_object(
+          'accept',true,
+          'photo',false,
+          'checklist',false,
+          'document',false
+        ),
+        'checklistItems','[]'::jsonb,
+        'closeType','auto',
+        'notifications',jsonb_build_object('onCreate',false,'onClose',false)
+      ),
+      current_setting('gestionpisos.tenant_assignee.property')::uuid,
+      current_setting('gestionpisos.tenant_assignee.room')::uuid,
+      null,
+      '{}'::uuid[],
+      true,
+      'room-assignee-ready-001',
+      'room-assignee-tenant-001',
+      current_setting('gestionpisos.tenant_assignee.user')::uuid
+    )
+    limit 1
+  ),
+  true
+);
+
+-- El personal asociado al piso también puede ejecutar una tarea de habitación.
+select *
+from public.execute_workflow_application_now_v1(
+  current_setting('gestionpisos.tenant_assignee.room_application')::uuid,
+  'room-assignee-employee-001',
+  current_setting('gestionpisos.tenant_assignee.employee_user')::uuid
+);
 
 -- Mientras la ocupación sigue vigente, el inquilino asignado ve ejecución,
 -- tarea y acciones.

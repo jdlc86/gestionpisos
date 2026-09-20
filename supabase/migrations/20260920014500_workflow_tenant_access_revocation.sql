@@ -475,14 +475,19 @@ set search_path=''
 as $$
 declare
   v_execution_id uuid;
+  v_organization_id uuid;
 begin
-  select source_id
-  into v_execution_id
+  select source_id,organization_id
+  into v_execution_id,v_organization_id
   from public.tenant_tasks_v2
   where id=p_task_id
     and source_kind='workflow_execution';
 
-  if v_execution_id is not null then
+  if v_execution_id is not null
+    and not (
+      p_action_key in ('review_approve','review_reject')
+      and public.workflow_can_manage_v1(v_organization_id)
+    ) then
     perform private.workflow_require_current_actor_v1(v_execution_id);
   end if;
 

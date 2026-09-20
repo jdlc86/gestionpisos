@@ -187,45 +187,8 @@ using (
   )
 );
 
--- Acciones visibles: el acceso por assignee/tenant también se revalida.
-drop policy if exists tenant_task_actions_v2_read_scope
-  on public.tenant_task_actions_v2;
-create policy tenant_task_actions_v2_read_scope
-on public.tenant_task_actions_v2
-for select
-to authenticated
-using (
-  exists(
-    select 1
-    from public.tenant_tasks_v2 t
-    where t.id=tenant_task_actions_v2.task_id
-      and (
-        public.can_operate_property_v3(t.property_id,false)
-        or (
-          t.assigned_user_id=auth.uid()
-          and (
-            t.source_kind is distinct from 'workflow_execution'
-            or t.source_id is null
-            or public.workflow_execution_actor_current_v1(t.source_id)
-          )
-        )
-        or (
-          exists(
-            select 1
-            from public.tenants_v2 tn
-            where tn.id=t.tenant_id
-              and tn.user_id=auth.uid()
-          )
-          and (
-            t.source_kind is distinct from 'workflow_execution'
-            or t.source_id is null
-            or public.workflow_execution_actor_current_v1(t.source_id)
-          )
-        )
-      )
-  )
-);
-
+-- La policy restrictiva de acciones es suficiente para negar el workflow a un
+-- tenant expirado sin reescribir la policy permisiva histórica de alcance.
 drop policy if exists tenant_task_actions_v2_workflow_actor_gate
   on public.tenant_task_actions_v2;
 create policy tenant_task_actions_v2_workflow_actor_gate

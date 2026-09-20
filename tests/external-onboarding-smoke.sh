@@ -30,7 +30,7 @@ grep -Fq 'auth_metadata_synced' docs/activate-external-account.js
 grep -Fq 'get_my_external_account_onboarding' docs/auth-guard.js
 grep -Fq 'activate-external-account.html' docs/auth-guard.js
 
-grep -Fq 'portfolio-onboarding.js?v=2026092001' docs/portfolio.html
+grep -Fq 'portfolio-onboarding.js?v=2026092002' docs/portfolio.html
 grep -Fq 'Guardar y enviar bienvenida' docs/portfolio.html
 grep -Fq 'Bienvenida del propietario' docs/portfolio-onboarding.js
 grep -Fq 'Enviar bienvenida' docs/portfolio-onboarding.js
@@ -47,7 +47,7 @@ grep -Fq 'scheduleRefresh(250);' docs/portfolio-onboarding.js
 grep -Fq 'gestionpisos:portfolio-rendered' docs/portfolio.js
 grep -Fq 'gestionpisos:portfolio-rendered' docs/portfolio-onboarding.js
 ! grep -Fq 'new MutationObserver' docs/portfolio-onboarding.js
-grep -Fq 'portfolio.js?v=2026092001' docs/portfolio.html
+grep -Fq 'portfolio.js?v=2026092002' docs/portfolio.html
 grep -Fq 'external_active_account_email_change_requires_account_flow' docs/portfolio-onboarding.js
 grep -Fq 'external_onboarding_email_change_requires_revocation' docs/portfolio.js
 
@@ -71,6 +71,9 @@ grep -Fq 'restored_identity: true' supabase/functions/send-external-welcome/inde
 grep -Fq 'tenant_auth_reactivation_started' supabase/functions/send-external-welcome/index.ts
 grep -Fq 'tenant_auth_reactivated' supabase/functions/send-external-welcome/index.ts
 grep -Fq 'Acceso reactivado.' docs/portfolio-onboarding.js
+grep -Fq 'Acceso suspendido' docs/portfolio-onboarding.js
+grep -Fq 'Acceso pendiente de vincular' docs/portfolio-onboarding.js
+grep -Fq 'Acceso aún no vigente' docs/portfolio-onboarding.js
 grep -Fq 'admin.auth.admin.deleteUser(input.authUserId, true)' supabase/functions/_shared/external-onboarding-revocation.ts
 grep -Fq 'revoke_external_account_onboarding_v1' supabase/functions/_shared/external-onboarding-revocation.ts
 grep -Fq 'disableAndRevokeExternalOnboarding' supabase/functions/revoke-external-welcome/index.ts

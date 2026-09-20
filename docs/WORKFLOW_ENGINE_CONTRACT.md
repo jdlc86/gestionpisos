@@ -104,7 +104,7 @@ Ejemplos:
 - recurrencia semanal: `workflow_application + periodo`;
 - evento: `event:<workflow_event_outbox_v2.id>`, única dentro de cada aplicación.
 
-Para eventos, `workflow_event_dispatches_v2` conserva un recibo único por `event_id + application_id`. Un fallo de una aplicación no revierte el evento de negocio ni impide despachar las demás aplicaciones compatibles.
+Para eventos, `workflow_event_dispatches_v2` conserva un recibo único por `event_id + application_id`. Un fallo de una aplicación no revierte el evento de negocio ni impide despachar las demás aplicaciones compatibles. Las aplicaciones ya ejecutadas quedan recibidas como `executed`; las fallidas permanecen reintentables y pueden converger después sin duplicar las correctas.
 
 La idempotencia se valida en servidor/BD, nunca solo en cliente.
 

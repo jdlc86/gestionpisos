@@ -15,6 +15,7 @@ Usar estos documentos en este orden:
 11. **`WORKFLOW_DOCUMENT_EVIDENCE_CONTRACT.md`** — contrato del paso Documento: Storage privado, permisos, idempotencia y cierre coordinado con Foto/Checklist.
 12. **`WORKFLOW_HISTORY_CONTRACT.md`** — contrato de la vista Historial: fuentes de verdad, RLS, eventos, evidencias e inmutabilidad.
 13. **`WORKFLOW_SCHEDULE_CONTRACT.md`** — contrato de programación automática: Fecha concreta y Recurrente, tiempo exacto, asignación, scheduler, idempotencia, catch-up y bloqueos.
+14. **`CODEX_WORKFLOW_COMPLETION_PLAN.md`** — tablero operativo persistente para coordinar ChatGPT ↔ Codex, trabajar por bloques y evitar pérdida de contexto.
 
 ## Regla de mantenimiento
 
@@ -30,5 +31,6 @@ Usar estos documentos en este orden:
 - Cambios en **presentación histórica transversal** → actualizar `WORKFLOW_HISTORY_CONTRACT.md`.
 - Cambios en **disparadores automáticos / Fecha concreta / recurrencia** → actualizar `WORKFLOW_SCHEDULE_CONTRACT.md`.
 - Cambios de **estado real de implementación** → actualizar `WORKFLOW_STATUS.md` con fecha, sin reescribir decisiones históricas.
+- Trabajo ejecutado por Codex sobre workflows → actualizar `CODEX_WORKFLOW_COMPLETION_PLAN.md` con estado, rama, PR, HEAD, pruebas, bloqueadores y handoff.
 
 La documentación nunca debe presentar como operativo un componente que solo existe como UI, borrador o propuesta.

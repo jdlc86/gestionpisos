@@ -190,7 +190,7 @@ grep -Fq 'start_workflow_definition_revision_v1' docs/workflow-definitions.js
 ! grep -Fq 'Crear nueva versión' docs/workflow-definitions.js
 ! grep -Fq 'Continuar nueva versión' docs/workflow-definitions.js
 grep -Fq 'workflow-applications.html?definition=' docs/workflow-definitions.js
-grep -Fq './workflow-definitions.js?v=2026092001' docs/workflow-definitions.html
+grep -Fq './workflow-definitions.js?v=2026092002' docs/workflow-definitions.html
 grep -Fq './workflow-definitions.css?v=2026091912' docs/workflow-definitions.html
 grep -Fq 'Tus flujos terminados. Ejecuta, edita y elimina o archiva según exista historial.' docs/workflow-definitions.html
 ! grep -Fq 'Completar borrador' docs/workflow-definitions.js
@@ -203,7 +203,7 @@ grep -Fq 'rooms_v2' docs/workflow-applications.js
 grep -Fq 'occupancies_v2' docs/workflow-applications.js
 grep -Fq '.application-card [hidden]{display:none!important}' docs/workflow-applications.css
 grep -Fq './workflow-applications.css?v=2026091915' docs/workflow-applications.html
-grep -Fq './workflow-applications.js?v=2026092004' docs/workflow-applications.html
+grep -Fq './workflow-applications.js?v=2026092005' docs/workflow-applications.html
 grep -Fq '¿Dónde quieres utilizarlo?' docs/workflow-applications.html
 grep -Fq 'Definición → Versión publicada → Aplicación concreta' docs/WORKFLOW_APPLICATIONS_CONTRACT.md
 grep -Fq 'workflow_applications_v2' docs/WORKFLOW_APPLICATIONS_CONTRACT.md
@@ -531,7 +531,7 @@ grep -Fq 'renderDocuments(task,article)' docs/workflow-tasks.js
 grep -Fq '.task-documents{' docs/workflow-tasks.css
 grep -Fq '.task-document-row{' docs/workflow-tasks.css
 grep -Fq './workflow-tasks.css?v=2026092001' docs/workflow-tasks.html
-grep -Fq './workflow-tasks.js?v=2026092024' docs/workflow-tasks.html
+grep -Fq './workflow-tasks.js?v=2026092025' docs/workflow-tasks.html
 
 
 # Contrato Documento: evidencia privada, tarea común y cierre coordinado.
@@ -646,4 +646,6 @@ grep -Fq '["key_pickup","key_delivery"].includes(action.action_key)' docs/workfl
 grep -Fq '["check_in","check_out"].includes(action.action_key)' docs/workflow-tasks.js
 grep -Fq 'case "wf04_domain_action"' docs/workflow-history.js
 grep -Fq 'case "event_subject_bound"' docs/workflow-history.js
+grep -Fq 'if(eventType==="occupancy.offboarded")return "Baja de ocupación confirmada"' docs/workflow-applications.js
+grep -Fq 'if(eventType==="occupancy.offboarded")return "Baja de ocupación confirmada"' docs/workflow-definitions.js
 

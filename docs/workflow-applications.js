@@ -405,7 +405,9 @@ function isScheduledTrigger(spec){
 }
 function eventDisplay(spec){
   const eventType=String(spec?.eventType||"");
-  return eventType==="occupancy.created"?"Nueva ocupación creada":"Evento pendiente";
+  if(eventType==="occupancy.created")return "Nueva ocupación creada";
+  if(eventType==="occupancy.offboarded")return "Baja de ocupación confirmada";
+  return "Evento pendiente";
 }
 function recurrenceDisplay(spec){
   const recurrence=String(spec?.recurrence||"");

@@ -18,6 +18,7 @@ select set_config('wf02.property',gen_random_uuid()::text,true);
 select set_config('wf02.room',gen_random_uuid()::text,true);
 select set_config('wf02.employee',gen_random_uuid()::text,true);
 select set_config('wf02.bad_user',gen_random_uuid()::text,true);
+select set_config('wf02.delete_user',gen_random_uuid()::text,true);
 select set_config('wf02.occupancy',gen_random_uuid()::text,true);
 
 insert into auth.users(id)
@@ -186,6 +187,29 @@ select set_config('wf02.bad_app',(
   limit 1
 ),true);
 
+do $create_deletable_failed_flow$
+declare
+  v_ready record;
+begin
+  select * into v_ready
+  from public.publish_workflow_ready_v1(
+    pg_temp.wf02_spec(
+      'WF02 deletable failed event',
+      current_setting('wf02.delete_user')::uuid
+    ),
+    current_setting('wf02.property')::uuid,
+    null,null,'{}'::uuid[],
+    false,
+    'wf02-delete-ready',
+    null,null
+  )
+  limit 1;
+
+  perform set_config('wf02.delete_definition',v_ready.definition_id::text,true);
+  perform set_config('wf02.delete_app',v_ready.application_id::text,true);
+end;
+$create_deletable_failed_flow$;
+
 do $manual_execution_forbidden$
 begin
   begin
@@ -248,7 +272,8 @@ begin
     from public.workflow_executions_v2 e
     where e.application_id in (
       current_setting('wf02.good_app')::uuid,
-      current_setting('wf02.bad_app')::uuid
+      current_setting('wf02.bad_app')::uuid,
+      current_setting('wf02.delete_app')::uuid
     )
   ) then
     raise exception 'business insert synchronously executed a workflow';
@@ -323,6 +348,18 @@ begin
 
   if not exists(
     select 1
+    from public.workflow_event_dispatches_v2 d
+    where d.event_id=v_event_id
+      and d.application_id=current_setting('wf02.delete_app')::uuid
+      and d.execution_id is null
+      and d.status='failed'
+      and d.error_code is not null
+  ) then
+    raise exception 'deletable failed dispatch receipt is missing';
+  end if;
+
+  if not exists(
+    select 1
     from public.occupancies_v2 o
     where o.id=current_setting('wf02.occupancy')::uuid
       and o.status='active'
@@ -332,8 +369,101 @@ begin
 end;
 $dispatch_results$;
 
--- El fallo se vuelve elegible después. El siguiente intento debe crear solo
--- la ejecución que faltaba y conservar intacta la ya creada.
+-- Un recibo fallido no debe convertir un flujo sin ejecuciones en histórico ni
+-- bloquear su eliminación. El recibo queda como snapshot técnico del intento.
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf02.root'),
+  'role','authenticated',
+  'aal','aal2'
+)::text,true);
+
+select public.delete_unexecuted_workflow_v1(
+  current_setting('wf02.delete_definition')::uuid
+);
+
+reset role;
+
+do $failed_receipt_does_not_block_delete$
+begin
+  if exists(
+    select 1
+    from public.workflow_definitions_v2 d
+    where d.id=current_setting('wf02.delete_definition')::uuid
+  ) or exists(
+    select 1
+    from public.workflow_applications_v2 a
+    where a.id=current_setting('wf02.delete_app')::uuid
+  ) then
+    raise exception 'failed event receipt blocked deletion of an unexecuted workflow';
+  end if;
+
+  if not exists(
+    select 1
+    from public.workflow_event_dispatches_v2 d
+    where d.application_id=current_setting('wf02.delete_app')::uuid
+      and d.status='failed'
+  ) then
+    raise exception 'failed dispatch snapshot was lost when deleting unexecuted workflow';
+  end if;
+end;
+$failed_receipt_does_not_block_delete$;
+
+-- Una aplicación publicada después del evento no puede capturarlo de forma
+-- retroactiva aunque el outbox siga pendiente por otro fallo.
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf02.root'),
+  'role','authenticated',
+  'aal','aal2'
+)::text,true);
+
+do $create_late_flow$
+declare
+  v_ready record;
+begin
+  select * into v_ready
+  from public.publish_workflow_ready_v1(
+    pg_temp.wf02_spec(
+      'WF02 late event flow',
+      current_setting('wf02.employee')::uuid
+    ),
+    current_setting('wf02.property')::uuid,
+    null,null,'{}'::uuid[],
+    false,
+    'wf02-late-ready',
+    null,null
+  )
+  limit 1;
+
+  perform set_config('wf02.late_definition',v_ready.definition_id::text,true);
+  perform set_config('wf02.late_version',v_ready.version_id::text,true);
+  perform set_config('wf02.late_app',v_ready.application_id::text,true);
+end;
+$create_late_flow$;
+
+reset role;
+
+update public.workflow_applications_v2 a
+set created_at=(
+  select e.occurred_at + interval '1 minute'
+  from public.workflow_event_outbox_v2 e
+  where e.source_id=current_setting('wf02.occupancy')::uuid
+    and e.event_type='occupancy.created'
+)
+where a.id=current_setting('wf02.late_app')::uuid;
+
+update public.workflow_definition_versions_v2 v
+set published_at=(
+  select e.occurred_at + interval '1 minute'
+  from public.workflow_event_outbox_v2 e
+  where e.source_id=current_setting('wf02.occupancy')::uuid
+    and e.event_type='occupancy.created'
+)
+where v.id=current_setting('wf02.late_version')::uuid;
+
+-- El fallo original se vuelve elegible después. El siguiente intento debe crear
+-- solo la ejecución que faltaba, conservar la ya creada y omitir el flujo tardío.
 insert into auth.users(id)
 values(current_setting('wf02.bad_user')::uuid);
 
@@ -433,6 +563,19 @@ begin
 
   if v_good_count<>1 or v_bad_count<>1 then
     raise exception 'event retry duplicated or missed an execution';
+  end if;
+
+  if exists(
+    select 1
+    from public.workflow_executions_v2 e
+    where e.application_id=current_setting('wf02.late_app')::uuid
+  ) or exists(
+    select 1
+    from public.workflow_event_dispatches_v2 d
+    where d.event_id=v_event_id
+      and d.application_id=current_setting('wf02.late_app')::uuid
+  ) then
+    raise exception 'workflow created after source event consumed it retroactively';
   end if;
 end;
 $retry_and_idempotency$;

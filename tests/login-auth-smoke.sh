@@ -84,7 +84,7 @@ grep -Fq 'https://esm.sh/@supabase/supabase-js@2.116.0' docs/supabase-client.js
 grep -Fq 'supabase_client_module_load_failed' docs/supabase-client.js
 ! grep -Fq '@supabase/supabase-js@2.57.4' docs/supabase-client.js
 
-grep -Fq "gestionpisos-shell-v42" docs/sw.js
+grep -Fq "gestionpisos-shell-v43" docs/sw.js
 grep -Fq "'./mfa-setup.html'" docs/sw.js
 grep -Fq "'./mfa-challenge.html'" docs/sw.js
 grep -Fq "if(url.origin!==self.location.origin) return;" docs/sw.js

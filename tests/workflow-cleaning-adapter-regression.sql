@@ -116,7 +116,10 @@ as $spec$
     ),
     'checklistItems','[]'::jsonb,
     'closeType',case when p_flow_type='cleaning' then 'domain_adapter' else 'auto' end,
-    'notifications',jsonb_build_object('onCreate',false,'onClose',false)
+    'notifications',jsonb_build_object(
+      'onCreate',false,
+      'onClose',p_flow_type='cleaning'
+    )
   );
 $spec$;
 
@@ -822,6 +825,32 @@ begin
 end;
 $review_second_photo_rejects$;
 
+do $selected_audit_notification_dedupe$
+begin
+  if exists(
+    select 1
+    from public.notifications_v2
+    where source_kind='workflow_execution'
+      and source_id=current_setting('wf03.cleaning_execution')::uuid
+      and event_key='rejected'
+      and recipient_user_id=current_setting('wf03.tenant_user')::uuid
+  ) then
+    raise exception 'audited cleaning emitted duplicate generic close to assignee';
+  end if;
+
+  if (
+    select count(*)
+    from public.notifications_v2
+    where source_kind='workflow_execution'
+      and source_id=current_setting('wf03.cleaning_execution')::uuid
+      and event_key='rejected'
+      and recipient_user_id=current_setting('wf03.root')::uuid
+  )<>1 then
+    raise exception 'audited cleaning lost generic close notification for creator';
+  end if;
+end;
+$selected_audit_notification_dedupe$;
+
 -- Mismo resultado final + misma foto: reintento puro, sin segundo cierre.
 do $review_retry_is_idempotent$
 declare
@@ -850,6 +879,48 @@ begin
   end if;
 end;
 $review_retry_is_idempotent$;
+
+select *
+from private.queue_ready_cleaning_audit_reports_v2(now());
+
+do $selected_audit_final_report_once$
+declare
+  v_audit_id uuid;
+begin
+  select id into v_audit_id
+  from public.cleaning_audits_v2
+  where cleaning_task_id=(
+    select id
+    from public.cleaning_tasks_v2
+    where workflow_execution_id=current_setting('wf03.cleaning_execution')::uuid
+  );
+
+  if (
+    select count(*)
+    from public.notifications_v2
+    where event_type='cleaning_audit_report:'||v_audit_id::text
+      and recipient_user_id=current_setting('wf03.tenant_user')::uuid
+  )<>1 then
+    raise exception 'audited cleaning did not emit exactly one specialized final report';
+  end if;
+
+  if (
+    select count(*)
+    from public.notifications_v2
+    where recipient_user_id=current_setting('wf03.tenant_user')::uuid
+      and (
+        event_type='cleaning_audit_report:'||v_audit_id::text
+        or (
+          source_kind='workflow_execution'
+          and source_id=current_setting('wf03.cleaning_execution')::uuid
+          and event_key='rejected'
+        )
+      )
+  )<>1 then
+    raise exception 'audited cleaning emitted more than one final communication to assignee';
+  end if;
+end;
+$selected_audit_final_report_once$;
 
 -- Camino sin auditoría humana: una sola foto basta para este expediente nuevo.
 insert into public.cleaning_photo_request_policies_v2(
@@ -1047,6 +1118,32 @@ begin
 end;
 $not_selected_auto_closes$;
 
+do $auto_close_notification_dedupe$
+begin
+  if exists(
+    select 1
+    from public.notifications_v2
+    where source_kind='workflow_execution'
+      and source_id=current_setting('wf03.auto_execution')::uuid
+      and event_key='completed'
+      and recipient_user_id=current_setting('wf03.tenant_user')::uuid
+  ) then
+    raise exception 'auto-closed cleaning emitted duplicate generic close to assignee';
+  end if;
+
+  if (
+    select count(*)
+    from public.notifications_v2
+    where source_kind='workflow_execution'
+      and source_id=current_setting('wf03.auto_execution')::uuid
+      and event_key='completed'
+      and recipient_user_id=current_setting('wf03.root')::uuid
+  )<>1 then
+    raise exception 'auto-closed cleaning lost creator completion notification';
+  end if;
+end;
+$auto_close_notification_dedupe$;
+
 -- El expediente no seleccionado también debe producir exactamente un informe final.
 select *
 from private.queue_ready_cleaning_audit_reports_v2(now());
@@ -1070,6 +1167,22 @@ begin
       and report_sent_at is not null
   ) then
     raise exception 'non-selected cleaning report was not marked sent';
+  end if;
+
+  if (
+    select count(*)
+    from public.notifications_v2
+    where recipient_user_id=current_setting('wf03.tenant_user')::uuid
+      and (
+        event_type='cleaning_audit_report:'||current_setting('wf03.auto_audit')
+        or (
+          source_kind='workflow_execution'
+          and source_id=current_setting('wf03.auto_execution')::uuid
+          and event_key='completed'
+        )
+      )
+  )<>1 then
+    raise exception 'non-selected cleaning emitted more than one final communication to assignee';
   end if;
 end;
 $not_selected_report_once$;
@@ -1477,6 +1590,33 @@ end;
 $reject_cleaning$;
 
 reset role;
+
+do $early_reject_keeps_generic_notification$
+begin
+  if exists(
+    select 1
+    from public.cleaning_audits_v2 a
+    join public.cleaning_tasks_v2 ct on ct.id=a.cleaning_task_id
+    where ct.workflow_execution_id=current_setting('wf03.reject_execution')::uuid
+  ) then
+    raise exception 'early cleaning rejection unexpectedly created an audit report envelope';
+  end if;
+
+  if (
+    select count(*)
+    from public.notifications_v2
+    where source_kind='workflow_execution'
+      and source_id=current_setting('wf03.reject_execution')::uuid
+      and event_key='rejected'
+      and recipient_user_id in (
+        current_setting('wf03.root')::uuid,
+        current_setting('wf03.tenant_user')::uuid
+      )
+  )<>2 then
+    raise exception 'early cleaning rejection lost generic creator/assignee notification';
+  end if;
+end;
+$early_reject_keeps_generic_notification$;
 
 do $rejected_domain_state$
 begin

@@ -30,6 +30,7 @@ select set_config('gestionpisos.photo.org_b', gen_random_uuid()::text, true);
 select set_config('gestionpisos.photo.admin_uid', gen_random_uuid()::text, true);
 select set_config('gestionpisos.photo.actor_uid', gen_random_uuid()::text, true);
 select set_config('gestionpisos.photo.other_uid', gen_random_uuid()::text, true);
+select set_config('gestionpisos.photo.tenant_a', gen_random_uuid()::text, true);
 select set_config('gestionpisos.photo.owner_a', gen_random_uuid()::text, true);
 select set_config('gestionpisos.photo.owner_b', gen_random_uuid()::text, true);
 select set_config('gestionpisos.photo.property_a', gen_random_uuid()::text, true);
@@ -48,6 +49,35 @@ values
 
 insert into public.organizations (id, name)
 values (current_setting('gestionpisos.photo.org_b')::uuid, 'Other test organization');
+
+-- These actors represent real platform identities. Authorization must come
+-- from DB state, not only from app_metadata claims in the synthetic JWT.
+insert into public.user_roles(user_id,organization_id,role)
+values
+  (
+    current_setting('gestionpisos.photo.admin_uid')::uuid,
+    current_setting('gestionpisos.photo.org_a')::uuid,
+    'admin'
+  ),
+  (
+    current_setting('gestionpisos.photo.actor_uid')::uuid,
+    current_setting('gestionpisos.photo.org_a')::uuid,
+    'tenant'
+  );
+
+insert into public.tenants_v2(
+  id,organization_id,user_id,full_name,document_type,document_number,email,status
+)
+values(
+  current_setting('gestionpisos.photo.tenant_a')::uuid,
+  current_setting('gestionpisos.photo.org_a')::uuid,
+  current_setting('gestionpisos.photo.actor_uid')::uuid,
+  'Photo tenant actor',
+  'other',
+  'PHOTO-ACTOR-001',
+  'photo-actor@example.invalid',
+  'active'
+);
 
 insert into public.owners (id, organization_id, full_name)
 values
@@ -89,7 +119,7 @@ values (
 );
 
 insert into public.occupancies_v2 (
-  organization_id, property_id, room_id, occupant_email, starts_on, status, user_id
+  organization_id, property_id, room_id, occupant_email, starts_on, status, user_id, tenant_id
 )
 values (
   current_setting('gestionpisos.photo.org_a')::uuid,
@@ -98,7 +128,8 @@ values (
   'photo-actor@example.invalid',
   current_date,
   'active',
-  current_setting('gestionpisos.photo.actor_uid')::uuid
+  current_setting('gestionpisos.photo.actor_uid')::uuid,
+  current_setting('gestionpisos.photo.tenant_a')::uuid
 );
 
 insert into public.photo_patterns_v2 (

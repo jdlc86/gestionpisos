@@ -607,7 +607,7 @@ grep -Fq 'else if(!needsSchedule)' docs/workflow-definitions.js
 
 # WF-02: evento explícito, activación automática y sin ejecución manual.
 grep -Fq 'id="eventTypeRow"' docs/workflow-builder.html
-grep -Fq 'value="occupancy.created">Nueva ocupación creada</option>' docs/workflow-builder.html
+grep -Fq 'value="occupancy.created">Nueva ocupación creada · organización / piso / habitación</option>' docs/workflow-builder.html
 grep -Fq 'eventType:value("eventType")' docs/workflow-builder.js
 grep -Fq 'data.triggerType==="event"&&data.assignmentType==="manual"' docs/workflow-builder.js
 grep -Fq 'manualOption.disabled=eventDriven' docs/workflow-builder.js
@@ -618,6 +618,9 @@ grep -Fq 'Activo · esperando ' docs/workflow-applications.js
 grep -Fq 'function isEventDriven(row)' docs/workflow-definitions.js
 grep -Fq 'function canExecuteNow(row)' docs/workflow-definitions.js
 grep -Fq 'Activo · esperando evento' docs/workflow-definitions.js
+grep -Fq 'badge.textContent=needsSchedule?"Necesita programación":eventDriven&&!history?"Activo"' docs/workflow-definitions.js
+grep -Fq 'if(executionIntent&&!guidedExecutionId&&!eventDriven)' docs/workflow-applications.js
+grep -Fq 'Este flujo se ejecuta automáticamente cuando ocurre su evento.' docs/workflow-applications.js
 test -s supabase/migrations/20260920103000_wf02_event_trigger_core.sql
 test -s supabase/migrations/20260920103100_wf02_event_trigger_cron.sql
 test -s tests/workflow-event-trigger-regression.sql

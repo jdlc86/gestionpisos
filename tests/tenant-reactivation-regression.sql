@@ -195,6 +195,13 @@ begin
   ) then
     raise exception 'suspended occupancy was not archived';
   end if;
+  if exists(
+    select 1 from public.workflow_event_outbox_v2
+    where source_id=current_setting('gestionpisos.reactivate.blocked_occ')::uuid
+      and event_type='occupancy.offboarded'
+  ) then
+    raise exception 'reactivation was confused with offboarding';
+  end if;
 
   select id into v_new_occ
   from public.occupancies_v2

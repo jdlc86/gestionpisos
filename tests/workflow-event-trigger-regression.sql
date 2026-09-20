@@ -152,6 +152,16 @@ begin
   ) then
     raise exception 'occupancy.created accepted an already-existing occupancy scope';
   end if;
+
+  if public.workflow_authoring_complete_v1(
+    pg_temp.wf02_spec(
+      'WF04 offboarding event',
+      current_setting('wf02.employee')::uuid,
+      'occupancy.offboarded'
+    )
+  ) is distinct from true then
+    raise exception 'occupancy.offboarded was rejected as an event trigger';
+  end if;
 end;
 $authoring_validation$;
 

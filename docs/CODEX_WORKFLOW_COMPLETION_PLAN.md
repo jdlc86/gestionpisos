@@ -344,12 +344,30 @@ Primer adaptador legacy obligatorio.
 
 Handoff en curso:
 - Rama: `feat/wf-03-cleaning-adapter`
-- Main observado al comenzar: `5b9296f87c259bba214201b1ddcc3410b61e69c9`
+- PR: #271 (DRAFT; NO MERGEAR todavía).
+- Main observado al comenzar WF-03: `5b9296f87c259bba214201b1ddcc3410b61e69c9`.
+- Main real verificado durante este handoff: `f8682517f5f6b139d626dfb637b225462b49e872` (PR #272 visual ya fusionado).
+- HEAD WF-03 verificado en este handoff: `7b16174b052aeb5e96f31b0ad0e66b7846e7c82c`.
+- Divergencia observada: rama 26 commits por delante y 1 por detrás de main; el commit detrás corresponde al PR visual #272 y deberá reconciliarse de forma controlada antes del merge final.
 - Ejecutor actual: ChatGPT.
+- Producción Supabase verificada: continúa únicamente hasta WF-02 (`20260920103000` + `20260920103100`); ninguna migración WF-03 ni el Edge WF-03 se han desplegado manualmente.
 - Producción al comenzar: 0 filas en `cleaning_plans_v2`, `cleaning_tasks_v2`, swaps, deudas, auditorías y solicitudes de foto; no hay datos vivos legacy que migrar.
-- Hallazgo de arquitectura: no existe generador automático server-side de `cleaning_tasks_v2`; el motor transversal será la fuente de materialización. `cleaning_tasks_v2` se conservará como expediente de dominio, no como segunda tarjeta operativa.
-- Primer subbloque: enlazar idempotentemente cada ejecución workflow `flowType=cleaning` con una única `cleaning_tasks_v2`, manteniendo una sola tarjeta en `tenant_tasks_v2`.
-
+- Arquitectura confirmada: `tenant_tasks_v2` es la única tarjeta operativa. `cleaning_tasks_v2` es expediente especializado enlazado por `workflow_execution_id`; no existe un segundo motor de tareas.
+- Subbloque 1 — dominio: migración `20260920113000_wf03_cleaning_domain_link.sql`; materialización idempotente ejecución→expediente Limpieza sin duplicar `tenant_tasks_v2`.
+- Subbloque 2 — decisión: migración `20260920114000_wf03_cleaning_decision_state.sql`; Aceptar/Rechazar sincroniza tarjeta, ejecución y expediente en una transacción.
+- Subbloque 3 — fotos: migración `20260920115000_wf03_cleaning_photo_progress.sql`; varias solicitudes/fotos por limpieza, primera foto→`in_progress`, última→`submitted`, workflow sigue `active` hasta auditoría; se eliminó la unicidad legacy 1 tarea=1 run.
+- Subbloque 4 — auditoría/revisión: migración `20260920124500_wf03_cleaning_audit_workflow_sync.sql`; auditoría seleccionada proyecta `waiting_review`, no seleccionada cierra automáticamente, revisión humana sincroniza todos los estados, expiración `review_expired` es neutral y genera informe final.
+- El generador legacy de informes tenía `GROUP BY ... FOR UPDATE SKIP LOCKED`, SQL inválido en PostgreSQL. WF-03 lo redefine aditivamente bloqueando primero expedientes y agregando después; regresión añadida.
+- Edge `review-photo-verification`: el source WF-03 enruta únicamente limpiezas enlazadas al bridge `apply_workflow_cleaning_photo_review_v1`; las limpiezas legacy conservan su camino previo. Además se añadió verificación AAL2 server-side usando el JWT actual. El Edge remoto de producción sigue en su versión previa hasta el despliegue post-merge.
+- Subbloque 5 — comunicación final: migración `20260920134000_wf03_cleaning_final_notification_dedupe.sql`; cuando existe informe final de Limpieza, el asignado no recibe además `workflow_completed/rejected`. El creador distinto puede conservar su cierre genérico. Rechazos tempranos sin auditoría siguen notificando normalmente.
+- Regresión principal: `tests/workflow-cleaning-adapter-regression.sql` cubre materialización, decisiones, 2 fotos, espera de auditoría, revisión por foto, rechazo final, reintentos, no-selección, expiración neutral, informe único y deduplicación de comunicación final.
+- Runner: `tests/database-regression-v2.sh` carga todas las migraciones WF-03 actuales, incluida `20260920134000`.
+- Seguridad verificada: bridge de revisión de Limpieza ejecutable solo por `service_role`, autorización ROOT/ADMIN revalidada server-side, transiciones automáticas sin falsa atribución humana, AAL2 exigido en Edge, sin nuevas políticas RLS permisivas.
+- Checks GitHub verificados por ChatGPT sobre `7b16174b052aeb5e96f31b0ad0e66b7846e7c82c`: Governance Guard ✅, PWA Smoke ✅, Schema Guard ✅. Schema Guard ejecutó la migración de deduplicación y la regresión PostgreSQL aislada.
+- Reviews/hilos de PR #271 observados: ninguno abierto.
+- Hallazgo para el siguiente subbloque: el legacy de swaps actualiza solo `cleaning_tasks_v2.assigned_user_id` y crea `cleaning_debts_v2`; en una limpieza enlazada eso divergiría de `workflow_executions_v2.assigned_user_id` y `tenant_tasks_v2.assigned_user_id`. Debe adaptarse atómicamente sin crear otra tarea.
+- Pendientes WF-03: swaps + deuda sincronizados con workflow; revisar UI/E2E de Limpieza; reconciliar rama con main; revisión final/ready; merge; despliegue ordenado migraciones→Edge; verificación producción y prueba humana.
+- Siguiente acción exacta: implementar un subbloque pequeño de swap aceptado para una limpieza workflow, preservando validación de ocupante vigente y deuda legacy, pero sincronizando asignado/estado de `cleaning_tasks_v2`, `workflow_executions_v2` y `tenant_tasks_v2` en una sola transacción. Añadir regresión positiva, negativa e idempotencia antes de tocar UI.
 
 Objetivo:
 - expresar Limpieza usando el motor transversal sin perder funcionalidades legacy.

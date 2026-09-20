@@ -179,12 +179,12 @@ form.addEventListener("submit", async event => {
   const verifyCode = normalizedCode();
   if (verifyCode.length !== 6) {
     show("Introduce los 6 dígitos de tu app autenticadora.", true);
-    code.focus();
+    otp.focus();
     return;
   }
 
   submit.disabled = true;
-  code.disabled = true;
+  otp.setDisabled(true);
   factorSelect.disabled = true;
   recoveryBtn.disabled = true;
   show("Verificando código…");
@@ -207,7 +207,7 @@ form.addEventListener("submit", async event => {
     setTimeout(() => window.location.replace(protectedTarget(requestedNext())), 500);
   } catch (error) {
     console.error("mfa_challenge_verification_failed", error);
-    code.disabled = false;
+    otp.setDisabled(false);
     factorSelect.disabled = false;
     submit.disabled = false;
     recoveryBtn.disabled = recoveryPending;

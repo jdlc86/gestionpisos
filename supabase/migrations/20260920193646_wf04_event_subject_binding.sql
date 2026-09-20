@@ -101,8 +101,13 @@ begin
     end if;
 
     if v_close_type='domain_adapter' and v_flow_type in ('checkin','checkout') then
-      if v_occupancy.tenant_id is null
-        or (v_flow_type='checkin'
+      -- Una ocupación legacy todavía sin tenant puede vincularse más tarde:
+      -- se mantiene reintentable y no se clasifica como lifecycle terminal.
+      if v_occupancy.tenant_id is null then
+        raise exception 'workflow_event_subject_unlinked' using errcode='55000';
+      end if;
+
+      if (v_flow_type='checkin'
             and (v_event.event_type<>'occupancy.created'
                  or v_occupancy.status<>'active'))
         or (v_flow_type='checkout'

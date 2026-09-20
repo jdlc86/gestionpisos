@@ -10,6 +10,8 @@ test -s docs/bottom-nav.js
 test -s docs/bottom-nav.css
 node --check docs/bottom-nav.js
 node --check docs/app.js
+test -s docs/mfa-code-input.js
+node --check docs/mfa-code-input.js
 node --check docs/portfolio.js
 test -s docs/operations.html
 test -s docs/operations.css
@@ -54,7 +56,7 @@ grep -q 'serviceWorker' docs/app.js
 grep -q 'GestionPisos' docs/manifest.webmanifest
 grep -Fq "'./legal.html'" docs/sw.js
 grep -Fq "'./privacy.html'" docs/sw.js
-grep -q 'gestionpisos-shell-v43' docs/sw.js
+grep -q 'gestionpisos-shell-v44' docs/sw.js
 grep -Fq "'./workflow-history.html'" docs/sw.js
 grep -Fq "'./workflow-history.css'" docs/sw.js
 grep -Fq "'./workflow-history.js'" docs/sw.js
@@ -369,8 +371,8 @@ grep -Fq "const back = document.getElementById(\"cameraBackLink\");" docs/photo-
 test -s docs/notification-center.js
 test -s docs/notification-center.css
 node --check docs/notification-center.js
-grep -Fq './notification-center.css?v=2026091920' docs/index.html
-grep -Fq './notification-center.js?v=2026091920' docs/auth-guard.js
+grep -Fq './notification-center.css?v=2026092001' docs/index.html
+grep -Fq './notification-center.js?v=2026092001' docs/auth-guard.js
 grep -Fq 'mountNotificationCenter({ supabase, session })' docs/auth-guard.js
 grep -Fq 'id="notificationBell"' docs/notification-center.js
 grep -Fq '.from("notifications_v2")' docs/notification-center.js
@@ -384,6 +386,8 @@ grep -Fq "'./notification-center.js'" docs/sw.js
 grep -Fq "'./notification-center.css'" docs/sw.js
 grep -Fq '.notification-bell-count{' docs/notification-center.css
 grep -Fq '.notification-sheet{' docs/notification-center.css
+grep -Fq '.notification-actions-host{' docs/notification-center.css
+grep -Fq '.notification-item-visual{' docs/notification-center.css
 grep -Fq 'Activar Android' docs/notification-center.js
 grep -Fq 'register_web_push_subscription_v1' docs/notification-center.js
 grep -Fq 'unregister_web_push_subscription_v1' docs/notification-center.js

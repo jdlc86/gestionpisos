@@ -24,6 +24,17 @@ create table if not exists public.organizations (
   name text not null
 );
 
+create table if not exists public.profiles (
+  user_id uuid primary key references auth.users(id) on delete restrict,
+  organization_id uuid references public.organizations(id) on delete restrict,
+  display_name text,
+  email text,
+  status public.record_status not null default 'active',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  archived_at timestamptz
+);
+
 create table if not exists public.user_roles (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete restrict,

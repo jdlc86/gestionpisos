@@ -33,6 +33,8 @@ const customRecurrenceRow=document.getElementById("customRecurrenceRow");
 const scheduledAtRow=document.getElementById("scheduledAtRow");
 const scheduledTimezoneHint=document.getElementById("scheduledTimezoneHint");
 const scheduledAtLabel=document.getElementById("scheduledAtLabel");
+const assignmentPersonRow=document.getElementById("assignmentPersonRow");
+const assignmentRoleRow=document.getElementById("assignmentRoleRow");
 const photoBankLink=document.getElementById("photoBankLink");
 const checklistEditor=document.getElementById("checklistEditor");
 const checklistItemsBox=document.getElementById("checklistItems");
@@ -55,6 +57,7 @@ let savedSnapshot=null;
 let allowNavigation=false;
 let draftItems=[];
 let draftVisibleLimit=12;
+let assignmentPeople=[];
 
 const labels={
   flowType:{cleaning:"Limpieza",inspection:"Inspección",maintenance:"Mantenimiento",checkin:"Check-in",checkout:"Check-out",custom:"Personalizado"},
@@ -63,6 +66,7 @@ const labels={
   recurrence:{weekly:"Cada semana",biweekly:"Cada 2 semanas",monthly:"Cada mes",custom:"Personalizada"},
   customUnit:{day:"día(s)",week:"semana(s)",month:"mes(es)"},
   assignmentType:{property_responsible:"Responsable operativo del piso",active_occupants_rotation:"Ocupantes activos en rotación",fixed_person:"Persona fija",role:"Rol o capacidad",manual:"Se decide al iniciar"},
+  assignmentRole:{admin:"ADMIN",employee:"EMPLEADO",tenant:"INQUILINO"},
   closeType:{auto:"Automáticamente al completar pasos",human_review:"Tras revisión humana",domain_adapter:"Según regla especializada del flujo"}
 };
 
@@ -71,6 +75,132 @@ function checked(name){return Boolean(field(name)?.checked)}
 function value(name){return String(field(name)?.value||"").trim()}
 function label(group,key){return labels[group]?.[key]||key||"Pendiente"}
 function setChecked(name,next){const node=field(name);if(node)node.checked=Boolean(next)}
+
+function assignmentPersonCandidates(scope=value("scopeType")){
+  return assignmentPeople.filter(person=>
+    (scope!=="organization"||person.role!=="tenant")
+    && (scope!=="occupancy"||person.role==="tenant")
+  );
+}
+
+async function loadAssignmentPeople(){
+  const {data:userData,error:userError}=await supabase.auth.getUser();
+  if(userError||!userData?.user)throw userError||new Error("not_authenticated");
+  const userId=userData.user.id;
+  let organizationId=null;
+
+  if(currentDefinitionId){
+    const {data:definition,error}=await supabase
+      .from("workflow_definitions_v2")
+      .select("organization_id")
+      .eq("id",currentDefinitionId)
+      .maybeSingle();
+    if(error)throw error;
+    organizationId=definition?.organization_id||null;
+  }
+  if(!organizationId){
+    const {data:roles,error}=await supabase
+      .from("user_roles")
+      .select("role,organization_id")
+      .eq("user_id",userId)
+      .is("revoked_at",null);
+    if(error)throw error;
+    const active=(roles||[]).filter(row=>["root","admin"].includes(row.role));
+    const organizations=[...new Set(active.map(row=>row.organization_id).filter(Boolean))];
+    if(organizations.length===1)organizationId=organizations[0];
+    else if(organizations.length>1)throw new Error("organization_selection_required");
+    else if(active.some(row=>row.role==="root")){
+      const {data:organizations,error:orgError}=await supabase
+        .from("organizations")
+        .select("id")
+        .eq("status","active");
+      if(orgError)throw orgError;
+      if((organizations||[]).length===1)organizationId=organizations[0].id;
+    }
+  }
+  if(!organizationId)throw new Error("organization_selection_required");
+
+  const [contextResult,tenantResult]=await Promise.all([
+    supabase.rpc("get_permission_management_context",{p_organization_id:organizationId}),
+    supabase.from("tenants_v2")
+      .select("user_id,full_name,email,status,archived_at")
+      .eq("organization_id",organizationId)
+      .not("user_id","is",null)
+  ]);
+  if(contextResult.error||tenantResult.error)throw contextResult.error||tenantResult.error;
+  const people=[];
+  for(const person of contextResult.data?.people||[]){
+    if(!person.user_id||person.profile_status!=="active"
+      ||(person.onboarding_status&&person.onboarding_status!=="active"))continue;
+    const roles=Array.isArray(person.roles)?person.roles:[];
+    const role=roles.includes("admin")?"admin":roles.includes("employee")?"employee":null;
+    if(role)people.push({user_id:person.user_id,role,name:person.display_name||person.email||"Personal"});
+  }
+  for(const tenant of tenantResult.data||[]){
+    if(tenant.user_id&&tenant.status==="active"&&!tenant.archived_at){
+      people.push({user_id:tenant.user_id,role:"tenant",name:tenant.full_name||tenant.email||"Inquilino"});
+    }
+  }
+  assignmentPeople=[...new Map(people.map(person=>[person.user_id,person])).values()]
+    .sort((a,b)=>a.name.localeCompare(b.name,"es")||a.user_id.localeCompare(b.user_id));
+  updateAssignmentFields();
+}
+
+function updateAssignmentFields({clearHidden=false}={}){
+  const type=value("assignmentType");
+  const scope=value("scopeType");
+  const typeSelect=field("assignmentType");
+  const roleSelect=field("assignmentRole");
+  const personSelect=field("assignmentUserId");
+  const rotationOption=typeSelect?.querySelector('option[value="active_occupants_rotation"]');
+  const responsibleOption=typeSelect?.querySelector('option[value="property_responsible"]');
+  const adminRoleOption=roleSelect?.querySelector('option[value="admin"]');
+  const employeeRoleOption=roleSelect?.querySelector('option[value="employee"]');
+  const tenantRoleOption=roleSelect?.querySelector('option[value="tenant"]');
+  if(rotationOption)rotationOption.disabled=scope==="organization";
+  if(responsibleOption)responsibleOption.disabled=scope==="organization";
+  if(adminRoleOption)adminRoleOption.disabled=scope==="occupancy";
+  if(employeeRoleOption)employeeRoleOption.disabled=scope==="occupancy";
+  if(tenantRoleOption)tenantRoleOption.disabled=scope==="organization";
+  if(scope==="organization"&&["active_occupants_rotation","property_responsible"].includes(type))typeSelect.value="";
+
+  const selected=personSelect?.value||"";
+  const candidates=assignmentPersonCandidates(scope);
+  personSelect?.replaceChildren(
+    (()=>{const option=document.createElement("option");option.value="";option.textContent="Selecciona una persona";return option})(),
+    ...candidates.map(person=>{
+      const option=document.createElement("option");
+      option.value=person.user_id;
+      option.textContent=person.name+" · "+label("assignmentRole",person.role);
+      return option;
+    })
+  );
+  if(personSelect)personSelect.value=candidates.some(person=>person.user_id===selected)?selected:"";
+  toggleDependentRow(assignmentPersonRow,value("assignmentType")==="fixed_person");
+  toggleDependentRow(assignmentRoleRow,value("assignmentType")==="role");
+  if(clearHidden){
+    if(value("assignmentType")!=="fixed_person"&&personSelect)personSelect.value="";
+    if(value("assignmentType")!=="role"&&roleSelect)roleSelect.value="";
+  }
+  if(scope==="organization"&&roleSelect?.value==="tenant")roleSelect.value="";
+  if(scope==="occupancy"&&["admin","employee"].includes(roleSelect?.value))roleSelect.value="";
+}
+
+function assignmentConfigurationComplete(data){
+  if(!data.assignmentType)return false;
+  if(data.assignmentType==="property_responsible")return data.scopeType!=="organization";
+  if(data.assignmentType==="active_occupants_rotation")return data.scopeType!=="organization";
+  if(data.assignmentType==="fixed_person"){
+    return assignmentPersonCandidates(data.scopeType)
+      .some(person=>person.user_id===data.assignmentUserId);
+  }
+  if(data.assignmentType==="role"){
+    return ["admin","employee","tenant"].includes(data.assignmentRole)
+      && !(data.assignmentRole==="tenant"&&data.scopeType==="organization")
+      && !(data.scopeType==="occupancy"&&data.assignmentRole!=="tenant");
+  }
+  return true;
+}
 
 function browserTimezone(){
   try{return Intl.DateTimeFormat().resolvedOptions().timeZone||""}catch{return ""}
@@ -250,6 +380,8 @@ function draft(){
     customEvery:value("customEvery"),
     customUnit:value("customUnit"),
     assignmentType:value("assignmentType"),
+    assignmentUserId:value("assignmentUserId"),
+    assignmentRole:value("assignmentRole"),
     steps:{accept:checked("stepAccept"),photo:checked("stepPhoto"),checklist:checked("stepChecklist"),document:checked("stepDocument")},
     checklistItems:checked("stepChecklist")?checklistItemsDraft():[],
     closeType:value("closeType"),
@@ -333,7 +465,7 @@ function completion(data=draft()){
     {key:"identity",label:"Identidad",complete:data.flowName.trim().length>=3&&Boolean(data.flowType)},
     {key:"scope",label:"Ámbito",complete:Boolean(data.scopeType)},
     {key:"trigger",label:"Activación",complete:triggerComplete(data)},
-    {key:"assignment",label:"Asignación",complete:Boolean(data.assignmentType)},
+    {key:"assignment",label:"Asignación",complete:assignmentConfigurationComplete(data)},
     {key:"steps",label:"Pasos y recursos",complete:Object.values(data.steps||{}).some(Boolean)&&checklistConfigurationComplete(data)},
     {key:"close",label:"Cierre",complete:Boolean(data.closeType)}
   ];
@@ -367,7 +499,7 @@ function saveLocalDraft(){
 
 function applyDraft(saved,{restoreStep=true}={}){
   if(!saved||typeof saved!=="object")return;
-  for(const name of ["flowName","flowType","flowDescription","scopeType","triggerType","recurrence","scheduledAt","scheduledTimezone","scheduledAtUtc","customEvery","customUnit","assignmentType","closeType"]){
+  for(const name of ["flowName","flowType","flowDescription","scopeType","triggerType","recurrence","scheduledAt","scheduledTimezone","scheduledAtUtc","customEvery","customUnit","assignmentType","assignmentUserId","assignmentRole","closeType"]){
     const node=field(name);
     if(node&&typeof saved[name]==="string")node.value=saved[name];
   }
@@ -380,6 +512,7 @@ function applyDraft(saved,{restoreStep=true}={}){
   setChecked("notifyOnCreate",saved.notifications?.onCreate);
   setChecked("notifyOnClose",saved.notifications?.onClose);
   if(["scheduled_once","recurring"].includes(saved.triggerType))syncScheduledInstant({force:false});
+  updateAssignmentFields();
   if(restoreStep&&Number.isInteger(saved.currentStep))currentStep=Math.max(0,Math.min(panels.length-1,saved.currentStep));
 }
 
@@ -712,7 +845,11 @@ function renderSummary(){
     summaryRow("Tipo",label("flowType",data.flowType)),
     summaryRow("Ámbito",label("scopeType",data.scopeType)),
     summaryRow("Activación",activationSummary(data)),
-    summaryRow("Asignación",label("assignmentType",data.assignmentType)),
+    summaryRow("Asignación",data.assignmentType==="fixed_person"
+      ?label("assignmentType",data.assignmentType)+" · "+(assignmentPeople.find(person=>person.user_id===data.assignmentUserId)?.name||"Pendiente")
+      :data.assignmentType==="role"
+        ?label("assignmentType",data.assignmentType)+" · "+label("assignmentRole",data.assignmentRole)
+        :label("assignmentType",data.assignmentType)),
     summaryRow("Pasos",stepNames.length?stepNames.join(" → "):"Pendiente"),
     summaryRow("Cierre",label("closeType",data.closeType)),
     summaryRow("Notificaciones",notificationNames.length?notificationNames.join(" y "):"Sin notificaciones"),
@@ -1089,6 +1226,7 @@ form.addEventListener("input",event=>{
 });
 form.addEventListener("change",event=>{
   if(event.target===triggerType||event.target===field("recurrence"))updateTriggerFields({clearHidden:true});
+  if(event.target===field("assignmentType")||event.target===field("scopeType"))updateAssignmentFields({clearHidden:true});
   if(event.target===field("stepChecklist"))updateChecklistEditor();
   saveLocalDraft();
   updateCompletionUI();
@@ -1173,6 +1311,8 @@ window.addEventListener("beforeunload",event=>{
 
 (async()=>{
   showWorkspaceView();
+
+  try{await loadAssignmentPeople()}catch{assignmentPeople=[];updateAssignmentFields()}
 
   if(!editorRequested){
     await loadDraftWorkspace();

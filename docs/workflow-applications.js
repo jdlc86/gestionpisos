@@ -169,6 +169,10 @@ function errorText(error){
   if(message.includes("workflow_manual_assignee_required"))return "Selecciona quién realizará esta ejecución.";
   if(message.includes("workflow_manual_assignee_not_eligible"))return "La persona seleccionada no tiene capacidad operativa válida para este ámbito.";
   if(message.includes("workflow_property_responsible_unavailable"))return "Este piso no tiene un responsable operativo vigente para ejecutar el flujo.";
+  if(message.includes("workflow_fixed_person_unavailable"))return "La persona fija ya no tiene una relación vigente con este destino.";
+  if(message.includes("workflow_assignment_role_unavailable"))return "No hay ninguna persona vigente del rol configurado para este destino.";
+  if(message.includes("workflow_rotation_no_active_occupants"))return "No hay ocupantes activos elegibles para esta rotación.";
+  if(message.includes("workflow_fixed_person_invalid")||message.includes("workflow_assignment_role_invalid"))return "La configuración de asignación está incompleta o ya no es válida.";
   if(message.includes("workflow_schedule_must_be_future"))return "La fecha programada debe estar en el futuro.";
   if(message.includes("workflow_schedule_timezone_invalid")||message.includes("workflow_schedule_timezone_conflict"))return "No se pudo validar la zona horaria de esta programación. Vuelve al Creador y revisa la fecha.";
   if(message.includes("workflow_schedule_local_time_ambiguous"))return "Esa hora se repite por el cambio horario. Vuelve al Creador y elige otra hora.";
@@ -449,13 +453,26 @@ function transientAssignmentControls(app){
         ?"El responsable operativo se resolverá de nuevo cuando llegue la fecha programada."
         :"Si ejecutas, se validará de nuevo el responsable operativo vigente del piso.";
     wrap.append(note);
+  }else if(["fixed_person","role","active_occupants_rotation"].includes(assignmentType)){
+    const candidates=ruleCandidates(app,spec);
+    if(assignmentType==="fixed_person"||!automatic)executable=candidates.length>0;
+    const note=document.createElement("span");
+    note.className="execution-note";
+    note.textContent=assignmentType==="fixed_person"
+      ?(candidates.length
+        ?"La persona fija se revalidará al ejecutar cada tarea."
+        :"La persona fija no tiene una relación vigente con este destino.")
+      :automatic
+        ?"El ejecutor se elegirá entre personas vigentes en cada ejecución programada."
+        :candidates.length
+          ?"El ejecutor se resolverá en el servidor al crear la tarea."
+          :"No hay personas vigentes elegibles para esta regla.";
+    wrap.append(note);
   }else{
     executable=false;
     const note=document.createElement("span");
     note.className="execution-note";
-    note.textContent=automatic
-      ?"Esta regla de asignación todavía no admite programación automática."
-      :"Puedes Publicar este flujo, pero esta regla de asignación todavía no admite ejecución manual.";
+    note.textContent="La regla de asignación no está configurada.";
     wrap.append(note);
   }
 
@@ -1130,6 +1147,21 @@ function executionCandidates(app){
 
   return candidates;
 }
+function ruleCandidates(app,spec){
+  const candidates=executionCandidates(app);
+  const type=String(spec?.assignmentType||"");
+  if(type==="fixed_person"){
+    return candidates.filter(person=>person.user_id===spec?.assignmentUserId);
+  }
+  if(type==="role"){
+    const role=String(spec?.assignmentRole||"");
+    return candidates.filter(person=>Array.isArray(person.roles)&&person.roles.includes(role));
+  }
+  if(type==="active_occupants_rotation"){
+    return candidates.filter(person=>Array.isArray(person.roles)&&person.roles.includes("tenant"));
+  }
+  return candidates;
+}
 function requestKey(appId){
   const storageKey=EXECUTION_KEY_PREFIX+appId;
   let key=sessionStorage.getItem(storageKey);
@@ -1242,6 +1274,19 @@ function executionAssignmentRequirement(app,version){
     return responsibleId
       ?{complete:true,needsInput:false,blocking:false,value:"Responsable operativo",message:"Se resolverá automáticamente al ejecutar."}
       :{complete:false,needsInput:false,blocking:true,value:"Responsable pendiente",message:"Este piso no tiene un responsable operativo vigente."};
+  }
+
+  if(["fixed_person","role","active_occupants_rotation"].includes(assignmentType)){
+    const candidates=ruleCandidates(app,version?.spec);
+    return {
+      complete:candidates.length>0,
+      needsInput:false,
+      blocking:candidates.length===0,
+      value:assignmentLabels[assignmentType],
+      message:candidates.length
+        ?"El servidor elegirá o revalidará al ejecutor vigente al crear la tarea."
+        :"No hay personas vigentes elegibles para esta regla y destino."
+    };
   }
 
   return {
@@ -1486,10 +1531,18 @@ function buildExecutionControls(app,{guided=false}={}){
     const note=document.createElement("span");note.className="execution-note";
     note.textContent="Se asignará al responsable operativo vigente del piso.";
     controls.append(note);
+  }else if(["fixed_person","role","active_occupants_rotation"].includes(assignmentType)){
+    const candidates=ruleCandidates(app,version?.spec);
+    executable=candidates.length>0;
+    const note=document.createElement("span");note.className="execution-note";
+    note.textContent=executable
+      ?"El servidor elegirá o revalidará al ejecutor vigente al crear la tarea."
+      :"No hay personas vigentes elegibles para esta regla y destino.";
+    controls.append(note);
   }else{
     executable=false;
     const note=document.createElement("span");note.className="execution-note";
-    note.textContent="Esta regla de asignación todavía no está habilitada para ejecución manual.";
+    note.textContent="La regla de asignación no está configurada.";
     controls.append(note);
   }
 

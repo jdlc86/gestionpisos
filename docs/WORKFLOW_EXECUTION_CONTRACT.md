@@ -71,7 +71,7 @@ En este primer incremento puede lanzar una ejecución:
 
 La autorización se valida en servidor. Ver un botón no concede capacidad. La extensión futura al responsable/operador de piso se hará cuando exista una vista operativa de Tareas; la pantalla actual de Aplicaciones sigue siendo administrativa.
 
-## 5. Asignación soportada inicialmente
+## 5. Asignación
 
 ### Manual
 
@@ -92,15 +92,11 @@ No se permite asignar silenciosamente a un usuario sin capacidad operativa.
 
 Debe existir exactamente un responsable vigente con escritura y rol interno activo. La ejecución congela ese usuario.
 
-### Reglas todavía no ejecutables
+### Persona fija, rol y rotación
 
-Hasta disponer de datos completos y contrato específico, el runner rechaza explícitamente:
+`fixed_person` guarda un `assignmentUserId` en la versión publicada y comprueba la relación vigente del usuario con el destino en cada ejecución. `role` guarda un `assignmentRole` (`admin`, `employee` o `tenant`) y el servidor elige entre las personas actualmente elegibles. `active_occupants_rotation` elige entre ocupantes activos del destino. ROOT no es candidato por su rol ROOT.
 
-- `fixed_person`;
-- `role`;
-- `active_occupants_rotation`.
-
-No se inventan defaults ni se interpreta información ausente.
+Para `role` y `active_occupants_rotation`, el reparto usa el menor número de ejecuciones previas de la aplicación, después la ejecución más antigua y finalmente el UUID como desempate estable. La aplicación se bloquea durante la resolución; un reintento idempotente devuelve la misma ejecución. El usuario elegido y la configuración quedan congelados en el snapshot de ejecución. La autorización para actuar vuelve a comprobar la relación vigente, de modo que una Suspensión/Baja o revocación impide nuevas acciones y futuras asignaciones sin alterar el histórico.
 
 ## 6. Validación del destino
 

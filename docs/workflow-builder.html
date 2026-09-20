@@ -165,6 +165,19 @@
             <option value="role">Rol o capacidad</option>
             <option value="manual">Se decide al iniciar</option>
           </select></label>
+          <label id="assignmentPersonRow" hidden>Persona fija
+            <select id="assignmentUserId" name="assignmentUserId" disabled>
+              <option value="">Selecciona una persona</option>
+            </select>
+          </label>
+          <label id="assignmentRoleRow" hidden>Rol ejecutor
+            <select id="assignmentRole" name="assignmentRole" disabled>
+              <option value="">Selecciona un rol</option>
+              <option value="admin">ADMIN</option>
+              <option value="employee">EMPLEADO</option>
+              <option value="tenant">INQUILINO</option>
+            </select>
+          </label>
           <div class="builder-note">La persona final se resolverá al iniciar la ejecución.</div>
         </section>
 
@@ -244,7 +257,7 @@
   </main>
 
   <script src="./app.js?v=2026091902" defer></script>
-  <script type="module" src="./workflow-builder.js?v=2026091921"></script>
+  <script type="module" src="./workflow-builder.js?v=2026092001"></script>
   <script type="module" src="./auth-guard.js"></script>
 </body>
 </html>

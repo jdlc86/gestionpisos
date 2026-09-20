@@ -65,9 +65,9 @@ El responsable se resuelve en el instante real de ejecución, por lo que un camb
 
 No es obligatorio que exista responsable en el momento de programar. Sí debe existir uno elegible al dispararse.
 
-### Otras reglas
+### Persona fija, rol y rotación
 
-`fixed_person`, `role` y `active_occupants_rotation` no se automatizan todavía porque su ejecución genérica aún no está soportada por el motor actual.
+`fixed_person` valida la relación vigente al programar y la revalida al dispararse. `role` y `active_occupants_rotation` se resuelven en el servidor en cada ocurrencia; no congelan una persona al programar. Si en ese momento no existe nadie elegible, la programación queda bloqueada sin crear una tarea parcial. Los cambios de ocupantes solo afectan ocurrencias futuras.
 
 ## 4. Programar no es Ejecutar
 

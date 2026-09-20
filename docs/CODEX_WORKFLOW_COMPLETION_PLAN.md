@@ -234,10 +234,26 @@ Handoff:
 ---
 
 ### BLOQUE WF-01 — Asignaciones genéricas faltantes
-**Estado:** ACTIVO / PLANNED
+**Estado:** VERIFIED
 
 
 **Instrucción de arranque para Codex:** este es el único bloque que puede implementar tras el merge de WF-00. Debe crear una rama NUEVA desde el `main` real, inspeccionar la implementación actual y cambiar este estado a `IN_PROGRESS` en su primer commit del bloque.
+
+Handoff para revisión:
+- Rama: `codex/wf-01-assignment-rules`
+- PR: [#269](https://github.com/jdlc86/gestionpisos/pull/269)
+- HEAD verificado por ChatGPT antes del cierre documental: `a9d8c97140ef1899d4899771a69a823d2b0eae8d`.
+- HEAD de implementación antes del commit de handoff: `d190f895a6873c5864b17d13a0d0e852a4a00401`
+- Main observado al comenzar: `9088c21121735a312f2b576c161c0a03ad0cbce5`
+- Main observado al terminar: `9088c21121735a312f2b576c161c0a03ad0cbce5`
+- Cambios realizados: `fixed_person`, `role` y `active_occupants_rotation` configurables en autoría y resueltos server-side para manual, fecha concreta y recurrente; snapshot inmutable de ejecución, revalidación de relación vigente, controles UI y contratos actualizados. Una migración nueva; ninguna migración remota aplicada ni Edge Function modificada.
+- Pruebas ejecutadas: `tests/database-regression-v2.sh` (PostgreSQL 17 desechable), `tests/workflows-smoke.sh`, `tests/pwa-smoke.sh`, `tests/login-auth-smoke.sh`, `tests/mfa-smoke.sh`, `tests/no-legacy-schema.sh`, `tests/migration-history-smoke.sh`, `tests/schema-regression-smoke.sh` y `tests/workflow-definition-schema-smoke.sh`: todas verdes. La regresión específica WF-01 cubre positivos/negativos, ROOT no ejecutor, revocación/suspensión, RLS, reintentos, rotación y programación.
+- Checks GitHub verificados por ChatGPT en `a9d8c97140ef1899d4899771a69a823d2b0eae8d`: Governance Guard ✅, PWA Smoke ✅, Schema Guard ✅.
+- Riesgos: migración R3 aún no aplicada a producción en el momento de esta verificación; debe desplegarse exclusivamente por el workflow normal tras merge.
+- Verificación independiente ChatGPT: diff, resolver server-side, exclusión de ROOT, elegibilidad vigente, rotación/idempotencia, persistencia de `assignmentUserId`/`assignmentRole`, dependencias reales de Supabase y checks del mismo HEAD revisados. Aprobado para merge.
+- Pendientes / bloqueadores: ninguno antes del merge; queda verificación post-merge de migración, Pages y checks.
+- Prueba humana sugerida: tras la migración aprobada, ejecutar en un destino de prueba una asignación fija, una por rol y dos ocurrencias de rotación; suspender un ocupante y confirmar que solo cambia la elegibilidad futura.
+- Siguiente acción exacta para ChatGPT: esperar checks del commit documental final, fusionar PR #269, verificar despliegue/migración post-merge y continuar con WF-02.
 
 
 Implementar en el motor común, server-side:
@@ -268,7 +284,9 @@ Pruebas mínimas:
 ---
 
 ### BLOQUE WF-02 — Disparador genérico por evento
-**Estado:** PLANNED
+**Estado:** ACTIVO / PLANNED
+
+**Instrucción de arranque:** este es el único bloque activo después de verificar WF-01. ChatGPT continuará la implementación directamente; si Codex se retoma más adelante, debe partir del `main` real y del estado actualizado de este documento.
 
 Objetivo: convertir `event` de opción declarativa a capacidad real del motor.
 

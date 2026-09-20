@@ -11,6 +11,9 @@ select set_config('wf04.reject_room',gen_random_uuid()::text,true);
 select set_config('wf04.unlinked_room',gen_random_uuid()::text,true);
 select set_config('wf04.staff',gen_random_uuid()::text,true);
 select set_config('wf04.outsider',gen_random_uuid()::text,true);
+select set_config('wf04.role_readonly','00000000-0000-4000-8000-000000000031',true);
+select set_config('wf04.role_writer','00000000-0000-4000-8000-000000000032',true);
+select set_config('wf04.admin','00000000-0000-4000-8000-000000000033',true);
 select set_config('wf04.tenant_user',gen_random_uuid()::text,true);
 select set_config('wf04.future_user',gen_random_uuid()::text,true);
 select set_config('wf04.stale_user',gen_random_uuid()::text,true);
@@ -32,11 +35,17 @@ insert into auth.users(id) values
   (current_setting('wf04.tenant_user')::uuid),
   (current_setting('wf04.future_user')::uuid),
   (current_setting('wf04.stale_user')::uuid),
-  (current_setting('wf04.reject_user')::uuid);
+  (current_setting('wf04.reject_user')::uuid),
+  (current_setting('wf04.role_readonly')::uuid),
+  (current_setting('wf04.role_writer')::uuid),
+  (current_setting('wf04.admin')::uuid);
 
 insert into public.profiles(user_id,organization_id,display_name,status) values
   (current_setting('wf04.staff')::uuid,current_setting('wf04.org')::uuid,'WF04 staff','active'),
-  (current_setting('wf04.outsider')::uuid,current_setting('wf04.org')::uuid,'WF04 outsider','active');
+  (current_setting('wf04.outsider')::uuid,current_setting('wf04.org')::uuid,'WF04 outsider','active'),
+  (current_setting('wf04.role_readonly')::uuid,current_setting('wf04.org')::uuid,'WF04 readonly role employee','active'),
+  (current_setting('wf04.role_writer')::uuid,current_setting('wf04.org')::uuid,'WF04 writable role employee','active'),
+  (current_setting('wf04.admin')::uuid,current_setting('wf04.org')::uuid,'WF04 admin','active');
 
 insert into public.user_roles(user_id,organization_id,role) values
   (current_setting('wf04.staff')::uuid,current_setting('wf04.org')::uuid,'employee'),
@@ -44,7 +53,10 @@ insert into public.user_roles(user_id,organization_id,role) values
   (current_setting('wf04.tenant_user')::uuid,current_setting('wf04.org')::uuid,'tenant'),
   (current_setting('wf04.future_user')::uuid,current_setting('wf04.org')::uuid,'tenant'),
   (current_setting('wf04.stale_user')::uuid,current_setting('wf04.org')::uuid,'tenant'),
-  (current_setting('wf04.reject_user')::uuid,current_setting('wf04.org')::uuid,'tenant');
+  (current_setting('wf04.reject_user')::uuid,current_setting('wf04.org')::uuid,'tenant'),
+  (current_setting('wf04.role_readonly')::uuid,current_setting('wf04.org')::uuid,'employee'),
+  (current_setting('wf04.role_writer')::uuid,current_setting('wf04.org')::uuid,'employee'),
+  (current_setting('wf04.admin')::uuid,current_setting('wf04.org')::uuid,'admin');
 
 insert into public.owners(id,organization_id,full_name,status)
 values(current_setting('wf04.owner')::uuid,current_setting('wf04.org')::uuid,
@@ -62,10 +74,23 @@ insert into public.rooms_v2(id,property_id,label,status) values
   (current_setting('wf04.unlinked_room')::uuid,current_setting('wf04.property')::uuid,'WF04 unlinked room','active');
 insert into public.property_staff_access_v3(
   organization_id,property_id,employee_user_id,assignment_type,can_write,granted_by
-) values (
-  current_setting('wf04.org')::uuid,current_setting('wf04.property')::uuid,
-  current_setting('wf04.staff')::uuid,'responsible',true,current_setting('wf04.root')::uuid
-);
+) values
+  (
+    current_setting('wf04.org')::uuid,current_setting('wf04.property')::uuid,
+    current_setting('wf04.staff')::uuid,'responsible',true,current_setting('wf04.root')::uuid
+  ),
+  (
+    current_setting('wf04.org')::uuid,current_setting('wf04.property')::uuid,
+    current_setting('wf04.role_readonly')::uuid,'access',false,current_setting('wf04.root')::uuid
+  ),
+  (
+    current_setting('wf04.org')::uuid,current_setting('wf04.property')::uuid,
+    current_setting('wf04.role_writer')::uuid,'access',true,current_setting('wf04.root')::uuid
+  ),
+  (
+    current_setting('wf04.org')::uuid,current_setting('wf04.property')::uuid,
+    current_setting('wf04.admin')::uuid,'access',true,current_setting('wf04.root')::uuid
+  );
 
 insert into public.tenants_v2(
   id,organization_id,user_id,full_name,document_type,document_number,email,status
@@ -118,6 +143,30 @@ select set_config('wf04.checkout_app',(
   select application_id::text from public.publish_workflow_ready_v1(
     pg_temp.wf04_spec('checkout'),current_setting('wf04.property')::uuid,
     null,null,'{}'::uuid[],false,'wf04-checkout-ready',null,null
+  ) limit 1
+),true);
+select set_config('wf04.role_app',(
+  select application_id::text from public.publish_workflow_ready_v1(
+    pg_temp.wf04_spec('checkin') || jsonb_build_object(
+      'flowName','WF04 entrada rol empleado',
+      'assignmentType','role',
+      'assignmentRole','employee',
+      'notifications',jsonb_build_object('onCreate',false,'onClose',false)
+    ),
+    current_setting('wf04.property')::uuid,
+    null,null,'{}'::uuid[],false,'wf04-role-ready',null,null
+  ) limit 1
+),true);
+select set_config('wf04.admin_app',(
+  select application_id::text from public.publish_workflow_ready_v1(
+    pg_temp.wf04_spec('checkin') || jsonb_build_object(
+      'flowName','WF04 entrada admin',
+      'assignmentType','role',
+      'assignmentRole','admin',
+      'notifications',jsonb_build_object('onCreate',false,'onClose',false)
+    ),
+    current_setting('wf04.property')::uuid,
+    null,null,'{}'::uuid[],false,'wf04-admin-ready',null,null
   ) limit 1
 ),true);
 reset role;
@@ -276,6 +325,92 @@ select set_config('wf04.checkin_task',(
     and o.source_id=current_setting('wf04.occupancy')::uuid
     and o.event_type='occupancy.created'
 ),true);
+
+-- La selección role debe filtrar escritura antes del desempate determinista.
+do $role_assignment_filters_readonly$
+declare v_assigned uuid;
+begin
+  select e.assigned_user_id
+  into v_assigned
+  from public.workflow_executions_v2 e
+  join public.workflow_event_outbox_v2 o on o.id=e.source_event_id
+  where e.application_id=current_setting('wf04.role_app')::uuid
+    and o.source_id=current_setting('wf04.occupancy')::uuid
+    and o.event_type='occupancy.created';
+
+  if v_assigned is distinct from current_setting('wf04.role_writer')::uuid then
+    raise exception 'WF04 role resolver selected non-writable employee: %',v_assigned;
+  end if;
+end;
+$role_assignment_filters_readonly$;
+
+select set_config('wf04.admin_task',(
+  select t.id::text
+  from public.tenant_tasks_v2 t
+  join public.workflow_executions_v2 e on e.id=t.source_id
+  join public.workflow_event_outbox_v2 o on o.id=e.source_event_id
+  where e.application_id=current_setting('wf04.admin_app')::uuid
+    and o.source_id=current_setting('wf04.occupancy')::uuid
+    and o.event_type='occupancy.created'
+),true);
+
+-- ADMIN necesita MFA AAL2 para cualquier acción física/lifecycle WF-04.
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf04.admin'),'role','authenticated','aal','aal1'
+)::text,true);
+do $admin_aal1_denied$
+begin
+  begin
+    perform * from public.apply_workflow_task_action_v1(
+      current_setting('wf04.admin_task')::uuid,'accept','wf04-admin-aal1',null
+    );
+    raise exception 'WF04 ADMIN action succeeded with aal1';
+  exception when insufficient_privilege then
+    if sqlerrm<>'workflow_wf04_mfa_required' then raise; end if;
+  end;
+end;
+$admin_aal1_denied$;
+reset role;
+
+do $admin_aal1_no_mutation$
+begin
+  if not exists(
+    select 1
+    from public.tenant_tasks_v2 t
+    join public.workflow_executions_v2 e on e.id=t.source_id
+    where t.id=current_setting('wf04.admin_task')::uuid
+      and t.status='pending'
+      and e.status='pending'
+  ) then
+    raise exception 'WF04 ADMIN aal1 attempt mutated task/execution';
+  end if;
+end;
+$admin_aal1_no_mutation$;
+
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf04.admin'),'role','authenticated','aal','aal2'
+)::text,true);
+select * from public.apply_workflow_task_action_v1(
+  current_setting('wf04.admin_task')::uuid,'accept','wf04-admin-aal2',null
+);
+reset role;
+
+do $admin_aal2_allowed$
+begin
+  if not exists(
+    select 1
+    from public.tenant_tasks_v2 t
+    join public.workflow_executions_v2 e on e.id=t.source_id
+    where t.id=current_setting('wf04.admin_task')::uuid
+      and t.status='active'
+      and e.status='active'
+  ) then
+    raise exception 'WF04 ADMIN aal2 action was not applied';
+  end if;
+end;
+$admin_aal2_allowed$;
 
 do $checkin_materialized$
 declare v_task public.tenant_tasks_v2;

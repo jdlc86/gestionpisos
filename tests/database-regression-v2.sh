@@ -7,7 +7,7 @@ if command -v cygpath >/dev/null 2>&1; then
   export MSYS_NO_PATHCONV=1
 fi
 
-docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -v "$repo_path:/work:ro"   postgres:17-alpine   sh -ceu '
+docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -e WF04_FOCUSED="${WF04_FOCUSED:-0}"   -v "$repo_path:/work:ro"   postgres:17-alpine   sh -ceu '
     docker-entrypoint.sh postgres -c listen_addresses="" &
     postgres_pid=$!
 
@@ -132,6 +132,15 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -v "$repo_path:/w
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260920143100_wf03_cleaning_adapter_opt_in.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260920170000_tenant_reactivation_atomic.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260920192346_wf04_offboarding_event.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260920193646_wf04_event_subject_binding.sql
+    if [ "$WF04_FOCUSED" = "1" ]; then
+      psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/tenant-offboarding-access-regression.sql
+      psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/tenant-reactivation-regression.sql
+      psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-event-trigger-regression.sql
+      trap - EXIT
+      cleanup
+      exit 0
+    fi
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/database-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/photo-verification-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-definition-regression.sql

@@ -324,6 +324,14 @@ begin
   end if;
 
   if not exists(
+    select 1 from public.workflow_executions_v2 e
+    where e.id=v_good_execution
+      and e.source_event_id=v_event_id
+  ) then
+    raise exception 'event execution lost its exact source event';
+  end if;
+
+  if not exists(
     select 1
     from public.tenant_tasks_v2 t
     where t.source_kind='workflow_execution'

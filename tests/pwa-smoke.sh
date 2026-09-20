@@ -58,10 +58,12 @@ grep -q 'serviceWorker' docs/app.js
 grep -q 'GestionPisos' docs/manifest.webmanifest
 grep -Fq "'./legal.html'" docs/sw.js
 grep -Fq "'./privacy.html'" docs/sw.js
-grep -q 'gestionpisos-shell-v43' docs/sw.js
+grep -q 'gestionpisos-shell-v44' docs/sw.js
 grep -Fq "'./workflow-history.html'" docs/sw.js
 grep -Fq "'./workflow-history.css'" docs/sw.js
 grep -Fq "'./workflow-history.js'" docs/sw.js
+grep -Fq "'./cleaning.html'" docs/sw.js
+grep -Fq "'./cleaning.js'" docs/sw.js
 grep -Fq "'./bottom-nav.js'" docs/sw.js
 grep -Fq "'./bottom-nav.css'" docs/sw.js
 grep -Fq 'mountBottomNavigation' docs/auth-guard.js
@@ -365,6 +367,29 @@ grep -Fq "const backLink = \$('cameraBackLink');" docs/photo-camera.js
 grep -Fq "return './workflow-tasks.html';" docs/photo-camera.js
 grep -Fq "'./cleaning.html?task_id='" docs/photo-camera.js
 grep -Fq "return './photo-patterns.html';" docs/photo-camera.js
+
+# WF-03 cleaning UI must enter through the transversal tenant task.
+test -s docs/cleaning.html
+test -s docs/cleaning.js
+node --check docs/cleaning.js
+node --check docs/workflow-tasks.js
+grep -Fq './workflow-tasks.js?v=2026092024' docs/workflow-tasks.html
+grep -Fq 'function cleaningExecutionForTask(task)' docs/workflow-tasks.js
+grep -Fq 'url.searchParams.set("workflow_task_id",task.id)' docs/workflow-tasks.js
+grep -Fq 'renderCleaningAdapter(task,article)' docs/workflow-tasks.js
+! grep -Fq 'id="taskForm"' docs/cleaning.html
+! grep -Fq 'Introduce el identificador' docs/cleaning.html
+grep -Fq 'params.get("workflow_task_id")' docs/cleaning.js
+grep -Fq 'workflow_task_id:workflowTaskId' docs/cleaning.js
+grep -Fq 'supabase.functions.invoke("my-cleaning-checklist"' docs/cleaning.js
+test -s supabase/functions/my-cleaning-checklist/index.ts
+grep -Fq '.from("tenant_tasks_v2")' supabase/functions/my-cleaning-checklist/index.ts
+grep -Fq '.from("workflow_executions_v2")' supabase/functions/my-cleaning-checklist/index.ts
+grep -Fq '.eq("workflow_execution_id",execution.id)' supabase/functions/my-cleaning-checklist/index.ts
+grep -Fq 'workflow_task_not_assigned_to_user' supabase/functions/my-cleaning-checklist/index.ts
+grep -Fq 'workflow_accept_required' supabase/functions/my-cleaning-checklist/index.ts
+grep -Fq 'capture_url:readOnly?null:captureUrl' supabase/functions/my-cleaning-checklist/index.ts
+grep -Fq 'return_to=' supabase/functions/my-cleaning-checklist/index.ts
 grep -Fq "const back = document.getElementById(\"cameraBackLink\");" docs/photo-persistence.js
 ! grep -Fq 'document.querySelector(".topbar a.ghost")' docs/photo-persistence.js
 

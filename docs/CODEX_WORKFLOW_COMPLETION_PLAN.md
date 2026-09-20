@@ -369,8 +369,19 @@ Objetivo cumplido:
 ---
 
 ### BLOQUE WF-04 — Check-in / Check-out + llaves
-**Estado:** IN_PROGRESS
-**Bloque ACTIVO:** sí — autorizado por ChatGPT para iniciar después del cierre de WF-03 y del bug de reactivación #274.
+**Estado:** READY_FOR_CHATGPT_REVIEW
+**Bloque ACTIVO:** sí — implementación terminada; no activar WF-05 hasta revisión independiente de ChatGPT.
+
+**Handoff obligatorio de Codex (2026-09-20):**
+- Rama: `codex/wf-04-checkin-checkout-keys` (nueva desde `main`; no reutiliza WF-03 ni #274).
+- PR único: [#276](https://github.com/jdlc86/gestionpisos/pull/276). Sin merge ni despliegue manual.
+- HEAD de rama de implementación sometido a las pruebas y checks: `07e69b64ce5a5bbe28842560f91aca077d08abd1`. El HEAD final de rama es el commit documental que contiene este handoff y debe leerse en el PR; no se autocita un SHA que aún no existe al redactarlo.
+- Main observado al comenzar: `6e9d35018968407bcbb42faf98298c4eedd37a8b`, descendiente de `98242d6bb2aa61fdaea813dcb180659cc2ce07d3`.
+- Cambios realizados: `occupancy.offboarded` en el outbox/dispatcher WF-02 solo tras Baja real; vinculación exacta de evento y ocupación a la ejecución/tarjeta; autoría nueva de Check-in/Check-out limitada al evento lifecycle correcto; acciones aceptar/rechazar, recogida/entrega de llaves y confirmación de entrada/salida sobre `tenant_tasks_v2`, con revalidación de destino/asignado, idempotencia, historia y auditoría. La tarjeta transversal y el historial muestran los hitos; las rutas legacy y el camino atómico de reactivación #274 permanecen. Cuatro migraciones aditivas; ninguna aplicada remotamente.
+- Pruebas ejecutadas: regresión PostgreSQL 17 completa `tests/database-regression-v2.sh` y modo enfocado `WF04_FOCUSED=1`, ambas verdes; cubren evento→una ejecución/tarjeta, reintentos, destino y asignado no vigentes, RLS negativa, llaves sin efecto en Auth/lifecycle, entrada futura, Baja/Salida, Suspensión/reactivación #274, legacy y auditoría. `tests/workflows-smoke.sh`, `tests/pwa-smoke.sh`, login/MFA, contratos de esquema/documentación y `node --check` de módulos modificados, verdes. No se hizo E2E humano ni despliegue.
+- Checks GitHub observados para el HEAD de implementación `07e69b6`: Governance Guard ✅, PWA Smoke ✅, Schema Guard ✅ (incluida regresión PostgreSQL aislada). Revalidar los tres en el HEAD documental final del PR.
+- Pendientes / bloqueadores: ningún bloqueo de implementación conocido. Migraciones pendientes del proceso normal posterior a revisión/merge; ChatGPT coordina la prueba humana E2E de una Entrada, llaves, Baja/Salida y acceso después del despliegue autorizado. No se tocó Supabase remoto.
+- Siguiente acción exacta: ChatGPT revisa independientemente el diff, contratos de autorización/RLS/lifecycle, tests y los tres checks del HEAD final de PR #276; decide si solicita cambios o fusiona por el proceso normal. Solo ChatGPT puede marcar WF-04 `VERIFIED` y autorizar WF-05.
 
 **Arranque y mapa real observado (primer commit WF-04):**
 - Rama nueva: `codex/wf-04-checkin-checkout-keys`. Base: `main` remoto `6e9d35018968407bcbb42faf98298c4eedd37a8b`, descendiente del `98242d6bb2aa61fdaea813dcb180659cc2ce07d3` exigido. Entre ambos solo cambió este plan para cerrar WF-03 y activar WF-04.

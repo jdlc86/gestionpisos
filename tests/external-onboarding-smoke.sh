@@ -74,6 +74,9 @@ grep -Fq 'Acceso reactivado.' docs/portfolio-onboarding.js
 grep -Fq 'Acceso suspendido' docs/portfolio-onboarding.js
 grep -Fq 'Acceso pendiente de vincular' docs/portfolio-onboarding.js
 grep -Fq 'Acceso aún no vigente' docs/portfolio-onboarding.js
+grep -Fq 'if(operationalState==="unlinked")return {label:"Acceso pendiente de vincular",button:onboardingState.button};' docs/portfolio-onboarding.js
+grep -Fq 'if(operationalState==="scheduled")return {label:"Acceso aún no vigente",button:onboardingState.button};' docs/portfolio-onboarding.js
+grep -Fq 'if(operationalState==="active")return {label:"Acceso activado",button:null};' docs/portfolio-onboarding.js
 grep -Fq 'admin.auth.admin.deleteUser(input.authUserId, true)' supabase/functions/_shared/external-onboarding-revocation.ts
 grep -Fq 'revoke_external_account_onboarding_v1' supabase/functions/_shared/external-onboarding-revocation.ts
 grep -Fq 'disableAndRevokeExternalOnboarding' supabase/functions/revoke-external-welcome/index.ts

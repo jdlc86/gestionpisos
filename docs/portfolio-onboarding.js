@@ -235,22 +235,26 @@ document.addEventListener("click",event=>{
 },true);
 
 function onboardingBadge(row,currentEmail,operationalState="unknown"){
-  if(operationalState==="suspended")return {label:"Acceso suspendido",button:null};
-  if(operationalState==="unlinked")return {label:"Acceso pendiente de vincular",button:null};
-  if(operationalState==="scheduled")return {label:"Acceso aún no vigente",button:null};
-  if(operationalState==="inactive")return {label:"Sin acceso operativo",button:null};
-  if(!row)return {label:"Sin invitación",button:"Enviar bienvenida"};
-  if(row.status==="pending"){
+  let onboardingState;
+  if(!row)onboardingState={label:"Sin invitación",button:"Enviar bienvenida"};
+  else if(row.status==="pending"){
     if(typeof row.email==="string"&&normalizeEmail(row.email)!==normalizeEmail(currentEmail)){
-      return {label:"Email cambiado · nueva invitación necesaria",button:"Enviar nueva bienvenida"};
+      onboardingState={label:"Email cambiado · nueva invitación necesaria",button:"Enviar nueva bienvenida"};
+    }else{
+      const delivery=row.last_delivery_status;
+      onboardingState={
+        label:delivery==="sent"?"Pendiente de activación":delivery==="not_configured"?"Correo pendiente":delivery==="failed"?"Envío no confirmado":"Invitación pendiente",
+        button:"Reenviar bienvenida"
+      };
     }
-    const delivery=row.last_delivery_status;
-    return {
-      label:delivery==="sent"?"Pendiente de activación":delivery==="not_configured"?"Correo pendiente":delivery==="failed"?"Envío no confirmado":"Invitación pendiente",
-      button:"Reenviar bienvenida"
-    };
-  }
-  return {label:"Acceso activado",button:null};
+  }else onboardingState={label:"Acceso activado",button:null};
+
+  if(operationalState==="suspended")return {label:"Acceso suspendido",button:null};
+  if(operationalState==="unlinked")return {label:"Acceso pendiente de vincular",button:onboardingState.button};
+  if(operationalState==="scheduled")return {label:"Acceso aún no vigente",button:onboardingState.button};
+  if(operationalState==="inactive")return {label:"Sin acceso operativo",button:null};
+  if(operationalState==="active")return {label:"Acceso activado",button:null};
+  return onboardingState;
 }
 function decorateCard(card,subjectType,subjectId,row,currentEmail,canSend=true,operationalState="unknown"){
   card.querySelectorAll("[data-external-onboarding-ui]").forEach(element=>element.remove());

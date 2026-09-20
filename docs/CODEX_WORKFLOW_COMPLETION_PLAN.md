@@ -234,10 +234,21 @@ Handoff:
 ---
 
 ### BLOQUE WF-01 — Asignaciones genéricas faltantes
-**Estado:** ACTIVO / PLANNED
+**Estado:** ACTIVO / IN_PROGRESS
 
 
 **Instrucción de arranque para Codex:** este es el único bloque que puede implementar tras el merge de WF-00. Debe crear una rama NUEVA desde el `main` real, inspeccionar la implementación actual y cambiar este estado a `IN_PROGRESS` en su primer commit del bloque.
+
+Handoff en curso:
+- Rama: `codex/wf-01-assignment-rules`
+- PR: pendiente
+- HEAD de rama: pendiente del primer commit
+- Main observado al comenzar: `9088c21121735a312f2b576c161c0a03ad0cbce5`
+- Cambios realizados: inspección inicial del bloque WF-01; sin cambios de producto todavía.
+- Pruebas ejecutadas: ninguna todavía.
+- Checks GitHub observados: pendientes.
+- Pendientes / bloqueadores: implementar, probar y revisar las tres reglas de asignación.
+- Siguiente acción exacta: completar WF-01 en esta rama sin iniciar WF-02.
 
 
 Implementar en el motor común, server-side:

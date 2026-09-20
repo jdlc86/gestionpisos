@@ -401,7 +401,7 @@ $fixed_actor_revoked$;
 
 reset role;
 update public.occupancies_v2
-set status='blocked',ends_on=current_date-1
+set status='blocked',starts_on=null,ends_on=null,suspended_at=now()
 where id=(
   select case when e.assigned_user_id=current_setting('wf01.tenant1')::uuid
     then current_setting('wf01.occupancy1')::uuid

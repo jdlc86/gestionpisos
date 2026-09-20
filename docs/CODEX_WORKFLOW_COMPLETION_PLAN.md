@@ -284,9 +284,16 @@ Pruebas mínimas:
 ---
 
 ### BLOQUE WF-02 — Disparador genérico por evento
-**Estado:** ACTIVO / PLANNED
+**Estado:** ACTIVO / IN_PROGRESS
 
 **Instrucción de arranque:** este es el único bloque activo después de verificar WF-01. ChatGPT continuará la implementación directamente; si Codex se retoma más adelante, debe partir del `main` real y del estado actualizado de este documento.
+
+Handoff en curso:
+- Rama: `feat/wf-02-event-trigger`
+- Main observado al comenzar: `da21d32adfff66a2ca99c5e025f7db53bfbf6828`
+- Ejecutor actual: ChatGPT
+- Estado: diseño/implementación en curso; todavía no abrir PR ni marcar revisión.
+
 
 Objetivo: convertir `event` de opción declarativa a capacidad real del motor.
 

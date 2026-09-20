@@ -6,7 +6,7 @@
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="noindex,nofollow">
   <link rel="stylesheet" href="./app.css">
-  <link rel="stylesheet" href="./auth.css?v=2026091705">
+  <link rel="stylesheet" href="./auth.css?v=2026092001">
   <title>Allaiso · Verificación MFA</title>
 </head>
 <body>
@@ -20,8 +20,9 @@
         <label id="mfaFactorField" hidden>Autenticador
           <select id="mfaFactorSelect" class="mfa-factor-select"></select>
         </label>
-        <label>Código de verificación
-          <input id="mfaCode" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000" required disabled>
+        <label class="mfa-code-label">Código de verificación
+          <input id="mfaCode" type="hidden" value="">
+          <div id="mfaCodeBoxes" class="mfa-code-boxes" role="group" aria-label="Código de verificación de 6 dígitos"></div>
         </label>
         <button id="mfaChallengeBtn" class="primary auth-primary" type="submit" disabled>Verificar</button>
       </form>
@@ -42,6 +43,6 @@
       <p id="authMessage" class="auth-message" role="status" aria-live="polite">Comprobando tus factores MFA…</p>
     </section>
   </main>
-  <script type="module" src="./mfa-challenge.js?v=2026091703"></script>
+  <script type="module" src="./mfa-challenge.js?v=2026092001"></script>
 </body>
 </html>

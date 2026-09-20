@@ -733,8 +733,8 @@ begin
     from public.workflow_event_outbox_v2 e
     where e.status='pending'
     order by e.occurred_at,e.id
-    for update skip locked
     limit v_limit
+    for update skip locked
   loop
     v_errors:=0;
 

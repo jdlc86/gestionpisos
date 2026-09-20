@@ -30,6 +30,8 @@ declare
   v_email text:=lower(btrim(p_email));
   v_document text:=upper(btrim(p_document_number));
   v_restore jsonb:=null;
+  v_platform_access_restored boolean:=false;
+  v_platform_access_scheduled boolean:=false;
 begin
   if v_actor is null then
     raise exception 'not_authenticated' using errcode='42501';
@@ -158,11 +160,54 @@ begin
   returning id into v_new_occupancy_id;
 
   if v_auth_user_id is not null then
-    v_restore:=public.restore_tenant_platform_access_v1(
-      v_tenant_id,
-      v_auth_user_id,
-      v_actor
-    );
+    if p_starts_on<=current_date then
+      v_restore:=public.restore_tenant_platform_access_v1(
+        v_tenant_id,
+        v_auth_user_id,
+        v_actor
+      );
+      v_platform_access_restored:=
+        coalesce((v_restore->>'platform_access_restored')::boolean,false);
+    else
+      -- Una estancia futura todavía no concede acceso operativo. El rol se
+      -- deja listo para que has_current_platform_access_v1() se habilite
+      -- automáticamente cuando llegue starts_on, sin relajar su condición de
+      -- ocupación vigente.
+      if exists(
+        select 1
+        from public.occupancies_v2 o
+        where o.tenant_id=v_tenant_id
+          and o.status='active'
+          and o.user_id is not null
+          and o.user_id<>v_auth_user_id
+      ) then
+        raise exception 'tenant_occupancy_auth_identity_conflict' using errcode='23505';
+      end if;
+
+      update public.user_roles
+      set revoked_at=null
+      where user_id=v_auth_user_id
+        and organization_id=v_org
+        and role='tenant';
+
+      if not found then
+        insert into public.user_roles(user_id,organization_id,role,created_by)
+        values(v_auth_user_id,v_org,'tenant',v_actor);
+      end if;
+
+      v_platform_access_scheduled:=true;
+
+      insert into public.audit_log_v2(
+        organization_id,actor_user_id,action,entity_type,entity_id,result,details
+      ) values(
+        v_org,v_actor,'tenant_platform_access_scheduled','tenant',v_tenant_id::text,'success',
+        jsonb_build_object(
+          'auth_user_id',v_auth_user_id,
+          'reason','tenant_reactivation_future',
+          'starts_on',p_starts_on
+        )
+      );
+    end if;
   end if;
 
   insert into public.audit_log_v2(
@@ -194,7 +239,8 @@ begin
     'tenant_id',v_tenant_id,
     'occupancy_id',v_new_occupancy_id,
     'auth_user_id',v_auth_user_id,
-    'platform_access_restored',coalesce((v_restore->>'platform_access_restored')::boolean,false)
+    'platform_access_restored',v_platform_access_restored,
+    'platform_access_scheduled',v_platform_access_scheduled
   );
 end;
 $$;

@@ -785,7 +785,11 @@ async function saveItem(event) {
           p_indefinite: Boolean(data.indefinite)
         });
         if (error) throw error;
-        if (reactivation?.auth_user_id && reactivation?.platform_access_restored !== true) {
+        if (
+          reactivation?.auth_user_id
+          && reactivation?.platform_access_restored !== true
+          && reactivation?.platform_access_scheduled !== true
+        ) {
           throw new Error("tenant_reactivation_access_restore_failed");
         }
       } else {

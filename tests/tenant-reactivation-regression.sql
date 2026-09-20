@@ -6,16 +6,21 @@ select set_config('gestionpisos.reactivate.root','22222222-2222-4222-8222-222222
 select set_config('gestionpisos.reactivate.owner',gen_random_uuid()::text,true);
 select set_config('gestionpisos.reactivate.property',gen_random_uuid()::text,true);
 select set_config('gestionpisos.reactivate.room',gen_random_uuid()::text,true);
+select set_config('gestionpisos.reactivate.future_room',gen_random_uuid()::text,true);
 select set_config('gestionpisos.reactivate.user','99999999-9999-4999-8999-999999999903',true);
 select set_config('gestionpisos.reactivate.user2','99999999-9999-4999-8999-999999999904',true);
+select set_config('gestionpisos.reactivate.future_user','99999999-9999-4999-8999-999999999905',true);
 select set_config('gestionpisos.reactivate.tenant',gen_random_uuid()::text,true);
 select set_config('gestionpisos.reactivate.tenant2',gen_random_uuid()::text,true);
+select set_config('gestionpisos.reactivate.future_tenant',gen_random_uuid()::text,true);
 select set_config('gestionpisos.reactivate.blocked_occ',gen_random_uuid()::text,true);
 select set_config('gestionpisos.reactivate.blocked_occ2',gen_random_uuid()::text,true);
+select set_config('gestionpisos.reactivate.future_blocked_occ',gen_random_uuid()::text,true);
 
 insert into auth.users(id) values
   (current_setting('gestionpisos.reactivate.user')::uuid),
-  (current_setting('gestionpisos.reactivate.user2')::uuid)
+  (current_setting('gestionpisos.reactivate.user2')::uuid),
+  (current_setting('gestionpisos.reactivate.future_user')::uuid)
 on conflict(id) do nothing;
 
 insert into public.owners(id,organization_id,full_name,status)
@@ -38,10 +43,17 @@ insert into public.properties_v2(
 );
 
 insert into public.rooms_v2(id,property_id,label,status)
-values(
+values
+(
   current_setting('gestionpisos.reactivate.room')::uuid,
   current_setting('gestionpisos.reactivate.property')::uuid,
   'Reactivation room',
+  'active'
+),
+(
+  current_setting('gestionpisos.reactivate.future_room')::uuid,
+  current_setting('gestionpisos.reactivate.property')::uuid,
+  'Future reactivation room',
   'active'
 );
 
@@ -55,6 +67,12 @@ values
 ),
 (
   current_setting('gestionpisos.reactivate.user2')::uuid,
+  current_setting('gestionpisos.reactivate.org')::uuid,
+  'tenant',
+  now()
+),
+(
+  current_setting('gestionpisos.reactivate.future_user')::uuid,
   current_setting('gestionpisos.reactivate.org')::uuid,
   'tenant',
   now()
@@ -81,6 +99,16 @@ insert into public.tenants_v2(
   'dni',
   'REACTIVATE-TWO',
   'reactivate-two@example.invalid',
+  'blocked'
+),
+(
+  current_setting('gestionpisos.reactivate.future_tenant')::uuid,
+  current_setting('gestionpisos.reactivate.org')::uuid,
+  current_setting('gestionpisos.reactivate.future_user')::uuid,
+  'Future suspended tenant',
+  'dni',
+  'REACTIVATE-FUTURE',
+  'reactivate-future@example.invalid',
   'blocked'
 );
 
@@ -112,6 +140,19 @@ insert into public.occupancies_v2(
   null,
   'blocked',
   current_setting('gestionpisos.reactivate.user2')::uuid,
+  now()
+),
+(
+  current_setting('gestionpisos.reactivate.future_blocked_occ')::uuid,
+  current_setting('gestionpisos.reactivate.org')::uuid,
+  current_setting('gestionpisos.reactivate.future_tenant')::uuid,
+  current_setting('gestionpisos.reactivate.property')::uuid,
+  current_setting('gestionpisos.reactivate.future_room')::uuid,
+  'reactivate-future@example.invalid',
+  null,
+  null,
+  'blocked',
+  current_setting('gestionpisos.reactivate.future_user')::uuid,
   now()
 );
 
@@ -226,6 +267,112 @@ begin
   end if;
 end;
 $reactivated_login_gate$;
+
+reset role;
+
+-- Una reactivación futura prepara identidad/rol, pero no debe conceder acceso
+-- antes de starts_on ni fallar por exigir una ocupación vigente hoy.
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub',current_setting('gestionpisos.reactivate.root'),
+    'role','authenticated',
+    'app_metadata',jsonb_build_object('role','root')
+  )::text,
+  true
+);
+
+do $future_reactivation$
+declare
+  v_result jsonb;
+begin
+  select public.reactivate_tenant_occupancy_v1(
+    current_setting('gestionpisos.reactivate.future_blocked_occ')::uuid,
+    current_setting('gestionpisos.reactivate.property')::uuid,
+    current_setting('gestionpisos.reactivate.future_room')::uuid,
+    'Future suspended tenant',
+    'dni',
+    'REACTIVATE-FUTURE',
+    'reactivate-future@example.invalid',
+    current_date+1,
+    null,
+    true
+  ) into v_result;
+
+  if coalesce((v_result->>'platform_access_restored')::boolean,false) then
+    raise exception 'future reactivation reported current platform access';
+  end if;
+  if coalesce((v_result->>'platform_access_scheduled')::boolean,false) is distinct from true then
+    raise exception 'future reactivation was not marked as scheduled';
+  end if;
+end;
+$future_reactivation$;
+
+reset role;
+
+do $future_state$
+begin
+  if not exists(
+    select 1 from public.occupancies_v2
+    where id=current_setting('gestionpisos.reactivate.future_blocked_occ')::uuid
+      and status='archived'
+  ) then
+    raise exception 'future reactivation did not archive suspended occupancy';
+  end if;
+
+  if not exists(
+    select 1 from public.occupancies_v2
+    where tenant_id=current_setting('gestionpisos.reactivate.future_tenant')::uuid
+      and id<>current_setting('gestionpisos.reactivate.future_blocked_occ')::uuid
+      and status='active'
+      and starts_on=current_date+1
+      and user_id=current_setting('gestionpisos.reactivate.future_user')::uuid
+  ) then
+    raise exception 'future reactivation did not create scheduled linked occupancy';
+  end if;
+
+  if not exists(
+    select 1 from public.user_roles
+    where user_id=current_setting('gestionpisos.reactivate.future_user')::uuid
+      and organization_id=current_setting('gestionpisos.reactivate.org')::uuid
+      and role='tenant'
+      and revoked_at is null
+  ) then
+    raise exception 'future reactivation did not prepare tenant role';
+  end if;
+
+  if not exists(
+    select 1 from public.audit_log_v2
+    where action='tenant_platform_access_scheduled'
+      and entity_id=current_setting('gestionpisos.reactivate.future_tenant')
+  ) then
+    raise exception 'future platform access scheduling was not audited';
+  end if;
+end;
+$future_state$;
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub',current_setting('gestionpisos.reactivate.future_user'),
+    'role','authenticated',
+    'app_metadata',jsonb_build_object(
+      'role','tenant',
+      'organization_id',current_setting('gestionpisos.reactivate.org')
+    )
+  )::text,
+  true
+);
+
+do $future_login_gate$
+begin
+  if public.has_current_platform_access_v1() is distinct from false then
+    raise exception 'future tenant gained platform access before starts_on';
+  end if;
+end;
+$future_login_gate$;
 
 reset role;
 

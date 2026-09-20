@@ -222,11 +222,13 @@ Aceptación:
 Handoff:
 - Rama: `docs/codex-workflow-orchestration`
 - PR: #268
-- HEAD de rama: `644ca96bcce11d2ac59a1d9511eb9e273fd3e6e1`
+- HEAD de rama al registrar el primer handoff: `644ca96bcce11d2ac59a1d9511eb9e273fd3e6e1`
+- Commit que cerró WF-00 y activó WF-01: `9c77e25e347d77af4637ed7d3a8b72b0b405870b`
 - Main observado al comenzar: `825a70c224cc3dc3a05f97a7477134d582f1c478`
 - Cambios realizados: documento maestro + regla de descubrimiento en AGENTS
 - Pruebas: cambios documentales; Governance Guard ✅, PWA Smoke ✅, Schema Guard ✅ sobre `6cd6d6a6c46e2231f69516f63e8f1f83abc10367`
 - Verificación ChatGPT: completada; rama 0 behind y tres checks requeridos verdes antes de activar WF-01
+- Bloqueadores: ninguno
 - Siguiente acción: fusionar PR #268 tras checks verdes del HEAD final
 
 ---

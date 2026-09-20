@@ -170,7 +170,7 @@ Los RPC históricos `publish_workflow_definition_v1` y `create_workflow_applicat
 
 Una aplicación `configured` **no significa por sí sola que exista trabajo materializado**.
 
-La siguiente capa ya consume `workflow_applications_v2` mediante el contrato `WORKFLOW_EXECUTION_CONTRACT.md`: crea ejecuciones `manual_now` idempotentes, congela asignación y registra el evento inicial.
+La siguiente capa consume `workflow_applications_v2` mediante `WORKFLOW_EXECUTION_CONTRACT.md`: las recetas manuales crean ejecuciones `manual_now`; Fecha concreta/Recurrente usan su scheduler; y WF-02 permite `event`. En todos los casos se reutiliza el mismo núcleo de ejecución, se congela la asignación efectiva y se registra el histórico inicial.
 
 Siguen fuera de Aplicaciones:
 
@@ -191,3 +191,17 @@ La creación de la aplicación usa `create_workflow_application_v2` y exige sele
 El RPC anterior `create_workflow_application_v1` permanece para versiones sin Fotografía y rechaza versiones fotográficas con `workflow_photo_application_requires_v2`. Esto impide crear una aplicación fotográfica aparentemente configurada pero sin recursos.
 
 Una vez que existe una ejecución, los recursos de la aplicación quedan bloqueados para evitar reinterpretar el histórico. Cada ejecución congela su propia versión del patrón conforme a `WORKFLOW_PHOTO_EVIDENCE_CONTRACT.md`.
+
+### Aplicaciones activadas por evento
+
+Una aplicación cuyo `spec.triggerType='event'` queda configurada sobre un destino concreto igual que cualquier otra aplicación. No se crea una tabla paralela de bindings.
+
+El dispatcher compara el evento capturado con el alcance real de la aplicación:
+
+- organización: cualquier evento compatible de la misma organización;
+- piso: mismo `property_id`;
+- habitación: mismo `property_id` + `room_id`;
+- ocupación: mismo `occupancy_id`.
+
+El cliente no decide qué aplicación recibe un evento. El enrutamiento ocurre server-side desde `workflow_event_outbox_v2`.
+

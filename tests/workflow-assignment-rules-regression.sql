@@ -499,7 +499,7 @@ $rotation_after_entry$;
 
 reset role;
 update public.occupancies_v2
-set status='blocked'
+set status='blocked',starts_on=null,ends_on=null,suspended_at=now()
 where property_id=current_setting('wf01.property')::uuid
   and status='active';
 

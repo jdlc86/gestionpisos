@@ -6,7 +6,7 @@ import {
   requiresPrivilegedMfa
 } from "./mfa-common.js?v=2026091701";
 import { mountBottomNavigation } from "./bottom-nav.js?v=2026091901";
-import { mountNotificationCenter } from "./notification-center.js?v=2026091920";
+import { mountNotificationCenter } from "./notification-center.js?v=2026092001";
 
 const loginUrl = new URL("./login.html", window.location.href);
 loginUrl.searchParams.set("next", window.location.pathname.split("/").pop() || "index.html");

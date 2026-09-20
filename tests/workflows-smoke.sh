@@ -611,6 +611,7 @@ grep -Fq 'value="occupancy.created">Nueva ocupación creada</option>' docs/workf
 grep -Fq 'eventType:value("eventType")' docs/workflow-builder.js
 grep -Fq 'data.triggerType==="event"&&data.assignmentType==="manual"' docs/workflow-builder.js
 grep -Fq 'manualOption.disabled=eventDriven' docs/workflow-builder.js
+grep -Fq 'occupancyScopeOption.disabled=eventDriven' docs/workflow-builder.js
 grep -Fq 'return "Por evento · "+label("eventType",data.eventType)' docs/workflow-builder.js
 grep -Fq 'function eventDisplay(spec)' docs/workflow-applications.js
 grep -Fq 'Activo · esperando ' docs/workflow-applications.js

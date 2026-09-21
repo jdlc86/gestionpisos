@@ -1,6 +1,48 @@
 -- WF-07 · Reclamo de daños + Fianza sobre workflow transversal.
 begin;
 
+do $wf07_rls_gate_rebound$
+declare
+  v_gate oid:='public.workflow_execution_actor_current_v1(uuid)'::regprocedure::oid;
+  v_missing text;
+begin
+  select string_agg(x.schema_name||'.'||x.table_name||':'||x.policy_name, ', ')
+  into v_missing
+  from (
+    values
+      ('public','workflow_executions_v2','workflow_executions_v2_read_authorized'),
+      ('public','tenant_tasks_v2','tenant_tasks_v2_assignee_read'),
+      ('public','tenant_tasks_v2','tenant_tasks_v2_tenant_read'),
+      ('public','tenant_task_actions_v2','tenant_task_actions_v2_workflow_actor_gate'),
+      ('public','workflow_execution_documents_v2','workflow_execution_documents_v2_read'),
+      ('public','workflow_execution_photo_resources_v2','workflow_execution_photo_resources_v2_read'),
+      ('public','photo_verification_runs_v2','photo_runs_actor_read'),
+      ('public','photo_verification_items_v2','photo_items_actor_read'),
+      ('public','photo_verification_items_v2','photo_items_actor_insert'),
+      ('storage','objects','workflow_documents_storage_insert'),
+      ('storage','objects','workflow_documents_storage_select')
+  ) as x(schema_name,table_name,policy_name)
+  where not exists(
+    select 1
+    from pg_policy p
+    join pg_class c on c.oid=p.polrelid
+    join pg_namespace n on n.oid=c.relnamespace
+    join pg_depend d
+      on d.classid='pg_policy'::regclass
+     and d.objid=p.oid
+     and d.refclassid='pg_proc'::regclass
+     and d.refobjid=v_gate
+    where n.nspname=x.schema_name
+      and c.relname=x.table_name
+      and p.polname=x.policy_name
+  );
+
+  if v_missing is not null then
+    raise exception 'WF07 RLS policies are not bound to current actor gate: %',v_missing;
+  end if;
+end;
+$wf07_rls_gate_rebound$;
+
 select set_config('wf07.org','11111111-1111-4111-8111-111111111111',true);
 select set_config('wf07.root','22222222-2222-4222-8222-222222222222',true);
 select set_config('wf07.owner_user',gen_random_uuid()::text,true);

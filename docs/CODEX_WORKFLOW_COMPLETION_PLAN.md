@@ -563,8 +563,8 @@ Objetivo cumplido:
 ---
 
 ### BLOQUE WF-06 — Pago de alquiler + reclamación de alquiler
-**Estado:** PLANNED
-**Bloque ACTIVO:** sí — autorizado para implementación. El E2E humano de WF-04/WF-05 queda diferido a la batería final y NO bloquea este bloque.
+**Estado:** IN_PROGRESS
+**Bloque ACTIVO:** sí — implementación directa por ChatGPT; Codex queda reservado por límite de crédito. El E2E humano de WF-04/WF-05 queda diferido a la batería final y NO bloquea este bloque.
 
 **Instrucción de arranque para Codex:**
 1. Leer `AGENTS.md`, este documento completo y los contratos workflow actuales.
@@ -574,6 +574,16 @@ Objetivo cumplido:
 5. Trabajar en bloques pequeños: inspección → cambio concreto → regresión → commit.
 6. No reabrir WF-00..WF-05 salvo una dependencia real y demostrable.
 7. No hacer E2E humano de WF-04/WF-05 ahora; queda para la batería final conjunta.
+
+**Mapa real al iniciar (2026-09-21):**
+- Rama: `feat/wf-06-rent-payment-claims`, creada desde `main@6591482155b53f82cee9f23890b58c4201f45357`.
+- Dominio legacy existente: `payment_obligations_v2`, `claims_v2`, `reminder_rules_v2`; sin RPC/triggers de dominio para pago/reclamación.
+- `payment_obligations_v2` conserva `pending/paid/overdue/waived/cancelled`, importe, moneda y vencimiento. `claims_v2` conserva expediente de reclamación pero no workflow transversal.
+- Las policies legacy de escritura de obligaciones/reclamaciones se apoyan todavía en claims JWT ADMIN/ROOT; WF-06 no ampliará escritura cliente y llevará mutaciones sensibles a RPC server-side.
+- Semántica legacy en tareas: Pago = registrar/solicitar/aplazar; Reclamación = notificar, aceptar/disputar, pedir información, continuar y resolver. Aceptar/disputar pertenece al inquilino; la gestión restante pertenece a la gestoría.
+- El motor transversal ya materializa `tenant_tasks_v2` con `tenant_id` automáticamente cuando el ámbito es `occupancy`. Esto se reutiliza para Pago.
+- Diseño fijado: `rent_payment` será `domain_adapter` sobre una ocupación exacta y soportará manual/fecha/recurrente; cada ejecución genera exactamente una obligación. La acción Reclamar crea un expediente `claims_v2` y publica `rent_claim.created` por el outbox WF-02. `rent_claim` consume ese evento sobre piso/habitación y conserva acciones mixtas gestoría/inquilino en la misma tarjeta.
+- No se tocará producción durante implementación; solo migraciones versionadas en Git.
 
 **Objetivo:**
 - Integrar Pago de alquiler y Reclamación de alquiler sobre el motor transversal.

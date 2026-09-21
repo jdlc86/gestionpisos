@@ -472,8 +472,8 @@ Objetivo cumplido:
 ---
 
 ### BLOQUE WF-05 — Incidencia / Mantenimiento / Inspección
-**Estado:** IN_PROGRESS
-**Bloque ACTIVO:** sí — autorizado para implementación. El E2E humano de WF-04 queda diferido a la batería final y NO bloquea este bloque.
+**Estado:** READY_FOR_CHATGPT_REVIEW
+**Bloque ACTIVO:** no — implementación detenida para revisión independiente. El E2E humano de WF-04 y WF-05 queda diferido a la batería final y no bloqueó las regresiones automáticas de este bloque.
 
 **Arranque y mapa real observado (primer commit WF-05, 2026-09-21):**
 - Rama nueva: `codex/wf-05-incidents-maintenance-inspection`. Base exacta: `main` remoto `a69c7534748a21114643e7f0d746b0fcb0934e03`, que contiene WF-04 revisado y fusionado. El PR documental #280 seguía abierto al comenzar; esta rama incorpora su decisión de diferir el E2E humano de WF-04 para que la trazabilidad no dependa de ese merge.
@@ -541,6 +541,20 @@ Objetivo cumplido:
 - actualizar este handoff con rama, PR, HEAD, archivos/migraciones, pruebas, riesgos y pendientes;
 - detenerse en `READY_FOR_CHATGPT_REVIEW`;
 - no fusionar, no desplegar manualmente y no activar WF-06.
+
+**Handoff WF-05 (2026-09-21):**
+- Rama: `codex/wf-05-incidents-maintenance-inspection`, creada desde `main@a69c7534748a21114643e7f0d746b0fcb0934e03`. `origin/main` seguía en ese mismo SHA al cerrar el bloque.
+- PR: [#281 — WF-05: incidencia, mantenimiento e inspección](https://github.com/jdlc86/gestionpisos/pull/281). No se ha fusionado ni desplegado. El PR documental #280 continúa abierto; esta rama incluye la misma decisión de aplazar los E2E humanos para que la trazabilidad no dependa de su merge.
+- HEAD de implementación validado antes de este handoff: `45ffcd63d83c7d7cc4aea5454b8336d38f199649`. El HEAD final del PR es el commit documental que contiene este handoff; los checks del PR son la fuente autoritativa de su estado CI.
+- Migraciones aditivas: `20260921062822_wf05_incident_domain_core.sql`, `20260921064050_wf05_incident_event_workflow_link.sql` y `20260921065433_wf05_incident_domain_actions.sql`. No se aplicaron migraciones ni cambios manuales en Supabase remoto.
+- Dominio entregado: apertura idempotente de incidencia/mantenimiento; `incident.created` por el outbox WF-02; vínculo exacto expediente/evento/ejecución; una `tenant_tasks_v2` por ejecución; aceptar, rechazar, solicitar información, continuar y resolver sobre el RPC común; revalidación server-side del asignado y destino; MFA privilegiado; historial, auditoría y notificaciones coherentes; `incident.resolved` capaz de activar una Inspección posterior por el mismo dispatcher.
+- Reutilización: Foto, Checklist y Documento siguen en sus tablas, buckets y RPC existentes. Mantenimiento es `flowType=maintenance`; Inspección es `flowType=inspection`; no se creó otro motor, listener, cron, bandeja ni tabla específica de inspección.
+- UI: `incidents.html/css/js` consulta bajo RLS, abre por RPC y permite responder a solicitudes de información; Creador, Mis Flujos, Tareas e Historial presentan los eventos, requisitos y acciones WF-05. El cliente no recibe privilegios de escritura directa sobre las tablas de incidencia.
+- Contratos/documentación: nuevo `WORKFLOW_INCIDENT_MAINTENANCE_INSPECTION_CONTRACT.md`; actualizados los contratos transversales afectados, el contrato de incidencias, el índice, el mapa de implementación y el estado real.
+- Regresión PostgreSQL: `workflow-wf05-domain-regression.sql` cubre apertura → una ejecución/tarjeta por aplicación compatible; reintento sin duplicados; aceptación; espera de información no terminal y auditable; respuesta idempotente; continuación en la misma ejecución; resolución coherente; rechazo por asignado revocado, destino alterado y ROOT sin AAL2; Foto/Checklist/Documento comunes; una ejecución downstream por aplicación; RLS negativas; compatibilidad legacy; auditoría y notificaciones. La suite completa `database-regression-v2.sh` terminó verde en PostgreSQL 17 desechable.
+- Guards locales sobre el HEAD de implementación: Governance Guard ✅; PWA Smoke y todos sus subchecks ✅; Schema Guard estático ✅; regresión PostgreSQL completa ✅. Tras este commit documental deben quedar verdes Governance Guard, PWA Smoke y Schema Guard sobre el mismo HEAD final de PR #281 antes de cualquier merge.
+- Riesgos/pendientes deliberados: no existe despliegue de WF-05 todavía; el E2E humano integral se conserva para la batería final conjunta; cada evento crea una ejecución por aplicación compatible, por lo que la gobernanza de aplicaciones publicadas sigue siendo la forma explícita de decidir cuántas gestiones o inspecciones se ejecutan; el camino legacy `task_type=incident` permanece solo por compatibilidad hasta WF-09.
+- Siguiente acción exacta: ChatGPT debe revisar independientemente PR #281 y sus checks. No activar WF-06, fusionar ni desplegar desde esta sesión.
 
 ---
 

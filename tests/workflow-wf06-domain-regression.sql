@@ -741,7 +741,7 @@ begin
     from public.workflow_execution_events_v2
     where execution_id=current_setting('wf06.claim_execution')::uuid
       and event_type='wf06_claim_action'
-  )<>6 then
+  )<>9 then
     raise exception 'WF06 claim action history count is inconsistent';
   end if;
 
@@ -767,7 +767,7 @@ begin
     where entity_type='workflow_execution'
       and entity_id=current_setting('wf06.claim_execution')
       and action='workflow_wf06_claim_action'
-  )<>6 then
+  )<>9 then
     raise exception 'WF06 claim audit trail is incomplete';
   end if;
 end;

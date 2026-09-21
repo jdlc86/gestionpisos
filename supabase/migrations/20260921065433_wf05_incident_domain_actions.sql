@@ -109,24 +109,25 @@ begin
     active=excluded.active,
     actor=excluded.actor;
 
-  if v_incident.opened_occupancy_id is not null then
-    insert into public.tenant_task_actions_v2(
-      task_id,action_key,label,from_status,to_status,
-      requires_note,sort_order,active,actor
-    ) values
-      (v_task.id,'request_info','Solicitar información',
-        'active','waiting_info',true,30,true,'assignee'),
-      (v_task.id,'continue','Continuar gestión',
-        'waiting_info','active',false,40,true,'assignee')
-    on conflict(task_id,action_key,from_status)
-    do update set
-      label=excluded.label,
-      to_status=excluded.to_status,
-      requires_note=excluded.requires_note,
-      sort_order=excluded.sort_order,
-      active=excluded.active,
-      actor=excluded.actor;
-  end if;
+  -- Solicitar información/continuar funciona tanto para incidencias
+  -- abiertas por inquilinos como por personal interno. La visibilidad de la
+  -- actualización se decide al aplicar la acción, no al sembrar la tarjeta.
+  insert into public.tenant_task_actions_v2(
+    task_id,action_key,label,from_status,to_status,
+    requires_note,sort_order,active,actor
+  ) values
+    (v_task.id,'request_info','Solicitar información',
+      'active','waiting_info',true,30,true,'assignee'),
+    (v_task.id,'continue','Continuar gestión',
+      'waiting_info','active',false,40,true,'assignee')
+  on conflict(task_id,action_key,from_status)
+  do update set
+    label=excluded.label,
+    to_status=excluded.to_status,
+    requires_note=excluded.requires_note,
+    sort_order=excluded.sort_order,
+    active=excluded.active,
+    actor=excluded.actor;
   return new;
 end;
 $$;

@@ -39,7 +39,7 @@ grant select on public.security_deposits_v2 to service_role;
 
 -- Hardening de claims legacy: no aceptar mutación directa cliente y no
 -- permitir que una sesión Auth histórica conserve lectura tras la Baja.
-revoke insert,update,delete,truncate,references,trigger
+revoke select,insert,update,delete,truncate,references,trigger
   on public.claims_v2 from authenticated;
 
 drop policy if exists claims_self_read on public.claims_v2;

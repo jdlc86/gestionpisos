@@ -88,6 +88,7 @@ begin
     requires_note,sort_order,active,actor
   ) values
     (v_task.id,'start_review','Iniciar revisión','pending','active',false,10,true,'assignee'),
+    (v_task.id,'start_review','Iniciar revisión','active','active',false,10,true,'assignee'),
     (v_task.id,'request_info','Solicitar información','active','waiting_info',true,20,true,'assignee'),
     (v_task.id,'open_damage_claim','Abrir reclamación por daños','active','active',true,30,true,'assignee'),
     (v_task.id,'refund','Devolver fianza','active','completed',true,50,true,'assignee'),
@@ -144,6 +145,7 @@ begin
     requires_note,sort_order,active,actor
   ) values
     (v_task.id,'notify','Notificar reclamación','pending','active',false,10,true,'assignee'),
+    (v_task.id,'notify','Notificar reclamación','active','active',false,10,true,'assignee'),
     (v_task.id,'record_acceptance','Registrar aceptación','active','active',true,20,true,'assignee'),
     (v_task.id,'record_dispute','Registrar disputa','active','active',true,30,true,'assignee'),
     (v_task.id,'request_info','Solicitar información','active','waiting_info',true,40,true,'assignee'),

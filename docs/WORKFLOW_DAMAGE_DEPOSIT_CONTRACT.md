@@ -59,6 +59,7 @@ Estados del expediente:
 Reglas:
 
 - solo un flujo gestor compatible puede cubrir un destino efectivo;
+- una fianza puede originar como máximo una reclamación de daños; el invariante está respaldado por índice único parcial y la acción `open_damage_claim` deja de estar activa tras crearla;
 - la tarjeta pertenece operativamente al gestor interno asignado;
 - el antiguo inquilino no obtiene lectura ni acciones después de la Baja;
 - “Notificar reclamación” exige completar la evidencia configurada;
@@ -80,7 +81,9 @@ El actor interno debe:
 
 ADMIN/ROOT requieren AAL2 mediante el mismo guard privilegiado ya usado por WF-06.
 
-Las tablas de fianza no conceden escritura directa a `authenticated`. La reclamación conserva las restricciones de `claims_v2`.
+Las tablas de fianza no conceden escritura directa a `authenticated`. `claims_v2` conserva lectura autorizada bajo RLS, pero `authenticated` no recibe INSERT/UPDATE/DELETE directo para estas mutaciones.
+
+WF-07 envuelve `workflow_execution_actor_current_v1()` para añadir la validación estricta de fianza/daños. Como PostgreSQL enlaza las expresiones de POLICY al OID de la función, las policies workflow que ya dependían de ese gate se recrean sin cambiar sus predicados ni ampliar permisos, de modo que queden enlazadas al wrapper WF-07 actual.
 
 ## Evidencia
 
@@ -105,9 +108,17 @@ Las claves de evento deduplican reintentos.
 
 `notifications_v2.channel_email=true` se despacha de forma asíncrona mediante el trigger `notification_email_dispatch_v1` hacia la Edge Function `notification-email`. El puente usa `pg_net`, secreto interno en Vault y un recibo idempotente `notification_email_deliveries_v1`.
 
-La Edge Function resuelve el email directamente desde la identidad Auth con service role; no exige rol tenant vigente. Esto permite comunicar una fianza/daño después de la Baja sin restaurar acceso a la PWA. Usa los secretos existentes `RESEND_API_KEY` y `AUTH_EMAIL_FROM`.
+La entrega admite reintentos controlados sin convertir la notificación en una segunda cola de negocio:
+- primer claim → `sending`;
+- un `failed` puede reclamarse tras 2 minutos;
+- un `sending` huérfano puede reclamarse tras 15 minutos;
+- máximo 5 claims por notificación;
+- el cron `gestionpisos-notification-email-retry` reencola candidatos cada 5 minutos;
+- la llamada a Resend usa `Idempotency-Key=allaiso-notification/<notification_id>`, de modo que un timeout posterior al envío no debe producir un segundo mensaje del proveedor.
 
-Orden obligatorio de despliegue: primero la migración de email y después la Edge Function. Nunca desplegar `notification-email` antes de que existan sus RPC/secretos de base de datos.
+La Edge Function resuelve el email directamente desde la identidad Auth con service role; no exige rol tenant vigente. Esto permite comunicar una fianza/daño después de la Baja sin restaurar acceso a la PWA. Reutiliza los secretos existentes `RESEND_API_KEY` y `AUTH_EMAIL_FROM`.
+
+Orden obligatorio de despliegue: primero todas las migraciones de WF-07, incluidas `20260921164500_notification_email_dispatch.sql`, `20260921181500_notification_email_retry.sql` y `20260921181600_notification_email_retry_cron.sql`; confirmar su aplicación remota; solo entonces desplegar `notification-email` con verificación JWT desactivada. La invocación DB no lleva JWT de usuario: el handler valida el secreto interno `X-Allaiso-Email-Secret` obtenido de Vault. El workflow manual `.github/workflows/notification-email-function.yml` preserva deliberadamente este orden.
 
 ## Idempotencia y auditoría
 
@@ -130,7 +141,8 @@ La regresión automática `tests/workflow-wf07-domain-regression.sql` cubre:
 - evento terminal cuando no existe fianza;
 - evidencia de revisión;
 - solicitud/registro externo de información;
-- apertura de daños;
+- apertura de daños y rechazo de una segunda reclamación para la misma fianza;
+- enlace RLS de las policies al gate de actor WF-07 vigente;
 - evidencia obligatoria;
 - aceptación/disputa externa auditada;
 - resolución;
@@ -138,6 +150,7 @@ La regresión automática `tests/workflow-wf07-domain-regression.sql` cubre:
 - retención parcial;
 - retención total;
 - idempotencia;
-- notificaciones por email.
+- notificaciones por email;
+- claim idempotente, backoff, recuperación de `failed/sending` y cierre definitivo `sent` de la entrega.
 
 El E2E humano permanece diferido a la batería final conjunta. WF-07 no se marca `VERIFIED` hasta completar esa batería.

@@ -125,6 +125,7 @@ Deno.serve(async (req: Request) => {
       headers: {
         Authorization: `Bearer ${resendKey}`,
         "Content-Type": "application/json",
+        "Idempotency-Key": `allaiso-notification/${notificationId}`,
       },
       body: JSON.stringify({
         from: sender,

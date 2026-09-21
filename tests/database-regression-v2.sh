@@ -161,8 +161,6 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -e WF04_FOCUSED="
     fi
     if [ "$WF05_FOCUSED" = "1" ]; then
       psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-wf05-domain-regression.sql
-    psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-wf06-domain-regression.sql
-    psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-wf07-domain-regression.sql
       trap - EXIT
       cleanup
       exit 0
@@ -197,6 +195,8 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -e WF04_FOCUSED="
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-cleaning-adapter-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-wf04-domain-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-wf05-domain-regression.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-wf06-domain-regression.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-wf07-domain-regression.sql
 
     trap - EXIT
     cleanup

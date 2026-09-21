@@ -72,6 +72,11 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -e WF04_FOCUSED="
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915082914_cleaning_photo_requests.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915094134_tenant_identity_model.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915094359_tenant_documents.sql
+
+    # El fixture workflow no carga toda la infraestructura de onboarding externo,
+    # pero producción sí tiene estas policies desde 20260916183835.
+    # Reproducimos únicamente la superficie RLS que consumen las tareas workflow.
+    psql -v ON_ERROR_STOP=1 -U postgres -c "drop policy if exists tenants_v2_self_read on public.tenants_v2; create policy tenants_v2_self_read on public.tenants_v2 for select to authenticated using(user_id=auth.uid()); drop policy if exists tenant_documents_v2_tenant_self_read on public.tenant_documents_v2; create policy tenant_documents_v2_tenant_self_read on public.tenant_documents_v2 for select to authenticated using(exists(select 1 from public.tenants_v2 t where t.id=tenant_documents_v2.tenant_id and t.user_id=auth.uid() and t.archived_at is null));"
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915100612_tenant_lifecycle_privacy.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915130911_add_occupancy_suspended_at.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915131641_allow_suspended_occupancy_without_entry_v2.sql

@@ -903,16 +903,16 @@ begin
         updated_at=clock_timestamp()
     where id=v_claim.id returning * into v_claim;
 
-    update public.tenant_task_actions_v2
+    update public.tenant_task_actions_v2 as a
     set active=false
-    where task_id=v_task.id
-      and from_status='active'
-      and action_key in ('record_acceptance','record_dispute');
-    update public.tenant_task_actions_v2
+    where a.task_id=v_task.id
+      and a.from_status='active'
+      and a.action_key in ('record_acceptance','record_dispute');
+    update public.tenant_task_actions_v2 as a
     set active=true
-    where task_id=v_task.id
-      and from_status='active'
-      and action_key='resolve';
+    where a.task_id=v_task.id
+      and a.from_status='active'
+      and a.action_key='resolve';
 
   elsif p_action_key='request_info' then
     if v_claim.status<>'sent'

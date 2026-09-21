@@ -662,6 +662,7 @@ Objetivo cumplido:
 - Retención parcial/total exige trazabilidad server-side y no puede exceder el importe recibido.
 - El E2E humano se conserva para la batería final conjunta; las regresiones automáticas no se aplazan.
 - Contrato WF-07: `docs/WORKFLOW_DAMAGE_DEPOSIT_CONTRACT.md`.
+- Dependencia cerrada durante implementación: `channel_email` no tenía un sender general. WF-07 añade la migración `20260921164500_notification_email_dispatch.sql` y la Edge Function `notification-email`; post-merge debe aplicarse primero la migración y después desplegar la función.
 
 **Integrar:**
 - reclamación por daños;

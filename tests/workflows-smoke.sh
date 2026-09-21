@@ -249,6 +249,7 @@ grep -Fq 'review_reject' docs/workflow-tasks.js
 grep -Fq 'task-actions' docs/workflow-tasks.css
 grep -Fq './workflow-tasks.css?v=2026092001' docs/workflow-tasks.html
 grep -Fq './workflow-tasks.js?v=2026092101' docs/workflow-tasks.html
+grep -Fq 'paymentDueDays.value=String(saved.paymentDueDays)' docs/workflow-builder.js
 grep -Fq 'cambian tarea y ejecución juntas' docs/workflow-tasks.html
 grep -Fq 'id="taskSelectionToggle"' docs/workflow-tasks.html
 grep -Fq 'id="tasksSelectionHeader"' docs/workflow-tasks.html

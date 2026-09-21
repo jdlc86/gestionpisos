@@ -507,11 +507,7 @@ begin
       raise exception 'workflow_wf07_transition_mismatch' using errcode='55000';
     end if;
 
-    if (
-      coalesce((v_execution.spec_snapshot#>>'{steps,photo}')::boolean,false)
-      or coalesce((v_execution.spec_snapshot#>>'{steps,checklist}')::boolean,false)
-      or coalesce((v_execution.spec_snapshot#>>'{steps,document}')::boolean,false)
-    ) and not private.wf07_execution_evidence_complete_v1(v_execution.id) then
+    if not private.wf07_execution_evidence_complete_v1(v_execution.id) then
       raise exception 'workflow_wf07_deposit_evidence_required'
         using errcode='55000';
     end if;
@@ -528,6 +524,11 @@ begin
     end if;
 
     if p_action_key='refund' then
+      if v_settled_total<>0 then
+        raise exception 'workflow_wf07_refund_has_damage_settlement'
+          using errcode='55000';
+      end if;
+
       update public.security_deposits_v2
       set status='refunded',
           held_amount_cents=0,

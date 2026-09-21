@@ -649,13 +649,24 @@ Objetivo cumplido:
 ---
 
 ### BLOQUE WF-07 — Reclamo de daños + Fianza
-**Estado:** PLANNED
+**Estado:** IN_PROGRESS
+**Bloque ACTIVO:** sí — implementación directa por ChatGPT en `feat/wf-07-damage-deposit`. No fusionar ni desplegar hasta cerrar el post-merge de WF-06.
 
-Integrar:
+**Mapa real al iniciar (2026-09-21):**
+- `claims_v2` ya existe y WF-06 lo usa como expediente transversal de reclamación; se reutilizará para daños ampliando `claim_type` de forma aditiva.
+- No existe tabla de dominio de fianzas en producción. Solo existen plantillas legacy `task_type=deposit` con recepción, revisión, información, devolución, retención parcial y total.
+- Evidencia Foto/Checklist/Documento ya existe en el workflow transversal y debe reutilizarse; no crear buckets ni subsistemas nuevos.
+- Diseño fijado: un único expediente de fianza por ocupación, persistido en una tabla operativa mínima, sin ledger ni movimientos contables.
+- Recepción y revisión de fianza serán ejecuciones separadas que reutilizan el mismo expediente; así no queda una tarea abierta durante toda la estancia.
+- La revisión de fianza puede abrir una reclamación por daños enlazada; daños reutiliza `claims_v2`, tarjeta compartida y actor mixto gestoría/inquilino.
+- Retención parcial/total exige trazabilidad server-side y no puede exceder el importe recibido.
+- El E2E humano se conserva para la batería final conjunta; las regresiones automáticas no se aplazan.
+
+**Integrar:**
 - reclamación por daños;
 - fianza.
 
-Debe conservar:
+**Debe conservar:**
 - evidencia;
 - revisión;
 - solicitar información;
@@ -665,7 +676,17 @@ Debe conservar:
 - retención parcial;
 - retención total.
 
-No convertir el motor en contabilidad; reutilizar relaciones y evidencia existentes.
+**Principios obligatorios:**
+- `tenant_tasks_v2` sigue siendo la única tarjeta operativa;
+- no convertir el motor en contabilidad;
+- fianza = expediente operativo por ocupación, no ledger;
+- daños reutiliza `claims_v2`, no una segunda tabla de reclamaciones;
+- Foto/Checklist/Documento reutilizan contratos genéricos;
+- toda mutación sensible es RPC server-side, idempotente y auditada;
+- revalidar ocupación, inquilino, piso, actor y asignación al actuar;
+- ADMIN/ROOT mantienen AAL2 en mutaciones sensibles;
+- retención parcial/total no puede exceder el importe de fianza;
+- no activar WF-08 desde este bloque.
 
 ---
 

@@ -407,6 +407,8 @@ function eventDisplay(spec){
   const eventType=String(spec?.eventType||"");
   if(eventType==="occupancy.created")return "Nueva ocupación creada";
   if(eventType==="occupancy.offboarded")return "Baja de ocupación confirmada";
+  if(eventType==="incident.created")return "Incidencia abierta";
+  if(eventType==="incident.resolved")return "Incidencia resuelta";
   return "Evento pendiente";
 }
 function recurrenceDisplay(spec){

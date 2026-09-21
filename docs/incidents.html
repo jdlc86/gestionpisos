@@ -1,3 +1,89 @@
-<!doctype html><html lang="es" data-auth-pending="1"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel="stylesheet" href="./app.css?v=2026091906"><title>Allaiso · Incidencias</title></head><body><main class="shell"><header class="topbar"><div><p class="eyebrow">ALLAISO</p><h1>Incidencias</h1></div><div class="global-actions"><a class="global-icon desktop-home-link" href="./" aria-label="Inicio" title="Inicio"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 10.5 12 3l8.5 7.5v9a1.5 1.5 0 0 1-1.5 1.5h-5v-6H10v6H5a1.5 1.5 0 0 1-1.5-1.5z"/></svg></a></div></header><section class="hero"><span class="badge">Beta 0</span><h2>Seguimiento de problemas del piso</h2><p>Reportes, prioridad, asignación, evidencias y resolución con visibilidad controlada.</p></section><section class="grid"><article class="card premium-nav-card"><strong class="module-heading"><span class="premium-icon" data-premium-icon="open" aria-hidden="true"></span>Abiertas</strong><span>Reportadas, asignadas y en curso</span></article><article class="card premium-nav-card"><strong class="module-heading"><span class="premium-icon" data-premium-icon="urgent" aria-hidden="true"></span>Urgentes</strong><span>Prioridad operativa alta</span></article><article class="card premium-nav-card"><strong class="module-heading"><span class="premium-icon" data-premium-icon="resolved" aria-hidden="true"></span>Resueltas</strong><span>Histórico y seguimiento</span></article></section><section class="status"><span class="dot"></span><span>La gestión de incidencias está en preparación.</span></section></main>  <script type="module" src="./auth-guard.js"></script>
+<!doctype html>
+<html lang="es" data-auth-pending="1">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="stylesheet" href="./app.css?v=2026091906">
+  <link rel="stylesheet" href="./incidents.css?v=2026092101">
+  <title>Allaiso · Incidencias</title>
+</head>
+<body>
+  <main class="shell incidents-shell">
+    <header class="topbar">
+      <div><p class="eyebrow">ALLAISO</p><h1>Incidencias</h1></div>
+      <div class="global-actions"><a class="global-icon desktop-home-link" href="./" aria-label="Inicio" title="Inicio"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 10.5 12 3l8.5 7.5v9a1.5 1.5 0 0 1-1.5 1.5h-5v-6H10v6H5a1.5 1.5 0 0 1-1.5-1.5z"/></svg></a></div>
+    </header>
+
+    <section class="hero incidents-hero">
+      <span class="badge">Beta 0</span>
+      <h2>Incidencias y mantenimiento</h2>
+      <p>Abre un reporte y sigue su gestión, las solicitudes de información y la resolución desde un único expediente.</p>
+      <div class="page-actions">
+        <button id="incidentOpenToggle" type="button" class="primary" aria-expanded="false" aria-controls="incidentOpenPanel">Abrir incidencia</button>
+        <a class="secondary" href="./workflow-tasks.html">Ir a Tareas</a>
+      </div>
+    </section>
+
+    <section id="incidentOpenPanel" class="incident-editor" hidden aria-labelledby="incidentOpenTitle">
+      <div class="incident-editor-head">
+        <div><p class="eyebrow">NUEVO REPORTE</p><h2 id="incidentOpenTitle">Abrir expediente</h2></div>
+        <button id="incidentOpenClose" type="button" class="incident-icon-button" aria-label="Cerrar formulario">×</button>
+      </div>
+      <form id="incidentOpenForm">
+        <div class="incident-form-grid">
+          <label>Tipo
+            <select name="incidentKind" required>
+              <option value="incident">Incidencia</option>
+              <option value="maintenance">Mantenimiento</option>
+            </select>
+          </label>
+          <label>Prioridad
+            <select name="priority" required>
+              <option value="normal">Normal</option>
+              <option value="low">Baja</option>
+              <option value="high">Alta</option>
+              <option value="urgent">Urgente</option>
+            </select>
+          </label>
+          <label>Piso
+            <select id="incidentProperty" name="propertyId" required><option value="">Selecciona un piso</option></select>
+          </label>
+          <label>Habitación <span>opcional</span>
+            <select id="incidentRoom" name="roomId"><option value="">Todo el piso</option></select>
+          </label>
+        </div>
+        <label>Categoría
+          <input name="category" maxlength="120" placeholder="Ej. Fontanería" required>
+        </label>
+        <label>Descripción
+          <textarea name="description" rows="5" maxlength="5000" placeholder="Describe qué ocurre y dónde" required></textarea>
+        </label>
+        <div class="incident-editor-actions">
+          <button id="incidentOpenCancel" type="button" class="secondary">Cancelar</button>
+          <button id="incidentOpenSubmit" type="submit" class="primary">Crear reporte</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="incident-toolbar" aria-label="Filtros de incidencias">
+      <div><p class="eyebrow">SEGUIMIENTO</p><h2>Expedientes visibles</h2></div>
+      <label>Estado
+        <select id="incidentFilter">
+          <option value="open">Abiertas</option>
+          <option value="all">Todas</option>
+          <option value="waiting_info">Esperando información</option>
+          <option value="resolved">Resueltas</option>
+        </select>
+      </label>
+    </section>
+
+    <section id="incidentList" class="incident-list" aria-live="polite"></section>
+    <section id="incidentStatus" class="status"><span class="dot"></span><span>Cargando incidencias autorizadas…</span></section>
+  </main>
+
+  <script type="module" src="./incidents.js?v=2026092101"></script>
+  <script type="module" src="./auth-guard.js"></script>
   <script src="./app.js?v=2026091902" defer></script>
-</body></html>
+</body>
+</html>

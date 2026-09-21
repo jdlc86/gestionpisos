@@ -175,7 +175,7 @@ grep -Fq 'id="photoBankLink"' docs/workflow-builder.html
 grep -Fq 'href="./photo-patterns.html?from=workflow-builder" hidden' docs/workflow-builder.html
 grep -Fq 'function updatePhotoResource()' docs/workflow-builder.js
 grep -Fq 'photoBankLink.hidden=value("flowType")==="cleaning"||!checked("stepPhoto")' docs/workflow-builder.js
-grep -Fq './workflow-builder.js?v=2026092003' docs/workflow-builder.html
+grep -Fq './workflow-builder.js?v=2026092101' docs/workflow-builder.html
 grep -Fq 'id="assignmentUserId"' docs/workflow-builder.html
 grep -Fq 'id="assignmentRole"' docs/workflow-builder.html
 grep -Fq 'function assignmentConfigurationComplete(data)' docs/workflow-builder.js
@@ -648,4 +648,7 @@ grep -Fq 'case "wf04_domain_action"' docs/workflow-history.js
 grep -Fq 'case "event_subject_bound"' docs/workflow-history.js
 grep -Fq 'if(eventType==="occupancy.offboarded")return "Baja de ocupación confirmada"' docs/workflow-applications.js
 grep -Fq 'if(eventType==="occupancy.offboarded")return "Baja de ocupación confirmada"' docs/workflow-definitions.js
+
+# WF-05: autoría, acciones e histórico sobre el motor transversal.
+bash tests/incidents-smoke.sh
 

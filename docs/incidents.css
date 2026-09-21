@@ -1,0 +1,36 @@
+.incidents-shell{padding-bottom:48px}
+.incidents-hero .page-actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:18px}
+.incident-editor{margin:18px 0;padding:20px;border:1px solid var(--ui-border);border-radius:var(--ui-radius);background:var(--ui-surface);box-shadow:var(--ui-card-shadow)}
+.incident-editor[hidden]{display:none!important}
+.incident-editor-head,.incident-toolbar{display:flex;align-items:end;justify-content:space-between;gap:18px}
+.incident-editor-head{align-items:start;margin-bottom:16px}
+.incident-editor h2,.incident-toolbar h2{margin:4px 0 0;font-size:21px;letter-spacing:-.02em}
+.incident-icon-button{display:grid;width:38px;height:38px;place-items:center;border:1px solid var(--ui-border);border-radius:8px;background:var(--ui-subtle);color:var(--ui-text);font-size:22px;cursor:pointer}
+.incident-editor form{display:grid;gap:14px}
+.incident-editor label,.incident-toolbar label,.incident-response label{display:grid;gap:7px;color:var(--ui-muted);font-size:12px;font-weight:650}
+.incident-editor label>span{font-weight:500}
+.incident-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.incident-editor textarea,.incident-response textarea{resize:vertical}
+.incident-editor-actions{display:flex;justify-content:flex-end;gap:9px}
+.incident-toolbar{margin:26px 0 12px}
+.incident-toolbar label{min-width:190px}
+.incident-list{display:grid;gap:12px}
+.incident-card{display:grid;gap:14px;padding:18px;border:1px solid color-mix(in srgb,var(--ui-border) 84%,var(--ui-accent) 16%);border-radius:14px;background:var(--ui-surface);box-shadow:var(--ui-card-shadow)}
+.incident-card-head{display:flex;align-items:start;justify-content:space-between;gap:14px}
+.incident-card-head h3{margin:4px 0 0;font-size:18px;letter-spacing:-.015em}
+.incident-badges{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px}
+.incident-badge{display:inline-flex;align-items:center;min-height:24px;padding:3px 8px;border:1px solid var(--ui-border);border-radius:999px;background:var(--ui-subtle);color:var(--ui-muted);font-size:11px;font-weight:700}
+.incident-badge--urgent{border-color:color-mix(in srgb,#c92a2a 34%,var(--ui-border));color:#c92a2a}
+.incident-description{margin:0;color:var(--ui-text);line-height:1.55;white-space:pre-wrap}
+.incident-meta{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.incident-meta-item{display:grid;gap:3px;padding:9px 10px;border-radius:8px;background:var(--ui-subtle)}
+.incident-meta-item strong{color:var(--ui-muted);font-size:10px;text-transform:uppercase;letter-spacing:.04em}
+.incident-meta-item span{font-size:12px;overflow-wrap:anywhere}
+.incident-updates{display:grid;gap:7px;padding-top:4px}
+.incident-update{display:grid;gap:3px;padding:10px 11px;border-left:3px solid var(--ui-border-strong);background:var(--ui-subtle);border-radius:0 8px 8px 0}
+.incident-update small{color:var(--ui-muted);font-size:11px}
+.incident-response{display:grid;gap:10px;padding-top:12px;border-top:1px solid var(--ui-border)}
+.incident-response-actions{display:flex;justify-content:flex-end}
+.incident-empty{padding:30px 20px;border:1px dashed var(--ui-border-strong);border-radius:var(--ui-radius);color:var(--ui-muted);text-align:center}
+@media(max-width:720px){.incident-meta{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.incident-form-grid,.incident-meta{grid-template-columns:1fr}.incident-editor-head,.incident-toolbar,.incident-card-head{align-items:stretch;flex-direction:column}.incident-toolbar label{min-width:0}.incident-badges{justify-content:flex-start}.incident-editor-actions{flex-direction:column-reverse}.incident-editor-actions button,.incident-response-actions button{width:100%}}

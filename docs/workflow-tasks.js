@@ -292,6 +292,13 @@ function errorText(error){
   if(message.includes("workflow_wf04_assignee_not_eligible")||message.includes("workflow_assignee_access_revoked"))return "La persona asignada ya no tiene autorización vigente para actuar en este piso.";
   if(message.includes("workflow_wf04_checkin_not_current"))return "La entrada solo puede confirmarse durante las fechas vigentes de la ocupación.";
   if(message.includes("workflow_wf04_key_required"))return "Confirma primero el paso de llaves.";
+  if(message.includes("workflow_wf05_mfa_required"))return "Esta operación sensible requiere MFA. Vuelve a autenticarte y repite la acción.";
+  if(message.includes("workflow_wf05_subject_not_current"))return "La incidencia ya no coincide con el destino o el estado de esta tarea. No se ha aplicado nada.";
+  if(message.includes("workflow_wf05_assignee_not_eligible"))return "La persona asignada ya no tiene autorización vigente para gestionar esta incidencia.";
+  if(message.includes("workflow_wf05_information_response_required"))return "Todavía no se ha recibido una respuesta posterior a la última solicitud de información.";
+  if(message.includes("workflow_wf05_photo_required"))return "Completa la evidencia fotográfica requerida antes de resolver.";
+  if(message.includes("workflow_wf05_checklist_required"))return "Completa el checklist requerido antes de resolver.";
+  if(message.includes("workflow_wf05_document_required"))return "Adjunta el documento requerido antes de resolver.";
   if(message.includes("workflow_review_actor_forbidden"))return "Solo un gestor autorizado puede revisar este workflow.";
   if(message.includes("workflow_photo_review_requires_photo_review_flow"))return "Este workflow debe revisarse desde Fotoverificaciones.";
   if(message.includes("workflow_review_action_not_supported"))return "La revisión ya no está disponible para el estado actual.";
@@ -413,6 +420,7 @@ function renderCleaningAdapter(task,article){
 function actionNote(task){
   if(task.status==="completed")return "Tarea y ejecución completadas de forma sincronizada.";
   if(task.status==="waiting_review")return "La ejecución está esperando una decisión de revisión humana.";
+  if(task.status==="waiting_info")return "La gestión está pausada hasta que se reciba la información solicitada; continuará en esta misma ejecución.";
   if(task.status==="active")return "La tarea está activa. Quedan pasos de la receta que todavía deben completarse.";
   if(task.status==="rejected")return "La persona asignada rechazó la tarea. El motivo queda registrado en el histórico.";
   return "No hay una acción operativa habilitada para esta receta en el estado actual.";
@@ -859,6 +867,18 @@ function renderActions(task,article){
       const note=document.createElement("span");note.className="task-action-note";
       note.textContent="Confirma el hito real; se cerrarán esta tarea y su ejecución.";
       box.append(note);
+    }else if(action.action_key==="request_info"){
+      const note=document.createElement("span");note.className="task-action-note";
+      note.textContent="La gestión quedará en espera, sin cerrarse, hasta recibir una respuesta.";
+      box.append(note);
+    }else if(action.action_key==="continue"){
+      const note=document.createElement("span");note.className="task-action-note";
+      note.textContent="Retoma la gestión en esta misma tarea y ejecución.";
+      box.append(note);
+    }else if(action.action_key==="resolve"){
+      const note=document.createElement("span");note.className="task-action-note";
+      note.textContent="Registra la resolución y cierra de forma coherente expediente, tarea y ejecución.";
+      box.append(note);
     }else if(action.to_status==="completed"){
       const note=document.createElement("span");note.className="task-action-note";
       note.textContent="Esta es la única etapa pendiente; al aceptar se cerrarán tarea y ejecución.";
@@ -957,7 +977,14 @@ function render(){
 async function applyWorkflowAction(task,action,button){
   let note=null;
   if(action.requires_note){
-    note=window.prompt(["reject","review_reject"].includes(action.action_key)?"Indica el motivo del rechazo:":"Añade la nota obligatoria para esta acción:");
+    const promptText=["reject","review_reject"].includes(action.action_key)
+      ?"Indica el motivo del rechazo:"
+      :action.action_key==="request_info"
+        ?"Indica qué información necesitas:"
+        :action.action_key==="resolve"
+          ?"Describe la resolución aplicada:"
+          :"Añade la nota obligatoria para esta acción:";
+    note=window.prompt(promptText);
     if(note===null)return;
     if(!note.trim()){
       setStatus("Esta acción requiere una nota.",true);
@@ -1006,6 +1033,14 @@ async function applyWorkflowAction(task,action,button){
     setStatus("Revisión aprobada. Tarea y ejecución completadas.");
   }else if(action.action_key==="review_reject"){
     setStatus("Revisión rechazada. El motivo quedó registrado.");
+  }else if(action.action_key==="accept"){
+    setStatus("Gestión aceptada. Expediente, tarea y ejecución están en curso.");
+  }else if(action.action_key==="request_info"){
+    setStatus("Información solicitada. La gestión sigue abierta y queda en espera de respuesta.");
+  }else if(action.action_key==="continue"){
+    setStatus("Gestión retomada en la misma tarea y ejecución.");
+  }else if(action.action_key==="resolve"){
+    setStatus("Incidencia resuelta. Expediente, tarea y ejecución quedaron cerrados.");
   }else{
     setStatus("Tarea y ejecución actualizadas juntas: "+label+".");
   }

@@ -69,6 +69,8 @@ Foto, Checklist y Documento son opcionales y se configuran con los contratos exi
 
 El dispatcher vincula la misma incidencia a la ejecución. Un reintento del evento recupera la misma ejecución y la misma tarjeta.
 
+Para `incident.created` existe **un único gestor Mantenimiento canónico por destino efectivo**. Dos aplicaciones configuradas se consideran solapadas cuando cubren el mismo piso y al menos una tiene alcance de piso, o cuando ambas tienen alcance de la misma habitación. La configuración solapada se rechaza transaccionalmente antes del despacho. Esto evita dos tarjetas gestoras para el mismo expediente. Esta restricción no aplica a `incident.resolved`: las inspecciones posteriores conservan fan-out por aplicación compatible.
+
 ## 5. Estados y acciones
 
 El recorrido mínimo es:
@@ -92,6 +94,7 @@ Cada acción:
 - bloquea incidencia, tarea y ejecución;
 - revalida actor, asignación, organización, piso y habitación;
 - revalida permiso de escritura vigente;
+- revalida también la **regla de asignación congelada** de la ejecución: un antiguo responsable no sigue autorizado solo por conservar acceso secundario, una persona fija debe seguir siendo la misma y una asignación por rol exige conservar ese rol;
 - exige MFA `aal2` a ROOT/ADMIN cuando actúan en una operación sensible;
 - es idempotente por `execution_id + request_key`;
 - actualiza expediente, tarea y ejecución en la misma transacción;
@@ -181,6 +184,8 @@ Las regresiones mínimas deben demostrar:
 - respuesta + `continue` sobre la misma ejecución;
 - `resolve` sincroniza las cuatro fuentes y notifica según receta;
 - actor o destino revocado/fuera de alcance → rechazo server-side;
+- cambio de responsable/persona fija/rol manteniendo acceso al piso → el antiguo asignado deja de ser actor válido;
+- segundo gestor Mantenimiento solapado para `incident.created` → rechazo de configuración;
 - Foto/Checklist/Documento siguen usando las tablas/RPCs comunes;
 - `incident.resolved` → una ejecución downstream por aplicación;
 - RLS negativas y compatibilidad legacy.

@@ -72,8 +72,28 @@
     </section>
   </main>
 
+  <dialog id="taskPostponeDialog" class="task-dialog" aria-labelledby="taskPostponeDialogTitle">
+    <form id="taskPostponeForm" class="task-dialog-card">
+      <div>
+        <p class="eyebrow">PAGO DE ALQUILER</p>
+        <h2 id="taskPostponeDialogTitle">Aplazar vencimiento</h2>
+        <p class="task-dialog-copy">El pago seguirá abierto. La nueva fecha y el motivo quedarán auditados.</p>
+      </div>
+      <label>Nueva fecha
+        <input id="taskPostponeDate" type="date" required>
+      </label>
+      <label>Motivo
+        <textarea id="taskPostponeReason" rows="4" maxlength="1000" placeholder="Motivo del aplazamiento" required></textarea>
+      </label>
+      <div class="task-dialog-actions">
+        <button id="taskPostponeCancel" type="button" class="secondary">Cancelar</button>
+        <button type="submit" class="primary">Confirmar aplazamiento</button>
+      </div>
+    </form>
+  </dialog>
+
   <script src="./app.js?v=2026091902" defer></script>
-  <script type="module" src="./workflow-tasks.js?v=2026092025"></script>
+  <script type="module" src="./workflow-tasks.js?v=2026092101"></script>
   <script type="module" src="./auth-guard.js"></script>
 </body>
 </html>

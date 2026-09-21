@@ -503,3 +503,18 @@ WF-05 está implementado en PR #281 y detenido en `READY_FOR_CHATGPT_REVIEW`:
 
 No se ha fusionado ni desplegado. Los E2E humanos se realizarán en la batería final conjunta autorizada; las pruebas automáticas y guards no se han aplazado.
 
+
+### Incremento — WF-06 · Pago de alquiler + Reclamación
+
+WF-06 está implementado en PR #283 y en revisión:
+
+- `rent_payment` crea una obligación por ejecución sobre una ocupación exacta y soporta manual/fecha/recurrente;
+- solicitar pago, aplazar y registrar pago operan sobre la misma obligación/tarea/ejecución;
+- reclamar reutiliza la obligación, crea un único expediente `claims_v2` y publica `rent_claim.created` por WF-02;
+- `rent_claim` materializa una única tarjeta con acciones mixtas gestoría/inquilino bajo RLS exacta;
+- aceptar/disputar habilita Resolver; pedir información/continuar mantiene la misma ejecución;
+- MFA privilegiado, idempotencia, auditoría, notificaciones y coherencia de actor/destino están cubiertos por `workflow-wf06-domain-regression.sql`;
+- la UI del Creador expone concepto, importe y vencimiento; Tareas usa un diálogo tipado para aplazar.
+
+No se considera desplegado ni VERIFIED hasta merge, migraciones remotas y verificación post-merge. El E2E humano permanece dentro de la batería final conjunta ya acordada.
+

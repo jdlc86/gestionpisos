@@ -182,4 +182,14 @@ Reglas:
 - si el asignado es ADMIN (o ROOT en cualquier ruta excepcional autorizada), toda acción WF-04 exige `aal2` server-side; AAL1 no puede aceptar/rechazar, confirmar custodia de llaves ni confirmar Entrada/Salida;
 - la recogida/entrega de llaves no modifica Auth, roles ni la vigencia de `occupancies_v2`; las fechas/estado de ocupación siguen siendo autoridad del acceso.
 
+## Reglas adicionales WF-06 — Pago / Reclamación
+
+- `rent_payment` usa `scope_type=occupancy` para congelar la relación exacta inquilino/ocupación y enlaza `payment_obligation_id` uno-a-uno con la ejecución;
+- cada ocurrencia manual/programada/recurrente crea su propia obligación idempotente, sin reutilizar una obligación de otra ejecución;
+- `claim` exige vencimiento alcanzado, un flujo `rent_claim` compatible y un ejecutor interno resoluble antes de cerrar Pago;
+- `rent_claim.created` pasa por el mismo outbox/dispatcher WF-02 y enlaza `source_event_id`, `rent_claim_id` y `payment_obligation_id` a la ejecución;
+- la tarjeta de reclamación puede ser leída por el asignado interno y por el inquilino exacto, pero cada acción conserva su actor server-side;
+- ADMIN/ROOT requieren AAL2 para mutaciones financieras; EMPLOYEE requiere escritura vigente;
+- `waiting_info` es no terminal y `continue` conserva la misma ejecución;
+- resolver exige decisión previa del inquilino y cierra expediente, tarea y ejecución de forma coherente.
 

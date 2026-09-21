@@ -19,6 +19,11 @@ const bulkActionIcon=document.getElementById("taskBulkActionIcon");
 const bulkActionLabel=document.getElementById("taskBulkActionLabel");
 const bulkActionCount=document.getElementById("taskBulkActionCount");
 const hiddenFilterOption=document.getElementById("taskHiddenFilterOption");
+const postponeDialog=document.getElementById("taskPostponeDialog");
+const postponeForm=document.getElementById("taskPostponeForm");
+const postponeDate=document.getElementById("taskPostponeDate");
+const postponeReason=document.getElementById("taskPostponeReason");
+const postponeCancel=document.getElementById("taskPostponeCancel");
 
 let currentUser=null;
 let tasks=[];
@@ -299,6 +304,16 @@ function errorText(error){
   if(message.includes("workflow_wf05_photo_required"))return "Completa la evidencia fotográfica requerida antes de resolver.";
   if(message.includes("workflow_wf05_checklist_required"))return "Completa el checklist requerido antes de resolver.";
   if(message.includes("workflow_wf05_document_required"))return "Adjunta el documento requerido antes de resolver.";
+  if(message.includes("workflow_wf06_mfa_required"))return "Esta operación financiera requiere MFA. Vuelve a autenticarte y repite la acción.";
+  if(message.includes("workflow_wf06_assignee_not_eligible"))return "La persona asignada ya no tiene autorización vigente para gestionar este pago o reclamación.";
+  if(message.includes("workflow_wf06_tenant_not_eligible"))return "Esta acción corresponde al inquilino actual de la reclamación.";
+  if(message.includes("workflow_wf06_payment_subject_not_current"))return "La obligación ya no coincide con esta ejecución. No se ha aplicado ningún cambio.";
+  if(message.includes("workflow_wf06_claim_subject_not_current"))return "La reclamación ya no coincide con esta ejecución. No se ha aplicado ningún cambio.";
+  if(message.includes("workflow_wf06_postpone_date_invalid"))return "Selecciona una fecha posterior al vencimiento actual y a hoy.";
+  if(message.includes("workflow_wf06_claim_flow_unavailable"))return "Publica primero un flujo de Reclamación de alquiler compatible para este piso.";
+  if(message.includes("workflow_wf06_claim_not_due"))return "Este pago todavía no ha vencido y no puede escalarse a reclamación.";
+  if(message.includes("workflow_wf06_information_response_required"))return "El inquilino todavía no ha aportado información después de la última solicitud.";
+  if(message.includes("workflow_wf06_transition_mismatch"))return "El estado financiero cambió y esta acción ya no es válida. Recarga la tarea.";
   if(message.includes("workflow_review_actor_forbidden"))return "Solo un gestor autorizado puede revisar este workflow.";
   if(message.includes("workflow_photo_review_requires_photo_review_flow"))return "Este workflow debe revisarse desde Fotoverificaciones.";
   if(message.includes("workflow_review_action_not_supported"))return "La revisión ya no está disponible para el estado actual.";
@@ -439,9 +454,24 @@ function workflowPhotoReviewUrl(task){
 function canManageTask(task){
   return rootManager||managerOrganizationIds.has(task.organization_id);
 }
+function localIsoDate(value=new Date()){
+  const pad=part=>String(part).padStart(2,"0");
+  return value.getFullYear()+"-"+pad(value.getMonth()+1)+"-"+pad(value.getDate());
+}
 function canRenderWorkflowAction(task,action){
+  if(action.action_key==="claim"&&task.due_at){
+    const due=new Date(task.due_at);
+    if(!Number.isNaN(due.getTime())&&localIsoDate(due)>localIsoDate())return false;
+  }
   if(action.actor==="assignee")return task.assigned_user_id===currentUser?.id;
   if(action.actor==="agency")return canManageTask(task);
+  if(action.actor==="tenant"){
+    return Boolean(
+      task.tenant_id
+      && tenants.get(task.tenant_id)?.user_id
+      && tenants.get(task.tenant_id).user_id===currentUser?.id
+    );
+  }
   return false;
 }
 function workflowPhotoUrl(task,resource){
@@ -974,16 +1004,79 @@ function render(){
   updateBulkState();
 }
 
+function tomorrowIsoDate(){
+  const date=new Date();
+  date.setDate(date.getDate()+1);
+  return date.toISOString().slice(0,10);
+}
+
+function requestPostponeDetails(){
+  return new Promise(resolve=>{
+    if(!postponeDialog?.showModal||!postponeForm||!postponeDate||!postponeReason){
+      resolve(null);
+      return;
+    }
+
+    postponeDate.min=tomorrowIsoDate();
+    postponeDate.value=postponeDate.min;
+    postponeReason.value="";
+
+    const cleanup=()=>{
+      postponeForm.removeEventListener("submit",onSubmit);
+      postponeCancel?.removeEventListener("click",onCancel);
+      postponeDialog.removeEventListener("cancel",onCancel);
+    };
+    const finish=value=>{
+      cleanup();
+      if(postponeDialog.open)postponeDialog.close();
+      resolve(value);
+    };
+    const onCancel=event=>{
+      event?.preventDefault?.();
+      finish(null);
+    };
+    const onSubmit=event=>{
+      event.preventDefault();
+      const effectiveDate=String(postponeDate.value||"").trim();
+      const note=String(postponeReason.value||"").trim();
+      if(!effectiveDate||!note){
+        setStatus("Indica la nueva fecha y el motivo del aplazamiento.",true);
+        return;
+      }
+      finish({effectiveDate,note});
+    };
+
+    postponeForm.addEventListener("submit",onSubmit);
+    postponeCancel?.addEventListener("click",onCancel);
+    postponeDialog.addEventListener("cancel",onCancel);
+    postponeDialog.showModal();
+    postponeDate.focus();
+  });
+}
+
 async function applyWorkflowAction(task,action,button){
   let note=null;
-  if(action.requires_note){
+  let effectiveDate=null;
+
+  if(action.action_key==="postpone"){
+    const details=await requestPostponeDetails();
+    if(!details)return;
+    note=details.note;
+    effectiveDate=details.effectiveDate;
+  }else if(action.requires_note){
     const promptText=["reject","review_reject"].includes(action.action_key)
       ?"Indica el motivo del rechazo:"
       :action.action_key==="request_info"
         ?"Indica qué información necesitas:"
-        :action.action_key==="resolve"
-          ?"Describe la resolución aplicada:"
-          :"Añade la nota obligatoria para esta acción:";
+        :action.action_key==="provide_info"
+          ?"Añade la información solicitada:"
+          :action.action_key==="claim"
+            ?"Indica el motivo de la reclamación:"
+            :action.action_key==="dispute"
+              ?"Indica por qué disputas la reclamación:"
+              :action.action_key==="resolve"
+                ?"Describe la resolución aplicada:"
+                :"Añade la nota obligatoria para esta acción:";
     note=window.prompt(promptText);
     if(note===null)return;
     if(!note.trim()){
@@ -998,12 +1091,18 @@ async function applyWorkflowAction(task,action,button){
   button.textContent="Aplicando…";
   setStatus("Aplicando la acción sobre tarea y ejecución en una única transacción…");
 
-  const {data,error}=await supabase.rpc("apply_workflow_task_action_v1",{
+  const rpcName=action.action_key==="postpone"
+    ?"apply_wf06_payment_action_v1"
+    :"apply_workflow_task_action_v1";
+  const rpcArgs={
     p_task_id:task.id,
     p_action_key:action.action_key,
     p_request_key:key,
     p_note:note
-  });
+  };
+  if(action.action_key==="postpone")rpcArgs.p_effective_date=effectiveDate;
+
+  const {data,error}=await supabase.rpc(rpcName,rpcArgs);
 
   button.textContent=original;
 
@@ -1039,8 +1138,23 @@ async function applyWorkflowAction(task,action,button){
     setStatus("Información solicitada. La gestión sigue abierta y queda en espera de respuesta.");
   }else if(action.action_key==="continue"){
     setStatus("Gestión retomada en la misma tarea y ejecución.");
+  }else if(action.action_key==="postpone"){
+    setStatus("Vencimiento aplazado. La nueva fecha quedó registrada y notificada al inquilino.");
+  }else if(action.action_key==="request_payment"){
+    setStatus("Solicitud de pago registrada en la misma obligación.");
+  }else if(action.action_key==="register_payment"){
+    setStatus("Pago registrado. Obligación, tarea y ejecución quedaron cerradas.");
+  }else if(action.action_key==="claim"){
+    setStatus("Reclamación creada. El pago quedó escalado al flujo de reclamación configurado.");
+  }else if(action.action_key==="dispute"){
+    setStatus("La reclamación quedó marcada como disputada y la gestoría fue notificada.");
+  }else if(action.action_key==="provide_info"){
+    setStatus("Información enviada a la gestoría. La reclamación sigue abierta.");
   }else if(action.action_key==="resolve"){
-    setStatus("Incidencia resuelta. Expediente, tarea y ejecución quedaron cerrados.");
+    const execution=executionForTask(task);
+    setStatus(execution?.spec_snapshot?.flowType==="rent_claim"
+      ?"Reclamación resuelta. Expediente, tarea y ejecución quedaron cerrados."
+      :"Incidencia resuelta. Expediente, tarea y ejecución quedaron cerrados.");
   }else{
     setStatus("Tarea y ejecución actualizadas juntas: "+label+".");
   }
@@ -1133,7 +1247,7 @@ async function loadRelated(){
 
   const tenantIds=[...new Set(tasks.map(task=>task.tenant_id).filter(Boolean))];
   if(tenantIds.length){
-    const {data}=await supabase.from("tenants_v2").select("id,full_name").in("id",tenantIds);
+    const {data}=await supabase.from("tenants_v2").select("id,user_id,full_name").in("id",tenantIds);
     (data||[]).forEach(item=>tenants.set(item.id,item));
   }
 

@@ -396,7 +396,7 @@ begin
             ' ',v_obligation.currency,
             ' · vence ',to_char(v_obligation.due_date,'DD/MM/YYYY')
           ),
-          due_at=(v_obligation.due_date::timestamp + time '23:59:59') at time zone v_timezone,
+          due_at=(v_obligation.due_date + time '23:59:59') at time zone v_timezone,
           updated_at=clock_timestamp()
       where id=v_task.id
       returning * into v_task;

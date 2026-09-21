@@ -896,6 +896,26 @@ $internal_request_visible_only_internal$;
 
 set local role authenticated;
 select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf05.staff'),'role','authenticated','aal','aal1'
+)::text,true);
+do $internal_non_creator_denied$
+begin
+  begin
+    perform public.submit_incident_information_v1(
+      current_setting('wf05.internal_incident')::uuid,
+      'wf05-internal-wrong-author',
+      'Intento de respuesta por otra persona.'
+    );
+    raise exception 'WF05 allowed non-creator to answer internal information request';
+  exception when sqlstate '42501' then
+    if sqlerrm<>'incident_information_forbidden' then raise; end if;
+  end;
+end;
+$internal_non_creator_denied$;
+reset role;
+
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
   'sub',current_setting('wf05.root'),'role','authenticated','aal','aal2'
 )::text,true);
 select * from public.submit_incident_information_v1(

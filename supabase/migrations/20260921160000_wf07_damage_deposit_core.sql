@@ -588,7 +588,9 @@ begin
         p_spec->>'assignmentType'<>'role'
         or p_spec->>'assignmentRole' in ('admin','employee')
       )
-      and p_spec->>'closeType'='domain_adapter';
+      and p_spec->>'closeType'='domain_adapter'
+      and coalesce((v_steps->>'accept')::boolean,false)=false
+      and v_evidence;
   end if;
 
   if v_flow='damage_claim' then

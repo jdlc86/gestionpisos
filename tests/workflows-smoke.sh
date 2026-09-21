@@ -673,5 +673,7 @@ fi
 grep -Fq '"Idempotency-Key"' supabase/functions/notification-email/index.ts
 grep -Fq 'allaiso-notification/${notificationId}' supabase/functions/notification-email/index.ts
 grep -Fq 'retry_due_notification_emails_v1' supabase/migrations/20260921181500_notification_email_retry.sql
+grep -Fq 'notification_email_dispatch_state_v1' supabase/migrations/20260921164500_notification_email_dispatch.sql
+grep -Fq 'n.created_at>=s.activated_at' supabase/migrations/20260921181500_notification_email_retry.sql
 grep -Fq 'record_acceptance' docs/workflow-tasks.js
 grep -Fq 'record_dispute' docs/workflow-tasks.js

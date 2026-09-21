@@ -480,6 +480,17 @@ select * from public.apply_workflow_task_action_v1(
 );
 
 -- Parcial: abre daño 80€, se resuelve en 60€, retiene 60€.
+select * from public.apply_workflow_task_action_v1(
+  current_setting('wf07.partial_review_task')::uuid,
+  'request_info','wf07-partial-info-request',
+  'Confirma por email la información necesaria para cerrar la fianza.'
+);
+select * from public.apply_workflow_task_action_v1(
+  current_setting('wf07.partial_review_task')::uuid,
+  'continue','wf07-partial-info-received',
+  'Respuesta externa recibida por email y registrada por la gestoría.'
+);
+
 select * from public.apply_wf07_deposit_action_v1(
   current_setting('wf07.partial_review_task')::uuid,
   'open_damage_claim','wf07-partial-damage-open','Daño parcial',80000
@@ -559,6 +570,16 @@ select * from public.apply_workflow_task_action_v1(
   current_setting('wf07.partial_damage_task')::uuid,'notify','wf07-partial-notify',null
 );
 select * from public.apply_workflow_task_action_v1(
+  current_setting('wf07.partial_damage_task')::uuid,
+  'request_info','wf07-partial-damage-info-request',
+  'Solicita aclaración adicional por email.'
+);
+select * from public.apply_workflow_task_action_v1(
+  current_setting('wf07.partial_damage_task')::uuid,
+  'continue','wf07-partial-damage-info-received',
+  'Respuesta externa recibida y registrada.'
+);
+select * from public.apply_workflow_task_action_v1(
   current_setting('wf07.hold_damage_task')::uuid,'notify','wf07-hold-notify',null
 );
 
@@ -577,6 +598,20 @@ select * from public.apply_wf07_damage_action_v1(
   current_setting('wf07.hold_damage_task')::uuid,
   'resolve','wf07-hold-resolve','Daño reconocido',100000
 );
+
+do $refund_with_settled_damage_denied$
+begin
+  begin
+    perform * from public.apply_workflow_task_action_v1(
+      current_setting('wf07.partial_review_task')::uuid,
+      'refund','wf07-partial-invalid-refund','Intento de devolución total'
+    );
+    raise exception 'WF07 allowed refund despite settled damage';
+  exception when sqlstate '55000' then
+    if sqlerrm<>'workflow_wf07_refund_has_damage_settlement' then raise; end if;
+  end;
+end;
+$refund_with_settled_damage_denied$;
 
 select * from public.apply_wf07_deposit_action_v1(
   current_setting('wf07.partial_review_task')::uuid,
@@ -651,6 +686,35 @@ begin
       )
   )<>2 then
     raise exception 'WF07 damage events are not exactly once';
+  end if;
+
+  if not exists(
+    select 1 from public.notifications_v2 n
+    join public.security_deposits_v2 d on d.id=n.source_id
+    where d.occupancy_id=current_setting('wf07.partial_occupancy')::uuid
+      and n.source_kind='security_deposit'
+      and n.event_key='information_requested:wf07-partial-info-request'
+      and n.channel_email=true
+  ) or not exists(
+    select 1 from public.notifications_v2
+    where source_kind='damage_claim'
+      and source_id=current_setting('wf07.partial_damage_claim')::uuid
+      and event_key='notified'
+      and channel_email=true
+  ) or not exists(
+    select 1 from public.notifications_v2
+    where source_kind='damage_claim'
+      and source_id=current_setting('wf07.partial_damage_claim')::uuid
+      and event_key='information_requested:wf07-partial-damage-info-request'
+      and channel_email=true
+  ) or not exists(
+    select 1 from public.notifications_v2
+    where source_kind='damage_claim'
+      and source_id=current_setting('wf07.partial_damage_claim')::uuid
+      and event_key='resolved'
+      and channel_email=true
+  ) then
+    raise exception 'WF07 offboarded-tenant email notifications are incomplete';
   end if;
 end;
 $final_states$;

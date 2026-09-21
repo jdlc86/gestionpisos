@@ -311,6 +311,12 @@ WF-06 conserva `payment_obligations_v2` como obligación y `claims_v2` como expe
 
 La reclamación usa actor mixto sin duplicar tarjetas: el asignado interno gestiona notificación/información/resolución y el inquilino exacto acepta, disputa o aporta información. RLS y RPC revalidan ambos actores por separado. El contrato completo está en `WORKFLOW_RENT_PAYMENT_CLAIM_CONTRACT.md`.
 
+### Adaptador de Daños / Fianza
+
+WF-07 añade `security_deposits_v2` como expediente operativo único por ocupación y reutiliza `claims_v2` para `claim_type=damage`. Recepción y revisión de fianza son ejecuciones separadas; la revisión se activa por la Baja real y conserva revocado el acceso del antiguo tenant.
+
+Daños usa `damage_claim.created` en el outbox común, una única tarjeta `tenant_tasks_v2` y la evidencia transversal existente. Las respuestas posteriores a la Baja se registran como información externa auditada por la gestoría. Las reglas de importes, evidencia y retención están en `WORKFLOW_DAMAGE_DEPOSIT_CONTRACT.md`.
+
 ## 17. Creador de Flujos
 
 El Creador es una interfaz integrada de autoría y preparación:

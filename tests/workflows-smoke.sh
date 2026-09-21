@@ -180,7 +180,7 @@ grep -Fq 'id="photoBankLink"' docs/workflow-builder.html
 grep -Fq 'href="./photo-patterns.html?from=workflow-builder" hidden' docs/workflow-builder.html
 grep -Fq 'function updatePhotoResource()' docs/workflow-builder.js
 grep -Fq 'photoBankLink.hidden=value("flowType")==="cleaning"||!checked("stepPhoto")' docs/workflow-builder.js
-grep -Fq './workflow-builder.js?v=2026092102' docs/workflow-builder.html
+grep -Fq './workflow-builder.js?v=2026092201' docs/workflow-builder.html
 grep -Fq 'id="assignmentUserId"' docs/workflow-builder.html
 grep -Fq 'id="assignmentRole"' docs/workflow-builder.html
 grep -Fq 'function assignmentConfigurationComplete(data)' docs/workflow-builder.js

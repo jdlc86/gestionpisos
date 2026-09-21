@@ -187,7 +187,18 @@ begin
     raise exception 'incident_not_found' using errcode='P0002';
   end if;
   if v_incident.created_by<>v_actor
-    or not private.incident_tenant_access_v1(v_incident.id,v_actor) then
+    or not (
+      (
+        v_incident.opened_occupancy_id is not null
+        and private.incident_tenant_access_v1(v_incident.id,v_actor)
+      )
+      or (
+        v_incident.opened_occupancy_id is null
+        and private.incident_internal_access_v1(
+          v_incident.organization_id,v_incident.property_id,v_actor,false
+        )
+      )
+    ) then
     raise exception 'incident_information_forbidden' using errcode='42501';
   end if;
 
@@ -211,8 +222,9 @@ begin
   insert into public.incident_updates_v2(
     incident_id,author_user_id,visibility,body,update_kind,request_key,created_at
   ) values (
-    v_incident.id,v_actor,'tenant',v_body,'information_response',v_key,
-    clock_timestamp()
+    v_incident.id,v_actor,
+    case when v_incident.opened_occupancy_id is null then 'internal' else 'tenant' end,
+    v_body,'information_response',v_key,clock_timestamp()
   ) returning * into v_update;
 
   insert into public.notifications_v2(
@@ -222,7 +234,10 @@ begin
   select
     v_incident.organization_id,e.assigned_user_id,
     'incident_information_received','Información recibida',
-    'La persona inquilina ha respondido a la solicitud de información.',
+    case when v_incident.opened_occupancy_id is null
+      then 'La persona que abrió el expediente ha respondido a la solicitud de información.'
+      else 'La persona inquilina ha respondido a la solicitud de información.'
+    end,
     'pending',true,false,'incident',v_incident.id,
     'information_received:'||v_key
   from public.workflow_executions_v2 e

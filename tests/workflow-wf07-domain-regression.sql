@@ -834,12 +834,16 @@ end;
 $partial_hold_idempotent$;
 reset role;
 
--- El dispatcher email es idempotente e independiente del rol tenant activo.
+-- El dispatcher email es idempotente, reintentable y no depende del rol tenant activo.
 do $email_delivery_contract$
 declare
   v_notification uuid;
   v_first boolean;
   v_second boolean;
+  v_immediate_retry boolean;
+  v_failed_retry boolean;
+  v_stale_retry boolean;
+  v_after_sent boolean;
 begin
   select n.id into v_notification
   from public.notifications_v2 n
@@ -869,17 +873,46 @@ begin
   end if;
 
   perform public.notification_email_finish_delivery_v1(
+    v_notification,false,'resend_503',null
+  );
+  v_immediate_retry:=public.notification_email_claim_delivery_v1(v_notification);
+  if v_immediate_retry is distinct from false then
+    raise exception 'WF07 email delivery retried without backoff';
+  end if;
+
+  update public.notification_email_deliveries_v1
+  set attempted_at=now()-interval '3 minutes'
+  where notification_id=v_notification;
+
+  v_failed_retry:=public.notification_email_claim_delivery_v1(v_notification);
+  if v_failed_retry is distinct from true then
+    raise exception 'WF07 failed email delivery was not reclaimable';
+  end if;
+
+  update public.notification_email_deliveries_v1
+  set attempted_at=now()-interval '16 minutes'
+  where notification_id=v_notification;
+
+  v_stale_retry:=public.notification_email_claim_delivery_v1(v_notification);
+  if v_stale_retry is distinct from true then
+    raise exception 'WF07 stale sending email delivery was not reclaimable';
+  end if;
+
+  perform public.notification_email_finish_delivery_v1(
     v_notification,true,null,'wf07-regression-provider-id'
   );
+  v_after_sent:=public.notification_email_claim_delivery_v1(v_notification);
 
-  if not exists(
+  if v_after_sent is distinct from false or not exists(
     select 1
     from public.notification_email_deliveries_v1
     where notification_id=v_notification
       and status='sent'
+      and attempt_count=3
       and provider_message_id='wf07-regression-provider-id'
+      and error_code is null
   ) then
-    raise exception 'WF07 email delivery receipt did not finish as sent';
+    raise exception 'WF07 email delivery receipt/retry lifecycle is inconsistent';
   end if;
 end;
 $email_delivery_contract$;

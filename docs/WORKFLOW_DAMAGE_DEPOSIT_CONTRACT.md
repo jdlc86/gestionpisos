@@ -114,6 +114,7 @@ La entrega admite reintentos controlados sin convertir la notificación en una s
 - un `sending` huérfano puede reclamarse tras 15 minutos;
 - máximo 5 claims por notificación;
 - el cron `gestionpisos-notification-email-retry` reencola candidatos cada 5 minutos;
+- el dispatcher guarda su `activated_at` y el retry solo recupera notificaciones sin recibo creadas desde ese instante; no existe backfill automático de correos históricos;
 - la llamada a Resend usa `Idempotency-Key=allaiso-notification/<notification_id>`, de modo que un timeout posterior al envío no debe producir un segundo mensaje del proveedor.
 
 La Edge Function resuelve el email directamente desde la identidad Auth con service role; no exige rol tenant vigente. Esto permite comunicar una fianza/daño después de la Baja sin restaurar acceso a la PWA. Reutiliza los secretos existentes `RESEND_API_KEY` y `AUTH_EMAIL_FROM`.

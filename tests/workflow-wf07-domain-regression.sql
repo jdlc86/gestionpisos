@@ -194,7 +194,7 @@ returns jsonb language sql stable as $$
     'scopeType','occupancy','triggerType','manual','eventType','',
     'recurrence','','scheduledAt','','scheduledTimezone','','scheduledAtUtc','',
     'customEvery','','customUnit','','assignmentType','property_responsible',
-    'assignmentUserId','','assignmentRole',
+    'assignmentUserId','','assignmentRole','',
     'depositAmountCents',p_amount,'depositCurrency','EUR',
     'steps',jsonb_build_object('accept',false,'photo',false,'checklist',false,'document',false),
     'checklistItems','[]'::jsonb,'closeType','domain_adapter',
@@ -210,7 +210,7 @@ returns jsonb language sql stable as $$
     'scopeType','property','triggerType','event','eventType','occupancy.offboarded',
     'recurrence','','scheduledAt','','scheduledTimezone','','scheduledAtUtc','',
     'customEvery','','customUnit','','assignmentType','property_responsible',
-    'assignmentUserId','','assignmentRole',
+    'assignmentUserId','','assignmentRole','',
     'steps',jsonb_build_object('accept',false,'photo',false,'checklist',true,'document',false),
     'checklistItems',jsonb_build_array(
       jsonb_build_object('key','review','text','Revisar estado final','required',true)
@@ -228,7 +228,7 @@ returns jsonb language sql stable as $$
     'scopeType','property','triggerType','event','eventType','damage_claim.created',
     'recurrence','','scheduledAt','','scheduledTimezone','','scheduledAtUtc','',
     'customEvery','','customUnit','','assignmentType','property_responsible',
-    'assignmentUserId','','assignmentRole',
+    'assignmentUserId','','assignmentRole','',
     'steps',jsonb_build_object('accept',false,'photo',false,'checklist',true,'document',false),
     'checklistItems',jsonb_build_array(
       jsonb_build_object('key','damage','text','Documentar daño','required',true)

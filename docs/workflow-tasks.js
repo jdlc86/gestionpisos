@@ -311,6 +311,7 @@ function errorText(error){
   if(message.includes("workflow_wf06_claim_subject_not_current"))return "La reclamación ya no coincide con esta ejecución. No se ha aplicado ningún cambio.";
   if(message.includes("workflow_wf06_postpone_date_invalid"))return "Selecciona una fecha posterior al vencimiento actual y a hoy.";
   if(message.includes("workflow_wf06_claim_flow_unavailable"))return "Publica primero un flujo de Reclamación de alquiler compatible para este piso.";
+  if(message.includes("workflow_wf06_claim_not_due"))return "Este pago todavía no ha vencido y no puede escalarse a reclamación.";
   if(message.includes("workflow_wf06_information_response_required"))return "El inquilino todavía no ha aportado información después de la última solicitud.";
   if(message.includes("workflow_wf06_transition_mismatch"))return "El estado financiero cambió y esta acción ya no es válida. Recarga la tarea.";
   if(message.includes("workflow_review_actor_forbidden"))return "Solo un gestor autorizado puede revisar este workflow.";
@@ -453,7 +454,15 @@ function workflowPhotoReviewUrl(task){
 function canManageTask(task){
   return rootManager||managerOrganizationIds.has(task.organization_id);
 }
+function localIsoDate(value=new Date()){
+  const pad=part=>String(part).padStart(2,"0");
+  return value.getFullYear()+"-"+pad(value.getMonth()+1)+"-"+pad(value.getDate());
+}
 function canRenderWorkflowAction(task,action){
+  if(action.action_key==="claim"&&task.due_at){
+    const due=new Date(task.due_at);
+    if(!Number.isNaN(due.getTime())&&localIsoDate(due)>localIsoDate())return false;
+  }
   if(action.actor==="assignee")return task.assigned_user_id===currentUser?.id;
   if(action.actor==="agency")return canManageTask(task);
   if(action.actor==="tenant"){

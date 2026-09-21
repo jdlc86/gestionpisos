@@ -24,6 +24,15 @@ const postponeForm=document.getElementById("taskPostponeForm");
 const postponeDate=document.getElementById("taskPostponeDate");
 const postponeReason=document.getElementById("taskPostponeReason");
 const postponeCancel=document.getElementById("taskPostponeCancel");
+const noteDialog=document.getElementById("taskNoteDialog");
+const noteForm=document.getElementById("taskNoteForm");
+const noteEyebrow=document.getElementById("taskNoteEyebrow");
+const noteTitle=document.getElementById("taskNoteDialogTitle");
+const noteCopy=document.getElementById("taskNoteDialogCopy");
+const noteLabel=document.getElementById("taskNoteLabel");
+const noteText=document.getElementById("taskNoteText");
+const noteCancel=document.getElementById("taskNoteCancel");
+const noteSubmit=document.getElementById("taskNoteSubmit");
 const moneyDialog=document.getElementById("taskMoneyDialog");
 const moneyForm=document.getElementById("taskMoneyForm");
 const moneyEyebrow=document.getElementById("taskMoneyEyebrow");
@@ -1076,6 +1085,60 @@ function requestPostponeDetails(){
   });
 }
 
+function requestNoteDetails({
+  eyebrow="GESTIÓN",
+  title="Añadir nota",
+  copy="La nota quedará registrada en el historial.",
+  label="Detalle",
+  submitLabel="Confirmar",
+  placeholder=""
+}={}){
+  return new Promise(resolve=>{
+    if(!noteDialog?.showModal||!noteForm||!noteText){
+      resolve(null);
+      return;
+    }
+
+    if(noteEyebrow)noteEyebrow.textContent=eyebrow;
+    if(noteTitle)noteTitle.textContent=title;
+    if(noteCopy)noteCopy.textContent=copy;
+    if(noteLabel)noteLabel.textContent=label;
+    if(noteSubmit)noteSubmit.textContent=submitLabel;
+    noteText.placeholder=placeholder;
+    noteText.value="";
+
+    const cleanup=()=>{
+      noteForm.removeEventListener("submit",onSubmit);
+      noteCancel?.removeEventListener("click",onCancel);
+      noteDialog.removeEventListener("cancel",onCancel);
+    };
+    const finish=value=>{
+      cleanup();
+      if(noteDialog.open)noteDialog.close();
+      resolve(value);
+    };
+    const onCancel=event=>{
+      event?.preventDefault?.();
+      finish(null);
+    };
+    const onSubmit=event=>{
+      event.preventDefault();
+      const value=String(noteText.value||"").trim();
+      if(!value){
+        setStatus("Añade el detalle requerido para continuar.",true);
+        return;
+      }
+      finish(value);
+    };
+
+    noteForm.addEventListener("submit",onSubmit);
+    noteCancel?.addEventListener("click",onCancel);
+    noteDialog.addEventListener("cancel",onCancel);
+    noteDialog.showModal();
+    noteText.focus();
+  });
+}
+
 function requestMoneyDetails({
   eyebrow="FIANZA",
   title="Importe",
@@ -1184,25 +1247,90 @@ async function applyWorkflowAction(task,action,button){
     note=details.note;
     effectiveDate=details.effectiveDate;
   }else if(action.requires_note){
-    const promptText=["reject","review_reject"].includes(action.action_key)
-      ?"Indica el motivo del rechazo:"
+    const noteUi=["reject","review_reject"].includes(action.action_key)
+      ?{
+          eyebrow:"REVISIÓN",
+          title:"Motivo del rechazo",
+          copy:"El motivo quedará visible en el historial de la gestión.",
+          label:"Motivo",
+          submitLabel:"Confirmar rechazo",
+          placeholder:"Explica por qué se rechaza"
+        }
       :action.action_key==="request_info"
-        ?"Indica qué información necesitas:"
+        ?{
+            eyebrow:flowType==="damage_claim"?"DAÑOS":"GESTIÓN",
+            title:"Solicitar información",
+            copy:flowType==="damage_claim"||flowType==="deposit_review"
+              ?"La solicitud se enviará por email; la respuesta externa se registrará después en esta misma gestión."
+              :"La gestión quedará en espera hasta recibir la información.",
+            label:"Información necesaria",
+            submitLabel:"Solicitar",
+            placeholder:"Describe exactamente qué información necesitas"
+          }
         :action.action_key==="provide_info"
-          ?"Añade la información solicitada:"
+          ?{
+              eyebrow:"RECLAMACIÓN",
+              title:"Aportar información",
+              copy:"La reclamación seguirá abierta hasta que la gestoría la retome.",
+              label:"Respuesta",
+              submitLabel:"Enviar información",
+              placeholder:"Añade la información solicitada"
+            }
           :action.action_key==="claim"
-            ?"Indica el motivo de la reclamación:"
+            ?{
+                eyebrow:"PAGO",
+                title:"Abrir reclamación",
+                copy:"El motivo quedará enlazado a la misma obligación de pago.",
+                label:"Motivo",
+                submitLabel:"Crear reclamación",
+                placeholder:"Indica el motivo de la reclamación"
+              }
             :action.action_key==="dispute"
-              ?"Indica por qué disputas la reclamación:"
-              :action.action_key==="resolve"
-                ?"Describe la resolución aplicada:"
-                :"Añade la nota obligatoria para esta acción:";
-    note=window.prompt(promptText);
+              ?{
+                  eyebrow:"RECLAMACIÓN",
+                  title:"Disputar reclamación",
+                  copy:"La gestoría recibirá tu motivo y la reclamación seguirá abierta.",
+                  label:"Motivo de la disputa",
+                  submitLabel:"Registrar disputa",
+                  placeholder:"Explica por qué disputas la reclamación"
+                }
+              :action.action_key==="record_acceptance"
+                ?{
+                    eyebrow:"DAÑOS",
+                    title:"Registrar aceptación externa",
+                    copy:"Usa esta acción solo cuando la aceptación se haya recibido por un canal externo.",
+                    label:"Detalle de la respuesta",
+                    submitLabel:"Registrar aceptación",
+                    placeholder:"Indica cómo y cuándo se recibió la aceptación"
+                  }
+                :action.action_key==="record_dispute"
+                  ?{
+                      eyebrow:"DAÑOS",
+                      title:"Registrar disputa externa",
+                      copy:"Usa esta acción solo cuando la disputa se haya recibido por un canal externo.",
+                      label:"Detalle de la respuesta",
+                      submitLabel:"Registrar disputa",
+                      placeholder:"Resume la disputa recibida y el canal utilizado"
+                    }
+                  :action.action_key==="resolve"
+                    ?{
+                        eyebrow:"GESTIÓN",
+                        title:"Resolver",
+                        copy:"La resolución quedará auditada en el historial.",
+                        label:"Resolución",
+                        submitLabel:"Resolver",
+                        placeholder:"Describe la resolución aplicada"
+                      }
+                    :{
+                        eyebrow:"GESTIÓN",
+                        title:"Añadir nota",
+                        copy:"La nota quedará registrada en el historial.",
+                        label:"Detalle",
+                        submitLabel:"Confirmar",
+                        placeholder:"Añade la nota obligatoria"
+                      };
+    note=await requestNoteDetails(noteUi);
     if(note===null)return;
-    if(!note.trim()){
-      setStatus("Esta acción requiere una nota.",true);
-      return;
-    }
   }
 
   const {storageKey,key}=requestKey(task,action);

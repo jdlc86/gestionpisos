@@ -661,6 +661,7 @@ Objetivo cumplido:
 - La revisión de fianza puede abrir una reclamación por daños enlazada; daños reutiliza `claims_v2`, tarjeta compartida y actor mixto gestoría/inquilino.
 - Retención parcial/total exige trazabilidad server-side y no puede exceder el importe recibido.
 - El E2E humano se conserva para la batería final conjunta; las regresiones automáticas no se aplazan.
+- Contrato WF-07: `docs/WORKFLOW_DAMAGE_DEPOSIT_CONTRACT.md`.
 
 **Integrar:**
 - reclamación por daños;

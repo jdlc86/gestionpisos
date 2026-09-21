@@ -450,8 +450,13 @@ begin
     v_steps:=jsonb_build_object(
       'accept',true,'photo',false,'checklist',false,'document',false
     );
+    -- El contrato genérico WF-01 rechaza role=admin/employee sobre
+    -- occupancy. WF-06 valida esa combinación con reglas financieras propias,
+    -- por lo que reutiliza el resto del validador como property y vuelve a
+    -- exigir el scope real occupancy inmediatamente después.
     v_base:=p_spec || jsonb_build_object(
       'flowType','custom',
+      'scopeType','property',
       'closeType','auto',
       'steps',v_steps
     );

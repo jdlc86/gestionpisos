@@ -664,6 +664,12 @@ grep -Fq 'wf07DepositConfig' docs/workflow-builder.html
 grep -Fq 'taskMoneyDialog' docs/workflow-tasks.html
 grep -Fq 'apply_wf07_deposit_action_v1' docs/workflow-tasks.js
 grep -Fq 'apply_wf07_damage_action_v1' docs/workflow-tasks.js
+grep -Fq 'taskNoteDialog' docs/workflow-tasks.html
+grep -Fq 'requestNoteDetails' docs/workflow-tasks.js
+if grep -Fq 'window.prompt(' docs/workflow-tasks.js; then
+  echo "workflow-tasks.js must not use browser prompt dialogs" >&2
+  exit 1
+fi
 grep -Fq '"Idempotency-Key"' supabase/functions/notification-email/index.ts
 grep -Fq 'allaiso-notification/${notificationId}' supabase/functions/notification-email/index.ts
 grep -Fq 'retry_due_notification_emails_v1' supabase/migrations/20260921181500_notification_email_retry.sql

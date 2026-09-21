@@ -333,6 +333,7 @@ function errorText(error){
   if(message.includes("workflow_wf07_deposit_evidence_required"))return "Completa la evidencia configurada antes de devolver o retener la fianza.";
   if(message.includes("workflow_wf07_partial_hold_amount_invalid"))return "La retención parcial debe ser menor que la fianza y estar respaldada por daños resueltos.";
   if(message.includes("workflow_wf07_full_hold_not_justified"))return "La retención total requiere daños resueltos por al menos el importe completo de la fianza.";
+  if(message.includes("workflow_wf07_refund_has_damage_settlement"))return "No puedes registrar devolución total porque existen daños resueltos con importe reconocido.";
   if(message.includes("workflow_wf07_damage_resolution_invalid"))return "La resolución requiere decisión registrada, evidencia completa y un importe válido.";
   if(message.includes("workflow_wf07_transition_mismatch"))return "El estado de la fianza o de daños cambió y esta acción ya no es válida. Recarga la tarea.";
   if(message.includes("workflow_review_actor_forbidden"))return "Solo un gestor autorizado puede revisar este workflow.";

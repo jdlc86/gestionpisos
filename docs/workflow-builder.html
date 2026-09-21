@@ -94,6 +94,9 @@
             <option value="maintenance">Mantenimiento</option>
             <option value="rent_payment">Pago de alquiler</option>
             <option value="rent_claim">Reclamación de alquiler</option>
+            <option value="deposit_receipt">Fianza · recepción</option>
+            <option value="deposit_review">Fianza · revisión</option>
+            <option value="damage_claim">Reclamación por daños</option>
             <option value="checkin">Check-in</option>
             <option value="checkout">Check-out</option>
             <option value="custom">Personalizado</option>
@@ -132,6 +135,7 @@
             <option value="incident.created">Incidencia abierta · piso / habitación</option>
             <option value="incident.resolved">Incidencia resuelta · inspección posterior</option>
             <option value="rent_claim.created">Reclamación de alquiler creada · piso / habitación</option>
+            <option value="damage_claim.created">Reclamación por daños creada · piso / habitación</option>
           </select></label>
           <label id="recurrenceRow" hidden>Frecuencia<select id="recurrence" name="recurrence" disabled>
             <option value="">Pendiente · selecciona una frecuencia</option>
@@ -205,6 +209,20 @@
           <div id="wf04StepNote" class="builder-note" hidden>Entrada y Salida siguen la ocupación exacta. Aceptar/Rechazar y la gestión de llaves se registran en la misma tarjeta, sin cambiar el acceso del inquilino.</div>
           <div id="wf05StepNote" class="builder-note" hidden>Mantenimiento gestiona incidencias abiertas sobre una única tarjeta. Una Inspección activada al resolver debe reutilizar al menos Foto, Checklist o Documento.</div>
           <div id="wf06StepNote" class="builder-note" hidden>Pago de alquiler genera una obligación por ejecución para una ocupación exacta. Reclamación reutiliza esa obligación y la misma infraestructura de tareas.</div>
+          <div id="wf07StepNote" class="builder-note" hidden>Fianza separa recepción y revisión para no mantener una tarea abierta durante toda la estancia. Daños reutiliza la fianza y exige evidencia antes de notificar o resolver.</div>
+          <section id="wf07DepositConfig" class="builder-checklist-editor" hidden aria-labelledby="wf07DepositConfigTitle">
+            <div class="builder-checklist-heading">
+              <div>
+                <strong id="wf07DepositConfigTitle">Importe de la fianza</strong>
+                <p>Se crea un único expediente operativo para la ocupación; no es un ledger contable.</p>
+              </div>
+            </div>
+            <div class="builder-dependent-grid">
+              <label>Importe (€)
+                <input id="depositAmount" name="depositAmount" type="number" inputmode="decimal" min="0.01" max="10000000" step="0.01" placeholder="Ej. 1700,00" disabled>
+              </label>
+            </div>
+          </section>
           <section id="wf06PaymentConfig" class="builder-checklist-editor" hidden aria-labelledby="wf06PaymentConfigTitle">
             <div class="builder-checklist-heading">
               <div>
@@ -291,7 +309,7 @@
   </main>
 
   <script src="./app.js?v=2026091902" defer></script>
-  <script type="module" src="./workflow-builder.js?v=2026092101"></script>
+  <script type="module" src="./workflow-builder.js?v=2026092102"></script>
   <script type="module" src="./auth-guard.js"></script>
 </body>
 </html>

@@ -200,8 +200,8 @@ El 19/09/2026 se detectó además una diferencia entre el PostgreSQL local y los
 | Historial | Operativo inicial | vista única de ejecuciones con tarea, Foto/Checklist/Documento, decisiones, revisión y cierre; filtros avanzados/paginación profunda quedan posteriores |
 | Ejecución genérica | Implementada; cierre auto validado E2E y `human_review` cubierto por regresión de integración | `manual_now`, snapshots, tarea materializada, cierre automático y revisión humana para pasos implementados |
 | Adaptador Limpieza | Pendiente | Legacy preservado |
-| Incidencias / Mantenimiento | Implementado en PR #281, pendiente de revisión/merge/despliegue | Expediente enlazado al outbox, ejecución y tarea transversal; acciones server-side idempotentes |
-| Inspección posterior | Implementada en PR #281, pendiente de revisión/merge/despliegue | `incident.resolved` activa aplicaciones `inspection` y reutiliza Foto/Checklist/Documento |
+| Incidencias / Mantenimiento | Implementado y desplegado; E2E humano diferido | PR #281 fusionado; expediente enlazado al outbox, ejecución y tarea transversal; acciones server-side idempotentes |
+| Inspección posterior | Implementada y desplegada; E2E humano diferido | `incident.resolved` activa aplicaciones `inspection` y reutiliza Foto/Checklist/Documento |
 
 ## 11. Incrementos
 
@@ -490,7 +490,7 @@ El valor declarativo `triggerType=event` pasa a ser capacidad ejecutable del mot
 
 ### Incremento — WF-05 · Incidencia / Mantenimiento / Inspección
 
-WF-05 está implementado en PR #281 y detenido en `READY_FOR_CHATGPT_REVIEW`:
+WF-05 está implementado y desplegado desde PR #281; el E2E humano permanece diferido a la batería final conjunta:
 
 - una apertura autorizada crea un expediente idempotente y publica `incident.created`;
 - el dispatcher común materializa una ejecución y una tarjeta por aplicación compatible;
@@ -501,12 +501,12 @@ WF-05 está implementado en PR #281 y detenido en `READY_FOR_CHATGPT_REVIEW`:
 - RLS, autorización por piso, revalidación del asignado, MFA privilegiado, auditoría y notificaciones están cubiertos por regresión PostgreSQL;
 - `incidents.html` ofrece apertura y seguimiento por RPC/RLS sin escritura directa cliente.
 
-No se ha fusionado ni desplegado. Los E2E humanos se realizarán en la batería final conjunta autorizada; las pruebas automáticas y guards no se han aplazado.
+PR #281 quedó fusionado y sus migraciones se aplicaron por el flujo normal de producción. Los E2E humanos se realizarán en la batería final conjunta autorizada; las pruebas automáticas y guards no se han aplazado.
 
 
 ### Incremento — WF-06 · Pago de alquiler + Reclamación
 
-WF-06 está implementado en PR #283 y en revisión:
+WF-06 está implementado y desplegado desde PR #283, fusionado en `main@cbe98db49be1916a96d04db7ad5517e416249739`:
 
 - `rent_payment` crea una obligación por ejecución sobre una ocupación exacta y soporta manual/fecha/recurrente;
 - solicitar pago, aplazar y registrar pago operan sobre la misma obligación/tarea/ejecución;
@@ -516,5 +516,26 @@ WF-06 está implementado en PR #283 y en revisión:
 - MFA privilegiado, idempotencia, auditoría, notificaciones y coherencia de actor/destino están cubiertos por `workflow-wf06-domain-regression.sql`;
 - la UI del Creador expone concepto, importe y vencimiento; Tareas usa un diálogo tipado para aplazar.
 
-No se considera desplegado ni VERIFIED hasta merge, migraciones remotas y verificación post-merge. El E2E humano permanece dentro de la batería final conjunta ya acordada.
+Las migraciones `20260921135000`, `20260921140500` y `20260921142000` están aplicadas en producción y los guards/Pages/migraciones quedaron verdes post-merge. No se marca `VERIFIED` porque el E2E humano permanece dentro de la batería final conjunta ya acordada. La suite completa de WF-07 descubrió seis deudas de contrato de WF-06 —CHECK físico de `flow_type`, ambigüedad de `status`, unicidad global de `payment_obligation_id`, orden de respuestas de información basado en un timestamp transaccional, referencias `task_id` no calificadas en la acción de reclamación y comparación de vencimientos locales contra `current_date` UTC— que WF-07 corrige mediante migraciones aditivas, sin alterar migraciones ya desplegadas. `continue` usa ahora el IDENTITY monotónico de `workflow_execution_events_v2`, por lo que una respuesta antigua no puede satisfacer una petición nueva incluso dentro de la misma transacción.
 
+
+
+### Incremento — WF-07 · Daños + Fianza
+
+WF-07 integra la fianza y las reclamaciones por daños sin crear contabilidad ni una segunda tarjeta:
+
+- `security_deposits_v2` conserva un único expediente operativo por ocupación;
+- recepción y revisión son ejecuciones separadas sobre la misma fianza;
+- revisión nace de `occupancy.offboarded` y nunca reactiva el acceso del antiguo inquilino;
+- `damage_claim` reutiliza `claims_v2`, evidencia Foto/Checklist/Documento y `tenant_tasks_v2`;
+- la respuesta del antiguo inquilino se registra externamente por la gestoría, con nota auditada;
+- devolución/retención solo se permite con evidencia completa y daños resueltos coherentes;
+- comunicaciones posteriores a la Baja usan email;
+- solo puede existir una reclamación de daños por fianza; el índice parcial y la desactivación de `open_damage_claim` cierran reintentos con claves distintas;
+- el gate de actor WF-07 revalida personal interno vigente y las policies RLS dependientes se recrean para quedar enlazadas al wrapper actual, evitando referencias por OID a una versión renombrada;
+- email usa `pg_net` + Vault + Edge Function con recibo idempotente, reintento acotado, recuperación de `sending` huérfano, cron cada cinco minutos e `Idempotency-Key` del proveedor;
+- la regresión PostgreSQL específica es `workflow-wf07-domain-regression.sql`.
+
+Contrato completo: `WORKFLOW_DAMAGE_DEPOSIT_CONTRACT.md`.
+
+WF-07 permanece `IN_PROGRESS` hasta revisión independiente, merge y verificación post-merge. El E2E humano se mantiene para la batería final conjunta.

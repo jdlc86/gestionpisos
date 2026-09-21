@@ -7,7 +7,7 @@ if command -v cygpath >/dev/null 2>&1; then
   export MSYS_NO_PATHCONV=1
 fi
 
-docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -e WF04_FOCUSED="${WF04_FOCUSED:-0}"   -e WF05_FOCUSED="${WF05_FOCUSED:-0}"   -e WF06_FOCUSED="${WF06_FOCUSED:-0}"   -v "$repo_path:/work:ro"   postgres:17-alpine   sh -ceu '
+docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -e WF04_FOCUSED="${WF04_FOCUSED:-0}"   -e WF05_FOCUSED="${WF05_FOCUSED:-0}"   -e WF06_FOCUSED="${WF06_FOCUSED:-0}"   -e WF07_FOCUSED="${WF07_FOCUSED:-0}"   -v "$repo_path:/work:ro"   postgres:17-alpine   sh -ceu '
     docker-entrypoint.sh postgres -c listen_addresses="" &
     postgres_pid=$!
 
@@ -40,10 +40,11 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -e WF04_FOCUSED="
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/local-property-staff-v3-alignment.sql
 
     # Reproduce historical Supabase table grants used by RLS and the cleaning swap UI.
-    # Production confirms authenticated can SELECT occupancies_v2; RLS policies depend on that
-    # table-level privilege before row policies can be evaluated.
-    # Production also has SELECT/INSERT/UPDATE on swaps and SELECT on debts.
-    psql -v ON_ERROR_STOP=1 -U postgres -c "grant select on public.occupancies_v2 to authenticated; grant select,insert,update on public.cleaning_swap_requests_v2 to authenticated; grant select on public.cleaning_debts_v2 to authenticated"
+    # Production confirms authenticated can SELECT occupancies_v2, profiles and user_roles;
+    # RLS policies depend on those table-level privileges before row policies can be evaluated.
+    # WF-07 claims_admin_read reads profiles/user_roles under RLS. Production also has
+    # SELECT/INSERT/UPDATE on swaps and SELECT on debts.
+    psql -v ON_ERROR_STOP=1 -U postgres -c "grant select on public.occupancies_v2, public.profiles, public.user_roles to authenticated; grant select,insert,update on public.cleaning_swap_requests_v2 to authenticated; grant select on public.cleaning_debts_v2 to authenticated"
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260913192729_beta0_enable_occupancies_v2_rls.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260913192821_beta0_occupancies_v2_read_policies.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260913205141_close_owners_and_occupancy_blockers.sql
@@ -72,6 +73,11 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -e WF04_FOCUSED="
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915082914_cleaning_photo_requests.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915094134_tenant_identity_model.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915094359_tenant_documents.sql
+
+    # El fixture workflow no carga toda la infraestructura de onboarding externo,
+    # pero producción sí tiene estas policies desde 20260916183835.
+    # Reproducimos únicamente la superficie RLS que consumen las tareas workflow.
+    psql -v ON_ERROR_STOP=1 -U postgres -c "drop policy if exists tenants_v2_self_read on public.tenants_v2; create policy tenants_v2_self_read on public.tenants_v2 for select to authenticated using(user_id=auth.uid()); drop policy if exists tenant_documents_v2_tenant_self_read on public.tenant_documents_v2; create policy tenant_documents_v2_tenant_self_read on public.tenant_documents_v2 for select to authenticated using(exists(select 1 from public.tenants_v2 t where t.id=tenant_documents_v2.tenant_id and t.user_id=auth.uid() and t.archived_at is null));"
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915100612_tenant_lifecycle_privacy.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915130911_add_occupancy_suspended_at.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260915131641_allow_suspended_occupancy_without_entry_v2.sql
@@ -144,6 +150,25 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -e WF04_FOCUSED="
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260921135000_wf06_rent_domain_core.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260921140500_wf06_rent_execution_binding.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260921142000_wf06_rent_domain_actions.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260921160000_wf07_damage_deposit_core.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260921161500_wf07_execution_binding.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260921163000_wf07_domain_actions.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260921164500_notification_email_dispatch.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260921165000_wf07_expand_workflow_flow_types.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260921170000_wf07_single_damage_claim.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260921171500_wf07_claims_read_contract.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260921173000_wf07_wf06_execution_ambiguity_fix.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260921174500_wf07_wf06_payment_obligation_index_fix.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260921180000_wf07_rebind_workflow_actor_rls.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260921181500_notification_email_retry.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260921183000_wf07_wf06_information_response_order_fix.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260921184500_wf07_wf06_business_date_fix.sql
+    if [ "$WF07_FOCUSED" = "1" ]; then
+      psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-wf07-domain-regression.sql
+      trap - EXIT
+      cleanup
+      exit 0
+    fi
     if [ "$WF06_FOCUSED" = "1" ]; then
       psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-wf06-domain-regression.sql
       trap - EXIT
@@ -152,7 +177,6 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -e WF04_FOCUSED="
     fi
     if [ "$WF05_FOCUSED" = "1" ]; then
       psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-wf05-domain-regression.sql
-    psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-wf06-domain-regression.sql
       trap - EXIT
       cleanup
       exit 0
@@ -187,6 +211,8 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -e WF04_FOCUSED="
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-cleaning-adapter-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-wf04-domain-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-wf05-domain-regression.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-wf06-domain-regression.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-wf07-domain-regression.sql
 
     trap - EXIT
     cleanup

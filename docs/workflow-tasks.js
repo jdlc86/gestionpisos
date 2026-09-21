@@ -24,6 +24,25 @@ const postponeForm=document.getElementById("taskPostponeForm");
 const postponeDate=document.getElementById("taskPostponeDate");
 const postponeReason=document.getElementById("taskPostponeReason");
 const postponeCancel=document.getElementById("taskPostponeCancel");
+const noteDialog=document.getElementById("taskNoteDialog");
+const noteForm=document.getElementById("taskNoteForm");
+const noteEyebrow=document.getElementById("taskNoteEyebrow");
+const noteTitle=document.getElementById("taskNoteDialogTitle");
+const noteCopy=document.getElementById("taskNoteDialogCopy");
+const noteLabel=document.getElementById("taskNoteLabel");
+const noteText=document.getElementById("taskNoteText");
+const noteCancel=document.getElementById("taskNoteCancel");
+const noteSubmit=document.getElementById("taskNoteSubmit");
+const moneyDialog=document.getElementById("taskMoneyDialog");
+const moneyForm=document.getElementById("taskMoneyForm");
+const moneyEyebrow=document.getElementById("taskMoneyEyebrow");
+const moneyTitle=document.getElementById("taskMoneyDialogTitle");
+const moneyCopy=document.getElementById("taskMoneyDialogCopy");
+const moneyAmountLabel=document.getElementById("taskMoneyAmountLabel");
+const moneyAmount=document.getElementById("taskMoneyAmount");
+const moneyReason=document.getElementById("taskMoneyReason");
+const moneyCancel=document.getElementById("taskMoneyCancel");
+const moneySubmit=document.getElementById("taskMoneySubmit");
 
 let currentUser=null;
 let tasks=[];
@@ -314,6 +333,18 @@ function errorText(error){
   if(message.includes("workflow_wf06_claim_not_due"))return "Este pago todavía no ha vencido y no puede escalarse a reclamación.";
   if(message.includes("workflow_wf06_information_response_required"))return "El inquilino todavía no ha aportado información después de la última solicitud.";
   if(message.includes("workflow_wf06_transition_mismatch"))return "El estado financiero cambió y esta acción ya no es válida. Recarga la tarea.";
+  if(message.includes("workflow_wf07_assignee_not_eligible"))return "La persona asignada ya no tiene autorización vigente para gestionar esta fianza o reclamación.";
+  if(message.includes("workflow_wf07_deposit_subject_not_current"))return "La fianza ya no coincide con esta ocupación. No se ha aplicado ningún cambio.";
+  if(message.includes("workflow_wf07_damage_subject_not_current"))return "La reclamación por daños ya no coincide con esta fianza. No se ha aplicado ningún cambio.";
+  if(message.includes("workflow_wf07_damage_flow_unavailable"))return "Publica primero un flujo de Reclamación por daños compatible para este piso.";
+  if(message.includes("workflow_wf07_damage_evidence_required"))return "Completa la evidencia configurada antes de notificar la reclamación.";
+  if(message.includes("workflow_wf07_damage_claims_unresolved"))return "Todavía hay reclamaciones por daños pendientes de resolución.";
+  if(message.includes("workflow_wf07_deposit_evidence_required"))return "Completa la evidencia configurada antes de devolver o retener la fianza.";
+  if(message.includes("workflow_wf07_partial_hold_amount_invalid"))return "La retención parcial debe ser menor que la fianza y estar respaldada por daños resueltos.";
+  if(message.includes("workflow_wf07_full_hold_not_justified"))return "La retención total requiere daños resueltos por al menos el importe completo de la fianza.";
+  if(message.includes("workflow_wf07_refund_has_damage_settlement"))return "No puedes registrar devolución total porque existen daños resueltos con importe reconocido.";
+  if(message.includes("workflow_wf07_damage_resolution_invalid"))return "La resolución requiere decisión registrada, evidencia completa y un importe válido.";
+  if(message.includes("workflow_wf07_transition_mismatch"))return "El estado de la fianza o de daños cambió y esta acción ya no es válida. Recarga la tarea.";
   if(message.includes("workflow_review_actor_forbidden"))return "Solo un gestor autorizado puede revisar este workflow.";
   if(message.includes("workflow_photo_review_requires_photo_review_flow"))return "Este workflow debe revisarse desde Fotoverificaciones.";
   if(message.includes("workflow_review_action_not_supported"))return "La revisión ya no está disponible para el estado actual.";
@@ -1054,35 +1085,252 @@ function requestPostponeDetails(){
   });
 }
 
+function requestNoteDetails({
+  eyebrow="GESTIÓN",
+  title="Añadir nota",
+  copy="La nota quedará registrada en el historial.",
+  label="Detalle",
+  submitLabel="Confirmar",
+  placeholder=""
+}={}){
+  return new Promise(resolve=>{
+    if(!noteDialog?.showModal||!noteForm||!noteText){
+      resolve(null);
+      return;
+    }
+
+    if(noteEyebrow)noteEyebrow.textContent=eyebrow;
+    if(noteTitle)noteTitle.textContent=title;
+    if(noteCopy)noteCopy.textContent=copy;
+    if(noteLabel)noteLabel.textContent=label;
+    if(noteSubmit)noteSubmit.textContent=submitLabel;
+    noteText.placeholder=placeholder;
+    noteText.value="";
+
+    const cleanup=()=>{
+      noteForm.removeEventListener("submit",onSubmit);
+      noteCancel?.removeEventListener("click",onCancel);
+      noteDialog.removeEventListener("cancel",onCancel);
+    };
+    const finish=value=>{
+      cleanup();
+      if(noteDialog.open)noteDialog.close();
+      resolve(value);
+    };
+    const onCancel=event=>{
+      event?.preventDefault?.();
+      finish(null);
+    };
+    const onSubmit=event=>{
+      event.preventDefault();
+      const value=String(noteText.value||"").trim();
+      if(!value){
+        setStatus("Añade el detalle requerido para continuar.",true);
+        return;
+      }
+      finish(value);
+    };
+
+    noteForm.addEventListener("submit",onSubmit);
+    noteCancel?.addEventListener("click",onCancel);
+    noteDialog.addEventListener("cancel",onCancel);
+    noteDialog.showModal();
+    noteText.focus();
+  });
+}
+
+function requestMoneyDetails({
+  eyebrow="FIANZA",
+  title="Importe",
+  copy="El importe y la nota quedarán auditados.",
+  amountLabel="Importe (€)",
+  submitLabel="Confirmar",
+  allowZero=false
+}={}){
+  return new Promise(resolve=>{
+    if(!moneyDialog?.showModal||!moneyForm||!moneyAmount||!moneyReason){
+      resolve(null);
+      return;
+    }
+
+    if(moneyEyebrow)moneyEyebrow.textContent=eyebrow;
+    if(moneyTitle)moneyTitle.textContent=title;
+    if(moneyCopy)moneyCopy.textContent=copy;
+    if(moneyAmountLabel)moneyAmountLabel.textContent=amountLabel;
+    if(moneySubmit)moneySubmit.textContent=submitLabel;
+    moneyAmount.min=allowZero?"0":"0.01";
+    moneyAmount.value="";
+    moneyReason.value="";
+
+    const cleanup=()=>{
+      moneyForm.removeEventListener("submit",onSubmit);
+      moneyCancel?.removeEventListener("click",onCancel);
+      moneyDialog.removeEventListener("cancel",onCancel);
+    };
+    const finish=value=>{
+      cleanup();
+      if(moneyDialog.open)moneyDialog.close();
+      resolve(value);
+    };
+    const onCancel=event=>{
+      event?.preventDefault?.();
+      finish(null);
+    };
+    const onSubmit=event=>{
+      event.preventDefault();
+      const euros=Number(String(moneyAmount.value||"").replace(",","."));
+      const note=String(moneyReason.value||"").trim();
+      const cents=Math.round(euros*100);
+      const valid=Number.isFinite(euros)
+        && Number.isInteger(cents)
+        && (allowZero?cents>=0:cents>=1)
+        && cents<=1000000000;
+      if(!valid||!note){
+        setStatus("Indica un importe válido y una nota.",true);
+        return;
+      }
+      finish({amountCents:cents,note});
+    };
+
+    moneyForm.addEventListener("submit",onSubmit);
+    moneyCancel?.addEventListener("click",onCancel);
+    moneyDialog.addEventListener("cancel",onCancel);
+    moneyDialog.showModal();
+    moneyAmount.focus();
+  });
+}
+
 async function applyWorkflowAction(task,action,button){
   let note=null;
   let effectiveDate=null;
+  let amountCents=null;
+  const execution=executionForTask(task);
+  const flowType=execution?.spec_snapshot?.flowType||"";
 
-  if(action.action_key==="postpone"){
+  if(action.action_key==="open_damage_claim"){
+    const details=await requestMoneyDetails({
+      eyebrow:"FIANZA",
+      title:"Abrir reclamación por daños",
+      copy:"La revisión de la fianza seguirá abierta y la reclamación reutilizará este expediente.",
+      amountLabel:"Daños reclamados (€)",
+      submitLabel:"Abrir reclamación"
+    });
+    if(!details)return;
+    note=details.note;
+    amountCents=details.amountCents;
+  }else if(action.action_key==="partial_hold"){
+    const details=await requestMoneyDetails({
+      eyebrow:"FIANZA",
+      title:"Retención parcial",
+      copy:"El importe retenido no puede superar los daños resueltos ni el total de la fianza.",
+      amountLabel:"Importe a retener (€)",
+      submitLabel:"Confirmar retención"
+    });
+    if(!details)return;
+    note=details.note;
+    amountCents=details.amountCents;
+  }else if(action.action_key==="resolve"&&flowType==="damage_claim"){
+    const details=await requestMoneyDetails({
+      eyebrow:"DAÑOS",
+      title:"Resolver reclamación",
+      copy:"Registra el importe finalmente reconocido. Puede ser 0 € y nunca superar el importe reclamado.",
+      amountLabel:"Importe reconocido (€)",
+      submitLabel:"Resolver",
+      allowZero:true
+    });
+    if(!details)return;
+    note=details.note;
+    amountCents=details.amountCents;
+  }else if(action.action_key==="postpone"){
     const details=await requestPostponeDetails();
     if(!details)return;
     note=details.note;
     effectiveDate=details.effectiveDate;
   }else if(action.requires_note){
-    const promptText=["reject","review_reject"].includes(action.action_key)
-      ?"Indica el motivo del rechazo:"
+    const noteUi=["reject","review_reject"].includes(action.action_key)
+      ?{
+          eyebrow:"REVISIÓN",
+          title:"Motivo del rechazo",
+          copy:"El motivo quedará visible en el historial de la gestión.",
+          label:"Motivo",
+          submitLabel:"Confirmar rechazo",
+          placeholder:"Explica por qué se rechaza"
+        }
       :action.action_key==="request_info"
-        ?"Indica qué información necesitas:"
+        ?{
+            eyebrow:flowType==="damage_claim"?"DAÑOS":"GESTIÓN",
+            title:"Solicitar información",
+            copy:flowType==="damage_claim"||flowType==="deposit_review"
+              ?"La solicitud se enviará por email; la respuesta externa se registrará después en esta misma gestión."
+              :"La gestión quedará en espera hasta recibir la información.",
+            label:"Información necesaria",
+            submitLabel:"Solicitar",
+            placeholder:"Describe exactamente qué información necesitas"
+          }
         :action.action_key==="provide_info"
-          ?"Añade la información solicitada:"
+          ?{
+              eyebrow:"RECLAMACIÓN",
+              title:"Aportar información",
+              copy:"La reclamación seguirá abierta hasta que la gestoría la retome.",
+              label:"Respuesta",
+              submitLabel:"Enviar información",
+              placeholder:"Añade la información solicitada"
+            }
           :action.action_key==="claim"
-            ?"Indica el motivo de la reclamación:"
+            ?{
+                eyebrow:"PAGO",
+                title:"Abrir reclamación",
+                copy:"El motivo quedará enlazado a la misma obligación de pago.",
+                label:"Motivo",
+                submitLabel:"Crear reclamación",
+                placeholder:"Indica el motivo de la reclamación"
+              }
             :action.action_key==="dispute"
-              ?"Indica por qué disputas la reclamación:"
-              :action.action_key==="resolve"
-                ?"Describe la resolución aplicada:"
-                :"Añade la nota obligatoria para esta acción:";
-    note=window.prompt(promptText);
+              ?{
+                  eyebrow:"RECLAMACIÓN",
+                  title:"Disputar reclamación",
+                  copy:"La gestoría recibirá tu motivo y la reclamación seguirá abierta.",
+                  label:"Motivo de la disputa",
+                  submitLabel:"Registrar disputa",
+                  placeholder:"Explica por qué disputas la reclamación"
+                }
+              :action.action_key==="record_acceptance"
+                ?{
+                    eyebrow:"DAÑOS",
+                    title:"Registrar aceptación externa",
+                    copy:"Usa esta acción solo cuando la aceptación se haya recibido por un canal externo.",
+                    label:"Detalle de la respuesta",
+                    submitLabel:"Registrar aceptación",
+                    placeholder:"Indica cómo y cuándo se recibió la aceptación"
+                  }
+                :action.action_key==="record_dispute"
+                  ?{
+                      eyebrow:"DAÑOS",
+                      title:"Registrar disputa externa",
+                      copy:"Usa esta acción solo cuando la disputa se haya recibido por un canal externo.",
+                      label:"Detalle de la respuesta",
+                      submitLabel:"Registrar disputa",
+                      placeholder:"Resume la disputa recibida y el canal utilizado"
+                    }
+                  :action.action_key==="resolve"
+                    ?{
+                        eyebrow:"GESTIÓN",
+                        title:"Resolver",
+                        copy:"La resolución quedará auditada en el historial.",
+                        label:"Resolución",
+                        submitLabel:"Resolver",
+                        placeholder:"Describe la resolución aplicada"
+                      }
+                    :{
+                        eyebrow:"GESTIÓN",
+                        title:"Añadir nota",
+                        copy:"La nota quedará registrada en el historial.",
+                        label:"Detalle",
+                        submitLabel:"Confirmar",
+                        placeholder:"Añade la nota obligatoria"
+                      };
+    note=await requestNoteDetails(noteUi);
     if(note===null)return;
-    if(!note.trim()){
-      setStatus("Esta acción requiere una nota.",true);
-      return;
-    }
   }
 
   const {storageKey,key}=requestKey(task,action);
@@ -1091,16 +1339,23 @@ async function applyWorkflowAction(task,action,button){
   button.textContent="Aplicando…";
   setStatus("Aplicando la acción sobre tarea y ejecución en una única transacción…");
 
-  const rpcName=action.action_key==="postpone"
-    ?"apply_wf06_payment_action_v1"
-    :"apply_workflow_task_action_v1";
+  let rpcName="apply_workflow_task_action_v1";
   const rpcArgs={
     p_task_id:task.id,
     p_action_key:action.action_key,
     p_request_key:key,
     p_note:note
   };
-  if(action.action_key==="postpone")rpcArgs.p_effective_date=effectiveDate;
+  if(action.action_key==="postpone"){
+    rpcName="apply_wf06_payment_action_v1";
+    rpcArgs.p_effective_date=effectiveDate;
+  }else if(["open_damage_claim","partial_hold"].includes(action.action_key)){
+    rpcName="apply_wf07_deposit_action_v1";
+    rpcArgs.p_amount_cents=amountCents;
+  }else if(action.action_key==="resolve"&&flowType==="damage_claim"){
+    rpcName="apply_wf07_damage_action_v1";
+    rpcArgs.p_settled_amount_cents=amountCents;
+  }
 
   const {data,error}=await supabase.rpc(rpcName,rpcArgs);
 
@@ -1144,6 +1399,22 @@ async function applyWorkflowAction(task,action,button){
     setStatus("Solicitud de pago registrada en la misma obligación.");
   }else if(action.action_key==="register_payment"){
     setStatus("Pago registrado. Obligación, tarea y ejecución quedaron cerradas.");
+  }else if(action.action_key==="register_receipt"){
+    setStatus("Recepción de la fianza registrada. El expediente queda disponible para la revisión de salida.");
+  }else if(action.action_key==="start_review"){
+    setStatus("Revisión de fianza iniciada.");
+  }else if(action.action_key==="open_damage_claim"){
+    setStatus("Reclamación por daños creada y enviada al flujo configurado.");
+  }else if(action.action_key==="partial_hold"){
+    setStatus("Retención parcial registrada y fianza cerrada.");
+  }else if(action.action_key==="hold"){
+    setStatus("Retención total registrada y fianza cerrada.");
+  }else if(action.action_key==="refund"){
+    setStatus("Devolución total registrada y fianza cerrada.");
+  }else if(action.action_key==="record_acceptance"){
+    setStatus("Aceptación externa registrada. Ya puedes resolver la reclamación.");
+  }else if(action.action_key==="record_dispute"){
+    setStatus("Disputa externa registrada. Ya puedes resolver la reclamación.");
   }else if(action.action_key==="claim"){
     setStatus("Reclamación creada. El pago quedó escalado al flujo de reclamación configurado.");
   }else if(action.action_key==="dispute"){

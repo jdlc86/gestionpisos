@@ -363,12 +363,13 @@ grep -Fq 'class="builder-editor-state"' docs/workflow-builder.html
 
 # WF-03 authoring: Limpieza uses only the specialized domain adapter path.
 node --check docs/workflow-builder.js
-grep -Fq './workflow-builder.js?v=2026092101' docs/workflow-builder.html
+grep -Fq './workflow-builder.js?v=2026092102' docs/workflow-builder.html
 grep -Fq 'id="cleaningStepNote"' docs/workflow-builder.html
 grep -Fq 'id="cleaningCloseNote"' docs/workflow-builder.html
 grep -Fq 'function updateCleaningContract()' docs/workflow-builder.js
 grep -Fq 'const genericSteps=[field("stepPhoto"),field("stepChecklist"),field("stepDocument")]' docs/workflow-builder.js
-grep -Fq 'if(specialized)accept.checked=true' docs/workflow-builder.js
+grep -Fq 'if(specialized&&!wf07)accept.checked=true' docs/workflow-builder.js
+grep -Fq 'if(wf07)accept.checked=false' docs/workflow-builder.js
 grep -Fq 'if(specialized)close.value="domain_adapter"' docs/workflow-builder.js
 grep -Fq 'organizationOption.disabled=specialized' docs/workflow-builder.js
 test -s supabase/migrations/20260920143000_wf03_cleaning_authoring_contract.sql
@@ -403,7 +404,7 @@ test -s docs/cleaning.html
 test -s docs/cleaning.js
 node --check docs/cleaning.js
 node --check docs/workflow-tasks.js
-grep -Fq './workflow-tasks.js?v=2026092101' docs/workflow-tasks.html
+grep -Fq './workflow-tasks.js?v=2026092103' docs/workflow-tasks.html
 grep -Fq 'function cleaningExecutionForTask(task)' docs/workflow-tasks.js
 grep -Fq 'url.searchParams.set("workflow_task_id",task.id)' docs/workflow-tasks.js
 grep -Fq 'renderCleaningAdapter(task,article)' docs/workflow-tasks.js

@@ -92,8 +92,45 @@
     </form>
   </dialog>
 
+  <dialog id="taskNoteDialog" class="task-dialog" aria-labelledby="taskNoteDialogTitle">
+    <form id="taskNoteForm" class="task-dialog-card">
+      <div>
+        <p id="taskNoteEyebrow" class="eyebrow">GESTIÓN</p>
+        <h2 id="taskNoteDialogTitle">Añadir nota</h2>
+        <p id="taskNoteDialogCopy" class="task-dialog-copy"></p>
+      </div>
+      <label><span id="taskNoteLabel">Detalle</span>
+        <textarea id="taskNoteText" rows="4" maxlength="1000" required></textarea>
+      </label>
+      <div class="task-dialog-actions">
+        <button id="taskNoteCancel" type="button" class="secondary">Cancelar</button>
+        <button id="taskNoteSubmit" type="submit" class="primary">Confirmar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="taskMoneyDialog" class="task-dialog" aria-labelledby="taskMoneyDialogTitle">
+    <form id="taskMoneyForm" class="task-dialog-card">
+      <div>
+        <p id="taskMoneyEyebrow" class="eyebrow">FIANZA</p>
+        <h2 id="taskMoneyDialogTitle">Importe</h2>
+        <p id="taskMoneyDialogCopy" class="task-dialog-copy"></p>
+      </div>
+      <label><span id="taskMoneyAmountLabel">Importe (€)</span>
+        <input id="taskMoneyAmount" type="number" inputmode="decimal" min="0.01" max="10000000" step="0.01" required>
+      </label>
+      <label>Motivo / resolución
+        <textarea id="taskMoneyReason" rows="4" maxlength="1000" required></textarea>
+      </label>
+      <div class="task-dialog-actions">
+        <button id="taskMoneyCancel" type="button" class="secondary">Cancelar</button>
+        <button id="taskMoneySubmit" type="submit" class="primary">Confirmar</button>
+      </div>
+    </form>
+  </dialog>
+
   <script src="./app.js?v=2026091902" defer></script>
-  <script type="module" src="./workflow-tasks.js?v=2026092101"></script>
+  <script type="module" src="./workflow-tasks.js?v=2026092103"></script>
   <script type="module" src="./auth-guard.js"></script>
 </body>
 </html>

@@ -32,6 +32,7 @@ Acciones:
 - `postpone`: mantiene la misma obligación y ejecución, cambia el vencimiento y exige motivo;
 - `register_payment`: marca `paid` y cierra tarea + ejecución;
 - `claim`: solo si el pago ya llegó a su fecha de vencimiento y existe un flujo `rent_claim` compatible con ejecutor resoluble.
+- La fecha de vencimiento, la validación de aplazamiento y la elegibilidad para `claim` usan la misma fecha de negocio de `scheduledTimezone` (`Europe/Madrid` por defecto); nunca se compara un vencimiento local contra `current_date` UTC.
 
 ADMIN/ROOT requieren AAL2 para mutaciones financieras. EMPLOYEE debe conservar escritura vigente sobre el piso.
 

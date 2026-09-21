@@ -193,3 +193,13 @@ Reglas:
 - `waiting_info` es no terminal y `continue` conserva la misma ejecución;
 - resolver exige decisión previa del inquilino y cierra expediente, tarea y ejecución de forma coherente.
 
+## Reglas adicionales WF-07 — Daños / Fianza
+
+- `deposit_receipt` usa `scope_type=occupancy` y crea una sola `security_deposits_v2` por estancia;
+- `deposit_review` consume `occupancy.offboarded`, enlaza la fianza existente y exige evidencia transversal antes de resolver;
+- la ausencia de fianza revisable en una Baja se clasifica como `workflow_domain_lifecycle_mismatch` terminal para no bloquear la cola;
+- `damage_claim.created` enlaza `damage_claim_id` y `security_deposit_id` a una única ejecución/tarea;
+- el antiguo tenant no recupera acceso: aceptación, disputa e información recibidas por canales externos se registran server-side por el gestor;
+- devolver/retener exige daños resueltos coherentes y nunca puede superar el importe de la fianza;
+- cada acción mantiene idempotencia, historial funcional y auditoría.
+

@@ -141,6 +141,21 @@ as $$
   );
 $$;
 
+do $business_date_contract$
+begin
+  if private.wf06_business_date_v1(
+    'Europe/Madrid','2026-09-21 22:30:00+00'::timestamptz
+  ) is distinct from date '2026-09-22' then
+    raise exception 'WF06 Europe/Madrid business date ignored timezone boundary';
+  end if;
+  if private.wf06_business_date_v1(
+    'Pacific/Pago_Pago','2026-09-21 22:30:00+00'::timestamptz
+  ) is distinct from date '2026-09-21' then
+    raise exception 'WF06 business date helper returned wrong local date';
+  end if;
+end;
+$business_date_contract$;
+
 do $authoring_contract$
 begin
   if not public.workflow_authoring_complete_v1(pg_temp.wf06_payment_spec()) then
@@ -461,6 +476,30 @@ $claim_created_once$;
 select private.process_pending_workflow_events_v1(50);
 select private.process_pending_workflow_events_v1(50);
 
+do $claim_dispatch_diagnostic$
+declare
+  v_status text;
+  v_error_code text;
+  v_error_key text;
+begin
+  select d.status,d.error_code,d.error_key
+  into v_status,v_error_code,v_error_key
+  from public.workflow_event_dispatches_v2 d
+  join public.workflow_event_outbox_v2 e on e.id=d.event_id
+  where e.event_type='rent_claim.created'
+    and e.source_kind='rent_claim'
+    and e.source_id=current_setting('wf06.claim')::uuid
+    and d.application_id=current_setting('wf06.claim_app')::uuid;
+
+  if v_status is distinct from 'executed' then
+    raise exception 'WF06 rent claim dispatch failed: status=%, code=%, key=%',
+      coalesce(v_status,'missing'),
+      coalesce(v_error_code,'null'),
+      coalesce(v_error_key,'null');
+  end if;
+end;
+$claim_dispatch_diagnostic$;
+
 select set_config('wf06.claim_execution',(
   select id::text
   from public.workflow_executions_v2
@@ -491,6 +530,17 @@ begin
       and t.status='pending'
   ) then
     raise exception 'WF06 claim did not materialize one canonical shared card';
+  end if;
+  if (
+    select count(*)
+    from public.workflow_executions_v2 e
+    join public.claims_v2 c
+      on c.obligation_id=e.payment_obligation_id
+    where c.id=current_setting('wf06.claim')::uuid
+      and e.payment_obligation_id is not null
+      and e.spec_snapshot->>'flowType' in ('rent_payment','rent_claim')
+  )<>2 then
+    raise exception 'WF06 payment and claim executions did not share one canonical obligation';
   end if;
   if exists(
     select 1 from public.tenant_task_actions_v2
@@ -526,6 +576,16 @@ select set_config('request.jwt.claims',jsonb_build_object(
 )::text,true);
 do $tenant_shared_card$
 begin
+  if not public.has_current_platform_access_v1() then
+    raise exception 'WF06 exact tenant failed current platform access gate';
+  end if;
+  if (
+    select count(*) from public.tenants_v2
+    where id=current_setting('wf06.tenant')::uuid
+      and user_id=current_setting('wf06.tenant_user')::uuid
+  )<>1 then
+    raise exception 'WF06 exact tenant cannot read own tenant identity';
+  end if;
   if not public.workflow_execution_actor_current_v1(
     current_setting('wf06.claim_execution')::uuid
   ) then
@@ -535,7 +595,16 @@ begin
     select count(*) from public.tenant_tasks_v2
     where id=current_setting('wf06.claim_task')::uuid
   )<>1 then
-    raise exception 'WF06 exact tenant cannot read shared claim task';
+    raise exception
+      'WF06 exact tenant cannot read shared claim task: uid=%, platform=%, tenant_visible=%, actor_gate=%',
+      auth.uid(),
+      public.has_current_platform_access_v1(),
+      (select count(*) from public.tenants_v2
+       where id=current_setting('wf06.tenant')::uuid
+         and user_id=auth.uid()),
+      public.workflow_execution_actor_current_v1(
+        current_setting('wf06.claim_execution')::uuid
+      );
   end if;
   if (
     select count(*) from public.tenant_task_actions_v2
@@ -564,6 +633,54 @@ select set_config('request.jwt.claims',jsonb_build_object(
 select * from public.apply_workflow_task_action_v1(
   current_setting('wf06.claim_task')::uuid,
   'continue','wf06-continue',null
+);
+reset role;
+
+-- Una respuesta vieja no puede satisfacer una petición nueva.
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf06.staff'),'role','authenticated','aal','aal1'
+)::text,true);
+select * from public.apply_workflow_task_action_v1(
+  current_setting('wf06.claim_task')::uuid,
+  'request_info','wf06-request-info-2','Aporta justificante actualizado'
+);
+do $wf06_fresh_response_required$
+begin
+  begin
+    perform *
+    from public.apply_workflow_task_action_v1(
+      current_setting('wf06.claim_task')::uuid,
+      'continue','wf06-continue-too-early',null
+    );
+    raise exception 'WF06 accepted continue using a stale information response';
+  exception
+    when sqlstate '55000' then
+      if position('workflow_wf06_information_response_required' in sqlerrm)=0 then
+        raise;
+      end if;
+  end;
+end;
+$wf06_fresh_response_required$;
+reset role;
+
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf06.tenant_user'),'role','authenticated','aal','aal1'
+)::text,true);
+select * from public.apply_workflow_task_action_v1(
+  current_setting('wf06.claim_task')::uuid,
+  'provide_info','wf06-provide-info-2','Justificante actualizado aportado'
+);
+reset role;
+
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf06.staff'),'role','authenticated','aal','aal1'
+)::text,true);
+select * from public.apply_workflow_task_action_v1(
+  current_setting('wf06.claim_task')::uuid,
+  'continue','wf06-continue-2',null
 );
 reset role;
 
@@ -639,7 +756,7 @@ begin
     from public.workflow_execution_events_v2
     where execution_id=current_setting('wf06.claim_execution')::uuid
       and event_type='wf06_claim_action'
-  )<>6 then
+  )<>9 then
     raise exception 'WF06 claim action history count is inconsistent';
   end if;
 
@@ -665,7 +782,7 @@ begin
     where entity_type='workflow_execution'
       and entity_id=current_setting('wf06.claim_execution')
       and action='workflow_wf06_claim_action'
-  )<>6 then
+  )<>9 then
     raise exception 'WF06 claim audit trail is incomplete';
   end if;
 end;

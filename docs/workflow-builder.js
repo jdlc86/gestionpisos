@@ -43,6 +43,8 @@ const wf04StepNote=document.getElementById("wf04StepNote");
 const wf05StepNote=document.getElementById("wf05StepNote");
 const wf06StepNote=document.getElementById("wf06StepNote");
 const wf06PaymentConfig=document.getElementById("wf06PaymentConfig");
+const wf07StepNote=document.getElementById("wf07StepNote");
+const wf07DepositConfig=document.getElementById("wf07DepositConfig");
 const checklistEditor=document.getElementById("checklistEditor");
 const checklistItemsBox=document.getElementById("checklistItems");
 const addChecklistItemButton=document.getElementById("addChecklistItem");
@@ -67,7 +69,7 @@ let draftVisibleLimit=12;
 let assignmentPeople=[];
 
 const labels={
-  flowType:{cleaning:"Limpieza",inspection:"Inspección",maintenance:"Mantenimiento",rent_payment:"Pago de alquiler",rent_claim:"Reclamación de alquiler",checkin:"Check-in",checkout:"Check-out",custom:"Personalizado"},
+  flowType:{cleaning:"Limpieza",inspection:"Inspección",maintenance:"Mantenimiento",rent_payment:"Pago de alquiler",rent_claim:"Reclamación de alquiler",deposit_receipt:"Fianza · recepción",deposit_review:"Fianza · revisión",damage_claim:"Reclamación por daños",checkin:"Check-in",checkout:"Check-out",custom:"Personalizado"},
   scopeType:{property:"Un piso",organization:"Toda la organización",room:"Una habitación",occupancy:"Una ocupación / inquilino"},
   triggerType:{manual:"Manual",recurring:"Recurrente",scheduled_once:"Fecha concreta",event:"Por evento"},
   eventType:{
@@ -75,7 +77,8 @@ const labels={
     "occupancy.offboarded":"Baja de ocupación confirmada",
     "incident.created":"Incidencia abierta",
     "incident.resolved":"Incidencia resuelta",
-    "rent_claim.created":"Reclamación de alquiler creada"
+    "rent_claim.created":"Reclamación de alquiler creada",
+    "damage_claim.created":"Reclamación por daños creada"
   },
   recurrence:{weekly:"Cada semana",biweekly:"Cada 2 semanas",monthly:"Cada mes",custom:"Personalizada"},
   customUnit:{day:"día(s)",week:"semana(s)",month:"mes(es)"},
@@ -91,9 +94,9 @@ function label(group,key){return labels[group]?.[key]||key||"Pendiente"}
 function setChecked(name,next){const node=field(name);if(node)node.checked=Boolean(next)}
 
 function assignmentPersonCandidates(scope=value("scopeType")){
-  const financial=["rent_payment","rent_claim"].includes(value("flowType"));
+  const internalDomain=["rent_payment","rent_claim","deposit_receipt","deposit_review","damage_claim"].includes(value("flowType"));
   return assignmentPeople.filter(person=>
-    financial
+    internalDomain
       ?["admin","employee"].includes(person.role)
       :(scope!=="organization"||person.role!=="tenant")
         &&(scope!=="occupancy"||person.role==="tenant")
@@ -170,22 +173,22 @@ function updateAssignmentFields({clearHidden=false}={}){
   const roleSelect=field("assignmentRole");
   const personSelect=field("assignmentUserId");
   const eventDriven=value("triggerType")==="event";
-  const financial=["rent_payment","rent_claim"].includes(value("flowType"));
-  const rentPayment=value("flowType")==="rent_payment";
+  const internalDomain=["rent_payment","rent_claim","deposit_receipt","deposit_review","damage_claim"].includes(value("flowType"));
+  const occupancyInternal=["rent_payment","deposit_receipt"].includes(value("flowType"));
   const rotationOption=typeSelect?.querySelector('option[value="active_occupants_rotation"]');
   const responsibleOption=typeSelect?.querySelector('option[value="property_responsible"]');
   const manualOption=typeSelect?.querySelector('option[value="manual"]');
   const adminRoleOption=roleSelect?.querySelector('option[value="admin"]');
   const employeeRoleOption=roleSelect?.querySelector('option[value="employee"]');
   const tenantRoleOption=roleSelect?.querySelector('option[value="tenant"]');
-  if(rotationOption)rotationOption.disabled=scope==="organization"||financial;
+  if(rotationOption)rotationOption.disabled=scope==="organization"||internalDomain;
   if(responsibleOption)responsibleOption.disabled=scope==="organization";
-  if(manualOption)manualOption.disabled=eventDriven||financial;
-  if(financial&&["manual","active_occupants_rotation"].includes(type))typeSelect.value="";
+  if(manualOption)manualOption.disabled=eventDriven||internalDomain;
+  if(internalDomain&&["manual","active_occupants_rotation"].includes(type))typeSelect.value="";
   if(eventDriven&&type==="manual")typeSelect.value="";
-  if(adminRoleOption)adminRoleOption.disabled=scope==="occupancy"&&!rentPayment;
-  if(employeeRoleOption)employeeRoleOption.disabled=scope==="occupancy"&&!rentPayment;
-  if(tenantRoleOption)tenantRoleOption.disabled=scope==="organization"||financial;
+  if(adminRoleOption)adminRoleOption.disabled=scope==="occupancy"&&!occupancyInternal;
+  if(employeeRoleOption)employeeRoleOption.disabled=scope==="occupancy"&&!occupancyInternal;
+  if(tenantRoleOption)tenantRoleOption.disabled=scope==="organization"||internalDomain;
   if(scope==="organization"&&["active_occupants_rotation","property_responsible"].includes(type))typeSelect.value="";
 
   const selected=personSelect?.value||"";
@@ -206,21 +209,21 @@ function updateAssignmentFields({clearHidden=false}={}){
     if(value("assignmentType")!=="fixed_person"&&personSelect)personSelect.value="";
     if(value("assignmentType")!=="role"&&roleSelect)roleSelect.value="";
   }
-  if((scope==="organization"||financial)&&roleSelect?.value==="tenant")roleSelect.value="";
-  if(scope==="occupancy"&&!rentPayment&&["admin","employee"].includes(roleSelect?.value))roleSelect.value="";
+  if((scope==="organization"||internalDomain)&&roleSelect?.value==="tenant")roleSelect.value="";
+  if(scope==="occupancy"&&!occupancyInternal&&["admin","employee"].includes(roleSelect?.value))roleSelect.value="";
 }
 
 function assignmentConfigurationComplete(data){
   if(!data.assignmentType)return false;
   const wf05Event=["incident.created","incident.resolved"].includes(data.eventType);
-  const financial=["rent_payment","rent_claim"].includes(data.flowType);
-  if(["checkin","checkout"].includes(data.flowType)||wf05Event||financial){
+  const internalDomain=["rent_payment","rent_claim","deposit_receipt","deposit_review","damage_claim"].includes(data.flowType);
+  if(["checkin","checkout"].includes(data.flowType)||wf05Event||internalDomain){
     if(!["property_responsible","fixed_person","role"].includes(data.assignmentType))return false;
     if(data.assignmentType==="role"&&!["admin","employee"].includes(data.assignmentRole))return false;
     if(data.assignmentType==="fixed_person"&&!assignmentPersonCandidates(data.scopeType)
       .some(person=>person.user_id===data.assignmentUserId&&["admin","employee"].includes(person.role)))return false;
   }
-  if(financial&&["manual","active_occupants_rotation"].includes(data.assignmentType))return false;
+  if(internalDomain&&["manual","active_occupants_rotation"].includes(data.assignmentType))return false;
   if(data.triggerType==="event"&&data.assignmentType==="manual")return false;
   if(data.assignmentType==="property_responsible")return data.scopeType!=="organization";
   if(data.assignmentType==="active_occupants_rotation")return data.scopeType!=="organization";
@@ -230,8 +233,8 @@ function assignmentConfigurationComplete(data){
   }
   if(data.assignmentType==="role"){
     return ["admin","employee","tenant"].includes(data.assignmentRole)
-      && !(data.assignmentRole==="tenant"&&(data.scopeType==="organization"||financial))
-      && !(data.scopeType==="occupancy"&&data.flowType!=="rent_payment"&&data.assignmentRole!=="tenant");
+      && !(data.assignmentRole==="tenant"&&(data.scopeType==="organization"||internalDomain))
+      && !(data.scopeType==="occupancy"&&!["rent_payment","deposit_receipt"].includes(data.flowType)&&data.assignmentRole!=="tenant");
   }
   return true;
 }
@@ -423,6 +426,10 @@ function draft(){
       :"",
     paymentCurrency:"EUR",
     paymentDueDays:value("paymentDueDays"),
+    depositAmountCents:Number.isFinite(Number(value("depositAmount")))&&Number(value("depositAmount"))>0
+      ?Math.round(Number(value("depositAmount"))*100)
+      :"",
+    depositCurrency:"EUR",
     steps:{accept:checked("stepAccept"),photo:checked("stepPhoto"),checklist:checked("stepChecklist"),document:checked("stepDocument")},
     checklistItems:checked("stepChecklist")?checklistItemsDraft():[],
     closeType:value("closeType"),
@@ -512,11 +519,27 @@ function wf06ConfigurationComplete(data){
     && Number.isInteger(dueDays)&&dueDays>=0&&dueDays<=365;
 }
 
+function wf07ConfigurationComplete(data){
+  if(data.flowType==="deposit_receipt"){
+    const amount=Number(data.depositAmountCents);
+    return Number.isInteger(amount)&&amount>=1&&amount<=1000000000
+      && data.depositCurrency==="EUR";
+  }
+  if(["deposit_review","damage_claim"].includes(data.flowType)){
+    return Boolean(data.steps?.photo||data.steps?.checklist||data.steps?.document)
+      && data.steps?.accept!==true;
+  }
+  return true;
+}
+
 function completion(data=draft()){
   const hasAnyStep=Object.values(data.steps||{}).some(Boolean);
   const inspectionEvidence=data.steps?.photo||data.steps?.checklist||data.steps?.document;
-  const stepsComplete=hasAnyStep&&checklistConfigurationComplete(data)
+  const wf07Domain=data.flowType==="deposit_receipt";
+  const stepsComplete=(wf07Domain||hasAnyStep)
+    && checklistConfigurationComplete(data)
     && wf06ConfigurationComplete(data)
+    && wf07ConfigurationComplete(data)
     && !(data.eventType==="incident.resolved"&&!inspectionEvidence);
   const sections=[
     {key:"identity",label:"Identidad",complete:data.flowName.trim().length>=3&&Boolean(data.flowType)},
@@ -537,6 +560,8 @@ function triggerComplete(data){
     if(data.eventType==="incident.created")return data.flowType==="maintenance"&&["property","room"].includes(data.scopeType);
     if(data.eventType==="incident.resolved")return data.flowType==="inspection"&&["property","room"].includes(data.scopeType);
     if(data.eventType==="rent_claim.created")return data.flowType==="rent_claim"&&["property","room"].includes(data.scopeType);
+    if(data.eventType==="damage_claim.created")return data.flowType==="damage_claim"&&["property","room"].includes(data.scopeType);
+    if(data.eventType==="occupancy.offboarded"&&data.flowType==="deposit_review")return ["property","room"].includes(data.scopeType);
     return ["occupancy.created","occupancy.offboarded"].includes(data.eventType)&&data.scopeType!=="occupancy";
   }
   if(data.triggerType==="scheduled_once"){
@@ -573,6 +598,10 @@ function applyDraft(saved,{restoreStep=true}={}){
   const paymentAmount=field("paymentAmount");
   if(paymentAmount&&saved.paymentAmountCents!==undefined&&saved.paymentAmountCents!==null&&saved.paymentAmountCents!==""){
     paymentAmount.value=(Number(saved.paymentAmountCents)/100).toFixed(2);
+  }
+  const depositAmount=field("depositAmount");
+  if(depositAmount&&saved.depositAmountCents!==undefined&&saved.depositAmountCents!==null&&saved.depositAmountCents!==""){
+    depositAmount.value=(Number(saved.depositAmountCents)/100).toFixed(2);
   }
   setChecked("stepAccept",saved.steps?.accept);
   setChecked("stepPhoto",saved.steps?.photo);
@@ -648,7 +677,7 @@ function updateTriggerFields({clearHidden=false}={}){
   const recurring=type==="recurring";
   const scheduled=type==="scheduled_once";
   const eventDriven=type==="event";
-  const incidentEvent=eventDriven&&["incident.created","incident.resolved"].includes(value("eventType"));
+  const incidentEvent=eventDriven&&["incident.created","incident.resolved","damage_claim.created"].includes(value("eventType"));
   const automatic=scheduled||recurring;
   const custom=recurring&&value("recurrence")==="custom";
 
@@ -688,12 +717,17 @@ function updateCleaningContract(){
   const maintenance=value("flowType")==="maintenance";
   const rentPayment=value("flowType")==="rent_payment";
   const rentClaim=value("flowType")==="rent_claim";
+  const depositReceipt=value("flowType")==="deposit_receipt";
+  const depositReview=value("flowType")==="deposit_review";
+  const damageClaim=value("flowType")==="damage_claim";
   const financial=rentPayment||rentClaim;
+  const wf07=depositReceipt||depositReview||damageClaim;
+  const internalDomain=financial||wf07;
   const inspectionEvent=value("flowType")==="inspection"
     && value("triggerType")==="event"
     && value("eventType")==="incident.resolved";
   const incidentWorkflow=maintenance||inspectionEvent;
-  const specialized=cleaning||lifecycle||maintenance||financial;
+  const specialized=cleaning||lifecycle||maintenance||financial||wf07;
   const accept=field("stepAccept");
   const genericSteps=[field("stepPhoto"),field("stepChecklist"),field("stepDocument")];
   const close=field("closeType");
@@ -704,14 +738,15 @@ function updateCleaningContract(){
   const assignmentRole=field("assignmentRole");
 
   if(accept){
-    if(specialized)accept.checked=true;
+    if(specialized&&!wf07)accept.checked=true;
+    if(wf07)accept.checked=false;
     accept.disabled=specialized;
   }
 
   genericSteps.forEach(control=>{
     if(!control)return;
-    if(cleaning||lifecycle||financial)control.checked=false;
-    control.disabled=cleaning||lifecycle||financial;
+    if(cleaning||lifecycle||financial||depositReceipt)control.checked=false;
+    control.disabled=cleaning||lifecycle||financial||depositReceipt;
   });
 
   if(close){
@@ -723,44 +758,49 @@ function updateCleaningContract(){
     const organizationOption=[...scope.options].find(option=>option.value==="organization");
     if(organizationOption)organizationOption.disabled=specialized||incidentWorkflow;
     if((specialized||incidentWorkflow)&&scope.value==="organization")scope.value="";
-    if((lifecycle||incidentWorkflow||rentClaim)&&scope.value==="occupancy")scope.value="";
-    if(rentPayment)scope.value="occupancy";
-    scope.disabled=rentPayment;
+    if((lifecycle||incidentWorkflow||rentClaim||depositReview||damageClaim)&&scope.value==="occupancy")scope.value="";
+    if(rentPayment||depositReceipt)scope.value="occupancy";
+    scope.disabled=rentPayment||depositReceipt;
   }
 
   if(trigger){
     const eventOption=trigger.querySelector('option[value="event"]');
-    if(eventOption)eventOption.disabled=rentPayment;
-    if(rentPayment&&trigger.value==="event")trigger.value="";
-    if(lifecycle||maintenance||rentClaim)trigger.value="event";
-    trigger.disabled=lifecycle||maintenance||rentClaim;
+    if(eventOption)eventOption.disabled=rentPayment||depositReceipt;
+    if((rentPayment||depositReceipt)&&trigger.value==="event")trigger.value="";
+    if(depositReceipt)trigger.value="manual";
+    if(lifecycle||maintenance||rentClaim||depositReview||damageClaim)trigger.value="event";
+    trigger.disabled=lifecycle||maintenance||rentClaim||depositReceipt||depositReview||damageClaim;
   }
   if(eventType){
     if(lifecycle)eventType.value=value("flowType")==="checkin"?"occupancy.created":"occupancy.offboarded";
     if(maintenance)eventType.value="incident.created";
     if(rentClaim)eventType.value="rent_claim.created";
-    eventType.disabled=lifecycle||maintenance||rentClaim;
+    if(depositReview)eventType.value="occupancy.offboarded";
+    if(damageClaim)eventType.value="damage_claim.created";
+    eventType.disabled=lifecycle||maintenance||rentClaim||depositReview||damageClaim;
   }
-  if(lifecycle||maintenance||rentClaim)updateTriggerFields({clearHidden:false});
-  if(lifecycle||incidentWorkflow||financial){
+  if(lifecycle||maintenance||rentClaim||depositReview||damageClaim)updateTriggerFields({clearHidden:false});
+  if(lifecycle||incidentWorkflow||internalDomain){
     if(assignment&&["manual","active_occupants_rotation"].includes(assignment.value))assignment.value="";
     if(assignmentRole?.value==="tenant")assignmentRole.value="";
   }
   if(assignment){
     for(const key of ["manual","active_occupants_rotation"]){
       const option=assignment.querySelector(`option[value="${key}"]`);
-      if(option)option.disabled=lifecycle||incidentWorkflow||financial||(key==="manual"&&value("triggerType")==="event");
+      if(option)option.disabled=lifecycle||incidentWorkflow||internalDomain||(key==="manual"&&value("triggerType")==="event");
     }
   }
   const tenantRoleOption=assignmentRole?.querySelector('option[value="tenant"]');
-  if(tenantRoleOption)tenantRoleOption.disabled=lifecycle||incidentWorkflow||financial||value("scopeType")==="organization";
+  if(tenantRoleOption)tenantRoleOption.disabled=lifecycle||incidentWorkflow||internalDomain||value("scopeType")==="organization";
 
   if(cleaningStepNote)cleaningStepNote.hidden=!cleaning;
   if(cleaningCloseNote)cleaningCloseNote.hidden=!cleaning;
   if(wf04StepNote)wf04StepNote.hidden=!lifecycle;
   if(wf05StepNote)wf05StepNote.hidden=!(maintenance||value("flowType")==="inspection");
   if(wf06StepNote)wf06StepNote.hidden=!financial;
+  if(wf07StepNote)wf07StepNote.hidden=!wf07;
   toggleDependentRow(wf06PaymentConfig,rentPayment);
+  toggleDependentRow(wf07DepositConfig,depositReceipt);
 }
 
 function updatePhotoResource(){
@@ -991,6 +1031,12 @@ function activationSummary(data){
   return label("triggerType",data.triggerType);
 }
 
+function trimDepositSummary(data){
+  const amount=Number(data.depositAmountCents);
+  const euros=Number.isFinite(amount)?(amount/100).toLocaleString("es-ES",{minimumFractionDigits:2,maximumFractionDigits:2}):"—";
+  return euros+" €";
+}
+
 function trimPaymentSummary(data){
   const amount=Number(data.paymentAmountCents);
   const euros=Number.isFinite(amount)?(amount/100).toLocaleString("es-ES",{minimumFractionDigits:2,maximumFractionDigits:2}):"—";
@@ -1017,6 +1063,9 @@ function renderSummary(){
   const paymentSummary=data.flowType==="rent_payment"
     ?trimPaymentSummary(data)
     :null;
+  const depositSummary=data.flowType==="deposit_receipt"
+    ?trimDepositSummary(data)
+    :null;
   const pending=state.sections.filter(section=>!section.complete).map(section=>section.label);
   summary.replaceChildren(
     summaryRow("Estado",state.complete?"Configuración completa":"Configuración incompleta · "+state.completed+"/"+state.total),
@@ -1032,6 +1081,7 @@ function renderSummary(){
         :label("assignmentType",data.assignmentType)),
     summaryRow("Pasos",stepNames.length?stepNames.join(" → "):"Pendiente"),
     ...(paymentSummary?[summaryRow("Pago",paymentSummary)]:[]),
+    ...(depositSummary?[summaryRow("Fianza",depositSummary)]:[]),
     summaryRow("Cierre",label("closeType",data.closeType)),
     summaryRow("Notificaciones",notificationNames.length?notificationNames.join(" y "):"Sin notificaciones"),
     summaryRow("Descripción",data.flowDescription||"Sin descripción")

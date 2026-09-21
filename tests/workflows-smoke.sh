@@ -175,7 +175,7 @@ grep -Fq 'id="photoBankLink"' docs/workflow-builder.html
 grep -Fq 'href="./photo-patterns.html?from=workflow-builder" hidden' docs/workflow-builder.html
 grep -Fq 'function updatePhotoResource()' docs/workflow-builder.js
 grep -Fq 'photoBankLink.hidden=value("flowType")==="cleaning"||!checked("stepPhoto")' docs/workflow-builder.js
-grep -Fq './workflow-builder.js?v=2026092101' docs/workflow-builder.html
+grep -Fq './workflow-builder.js?v=2026092102' docs/workflow-builder.html
 grep -Fq 'id="assignmentUserId"' docs/workflow-builder.html
 grep -Fq 'id="assignmentRole"' docs/workflow-builder.html
 grep -Fq 'function assignmentConfigurationComplete(data)' docs/workflow-builder.js
@@ -231,7 +231,7 @@ grep -Fq 'apply_workflow_task_action_v1' docs/workflow-tasks.js
 grep -Fq 'ACTION_KEY_PREFIX' docs/workflow-tasks.js
 grep -Fq 'Aceptar y completar' docs/WORKFLOW_ACTIONS_CONTRACT.md
 grep -Fq 'Tarea y ejecución actualizadas juntas' docs/workflow-tasks.js
-grep -Fq 'Indica el motivo del rechazo:' docs/workflow-tasks.js
+grep -Fq 'title:"Motivo del rechazo"' docs/workflow-tasks.js
 grep -Fq 'task-action--reject' docs/workflow-tasks.js
 grep -Fq 'task-action--reject' docs/workflow-tasks.css
 grep -Fq 'Rechazar' docs/WORKFLOW_ACTIONS_CONTRACT.md
@@ -248,7 +248,7 @@ grep -Fq 'managerOrganizationIds' docs/workflow-tasks.js
 grep -Fq 'review_reject' docs/workflow-tasks.js
 grep -Fq 'task-actions' docs/workflow-tasks.css
 grep -Fq './workflow-tasks.css?v=2026092001' docs/workflow-tasks.html
-grep -Fq './workflow-tasks.js?v=2026092101' docs/workflow-tasks.html
+grep -Fq './workflow-tasks.js?v=2026092103' docs/workflow-tasks.html
 grep -Fq 'paymentDueDays.value=String(saved.paymentDueDays)' docs/workflow-builder.js
 grep -Fq 'cambian tarea y ejecución juntas' docs/workflow-tasks.html
 grep -Fq 'id="taskSelectionToggle"' docs/workflow-tasks.html
@@ -532,7 +532,7 @@ grep -Fq 'renderDocuments(task,article)' docs/workflow-tasks.js
 grep -Fq '.task-documents{' docs/workflow-tasks.css
 grep -Fq '.task-document-row{' docs/workflow-tasks.css
 grep -Fq './workflow-tasks.css?v=2026092001' docs/workflow-tasks.html
-grep -Fq './workflow-tasks.js?v=2026092101' docs/workflow-tasks.html
+grep -Fq './workflow-tasks.js?v=2026092103' docs/workflow-tasks.html
 
 
 # Contrato Documento: evidencia privada, tarea común y cierre coordinado.
@@ -653,3 +653,27 @@ grep -Fq 'if(eventType==="occupancy.offboarded")return "Baja de ocupación confi
 # WF-05: autoría, acciones e histórico sobre el motor transversal.
 bash tests/incidents-smoke.sh
 
+
+
+# WF-07 · smoke
+grep -Fq 'value="deposit_receipt"' docs/workflow-builder.html
+grep -Fq 'value="deposit_review"' docs/workflow-builder.html
+grep -Fq 'value="damage_claim"' docs/workflow-builder.html
+grep -Fq 'value="damage_claim.created"' docs/workflow-builder.html
+grep -Fq 'wf07DepositConfig' docs/workflow-builder.html
+grep -Fq 'taskMoneyDialog' docs/workflow-tasks.html
+grep -Fq 'apply_wf07_deposit_action_v1' docs/workflow-tasks.js
+grep -Fq 'apply_wf07_damage_action_v1' docs/workflow-tasks.js
+grep -Fq 'taskNoteDialog' docs/workflow-tasks.html
+grep -Fq 'requestNoteDetails' docs/workflow-tasks.js
+if grep -Fq 'window.prompt(' docs/workflow-tasks.js; then
+  echo "workflow-tasks.js must not use browser prompt dialogs" >&2
+  exit 1
+fi
+grep -Fq '"Idempotency-Key"' supabase/functions/notification-email/index.ts
+grep -Fq 'allaiso-notification/${notificationId}' supabase/functions/notification-email/index.ts
+grep -Fq 'retry_due_notification_emails_v1' supabase/migrations/20260921181500_notification_email_retry.sql
+grep -Fq 'notification_email_dispatch_state_v1' supabase/migrations/20260921164500_notification_email_dispatch.sql
+grep -Fq 'n.created_at>=s.activated_at' supabase/migrations/20260921181500_notification_email_retry.sql
+grep -Fq 'record_acceptance' docs/workflow-tasks.js
+grep -Fq 'record_dispute' docs/workflow-tasks.js

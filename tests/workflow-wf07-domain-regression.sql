@@ -926,6 +926,21 @@ end;
 $email_delivery_contract$;
 
 -- El retry nunca debe convertir notificaciones históricas pre-dispatch en backfill.
+update public.notifications_v2
+set channel_email=false
+where channel_email=true;
+
+create or replace function private.notification_email_enqueue_http_v1(
+  p_notification_id uuid
+)
+returns boolean
+language sql
+security definer
+set search_path=''
+as $stub$
+  select p_notification_id is not null
+$stub$;
+
 do $email_retry_activation_boundary$
 declare
   v_activation timestamptz;
@@ -940,10 +955,6 @@ begin
   if v_activation is null then
     raise exception 'WF07 email dispatch activation boundary missing';
   end if;
-
-  update public.notifications_v2
-  set channel_email=false
-  where channel_email=true;
 
   insert into public.notifications_v2(
     id,organization_id,recipient_user_id,event_type,title,body,status,
@@ -961,17 +972,6 @@ begin
       'security_deposit_information_requested','Nuevo','Sí reintentar','pending',
       false,true,v_activation+interval '1 second'
     );
-
-  create or replace function private.notification_email_enqueue_http_v1(
-    p_notification_id uuid
-  )
-  returns boolean
-  language sql
-  security definer
-  set search_path=''
-  as $stub$
-    select p_notification_id is not null
-  $stub$;
 
   v_enqueued:=private.retry_due_notification_emails_v1(50);
   if v_enqueued<>1 then

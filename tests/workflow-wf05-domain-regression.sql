@@ -104,6 +104,83 @@ insert into public.occupancies_v2(
     current_date-1,null,'active',current_setting('wf05.other_tenant_user')::uuid
   );
 
+create function pg_temp.wf05_spec(p_flow text)
+returns jsonb language sql stable as $$
+  select jsonb_build_object(
+    'authoringVersion',2,
+    'flowName',case p_flow when 'maintenance' then 'WF05 gestión'
+      else 'WF05 inspección posterior' end,
+    'flowType',p_flow,'flowDescription','WF05 regression only',
+    'scopeType','property','triggerType','event',
+    'eventType',case p_flow when 'maintenance' then 'incident.created'
+      else 'incident.resolved' end,
+    'recurrence','','scheduledAt','','scheduledTimezone','','scheduledAtUtc','',
+    'customEvery','','customUnit','',
+    'assignmentType',case p_flow when 'maintenance' then 'role'
+      else 'property_responsible' end,
+    'assignmentUserId','',
+    'assignmentRole',case p_flow when 'maintenance' then 'employee' else '' end,
+    'steps',case p_flow
+      when 'maintenance' then jsonb_build_object(
+        'accept',true,'photo',false,'checklist',false,'document',false
+      )
+      else jsonb_build_object(
+        'accept',true,'photo',false,'checklist',true,'document',false
+      ) end,
+    'checklistItems',case p_flow
+      when 'inspection' then jsonb_build_array(
+        jsonb_build_object('key','repair_ok','text','Reparación correcta','required',true)
+      )
+      else '[]'::jsonb end,
+    'closeType',case p_flow when 'maintenance' then 'domain_adapter' else 'auto' end,
+    'notifications',jsonb_build_object('onCreate',false,'onClose',true)
+  );
+$$;
+
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf05.root'),'role','authenticated','aal','aal2'
+)::text,true);
+select set_config('wf05.maintenance_app',(
+  select application_id::text
+  from public.publish_workflow_ready_v1(
+    pg_temp.wf05_spec('maintenance'),
+    current_setting('wf05.property')::uuid,
+    null,null,'{}'::uuid[],false,'wf05-maintenance-ready',null,null
+  ) limit 1
+),true);
+select set_config('wf05.inspection_app',(
+  select application_id::text
+  from public.publish_workflow_ready_v1(
+    pg_temp.wf05_spec('inspection'),
+    current_setting('wf05.property')::uuid,
+    null,null,'{}'::uuid[],false,'wf05-inspection-ready',null,null
+  ) limit 1
+),true);
+reset role;
+
+do $authoring_contract$
+begin
+  if public.workflow_authoring_complete_v1(
+    pg_temp.wf05_spec('maintenance') || jsonb_build_object(
+      'eventType','incident.resolved'
+    )
+  ) then
+    raise exception 'WF05 accepted maintenance on incident.resolved';
+  end if;
+  if public.workflow_authoring_complete_v1(
+    pg_temp.wf05_spec('inspection') || jsonb_build_object(
+      'steps',jsonb_build_object(
+        'accept',true,'photo',false,'checklist',false,'document',false
+      ),
+      'checklistItems','[]'::jsonb
+    )
+  ) then
+    raise exception 'WF05 accepted inspection without reusable evidence';
+  end if;
+end;
+$authoring_contract$;
+
 set local role authenticated;
 select set_config('request.jwt.claims',jsonb_build_object(
   'sub',current_setting('wf05.tenant_user'),'role','authenticated','aal','aal1'
@@ -146,6 +223,88 @@ begin
   end if;
 end;
 $opened_once$;
+
+select private.process_pending_workflow_events_v1(50);
+select private.process_pending_workflow_events_v1(50);
+
+select set_config('wf05.execution',(
+  select id::text
+  from public.workflow_executions_v2
+  where application_id=current_setting('wf05.maintenance_app')::uuid
+    and incident_id=current_setting('wf05.incident')::uuid
+),true);
+
+do $dispatched_once$
+declare
+  v_actual jsonb;
+begin
+  if (
+    select count(*) from public.workflow_executions_v2
+    where application_id=current_setting('wf05.maintenance_app')::uuid
+      and incident_id=current_setting('wf05.incident')::uuid
+      and source_event_id is not null
+      and assigned_user_id=current_setting('wf05.staff')::uuid
+  )<>1 then
+    select jsonb_build_object(
+      'executions',coalesce((select jsonb_agg(jsonb_build_object(
+        'id',x.id,'incident_id',x.incident_id,'source_event_id',x.source_event_id,
+        'assigned_user_id',x.assigned_user_id,'status',x.status
+      )) from public.workflow_executions_v2 x
+        where x.application_id=current_setting('wf05.maintenance_app')::uuid),'[]'::jsonb),
+      'dispatches',coalesce((select jsonb_agg(jsonb_build_object(
+        'status',d.status,'error_code',d.error_code,'error_key',d.error_key
+      )) from public.workflow_event_dispatches_v2 d
+        join public.workflow_event_outbox_v2 ev on ev.id=d.event_id
+        where d.application_id=current_setting('wf05.maintenance_app')::uuid
+          and ev.source_id=current_setting('wf05.incident')::uuid),'[]'::jsonb)
+    )
+    into v_actual
+    ;
+    raise exception 'WF05 incident did not dispatch one linked writable execution: %',v_actual;
+  end if;
+  if (
+    select count(*) from public.tenant_tasks_v2
+    where source_kind='workflow_execution'
+      and source_id=current_setting('wf05.execution')::uuid
+      and task_type='workflow'
+      and assigned_user_id=current_setting('wf05.staff')::uuid
+  )<>1 then
+    raise exception 'WF05 incident did not materialize one transversal card';
+  end if;
+  if exists(
+    select 1 from public.workflow_executions_v2
+    where application_id=current_setting('wf05.inspection_app')::uuid
+      and incident_id=current_setting('wf05.incident')::uuid
+  ) then
+    raise exception 'WF05 created-event incorrectly activated inspection';
+  end if;
+  if (
+    select count(*) from public.workflow_event_dispatches_v2 d
+    join public.workflow_event_outbox_v2 e on e.id=d.event_id
+    where e.source_id=current_setting('wf05.incident')::uuid
+      and e.event_type='incident.created'
+      and d.application_id=current_setting('wf05.maintenance_app')::uuid
+      and d.status='executed'
+  )<>1 then
+    raise exception 'WF05 dispatcher receipt is not unique';
+  end if;
+end;
+$dispatched_once$;
+
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf05.staff'),'role','authenticated','aal','aal1'
+)::text,true);
+do $actor_current$
+begin
+  if not public.workflow_execution_actor_current_v1(
+    current_setting('wf05.execution')::uuid
+  ) then
+    raise exception 'WF05 writable assignee was not current';
+  end if;
+end;
+$actor_current$;
+reset role;
 
 set local role authenticated;
 select set_config('request.jwt.claims',jsonb_build_object(

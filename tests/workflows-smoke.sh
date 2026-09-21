@@ -531,7 +531,7 @@ grep -Fq 'renderDocuments(task,article)' docs/workflow-tasks.js
 grep -Fq '.task-documents{' docs/workflow-tasks.css
 grep -Fq '.task-document-row{' docs/workflow-tasks.css
 grep -Fq './workflow-tasks.css?v=2026092001' docs/workflow-tasks.html
-grep -Fq './workflow-tasks.js?v=2026092025' docs/workflow-tasks.html
+grep -Fq './workflow-tasks.js?v=2026092101' docs/workflow-tasks.html
 
 
 # Contrato Documento: evidencia privada, tarea común y cierre coordinado.

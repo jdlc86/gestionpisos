@@ -562,9 +562,13 @@ function saveLocalDraft(){
 
 function applyDraft(saved,{restoreStep=true}={}){
   if(!saved||typeof saved!=="object")return;
-  for(const name of ["flowName","flowType","flowDescription","scopeType","triggerType","eventType","recurrence","scheduledAt","scheduledTimezone","scheduledAtUtc","customEvery","customUnit","assignmentType","assignmentUserId","assignmentRole","paymentConcept","paymentDueDays","closeType"]){
+  for(const name of ["flowName","flowType","flowDescription","scopeType","triggerType","eventType","recurrence","scheduledAt","scheduledTimezone","scheduledAtUtc","customEvery","customUnit","assignmentType","assignmentUserId","assignmentRole","paymentConcept","closeType"]){
     const node=field(name);
     if(node&&typeof saved[name]==="string")node.value=saved[name];
+  }
+  const paymentDueDays=field("paymentDueDays");
+  if(paymentDueDays&&saved.paymentDueDays!==undefined&&saved.paymentDueDays!==null){
+    paymentDueDays.value=String(saved.paymentDueDays);
   }
   const paymentAmount=field("paymentAmount");
   if(paymentAmount&&saved.paymentAmountCents!==undefined&&saved.paymentAmountCents!==null&&saved.paymentAmountCents!==""){

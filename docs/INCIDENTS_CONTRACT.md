@@ -14,7 +14,11 @@ Las incidencias pertenecen a un piso de una organización gestora. Allaiso es el
 
 ## Estados
 
-`reported -> triaged -> assigned -> in_progress -> resolved -> closed`
+Recorrido WF-05:
+
+`reported -> in_progress -> waiting_info -> in_progress -> resolved`
+
+Los estados legacy `triaged`, `assigned` y `closed` se conservan para registros históricos y compatibilidad.
 
 Estados excepcionales:
 
@@ -22,6 +26,8 @@ Estados excepcionales:
 - `reopened`: problema reaparece tras resolución.
 
 No se permite borrar físicamente una incidencia cerrada.
+
+`waiting_info` es no terminal. La información recibida se añade al histórico y la gestión continúa sobre la misma ejecución/tarea.
 
 ## Prioridad
 
@@ -89,6 +95,10 @@ La lectura sigue las reglas generales por ámbito.
 La escritura operativa del piso respeta el modelo de responsable: por defecto una persona mantiene permiso de escritura. Otro empleado debe solicitar transferencia/autorización cuando corresponda.
 
 ADMIN puede supervisar el flujo según sus capacidades.
+
+La gestión nueva se materializa como `tenant_tasks_v2.task_type=workflow`, enlazada a una ejecución. El tipo legacy `incident` permanece solo por compatibilidad y no se crea en paralelo para una incidencia WF-05.
+
+La apertura publica `incident.created` en el outbox común. La resolución publica `incident.resolved`, que puede activar una Inspección posterior basada en Foto/Checklist/Documento. Véase `WORKFLOW_INCIDENT_MAINTENANCE_INSPECTION_CONTRACT.md`.
 
 ## Auditoría
 

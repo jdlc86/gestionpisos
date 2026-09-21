@@ -414,7 +414,7 @@ No se necesita una arquitectura especial de "planes de limpieza".
 
 **Flujo:** Comprobación posterior a reparación de fregadero
 
-**Disparador:** 48 horas después del cierre de una reparación
+**Disparador:** evento `incident.resolved` publicado al cerrar la reparación
 
 **Asignación:** responsable operativo del piso
 
@@ -430,6 +430,8 @@ No se necesita una arquitectura especial de "planes de limpieza".
 4. enviar.
 
 El flujo reutiliza el mismo Banco Fotográfico que Limpieza sin depender de Limpieza.
+
+La reparación conserva su expediente en `incidents_v2`, pero la gestión operativa y la inspección posterior producen ejecuciones y tarjetas distintas del mismo motor. El vínculo con el expediente es explícito; la resolución usa el outbox común y nunca crea la inspección dentro de la transacción de negocio.
 
 ---
 

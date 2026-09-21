@@ -205,3 +205,5 @@ El dispatcher compara el evento capturado con el alcance real de la aplicación:
 
 El cliente no decide qué aplicación recibe un evento. El enrutamiento ocurre server-side desde `workflow_event_outbox_v2`.
 
+Para WF-05, `incident.created` solo activa la gestión `maintenance/domain_adapter` y `incident.resolved` solo activa `inspection` con cierre genérico. Ambos conservan `property_id` y `room_id` del expediente; una aplicación fuera de ese alcance se rechaza. La ejecución enlaza el `incident_id` exacto y el reintento del mismo outbox no crea otra ejecución.
+

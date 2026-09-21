@@ -251,8 +251,19 @@ Siguen pendientes:
 
 - asistente automático de reasignación tras rechazo;
 - notificación operativa específica de rechazo;
-- documento;
-- recurrencia automática;
-- adaptadores de dominio.
+- reasignación automática de incidencias;
+- reapertura de incidencias resueltas.
 
 Ninguna de esas capacidades puede simularse cambiando estados sin contrato.
+
+## 13. Acciones WF-05 de gestión de incidencia
+
+Una ejecución `maintenance/domain_adapter` vinculada a `incident.created` añade acciones sobre la tarjeta común:
+
+- `accept`: `pending → active`;
+- `request_info`: `active → waiting_info`, con nota obligatoria;
+- `continue`: `waiting_info → active`, solo tras una respuesta posterior;
+- `resolve`: `active → completed`, solo con los requisitos configurados completos;
+- `reject`: `pending → rejected`, con motivo.
+
+Cada acción sincroniza expediente, tarea y ejecución, conserva request key, histórico, evento y auditoría, y revalida server-side el vínculo y la escritura vigente. El contrato detallado está en `WORKFLOW_INCIDENT_MAINTENANCE_INSPECTION_CONTRACT.md`.

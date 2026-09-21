@@ -1,6 +1,6 @@
 # Estado de implementación — Flujos de Trabajo
 
-Fecha de referencia: **2026-09-19**.
+Fecha de referencia: **2026-09-21**.
 
 Este documento resume el estado real de implementación de **Flujos de Trabajo** y complementa:
 
@@ -200,6 +200,8 @@ El 19/09/2026 se detectó además una diferencia entre el PostgreSQL local y los
 | Historial | Operativo inicial | vista única de ejecuciones con tarea, Foto/Checklist/Documento, decisiones, revisión y cierre; filtros avanzados/paginación profunda quedan posteriores |
 | Ejecución genérica | Implementada; cierre auto validado E2E y `human_review` cubierto por regresión de integración | `manual_now`, snapshots, tarea materializada, cierre automático y revisión humana para pasos implementados |
 | Adaptador Limpieza | Pendiente | Legacy preservado |
+| Incidencias / Mantenimiento | Implementado en PR #281, pendiente de revisión/merge/despliegue | Expediente enlazado al outbox, ejecución y tarea transversal; acciones server-side idempotentes |
+| Inspección posterior | Implementada en PR #281, pendiente de revisión/merge/despliegue | `incident.resolved` activa aplicaciones `inspection` y reutiliza Foto/Checklist/Documento |
 
 ## 11. Incrementos
 
@@ -485,4 +487,19 @@ El valor declarativo `triggerType=event` pasa a ser capacidad ejecutable del mot
 - WF-04 retira como `processed_with_errors` un `workflow_domain_lifecycle_mismatch` permanente para que un evento histórico obsoleto no bloquee la cola; una ocupación legacy todavía sin `tenant_id` sigue siendo recuperable y vuelve a intentarse tras vincularse;
 - el consumidor corre por `pg_cron` cada minuto;
 - la regresión PostgreSQL cubre desacoplamiento, idempotencia, ejecución/tarea, aislamiento de fallos y privilegios.
+
+### Incremento — WF-05 · Incidencia / Mantenimiento / Inspección
+
+WF-05 está implementado en PR #281 y detenido en `READY_FOR_CHATGPT_REVIEW`:
+
+- una apertura autorizada crea un expediente idempotente y publica `incident.created`;
+- el dispatcher común materializa una ejecución y una tarjeta por aplicación compatible;
+- aceptar, rechazar, solicitar información, continuar y resolver usan el RPC común de acciones;
+- `waiting_info` es no terminal y continuar recupera la misma ejecución;
+- resolver sincroniza expediente, tarea y ejecución y publica `incident.resolved`;
+- una aplicación `inspection` puede generar la inspección posterior y reutiliza Foto/Checklist/Documento;
+- RLS, autorización por piso, revalidación del asignado, MFA privilegiado, auditoría y notificaciones están cubiertos por regresión PostgreSQL;
+- `incidents.html` ofrece apertura y seguimiento por RPC/RLS sin escritura directa cliente.
+
+No se ha fusionado ni desplegado. Los E2E humanos se realizarán en la batería final conjunta autorizada; las pruebas automáticas y guards no se han aplazado.
 

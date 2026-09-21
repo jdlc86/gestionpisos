@@ -69,7 +69,7 @@ grep -q 'serviceWorker' docs/app.js
 grep -q 'GestionPisos' docs/manifest.webmanifest
 grep -Fq "'./legal.html'" docs/sw.js
 grep -Fq "'./privacy.html'" docs/sw.js
-grep -q 'gestionpisos-shell-v49' docs/sw.js
+grep -q 'gestionpisos-shell-v50' docs/sw.js
 grep -Fq "'./workflow-history.html'" docs/sw.js
 grep -Fq "'./workflow-history.css'" docs/sw.js
 grep -Fq "'./workflow-history.js'" docs/sw.js
@@ -363,7 +363,7 @@ grep -Fq 'class="builder-editor-state"' docs/workflow-builder.html
 
 # WF-03 authoring: Limpieza uses only the specialized domain adapter path.
 node --check docs/workflow-builder.js
-grep -Fq './workflow-builder.js?v=2026092003' docs/workflow-builder.html
+grep -Fq './workflow-builder.js?v=2026092101' docs/workflow-builder.html
 grep -Fq 'id="cleaningStepNote"' docs/workflow-builder.html
 grep -Fq 'id="cleaningCloseNote"' docs/workflow-builder.html
 grep -Fq 'function updateCleaningContract()' docs/workflow-builder.js
@@ -458,3 +458,6 @@ grep -Fq "showNotification" docs/sw.js
 grep -Fq "push_notification" docs/sw.js
 grep -Fq '.notification-push-action{' docs/notification-center.css
 ! grep -Fq '\\n.notification-' docs/notification-center.css
+
+# WF-05: superficie PWA de incidencias y su conexión al workflow común.
+bash tests/incidents-smoke.sh

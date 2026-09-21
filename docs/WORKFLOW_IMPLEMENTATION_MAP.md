@@ -14,7 +14,7 @@ La arquitectura objetivo sigue siendo:
 
 `Flujo → Versión publicada → Aplicación concreta → Disparador → Ejecución → Asignación → Tareas → Recursos → Evidencias → Revisión/Cierre → Historial`
 
-## Estado de implementación — 2026-09-18
+## Estado de implementación — 2026-09-21
 
 Ya están completados o implementados en el incremento actual:
 
@@ -30,6 +30,7 @@ Ya están completados o implementados en el incremento actual:
 - control de concurrencia optimista mediante `revision` y rechazo de ediciones obsoletas;
 - auditoría de creación/edición de borradores;
 - smoke tests, pruebas RLS positivas/negativas y regresión PostgreSQL aislada.
+- WF-05 enlaza `incidents_v2` con el outbox, la ejecución y la tarea transversal; Mantenimiento e Inspección son configuraciones del mismo motor y reutilizan Foto/Checklist/Documento.
 
 Cambios integrados previamente:
 
@@ -343,7 +344,8 @@ Fotografía, Checklist y Documento ya son pasos operativos del motor mínimo.
 | Versión de flujo | `workflow_definition_versions_v2` | Publicación inmutable implementada |
 | Aplicación concreta | `workflow_applications_v2` | Vinculación real implementada |
 | Disparador manual explícito | `execute_workflow_application_now_v1` | Implementado con idempotencia |
-| Disparador por evento | `workflow_event_outbox_v2` + `workflow_event_dispatches_v2` + `private.process_pending_workflow_events_v1` | WF-02 implementa outbox/dispatcher; fuente inicial `occupancy.created`; sin ejecución síncrona en la transacción de negocio |
+| Disparador por evento | `workflow_event_outbox_v2` + `workflow_event_dispatches_v2` + `private.process_pending_workflow_events_v1` | WF-02 aporta el dispatcher; consume `occupancy.created`, `occupancy.offboarded`, `incident.created` e `incident.resolved` sin ejecución síncrona en la transacción de negocio |
+| Incidencia / Mantenimiento / Inspección | `incidents_v2` + `workflow_executions_v2.incident_id` + motor común | WF-05 enlaza el expediente, gestiona sus transiciones en la tarjeta transversal y permite Inspección posterior con recursos genéricos |
 | Regla de asignación | Snapshot en `workflow_executions_v2` | Manual, responsable de piso, persona fija, rol y rotación de ocupantes; resolución server-side y revalidación vigente |
 | Ejecución genérica | `workflow_executions_v2` | Fase inicial `pending` implementada |
 | Tarea materializada | `tenant_tasks_v2` + `source_kind/source_id` | Implementada e idempotente |
@@ -423,6 +425,15 @@ Implementado en esta fase:
 - marca en **Mis Flujos** «Borrador incompleto» o «Borrador configurado»;
 - obliga a revisar borradores legacy antes de tratarlos como configurados;
 - mantiene publicación y ejecución bloqueadas.
+
+### Incremento WF-05 — Incidencia / Mantenimiento / Inspección
+
+- `incidents_v2` conserva el expediente y se enlaza de forma exacta a la ejecución;
+- `incident.created` y `incident.resolved` usan el outbox/dispatcher WF-02;
+- aceptar, solicitar información, continuar y resolver sincronizan expediente, tarea, ejecución, historial, auditoría y notificaciones;
+- Mantenimiento e Inspección reutilizan autoría, asignación, Foto, Checklist y Documento;
+- la pantalla Incidencias opera por RPC bajo RLS y no escribe tablas directamente;
+- el legacy permanece consultable y no se crea una segunda tarjeta para los expedientes WF-05.
 
 ## 8. Próximo incremento técnico
 

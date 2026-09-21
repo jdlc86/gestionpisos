@@ -93,7 +93,7 @@ Reglas de autoría de activación:
 - `recurring` exige frecuencia; si es personalizada, además exige intervalo entero y unidad (`día`, `semana` o `mes`);
 - los campos que no corresponden al tipo seleccionado se eliminan server-side para impedir estado residual;
 - `event` no usa frecuencia temporal y exige un `eventType` soportado antes de publicación;
-- en WF-02 el primer evento soportado es `occupancy.created`; WF-04 añade `occupancy.offboarded` para la Baja real;
+- en WF-02 el primer evento soportado es `occupancy.created`; WF-04 añade `occupancy.offboarded` para la Baja real; WF-05 añade `incident.created` e `incident.resolved` para gestión y seguimiento posterior;
 - un flujo por evento no admite asignación `manual`: el ejecutor debe poder resolverse sin interacción humana cuando llegue el evento;
 - un evento de negocio no ejecuta workflows dentro de la misma transacción: se registra en `workflow_event_outbox_v2` y un dispatcher lo consume después.
 
@@ -298,6 +298,12 @@ El adaptador de Limpieza debe:
 - no convertir `cleaning_plans_v2` en una definición universal.
 
 La ruta legacy solo se retira cuando el recorrido equivalente esté probado extremo a extremo.
+
+### Adaptador de Incidencia / Mantenimiento
+
+WF-05 conserva `incidents_v2` como expediente y enlaza el sujeto exacto a `workflow_executions_v2`. La gestión usa una única tarjeta `tenant_tasks_v2`, acciones atómicas de dominio y las evidencias genéricas existentes. `request_info` es no terminal; `continue` recupera la misma ejecución; `resolve` publica `incident.resolved` en el outbox común para una Inspección opcional.
+
+Las reglas completas están en `WORKFLOW_INCIDENT_MAINTENANCE_INSPECTION_CONTRACT.md`.
 
 ## 17. Creador de Flujos
 

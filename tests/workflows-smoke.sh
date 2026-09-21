@@ -10,6 +10,9 @@ test -s docs/workflows.html
 test -s docs/workflow-builder.html
 test -s docs/workflow-builder.css
 test -s docs/workflow-builder.js
+test -s docs/workflow-domain-presets.js
+test -s docs/WORKFLOW_DOMAIN_PRESETS_CONTRACT.md
+test -s tests/workflow-domain-presets-smoke.mjs
 test -s docs/workflow-definitions.html
 test -s docs/workflow-definitions.css
 test -s docs/workflow-definitions.js
@@ -26,6 +29,8 @@ test -s docs/workflow-tasks.html
 test -s docs/workflow-tasks.css
 test -s docs/workflow-tasks.js
 node --check docs/workflow-builder.js
+node --check docs/workflow-domain-presets.js
+node tests/workflow-domain-presets-smoke.mjs
 node --check docs/workflow-definitions.js
 node --check docs/workflow-applications.js
 node --check docs/workflow-tasks.js

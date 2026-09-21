@@ -827,6 +827,112 @@ begin
 end;
 $downstream_inspection$;
 
+-- Una incidencia abierta por personal interno también puede pedir información
+-- a su creador y continuar sobre la misma ejecución.
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf05.root'),'role','authenticated','aal','aal2'
+)::text,true);
+select set_config('wf05.internal_incident',(
+  select incident_id::text
+  from public.open_workflow_incident_v1(
+    current_setting('wf05.property')::uuid,
+    null,
+    'incident',
+    'Revisión interna',
+    'Confirmar detalle aportado por la gestoría.',
+    'normal',
+    'wf05-internal-open'
+  )
+),true);
+reset role;
+
+select private.process_pending_workflow_events_v1(50);
+select set_config('wf05.internal_execution',(
+  select id::text
+  from public.workflow_executions_v2
+  where application_id=current_setting('wf05.maintenance_app')::uuid
+    and incident_id=current_setting('wf05.internal_incident')::uuid
+),true);
+select set_config('wf05.internal_task',(
+  select id::text
+  from public.tenant_tasks_v2
+  where source_kind='workflow_execution'
+    and source_id=current_setting('wf05.internal_execution')::uuid
+),true);
+
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf05.staff'),'role','authenticated','aal','aal1'
+)::text,true);
+select * from public.apply_workflow_task_action_v1(
+  current_setting('wf05.internal_task')::uuid,
+  'accept',
+  'wf05-internal-accept',
+  null
+);
+select * from public.apply_workflow_task_action_v1(
+  current_setting('wf05.internal_task')::uuid,
+  'request_info',
+  'wf05-internal-request-info',
+  'Confirma el detalle interno antes de continuar.'
+);
+reset role;
+
+do $internal_request_visible_only_internal$
+begin
+  if not exists(
+    select 1
+    from public.incident_updates_v2
+    where incident_id=current_setting('wf05.internal_incident')::uuid
+      and update_kind='request_info'
+      and request_key='wf05-internal-request-info'
+      and visibility='internal'
+  ) then
+    raise exception 'WF05 internal information request was not stored as internal';
+  end if;
+end;
+$internal_request_visible_only_internal$;
+
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf05.root'),'role','authenticated','aal','aal2'
+)::text,true);
+select * from public.submit_incident_information_v1(
+  current_setting('wf05.internal_incident')::uuid,
+  'wf05-internal-info',
+  'Detalle interno confirmado.'
+);
+reset role;
+
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf05.staff'),'role','authenticated','aal','aal1'
+)::text,true);
+do $internal_continue_same_execution$
+declare v_result record;
+begin
+  select * into v_result
+  from public.apply_workflow_task_action_v1(
+    current_setting('wf05.internal_task')::uuid,
+    'continue',
+    'wf05-internal-continue',
+    null
+  );
+  if not v_result.applied_new
+    or v_result.execution_id<>current_setting('wf05.internal_execution')::uuid
+    or v_result.task_status<>'active'
+    or (select status from public.incidents_v2
+        where id=current_setting('wf05.internal_incident')::uuid)<>'in_progress'
+    or (select count(*) from public.workflow_executions_v2
+        where incident_id=current_setting('wf05.internal_incident')::uuid
+          and spec_snapshot->>'flowType'='maintenance')<>1 then
+    raise exception 'WF05 internal reporter did not continue on the same execution';
+  end if;
+end;
+$internal_continue_same_execution$;
+reset role;
+
 do $final_counts$
 begin
   if (select count(*) from public.incidents_v2

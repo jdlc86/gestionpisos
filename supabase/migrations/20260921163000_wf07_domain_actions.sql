@@ -256,7 +256,7 @@ declare
   v_claim public.claims_v2;
   v_claim_event uuid;
   v_damage_app uuid;
-  v_unresolved integer;
+  v_unresolved bigint;
   v_settled_total bigint;
 begin
   if v_actor is null then
@@ -505,6 +505,15 @@ begin
     if v_deposit.status<>'under_review'
       or v_action.to_status<>'completed' then
       raise exception 'workflow_wf07_transition_mismatch' using errcode='55000';
+    end if;
+
+    if (
+      coalesce((v_execution.spec_snapshot#>>'{steps,photo}')::boolean,false)
+      or coalesce((v_execution.spec_snapshot#>>'{steps,checklist}')::boolean,false)
+      or coalesce((v_execution.spec_snapshot#>>'{steps,document}')::boolean,false)
+    ) and not private.wf07_execution_evidence_complete_v1(v_execution.id) then
+      raise exception 'workflow_wf07_deposit_evidence_required'
+        using errcode='55000';
     end if;
 
     select count(*) filter(where c.status<>'resolved'),

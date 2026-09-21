@@ -518,3 +518,21 @@ WF-06 está implementado en PR #283 y en revisión:
 
 No se considera desplegado ni VERIFIED hasta merge, migraciones remotas y verificación post-merge. El E2E humano permanece dentro de la batería final conjunta ya acordada.
 
+
+
+### Incremento — WF-07 · Daños + Fianza
+
+WF-07 integra la fianza y las reclamaciones por daños sin crear contabilidad ni una segunda tarjeta:
+
+- `security_deposits_v2` conserva un único expediente operativo por ocupación;
+- recepción y revisión son ejecuciones separadas sobre la misma fianza;
+- revisión nace de `occupancy.offboarded` y nunca reactiva el acceso del antiguo inquilino;
+- `damage_claim` reutiliza `claims_v2`, evidencia Foto/Checklist/Documento y `tenant_tasks_v2`;
+- la respuesta del antiguo inquilino se registra externamente por la gestoría, con nota auditada;
+- devolución/retención solo se permite con evidencia completa y daños resueltos coherentes;
+- comunicaciones posteriores a la Baja usan email;
+- la regresión PostgreSQL específica es `workflow-wf07-domain-regression.sql`.
+
+Contrato completo: `WORKFLOW_DAMAGE_DEPOSIT_CONTRACT.md`.
+
+WF-07 permanece `IN_PROGRESS` hasta revisión independiente, merge y verificación post-merge. El E2E humano se mantiene para la batería final conjunta.

@@ -627,6 +627,54 @@ select * from public.apply_workflow_task_action_v1(
 );
 reset role;
 
+-- Una respuesta vieja no puede satisfacer una petición nueva.
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf06.staff'),'role','authenticated','aal','aal1'
+)::text,true);
+select * from public.apply_workflow_task_action_v1(
+  current_setting('wf06.claim_task')::uuid,
+  'request_info','wf06-request-info-2','Aporta justificante actualizado'
+);
+do $wf06_fresh_response_required$
+begin
+  begin
+    perform *
+    from public.apply_workflow_task_action_v1(
+      current_setting('wf06.claim_task')::uuid,
+      'continue','wf06-continue-too-early',null
+    );
+    raise exception 'WF06 accepted continue using a stale information response';
+  exception
+    when sqlstate '55000' then
+      if position('workflow_wf06_information_response_required' in sqlerrm)=0 then
+        raise;
+      end if;
+  end;
+end;
+$wf06_fresh_response_required$;
+reset role;
+
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf06.tenant_user'),'role','authenticated','aal','aal1'
+)::text,true);
+select * from public.apply_workflow_task_action_v1(
+  current_setting('wf06.claim_task')::uuid,
+  'provide_info','wf06-provide-info-2','Justificante actualizado aportado'
+);
+reset role;
+
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf06.staff'),'role','authenticated','aal','aal1'
+)::text,true);
+select * from public.apply_workflow_task_action_v1(
+  current_setting('wf06.claim_task')::uuid,
+  'continue','wf06-continue-2',null
+);
+reset role;
+
 -- Decisión exacta del inquilino; activa Resolver y retira Aceptar/Disputar.
 set local role authenticated;
 select set_config('request.jwt.claims',jsonb_build_object(

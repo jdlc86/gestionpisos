@@ -231,17 +231,17 @@ begin
     where id=v_claim.id
     returning * into v_claim;
 
-    update public.tenant_task_actions_v2
+    update public.tenant_task_actions_v2 as a
     set active=false
-    where task_id=v_task.id
-      and from_status='active'
-      and action_key in ('accept','dispute');
+    where a.task_id=v_task.id
+      and a.from_status='active'
+      and a.action_key in ('accept','dispute');
 
-    update public.tenant_task_actions_v2
+    update public.tenant_task_actions_v2 as a
     set active=true
-    where task_id=v_task.id
-      and from_status='active'
-      and action_key='resolve';
+    where a.task_id=v_task.id
+      and a.from_status='active'
+      and a.action_key='resolve';
 
     v_recipient:=v_execution.assigned_user_id;
     v_event_type:=case p_action_key

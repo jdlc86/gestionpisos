@@ -516,7 +516,7 @@ WF-06 está implementado y desplegado desde PR #283, fusionado en `main@cbe98db4
 - MFA privilegiado, idempotencia, auditoría, notificaciones y coherencia de actor/destino están cubiertos por `workflow-wf06-domain-regression.sql`;
 - la UI del Creador expone concepto, importe y vencimiento; Tareas usa un diálogo tipado para aplazar.
 
-Las migraciones `20260921135000`, `20260921140500` y `20260921142000` están aplicadas en producción y los guards/Pages/migraciones quedaron verdes post-merge. No se marca `VERIFIED` porque el E2E humano permanece dentro de la batería final conjunta ya acordada. La suite completa de WF-07 descubrió tres deudas de contrato de WF-06 —CHECK físico de `flow_type`, ambigüedad de `status` y unicidad global de `payment_obligation_id`— que WF-07 corrige mediante migraciones aditivas, sin alterar migraciones ya desplegadas.
+Las migraciones `20260921135000`, `20260921140500` y `20260921142000` están aplicadas en producción y los guards/Pages/migraciones quedaron verdes post-merge. No se marca `VERIFIED` porque el E2E humano permanece dentro de la batería final conjunta ya acordada. La suite completa de WF-07 descubrió cuatro deudas de contrato de WF-06 —CHECK físico de `flow_type`, ambigüedad de `status`, unicidad global de `payment_obligation_id` y orden de respuestas de información basado en un timestamp transaccional— que WF-07 corrige mediante migraciones aditivas, sin alterar migraciones ya desplegadas. `continue` usa ahora el IDENTITY monotónico de `workflow_execution_events_v2`, por lo que una respuesta antigua no puede satisfacer una petición nueva incluso dentro de la misma transacción.
 
 
 

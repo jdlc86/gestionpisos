@@ -499,12 +499,12 @@ begin
         raise exception 'workflow_event_destination_mismatch' using errcode='42501';
       end if;
 
-      select * into v_occupancy
-      from public.occupancies_v2
-      where id=v_event.occupancy_id
-        and organization_id=v_event.organization_id
-        and property_id=v_event.property_id
-        and status='archived';
+      select o.* into v_occupancy
+      from public.occupancies_v2 o
+      where o.id=v_event.occupancy_id
+        and o.organization_id=v_event.organization_id
+        and o.property_id=v_event.property_id
+        and o.status='archived';
 
       if v_occupancy.id is null
         or v_occupancy.user_id is null
@@ -581,11 +581,11 @@ begin
         raise exception 'workflow_event_destination_mismatch' using errcode='42501';
       end if;
 
-      select * into v_claim
-      from public.claims_v2
-      where id=v_event.source_id
-        and claim_type='damage'
-        and status='draft';
+      select c.* into v_claim
+      from public.claims_v2 c
+      where c.id=v_event.source_id
+        and c.claim_type='damage'
+        and c.status='draft';
 
       if v_claim.id is null
         or v_claim.organization_id is distinct from v_event.organization_id

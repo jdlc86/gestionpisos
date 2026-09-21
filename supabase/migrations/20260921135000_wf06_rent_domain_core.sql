@@ -59,6 +59,97 @@ alter table public.workflow_event_outbox_v2
     'rent_claim.created'
   ));
 
+-- Una reclamación de alquiler solo puede tener un gestor canónico por
+-- destino efectivo. Piso solapa sus habitaciones; habitaciones distintas no.
+create function private.workflow_wf06_guard_claim_overlap_v1()
+returns trigger
+language plpgsql
+security definer
+set search_path=''
+as $wf06_claim_overlap$
+declare
+  v_spec jsonb;
+begin
+  if new.status<>'configured' then
+    return new;
+  end if;
+
+  select wv.spec
+  into v_spec
+  from public.workflow_definition_versions_v2 wv
+  where wv.id=new.definition_version_id
+    and wv.definition_id=new.definition_id
+    and wv.organization_id=new.organization_id;
+
+  if v_spec is null
+    or v_spec->>'flowType'<>'rent_claim'
+    or v_spec->>'triggerType'<>'event'
+    or v_spec->>'eventType'<>'rent_claim.created'
+    or v_spec->>'closeType'<>'domain_adapter' then
+    return new;
+  end if;
+
+  if new.scope_type not in ('property','room') or new.property_id is null then
+    raise exception 'workflow_wf06_claim_scope_invalid' using errcode='22023';
+  end if;
+
+  perform pg_advisory_xact_lock(
+    hashtextextended(
+      'wf06-claim:'||new.organization_id::text||':'||new.property_id::text,
+      0
+    )
+  );
+
+  if exists(
+    select 1
+    from public.workflow_applications_v2 a
+    join public.workflow_definition_versions_v2 wv
+      on wv.id=a.definition_version_id
+     and wv.definition_id=a.definition_id
+     and wv.organization_id=a.organization_id
+    join public.workflow_definitions_v2 d
+      on d.id=a.definition_id
+     and d.organization_id=a.organization_id
+    where a.id is distinct from new.id
+      and a.organization_id=new.organization_id
+      and a.status='configured'
+      and d.status='published'
+      and a.property_id=new.property_id
+      and wv.spec->>'flowType'='rent_claim'
+      and wv.spec->>'triggerType'='event'
+      and wv.spec->>'eventType'='rent_claim.created'
+      and wv.spec->>'closeType'='domain_adapter'
+      and (
+        new.scope_type='property'
+        or a.scope_type='property'
+        or (
+          new.scope_type='room'
+          and a.scope_type='room'
+          and a.room_id is not distinct from new.room_id
+        )
+      )
+  ) then
+    raise exception 'workflow_wf06_claim_application_conflict'
+      using errcode='55000';
+  end if;
+
+  return new;
+end;
+$wf06_claim_overlap$;
+
+revoke all on function private.workflow_wf06_guard_claim_overlap_v1()
+  from public,anon,authenticated,service_role;
+
+drop trigger if exists workflow_wf06_guard_claim_overlap_v1
+  on public.workflow_applications_v2;
+create trigger workflow_wf06_guard_claim_overlap_v1
+before insert or update of
+  status,definition_version_id,definition_id,organization_id,
+  scope_type,property_id,room_id
+on public.workflow_applications_v2
+for each row
+execute function private.workflow_wf06_guard_claim_overlap_v1();
+
 alter table public.workflow_event_outbox_v2
   drop constraint if exists workflow_event_outbox_v2_source_kind_check;
 alter table public.workflow_event_outbox_v2

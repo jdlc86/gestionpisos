@@ -652,8 +652,8 @@ Objetivo cumplido:
 ---
 
 ### BLOQUE WF-07 — Reclamo de daños + Fianza
-**Estado:** IN_PROGRESS
-**Bloque ACTIVO:** sí — implementación y revisión independiente por ChatGPT en `feat/wf-07-damage-deposit`, PR #284. WF-06 ya está fusionado y desplegado; WF-07 no se fusiona ni despliega hasta cerrar sus checks y revisión propios.
+**Estado:** IMPLEMENTED_DEPLOYED_E2E_DEFERRED
+**Bloque ACTIVO:** hardening post-merge acotado — PR #284 ya fue fusionado en `main` `38ef1da4bfd5c18cb886f8e655782cfcac2fc224` y quedó desplegado. Governance/PWA/Schema/Pages/Supabase Migrations están verdes post-merge; `notification-email` está activa con `verify_jwt=false`. Antes de avanzar a WF-08 se cierra la exposición innecesaria del router supersedido en `fix/wf07-hide-superseded-action-router`.
 
 **Mapa real al iniciar (2026-09-21):**
 - `claims_v2` ya existe y WF-06 lo usa como expediente transversal de reclamación; se reutilizará para daños ampliando `claim_type` de forma aditiva.
@@ -667,7 +667,7 @@ Objetivo cumplido:
 - Contrato WF-07: `docs/WORKFLOW_DAMAGE_DEPOSIT_CONTRACT.md`.
 - Dependencia cerrada durante implementación: `channel_email` no tenía un sender general. WF-07 añade `20260921164500_notification_email_dispatch.sql`, reintentos acotados en `20260921181500_notification_email_retry.sql`, cron en `20260921181600_notification_email_retry_cron.sql` y la Edge Function `notification-email`. El proveedor usa `Idempotency-Key` por notificación. Post-merge deben quedar aplicadas primero todas las migraciones y solo después desplegar la función con verificación JWT desactivada, ya que el llamador DB se autentica mediante secreto interno Vault.
 - Hardening de revisión independiente: una única reclamación de daños por fianza; lectura de `claims_v2` preservada bajo RLS sin escritura directa; re-enlace explícito de las policies workflow al OID del gate de actor WF-07; fixture PostgreSQL alineado con `tenants_v2_self_read` real de producción; retry de email acotado por `activated_at` para impedir backfill histórico.
-- Migraciones WF-07 actuales: `20260921160000`, `161500`, `163000`, `164500`, `165000`, `170000`, `171500`, `173000`, `174500`, `180000`, `181500`, `181600`, `183000` y `184500`.
+- Migraciones WF-07 desplegadas: `20260921160000`, `161500`, `163000`, `164500`, `165000`, `170000`, `171500`, `173000`, `174500`, `180000`, `181500`, `181600`, `183000` y `184500`. Hardening post-merge pendiente de merge: `20260922003000_wf07_hide_superseded_action_router.sql`, que retira `EXECUTE` externo del router pre-WF07 sin alterar el router vigente.
 
 
 **Integrar:**

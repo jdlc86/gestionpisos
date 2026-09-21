@@ -538,4 +538,4 @@ WF-07 integra la fianza y las reclamaciones por daños sin crear contabilidad ni
 
 Contrato completo: `WORKFLOW_DAMAGE_DEPOSIT_CONTRACT.md`.
 
-WF-07 permanece `IN_PROGRESS` hasta revisión independiente, merge y verificación post-merge. El E2E humano se mantiene para la batería final conjunta.
+WF-07 está `IMPLEMENTED_DEPLOYED_E2E_DEFERRED`: PR #284 fusionado en `main` `38ef1da4bfd5c18cb886f8e655782cfcac2fc224`; Governance, PWA, Schema, Pages y Supabase Migrations quedaron verdes post-merge, y `notification-email` está activa con `verify_jwt=false`. Queda un hardening post-merge acotado en `fix/wf07-hide-superseded-action-router` para retirar `EXECUTE` del router público supersedido `apply_workflow_task_action_pre_wf07_v1`; el E2E humano se mantiene para la batería final conjunta.

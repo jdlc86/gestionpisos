@@ -269,5 +269,11 @@ using (
   )
 );
 
+-- Una vez re-enlazadas las policies al wrapper vigente, la versión previa
+-- queda como detalle interno de implementación. El wrapper SECURITY DEFINER
+-- puede seguir invocándola como propietario, pero los clientes API no.
+revoke all on function public.workflow_execution_actor_current_pre_wf07_v1(uuid)
+  from public,anon,authenticated,service_role;
+
 comment on function public.workflow_execution_actor_current_v1(uuid) is
   'Gate de actor vigente. WF-07 añade validación estricta para fianza/daños; las policies RLS dependientes se re-enlazan al wrapper actual.';

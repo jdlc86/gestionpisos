@@ -330,6 +330,7 @@ function errorText(error){
   if(message.includes("workflow_wf07_damage_flow_unavailable"))return "Publica primero un flujo de Reclamación por daños compatible para este piso.";
   if(message.includes("workflow_wf07_damage_evidence_required"))return "Completa la evidencia configurada antes de notificar la reclamación.";
   if(message.includes("workflow_wf07_damage_claims_unresolved"))return "Todavía hay reclamaciones por daños pendientes de resolución.";
+  if(message.includes("workflow_wf07_deposit_evidence_required"))return "Completa la evidencia configurada antes de devolver o retener la fianza.";
   if(message.includes("workflow_wf07_partial_hold_amount_invalid"))return "La retención parcial debe ser menor que la fianza y estar respaldada por daños resueltos.";
   if(message.includes("workflow_wf07_full_hold_not_justified"))return "La retención total requiere daños resueltos por al menos el importe completo de la fianza.";
   if(message.includes("workflow_wf07_damage_resolution_invalid"))return "La resolución requiere decisión registrada, evidencia completa y un importe válido.";

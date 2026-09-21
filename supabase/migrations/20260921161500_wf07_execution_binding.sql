@@ -93,8 +93,7 @@ begin
     (v_task.id,'refund','Devolver fianza','active','completed',true,50,true,'assignee'),
     (v_task.id,'partial_hold','Retener parcialmente','active','completed',true,60,true,'assignee'),
     (v_task.id,'hold','Retener fianza','active','completed',true,70,true,'assignee'),
-    (v_task.id,'provide_info','Aportar información','waiting_info','waiting_info',true,20,true,'tenant'),
-    (v_task.id,'continue','Continuar revisión','waiting_info','active',false,40,true,'assignee')
+    (v_task.id,'continue','Registrar información y continuar','waiting_info','active',true,40,true,'assignee')
   on conflict(task_id,action_key,from_status)
   do update set
     label=excluded.label,to_status=excluded.to_status,
@@ -145,12 +144,11 @@ begin
     requires_note,sort_order,active,actor
   ) values
     (v_task.id,'notify','Notificar reclamación','pending','active',false,10,true,'assignee'),
-    (v_task.id,'accept','Aceptar reclamación','active','active',false,20,true,'tenant'),
-    (v_task.id,'dispute','Disputar reclamación','active','active',true,30,true,'tenant'),
+    (v_task.id,'record_acceptance','Registrar aceptación','active','active',true,20,true,'assignee'),
+    (v_task.id,'record_dispute','Registrar disputa','active','active',true,30,true,'assignee'),
     (v_task.id,'request_info','Solicitar información','active','waiting_info',true,40,true,'assignee'),
     (v_task.id,'resolve','Resolver','active','completed',true,60,false,'assignee'),
-    (v_task.id,'provide_info','Aportar información','waiting_info','waiting_info',true,20,true,'tenant'),
-    (v_task.id,'continue','Continuar reclamación','waiting_info','active',false,40,true,'assignee')
+    (v_task.id,'continue','Registrar información y continuar','waiting_info','active',true,40,true,'assignee')
   on conflict(task_id,action_key,from_status)
   do update set
     label=excluded.label,to_status=excluded.to_status,
@@ -520,10 +518,10 @@ begin
         and property_id=v_occupancy.property_id;
 
       if v_deposit.id is null then
-        raise exception 'workflow_wf07_deposit_missing' using errcode='55000';
+        raise exception 'workflow_domain_lifecycle_mismatch' using errcode='55000';
       end if;
       if v_deposit.status<>'received' then
-        raise exception 'workflow_wf07_deposit_not_reviewable' using errcode='55000';
+        raise exception 'workflow_domain_lifecycle_mismatch' using errcode='55000';
       end if;
 
       select * into v_result

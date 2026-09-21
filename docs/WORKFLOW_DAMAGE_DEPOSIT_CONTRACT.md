@@ -103,6 +103,12 @@ Como la Baja revoca acceso, las comunicaciones posteriores a la salida no depend
 
 Las claves de evento deduplican reintentos.
 
+`notifications_v2.channel_email=true` se despacha de forma asíncrona mediante el trigger `notification_email_dispatch_v1` hacia la Edge Function `notification-email`. El puente usa `pg_net`, secreto interno en Vault y un recibo idempotente `notification_email_deliveries_v1`.
+
+La Edge Function resuelve el email directamente desde la identidad Auth con service role; no exige rol tenant vigente. Esto permite comunicar una fianza/daño después de la Baja sin restaurar acceso a la PWA. Usa los secretos existentes `RESEND_API_KEY` y `AUTH_EMAIL_FROM`.
+
+Orden obligatorio de despliegue: primero la migración de email y después la Edge Function. Nunca desplegar `notification-email` antes de que existan sus RPC/secretos de base de datos.
+
 ## Idempotencia y auditoría
 
 Cada mutación usa `request_key` y deja:

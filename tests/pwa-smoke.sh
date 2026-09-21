@@ -404,7 +404,7 @@ test -s docs/cleaning.html
 test -s docs/cleaning.js
 node --check docs/cleaning.js
 node --check docs/workflow-tasks.js
-grep -Fq './workflow-tasks.js?v=2026092102' docs/workflow-tasks.html
+grep -Fq './workflow-tasks.js?v=2026092103' docs/workflow-tasks.html
 grep -Fq 'function cleaningExecutionForTask(task)' docs/workflow-tasks.js
 grep -Fq 'url.searchParams.set("workflow_task_id",task.id)' docs/workflow-tasks.js
 grep -Fq 'renderCleaningAdapter(task,article)' docs/workflow-tasks.js

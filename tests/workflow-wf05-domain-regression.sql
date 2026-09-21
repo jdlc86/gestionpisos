@@ -605,22 +605,28 @@ update public.incidents_v2
 set property_id=current_setting('wf05.property')::uuid
 where id=current_setting('wf05.incident')::uuid;
 
--- ROOT/ADMIN conservan el requisito de MFA incluso si fueran el asignado.
+-- ADMIN conserva el requisito de MFA cuando también cumple la regla de
+-- asignación congelada. Se usa el mismo actor para no saltarse la revalidación.
+update public.user_roles
+set role='admin'
+where user_id=current_setting('wf05.staff')::uuid
+  and organization_id=current_setting('wf05.org')::uuid
+  and revoked_at is null;
 update public.workflow_executions_v2
-set assigned_user_id=current_setting('wf05.root')::uuid
+set spec_snapshot=jsonb_set(
+  spec_snapshot,'{assignmentRole}',to_jsonb('admin'::text),true
+)
 where id=current_setting('wf05.execution')::uuid;
-update public.tenant_tasks_v2
-set assigned_user_id=current_setting('wf05.root')::uuid
-where id=current_setting('wf05.task')::uuid;
+
 set local role authenticated;
 select set_config('request.jwt.claims',jsonb_build_object(
-  'sub',current_setting('wf05.root'),'role','authenticated','aal','aal1'
+  'sub',current_setting('wf05.staff'),'role','authenticated','aal','aal1'
 )::text,true);
 do $privileged_mfa$
 begin
   begin
     perform public.apply_workflow_task_action_v1(
-      current_setting('wf05.task')::uuid,'accept','wf05-root-aal1',null
+      current_setting('wf05.task')::uuid,'accept','wf05-admin-aal1',null
     );
     raise exception 'WF05 privileged action without MFA was accepted';
   exception when sqlstate '42501' then
@@ -629,12 +635,17 @@ begin
 end;
 $privileged_mfa$;
 reset role;
+
+update public.user_roles
+set role='employee'
+where user_id=current_setting('wf05.staff')::uuid
+  and organization_id=current_setting('wf05.org')::uuid
+  and revoked_at is null;
 update public.workflow_executions_v2
-set assigned_user_id=current_setting('wf05.staff')::uuid
+set spec_snapshot=jsonb_set(
+  spec_snapshot,'{assignmentRole}',to_jsonb('employee'::text),true
+)
 where id=current_setting('wf05.execution')::uuid;
-update public.tenant_tasks_v2
-set assigned_user_id=current_setting('wf05.staff')::uuid
-where id=current_setting('wf05.task')::uuid;
 
 set local role authenticated;
 select set_config('request.jwt.claims',jsonb_build_object(

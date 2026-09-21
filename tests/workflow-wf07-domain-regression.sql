@@ -517,6 +517,19 @@ select * from public.apply_workflow_task_action_v1(
   current_setting('wf07.hold_review_task')::uuid,'start_review','wf07-hold-review',null
 );
 
+-- El saneador transversal congela claves operativas item-N, no las claves de autoría.
+do $wf07_checklist_key_normalization$
+begin
+  if (
+    select spec_snapshot#>>'{checklistItems,0,key}'
+    from public.workflow_executions_v2
+    where id=current_setting('wf07.partial_review_exec')::uuid
+  ) is distinct from 'item-1' then
+    raise exception 'WF07 review checklist key was not normalized to item-1';
+  end if;
+end;
+$wf07_checklist_key_normalization$;
+
 -- Refund no puede cerrar hasta completar evidencia configurada.
 do $review_evidence_required$
 begin
@@ -532,13 +545,13 @@ end;
 $review_evidence_required$;
 
 select * from public.set_workflow_checklist_item_v1(
-  current_setting('wf07.partial_review_task')::uuid,'review',true,'wf07-partial-review-check'
+  current_setting('wf07.partial_review_task')::uuid,'item-1',true,'wf07-partial-review-check'
 );
 select * from public.set_workflow_checklist_item_v1(
-  current_setting('wf07.refund_review_task')::uuid,'review',true,'wf07-refund-review-check'
+  current_setting('wf07.refund_review_task')::uuid,'item-1',true,'wf07-refund-review-check'
 );
 select * from public.set_workflow_checklist_item_v1(
-  current_setting('wf07.hold_review_task')::uuid,'review',true,'wf07-hold-review-check'
+  current_setting('wf07.hold_review_task')::uuid,'item-1',true,'wf07-hold-review-check'
 );
 
 -- Devolución total sin daños.
@@ -686,10 +699,10 @@ end;
 $damage_evidence_required$;
 
 select * from public.set_workflow_checklist_item_v1(
-  current_setting('wf07.partial_damage_task')::uuid,'damage',true,'wf07-partial-damage-check'
+  current_setting('wf07.partial_damage_task')::uuid,'item-1',true,'wf07-partial-damage-check'
 );
 select * from public.set_workflow_checklist_item_v1(
-  current_setting('wf07.hold_damage_task')::uuid,'damage',true,'wf07-hold-damage-check'
+  current_setting('wf07.hold_damage_task')::uuid,'item-1',true,'wf07-hold-damage-check'
 );
 
 select * from public.apply_workflow_task_action_v1(

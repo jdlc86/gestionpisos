@@ -570,7 +570,16 @@ begin
     select count(*) from public.tenant_tasks_v2
     where id=current_setting('wf06.claim_task')::uuid
   )<>1 then
-    raise exception 'WF06 exact tenant cannot read shared claim task';
+    raise exception
+      'WF06 exact tenant cannot read shared claim task: uid=%, platform=%, tenant_visible=%, actor_gate=%',
+      auth.uid(),
+      public.has_current_platform_access_v1(),
+      (select count(*) from public.tenants_v2
+       where id=current_setting('wf06.tenant')::uuid
+         and user_id=auth.uid()),
+      public.workflow_execution_actor_current_v1(
+        current_setting('wf06.claim_execution')::uuid
+      );
   end if;
   if (
     select count(*) from public.tenant_task_actions_v2

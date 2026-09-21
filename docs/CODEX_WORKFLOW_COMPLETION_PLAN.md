@@ -1,7 +1,7 @@
 # CODEX WORKFLOW COMPLETION PLAN
 
 Fecha de baseline: 2026-09-20  
-Último `main` verificado por ChatGPT: `main@98242d6bb2aa61fdaea813dcb180659cc2ce07d3`
+Último `main` verificado por ChatGPT: `main@a67837c3cfbbd0db31105c31a5d26ec2347a9923`
 
 Este documento es el **tablero operativo persistente** para terminar la implantación de Flujos de Trabajo en GestionPisos/Allaiso sin perder contexto entre sesiones de Codex.
 
@@ -472,8 +472,8 @@ Objetivo cumplido:
 ---
 
 ### BLOQUE WF-05 — Incidencia / Mantenimiento / Inspección
-**Estado:** READY_FOR_CHATGPT_REVIEW
-**Bloque ACTIVO:** no — implementación detenida para revisión independiente. El E2E humano de WF-04 y WF-05 queda diferido a la batería final y no bloqueó las regresiones automáticas de este bloque.
+**Estado:** IMPLEMENTED_DEPLOYED_E2E_DEFERRED
+**Bloque ACTIVO:** no — implementación, revisión independiente, merge y despliegue completados. El E2E humano queda deliberadamente diferido a la batería final conjunta; NO marcar VERIFIED todavía.
 
 **Arranque y mapa real observado (primer commit WF-05, 2026-09-21):**
 - Rama nueva: `codex/wf-05-incidents-maintenance-inspection`. Base exacta: `main` remoto `a69c7534748a21114643e7f0d746b0fcb0934e03`, que contiene WF-04 revisado y fusionado. El PR documental #280 seguía abierto al comenzar; esta rama incorpora su decisión de diferir el E2E humano de WF-04 para que la trazabilidad no dependa de ese merge.
@@ -544,7 +544,7 @@ Objetivo cumplido:
 
 **Handoff WF-05 (2026-09-21):**
 - Rama: `codex/wf-05-incidents-maintenance-inspection`, creada desde `main@a69c7534748a21114643e7f0d746b0fcb0934e03`. `origin/main` seguía en ese mismo SHA al cerrar el bloque.
-- PR: [#281 — WF-05: incidencia, mantenimiento e inspección](https://github.com/jdlc86/gestionpisos/pull/281). No se ha fusionado ni desplegado. El PR documental #280 continúa abierto; esta rama incluye la misma decisión de aplazar los E2E humanos para que la trazabilidad no dependa de su merge.
+- PR: [#281 — WF-05: incidencia, mantenimiento e inspección](https://github.com/jdlc86/gestionpisos/pull/281), fusionado por squash en `main@a67837c3cfbbd0db31105c31a5d26ec2347a9923`. El PR documental #280 quedó cerrado sin merge por quedar supersedido por WF-05.
 - HEAD de implementación validado antes de este handoff: `45ffcd63d83c7d7cc4aea5454b8336d38f199649`; corrección posterior del contrato visual detectada por PWA Smoke: `3fa7ac5428f96120808007e7a36322082ea9049c`. El HEAD final es siempre la punta publicada de la rama; los checks de PR #281 son la fuente autoritativa de su SHA y estado CI.
 - Migraciones aditivas: `20260921062822_wf05_incident_domain_core.sql`, `20260921064050_wf05_incident_event_workflow_link.sql` y `20260921065433_wf05_incident_domain_actions.sql`. No se aplicaron migraciones ni cambios manuales en Supabase remoto.
 - Dominio entregado: apertura idempotente de incidencia/mantenimiento; `incident.created` por el outbox WF-02; vínculo exacto expediente/evento/ejecución; una `tenant_tasks_v2` por ejecución; aceptar, rechazar, solicitar información, continuar y resolver sobre el RPC común; revalidación server-side del asignado y destino; MFA privilegiado; historial, auditoría y notificaciones coherentes; `incident.resolved` capaz de activar una Inspección posterior por el mismo dispatcher.
@@ -554,28 +554,81 @@ Objetivo cumplido:
 - Regresión PostgreSQL: `workflow-wf05-domain-regression.sql` cubre apertura → una ejecución/tarjeta por aplicación compatible; reintento sin duplicados; aceptación; espera de información no terminal y auditable; respuesta idempotente; continuación en la misma ejecución; resolución coherente; rechazo por asignado revocado, destino alterado y ROOT sin AAL2; Foto/Checklist/Documento comunes; una ejecución downstream por aplicación; RLS negativas; compatibilidad legacy; auditoría y notificaciones. La suite completa `database-regression-v2.sh` terminó verde en PostgreSQL 17 desechable.
 - Guards locales sobre el HEAD de implementación: Governance Guard ✅; PWA Smoke y todos sus subchecks ✅; Schema Guard estático ✅; regresión PostgreSQL completa ✅. Tras este commit documental deben quedar verdes Governance Guard, PWA Smoke y Schema Guard sobre el mismo HEAD final de PR #281 antes de cualquier merge.
 - Correcciones de revisión independiente aplicadas por ChatGPT: `incident.created` admite un único gestor Mantenimiento canónico por destino efectivo y rechaza configuraciones solapadas; `workflow_execution_actor_current_v1()` revalida además la regla congelada `property_responsible/fixed_person/role` después de comprobar acceso y sujeto WF-05; `request_info` funciona también para expedientes abiertos por personal interno, con visibilidad `internal` y respuesta del creador autorizado sobre la misma ejecución. Se añadieron regresiones específicas para estos hallazgos.
-- Riesgos/pendientes deliberados: no existe despliegue de WF-05 todavía; el E2E humano integral se conserva para la batería final conjunta; las inspecciones `incident.resolved` sí conservan fan-out por aplicación compatible; el camino legacy `task_type=incident` permanece solo por compatibilidad hasta WF-09.
-- Siguiente acción exacta: revalidar Governance Guard, PWA Smoke y Schema Guard sobre el HEAD final que contiene las correcciones de revisión; resolver los hilos únicamente con evidencia; fusionar solo si el PR queda clean. No activar WF-06 ni desplegar manualmente.
+- Producción post-merge: migraciones `20260921062822_wf05_incident_domain_core`, `20260921064050_wf05_incident_event_workflow_link` y `20260921065433_wf05_incident_domain_actions` aplicadas por el workflow normal de Supabase. Verificados en producción los RPC `open_workflow_incident_v1`, `submit_incident_information_v1`, la acción privada WF-05 y los triggers de solapamiento/siembra.
+- Correcciones finales de revisión: un único gestor maintenance por destino efectivo; revalidación de regla de asignación al actuar; bucle pedir información → responder → continuar válido también para creador interno, con visibilidad `internal` y autorización estricta del creador.
+- E2E humano integral: diferido deliberadamente a la batería final conjunta junto con WF-04. No bloquear WF-06 por esta deuda documentada.
+- Riesgos/pendientes deliberados: las inspecciones `incident.resolved` conservan fan-out por aplicación compatible; el camino legacy `task_type=incident` permanece solo por compatibilidad hasta WF-09.
+- Siguiente acción exacta: mantener WF-05 congelado salvo regresión concreta y avanzar a WF-06. No marcar WF-05 `VERIFIED` hasta completar la batería final.
 
 ---
 
 ### BLOQUE WF-06 — Pago de alquiler + reclamación de alquiler
 **Estado:** PLANNED
+**Bloque ACTIVO:** sí — autorizado para implementación. El E2E humano de WF-04/WF-05 queda diferido a la batería final y NO bloquea este bloque.
 
-Integrar:
-- Pago alquiler.
-- Reclamación alquiler.
+**Instrucción de arranque para Codex:**
+1. Leer `AGENTS.md`, este documento completo y los contratos workflow actuales.
+2. Comprobar el HEAD real de `main`; debe ser `a67837c3cfbbd0db31105c31a5d26ec2347a9923` o un descendiente. Si avanzó, inspeccionar primero el delta.
+3. Crear una rama NUEVA desde el `main` real. No reutilizar ramas de WF-05.
+4. En el primer commit cambiar WF-06 a `IN_PROGRESS` y documentar el mapa real de pagos/reclamaciones: tablas legacy, obligaciones, recordatorios, tareas, notificaciones, RPC/triggers/cron, UI, RLS y cualquier integración financiera existente.
+5. Trabajar en bloques pequeños: inspección → cambio concreto → regresión → commit.
+6. No reabrir WF-00..WF-05 salvo una dependencia real y demostrable.
+7. No hacer E2E humano de WF-04/WF-05 ahora; queda para la batería final conjunta.
 
-Debe conservar la semántica legacy:
+**Objetivo:**
+- Integrar Pago de alquiler y Reclamación de alquiler sobre el motor transversal.
+- Conservar la semántica legacy sin crear un segundo motor financiero ni de tareas.
+
+**Debe conservar como mínimo:**
 - registrar pago;
-- solicitar;
+- solicitar pago;
 - aplazar;
 - reclamar;
 - aceptar/disputar;
 - pedir información;
+- continuar;
 - resolver.
 
-Toda transición con impacto sensible debe quedar auditada.
+**Principios obligatorios:**
+- `tenant_tasks_v2` sigue siendo la tarjeta operativa transversal.
+- Las obligaciones/pagos/reclamaciones pueden conservar expediente de dominio, pero nunca una segunda autoridad de tareas.
+- No convertir WF-06 en contabilidad ni en ledger general.
+- Reutilizar tablas/relaciones financieras legacy cuando sean la autoridad correcta; enlazarlas a la ejecución en vez de duplicarlas.
+- Toda transición sensible debe ser server-side, idempotente y auditable.
+- Ningún cliente autenticado obtiene escritura directa adicional sobre tablas financieras por conveniencia.
+- Revalidar organización, piso, ocupación/inquilino y actor en cada acción.
+- No permitir que un empleado sin permiso vigente registre, reclame o resuelva.
+- Aplazar no equivale a pagar ni cerrar; debe ser estado no terminal con nueva fecha/condición trazable.
+- Registrar pago debe ser idempotente y no crear dobles pagos por reintento.
+- Reclamación debe reutilizar la misma obligación/expediente cuando corresponda; no duplicar deuda.
+- Aceptar/disputar y pedir información deben quedar en historial/auditoría.
+- Notificaciones y eventos posteriores deben usar infraestructura común, no listeners paralelos.
+- No mezclar Daños/Fianza (WF-07), presets (WF-08) ni retirada legacy (WF-09).
+
+**Pruebas mínimas obligatorias:**
+- obligación válida → una ejecución y una tarjeta;
+- reintento → cero duplicados;
+- registrar pago → cierre/coherencia exacta sin doble registro;
+- solicitar/reclamar → estados coherentes;
+- aplazar → no terminal, nueva fecha trazable, misma ejecución;
+- aceptar/disputar → historial/auditoría y autorización correcta;
+- pedir información → respuesta idempotente y continuación sobre la misma ejecución;
+- resolver → cierre consistente;
+- actor revocado/sin permiso → rechazo server-side;
+- inquilino/ocupación equivocados → rechazo;
+- RLS negativas;
+- notificación final deduplicada;
+- compatibilidad con obligaciones/recordatorios legacy existentes;
+- ninguna mutación financiera sensible depende solo de UI.
+
+**Entrega obligatoria de Codex:**
+- un solo PR WF-06 salvo autorización explícita;
+- migraciones aditivas/versionadas; no modificar migraciones aplicadas;
+- regresiones nuevas para reglas críticas y bugs;
+- Governance Guard, PWA Smoke y Schema Guard verdes sobre el mismo HEAD;
+- actualizar este handoff con rama, PR, HEAD, migraciones, pruebas, riesgos y pendientes;
+- detenerse en `READY_FOR_CHATGPT_REVIEW`;
+- no fusionar, no desplegar manualmente y no activar WF-07.
 
 ---
 

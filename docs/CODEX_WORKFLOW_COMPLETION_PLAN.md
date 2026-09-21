@@ -563,8 +563,8 @@ Objetivo cumplido:
 ---
 
 ### BLOQUE WF-06 — Pago de alquiler + reclamación de alquiler
-**Estado:** IN_REVIEW
-**Bloque ACTIVO:** sí — implementación directa por ChatGPT en PR #283; Codex queda reservado por límite de crédito. El E2E humano de WF-04/WF-05 queda diferido a la batería final y NO bloquea este bloque.
+**Estado:** IMPLEMENTED_DEPLOYED_E2E_DEFERRED
+**Bloque ACTIVO:** no — PR #283 fusionado. El E2E humano permanece diferido a la batería final conjunta y no se marca `VERIFIED` hasta completarla.
 
 **Instrucción de arranque para Codex:**
 1. Leer `AGENTS.md`, este documento completo y los contratos workflow actuales.
@@ -590,6 +590,9 @@ Objetivo cumplido:
 - Contrato: `docs/WORKFLOW_RENT_PAYMENT_CLAIM_CONTRACT.md`.
 - PWA: Creador con Pago/Reclamación y Tareas con acciones mixtas + aplazamiento tipado.
 - Evidencia durante revisión: Governance y PWA han pasado en HEADs de #283; Schema Guard completo pasó en HEADs anteriores del mismo PR después de integrar WF-06. Se exige una ronda final común antes del merge.
+- Cierre real: PR #283 fusionado por squash en `main@cbe98db49be1916a96d04db7ad5517e416249739`; Governance Guard, PWA Smoke, Schema Guard, GitHub Pages y Supabase Migrations quedaron verdes post-merge.
+- Producción: aplicadas `20260921135000_wf06_rent_domain_core`, `20260921140500_wf06_rent_execution_binding` y `20260921142000_wf06_rent_domain_actions`.
+- Deuda descubierta al ejecutar la suite completa de WF-07: el CHECK físico de `flow_type`, una referencia ambigua de `status` en el ejecutor WF-06 y la unicidad global de `payment_obligation_id` no reflejaban ya el contrato de WF-06. Se corrigen aditivamente en WF-07 mediante `20260921165000_wf07_expand_workflow_flow_types.sql`, `20260921173000_wf07_wf06_execution_ambiguity_fix.sql` y `20260921174500_wf07_wf06_payment_obligation_index_fix.sql`; no se modifica ninguna migración WF-06 ya aplicada.
 
 **Objetivo:**
 - Integrar Pago de alquiler y Reclamación de alquiler sobre el motor transversal.
@@ -650,7 +653,7 @@ Objetivo cumplido:
 
 ### BLOQUE WF-07 — Reclamo de daños + Fianza
 **Estado:** IN_PROGRESS
-**Bloque ACTIVO:** sí — implementación directa por ChatGPT en `feat/wf-07-damage-deposit`. No fusionar ni desplegar hasta cerrar el post-merge de WF-06.
+**Bloque ACTIVO:** sí — implementación y revisión independiente por ChatGPT en `feat/wf-07-damage-deposit`, PR #284. WF-06 ya está fusionado y desplegado; WF-07 no se fusiona ni despliega hasta cerrar sus checks y revisión propios.
 
 **Mapa real al iniciar (2026-09-21):**
 - `claims_v2` ya existe y WF-06 lo usa como expediente transversal de reclamación; se reutilizará para daños ampliando `claim_type` de forma aditiva.
@@ -658,11 +661,14 @@ Objetivo cumplido:
 - Evidencia Foto/Checklist/Documento ya existe en el workflow transversal y debe reutilizarse; no crear buckets ni subsistemas nuevos.
 - Diseño fijado: un único expediente de fianza por ocupación, persistido en una tabla operativa mínima, sin ledger ni movimientos contables.
 - Recepción y revisión de fianza serán ejecuciones separadas que reutilizan el mismo expediente; así no queda una tarea abierta durante toda la estancia.
-- La revisión de fianza puede abrir una reclamación por daños enlazada; daños reutiliza `claims_v2`, tarjeta compartida y actor mixto gestoría/inquilino.
+- La revisión de fianza puede abrir como máximo una reclamación por daños enlazada; daños reutiliza `claims_v2` y `tenant_tasks_v2`. Tras la Baja, la tarjeta queda operada por la gestoría: el antiguo inquilino no recupera acceso PWA y sus respuestas externas se registran internamente de forma auditada.
 - Retención parcial/total exige trazabilidad server-side y no puede exceder el importe recibido.
 - El E2E humano se conserva para la batería final conjunta; las regresiones automáticas no se aplazan.
 - Contrato WF-07: `docs/WORKFLOW_DAMAGE_DEPOSIT_CONTRACT.md`.
-- Dependencia cerrada durante implementación: `channel_email` no tenía un sender general. WF-07 añade la migración `20260921164500_notification_email_dispatch.sql` y la Edge Function `notification-email`; post-merge debe aplicarse primero la migración y después desplegar la función.
+- Dependencia cerrada durante implementación: `channel_email` no tenía un sender general. WF-07 añade `20260921164500_notification_email_dispatch.sql`, reintentos acotados en `20260921181500_notification_email_retry.sql`, cron en `20260921181600_notification_email_retry_cron.sql` y la Edge Function `notification-email`. El proveedor usa `Idempotency-Key` por notificación. Post-merge deben quedar aplicadas primero todas las migraciones y solo después desplegar la función con verificación JWT desactivada, ya que el llamador DB se autentica mediante secreto interno Vault.
+- Hardening de revisión independiente: una única reclamación de daños por fianza; lectura de `claims_v2` preservada bajo RLS sin escritura directa; re-enlace explícito de las policies workflow al OID del gate de actor WF-07; fixture PostgreSQL alineado con `tenants_v2_self_read` real de producción.
+- Migraciones WF-07 actuales: `20260921160000`, `161500`, `163000`, `164500`, `165000`, `170000`, `171500`, `173000`, `174500`, `180000`, `181500` y `181600`.
+
 
 **Integrar:**
 - reclamación por daños;

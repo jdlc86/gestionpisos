@@ -7,8 +7,10 @@
 -- el mismo timestamp y bloquear continue.
 --
 -- El id de workflow_execution_events_v2 es IDENTITY monotónico y expresa el
--- orden de inserción de forma determinista. Se conserva toda la semántica
--- WF-06 y solo se sustituye esa comparación temporal por orden de evento.
+-- orden de inserción de forma determinista. La misma función RETURNS TABLE
+-- expone task_id como variable PL/pgSQL; se califican también las dos
+-- referencias de tenant_task_actions_v2 que el PostgreSQL estricto detecta
+-- como ambiguas. No cambia la semántica de autorización ni estados WF-06.
 
 create or replace function private.apply_wf06_claim_action_v1(
   p_task_id uuid,

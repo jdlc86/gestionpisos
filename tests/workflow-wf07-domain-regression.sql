@@ -425,14 +425,31 @@ begin
   )<>0 then
     raise exception 'WF07 offboarded tenant can still read review task';
   end if;
-  begin
-    perform count(*) from public.claims_v2;
-    raise exception 'WF07 authenticated retained direct claims SELECT';
-  exception when insufficient_privilege then
-    null;
-  end;
+  if (select count(*) from public.claims_v2)<>0 then
+    raise exception 'WF07 offboarded tenant can still read claims';
+  end if;
 end;
 $offboarded_no_access$;
+
+reset role;
+
+do $claims_privilege_contract$
+begin
+  if not has_table_privilege('authenticated','public.claims_v2','select') then
+    raise exception 'WF07 removed authenticated claims SELECT required by RLS';
+  end if;
+  if has_table_privilege('authenticated','public.claims_v2','insert')
+    or has_table_privilege('authenticated','public.claims_v2','update')
+    or has_table_privilege('authenticated','public.claims_v2','delete') then
+    raise exception 'WF07 retained direct authenticated claims mutation';
+  end if;
+end;
+$claims_privilege_contract$;
+
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf07.partial_user'),'role','authenticated','aal','aal1'
+)::text,true);
 reset role;
 
 -- Gestor inicia las tres revisiones.

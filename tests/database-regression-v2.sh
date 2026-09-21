@@ -40,10 +40,11 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -e WF04_FOCUSED="
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/local-property-staff-v3-alignment.sql
 
     # Reproduce historical Supabase table grants used by RLS and the cleaning swap UI.
-    # Production confirms authenticated can SELECT occupancies_v2; RLS policies depend on that
-    # table-level privilege before row policies can be evaluated.
-    # Production also has SELECT/INSERT/UPDATE on swaps and SELECT on debts.
-    psql -v ON_ERROR_STOP=1 -U postgres -c "grant select on public.occupancies_v2 to authenticated; grant select,insert,update on public.cleaning_swap_requests_v2 to authenticated; grant select on public.cleaning_debts_v2 to authenticated"
+    # Production confirms authenticated can SELECT occupancies_v2, profiles and user_roles;
+    # RLS policies depend on those table-level privileges before row policies can be evaluated.
+    # WF-07 claims_admin_read reads profiles/user_roles under RLS. Production also has
+    # SELECT/INSERT/UPDATE on swaps and SELECT on debts.
+    psql -v ON_ERROR_STOP=1 -U postgres -c "grant select on public.occupancies_v2, public.profiles, public.user_roles to authenticated; grant select,insert,update on public.cleaning_swap_requests_v2 to authenticated; grant select on public.cleaning_debts_v2 to authenticated"
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260913192729_beta0_enable_occupancies_v2_rls.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260913192821_beta0_occupancies_v2_read_policies.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260913205141_close_owners_and_occupancy_blockers.sql

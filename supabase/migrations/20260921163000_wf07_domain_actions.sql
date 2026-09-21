@@ -385,6 +385,23 @@ begin
         updated_at=clock_timestamp()
     where id=v_execution.id returning * into v_execution;
 
+    insert into public.notifications_v2(
+      organization_id,recipient_user_id,event_type,title,body,status,
+      channel_in_app,channel_email,source_kind,source_id,event_key
+    ) values (
+      v_deposit.organization_id,v_deposit.tenant_user_id,
+      'security_deposit_received','Fianza recibida',
+      concat(
+        'Se ha registrado la recepción de tu fianza de ',
+        trim(to_char(v_deposit.amount_cents/100.0,'FM9999999990D00')),
+        ' ',v_deposit.currency,'.'
+      ),
+      'pending',true,true,'security_deposit',v_deposit.id,'received'
+    )
+    on conflict (source_kind,source_id,event_key,recipient_user_id)
+    where source_kind is not null and source_id is not null and event_key is not null
+    do nothing;
+
   elsif p_action_key='start_review' then
     if v_deposit.status<>'received'
       or v_action.to_status<>'active' then
@@ -420,6 +437,19 @@ begin
     update public.workflow_executions_v2
     set status='waiting_info',updated_at=clock_timestamp()
     where id=v_execution.id returning * into v_execution;
+
+    insert into public.notifications_v2(
+      organization_id,recipient_user_id,event_type,title,body,status,
+      channel_in_app,channel_email,source_kind,source_id,event_key
+    ) values (
+      v_deposit.organization_id,v_deposit.tenant_user_id,
+      'security_deposit_information_requested','Información sobre la fianza',
+      v_note,'pending',false,true,'security_deposit',v_deposit.id,
+      'information_requested:'||v_key
+    )
+    on conflict (source_kind,source_id,event_key,recipient_user_id)
+    where source_kind is not null and source_id is not null and event_key is not null
+    do nothing;
 
   elsif p_action_key='continue' then
     if v_deposit.status<>'waiting_info'
@@ -568,6 +598,28 @@ begin
           updated_at=clock_timestamp()
       where id=v_deposit.id returning * into v_deposit;
     end if;
+
+    insert into public.notifications_v2(
+      organization_id,recipient_user_id,event_type,title,body,status,
+      channel_in_app,channel_email,source_kind,source_id,event_key
+    ) values (
+      v_deposit.organization_id,v_deposit.tenant_user_id,
+      'security_deposit_resolved','Fianza resuelta',
+      concat(
+        case v_deposit.status
+          when 'refunded' then 'Se ha registrado la devolución total de la fianza.'
+          when 'partially_held' then 'Se ha registrado una retención parcial de la fianza.'
+          when 'held' then 'Se ha registrado la retención total de la fianza.'
+          else 'La fianza ha quedado resuelta.'
+        end,
+        ' ',coalesce(v_note,'')
+      ),
+      'pending',false,true,'security_deposit',v_deposit.id,
+      'resolved:'||v_deposit.status
+    )
+    on conflict (source_kind,source_id,event_key,recipient_user_id)
+    where source_kind is not null and source_id is not null and event_key is not null
+    do nothing;
 
     update public.tenant_tasks_v2
     set status='completed',updated_at=clock_timestamp()
@@ -821,6 +873,23 @@ begin
         updated_at=clock_timestamp()
     where id=v_execution.id returning * into v_execution;
 
+    insert into public.notifications_v2(
+      organization_id,recipient_user_id,event_type,title,body,status,
+      channel_in_app,channel_email,source_kind,source_id,event_key
+    ) values (
+      v_claim.organization_id,v_claim.tenant_user_id,
+      'damage_claim_notified','Reclamación por daños',
+      concat(
+        v_claim.body,' · ',
+        trim(to_char(v_claim.claimed_amount_cents/100.0,'FM9999999990D00')),
+        ' ',v_claim.currency
+      ),
+      'pending',false,true,'damage_claim',v_claim.id,'notified'
+    )
+    on conflict (source_kind,source_id,event_key,recipient_user_id)
+    where source_kind is not null and source_id is not null and event_key is not null
+    do nothing;
+
   elsif p_action_key in ('record_acceptance','record_dispute') then
     if v_claim.status<>'sent'
       or v_claim.tenant_decision is not null
@@ -860,6 +929,19 @@ begin
     update public.workflow_executions_v2
     set status='waiting_info',updated_at=clock_timestamp()
     where id=v_execution.id returning * into v_execution;
+
+    insert into public.notifications_v2(
+      organization_id,recipient_user_id,event_type,title,body,status,
+      channel_in_app,channel_email,source_kind,source_id,event_key
+    ) values (
+      v_claim.organization_id,v_claim.tenant_user_id,
+      'damage_claim_information_requested','Información sobre daños',
+      v_note,'pending',false,true,'damage_claim',v_claim.id,
+      'information_requested:'||v_key
+    )
+    on conflict (source_kind,source_id,event_key,recipient_user_id)
+    where source_kind is not null and source_id is not null and event_key is not null
+    do nothing;
 
   elsif p_action_key='continue' then
     if v_claim.status<>'waiting_info'
@@ -903,6 +985,23 @@ begin
         completed_at=coalesce(completed_at,clock_timestamp()),
         updated_at=clock_timestamp()
     where id=v_execution.id returning * into v_execution;
+
+    insert into public.notifications_v2(
+      organization_id,recipient_user_id,event_type,title,body,status,
+      channel_in_app,channel_email,source_kind,source_id,event_key
+    ) values (
+      v_claim.organization_id,v_claim.tenant_user_id,
+      'damage_claim_resolved','Reclamación por daños resuelta',
+      concat(
+        'Importe reconocido: ',
+        trim(to_char(v_claim.settled_amount_cents/100.0,'FM9999999990D00')),
+        ' ',v_claim.currency,'. ',coalesce(v_note,'')
+      ),
+      'pending',false,true,'damage_claim',v_claim.id,'resolved'
+    )
+    on conflict (source_kind,source_id,event_key,recipient_user_id)
+    where source_kind is not null and source_id is not null and event_key is not null
+    do nothing;
 
   else
     raise exception 'workflow_action_not_allowed' using errcode='22023';

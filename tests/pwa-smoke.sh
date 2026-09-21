@@ -363,7 +363,7 @@ grep -Fq 'class="builder-editor-state"' docs/workflow-builder.html
 
 # WF-03 authoring: Limpieza uses only the specialized domain adapter path.
 node --check docs/workflow-builder.js
-grep -Fq './workflow-builder.js?v=2026092101' docs/workflow-builder.html
+grep -Fq './workflow-builder.js?v=2026092102' docs/workflow-builder.html
 grep -Fq 'id="cleaningStepNote"' docs/workflow-builder.html
 grep -Fq 'id="cleaningCloseNote"' docs/workflow-builder.html
 grep -Fq 'function updateCleaningContract()' docs/workflow-builder.js

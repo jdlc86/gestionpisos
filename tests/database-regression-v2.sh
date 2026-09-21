@@ -7,7 +7,7 @@ if command -v cygpath >/dev/null 2>&1; then
   export MSYS_NO_PATHCONV=1
 fi
 
-docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -e WF04_FOCUSED="${WF04_FOCUSED:-0}"   -e WF05_FOCUSED="${WF05_FOCUSED:-0}"   -v "$repo_path:/work:ro"   postgres:17-alpine   sh -ceu '
+docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -e WF04_FOCUSED="${WF04_FOCUSED:-0}"   -e WF05_FOCUSED="${WF05_FOCUSED:-0}"   -e WF06_FOCUSED="${WF06_FOCUSED:-0}"   -v "$repo_path:/work:ro"   postgres:17-alpine   sh -ceu '
     docker-entrypoint.sh postgres -c listen_addresses="" &
     postgres_pid=$!
 
@@ -51,6 +51,9 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -e WF04_FOCUSED="
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260913225223_beta0_notifications_rls.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260913225231_beta0_notifications_mark_read.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260914123439_beta0_notification_read_invoker.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260913225334_beta0_payment_reminders_core.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260913225342_beta0_payment_reminders_rls.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260914001628_beta0_payment_obligations_admin_write.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260914064224_beta0_cleaning_swap_participant_read.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260914064231_beta0_cleaning_swap_write_policies.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260914064239_beta0_cleaning_swap_integrity.sql
@@ -138,8 +141,18 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -e WF04_FOCUSED="
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260921062822_wf05_incident_domain_core.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260921064050_wf05_incident_event_workflow_link.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260921065433_wf05_incident_domain_actions.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260921135000_wf06_rent_domain_core.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260921140500_wf06_rent_execution_binding.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260921142000_wf06_rent_domain_actions.sql
+    if [ "$WF06_FOCUSED" = "1" ]; then
+      psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-wf06-domain-regression.sql
+      trap - EXIT
+      cleanup
+      exit 0
+    fi
     if [ "$WF05_FOCUSED" = "1" ]; then
       psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-wf05-domain-regression.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-wf06-domain-regression.sql
       trap - EXIT
       cleanup
       exit 0

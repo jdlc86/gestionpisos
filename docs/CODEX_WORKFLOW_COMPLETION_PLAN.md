@@ -666,7 +666,7 @@ Objetivo cumplido:
 - El E2E humano se conserva para la batería final conjunta; las regresiones automáticas no se aplazan.
 - Contrato WF-07: `docs/WORKFLOW_DAMAGE_DEPOSIT_CONTRACT.md`.
 - Dependencia cerrada durante implementación: `channel_email` no tenía un sender general. WF-07 añade `20260921164500_notification_email_dispatch.sql`, reintentos acotados en `20260921181500_notification_email_retry.sql`, cron en `20260921181600_notification_email_retry_cron.sql` y la Edge Function `notification-email`. El proveedor usa `Idempotency-Key` por notificación. Post-merge deben quedar aplicadas primero todas las migraciones y solo después desplegar la función con verificación JWT desactivada, ya que el llamador DB se autentica mediante secreto interno Vault.
-- Hardening de revisión independiente: una única reclamación de daños por fianza; lectura de `claims_v2` preservada bajo RLS sin escritura directa; re-enlace explícito de las policies workflow al OID del gate de actor WF-07; fixture PostgreSQL alineado con `tenants_v2_self_read` real de producción.
+- Hardening de revisión independiente: una única reclamación de daños por fianza; lectura de `claims_v2` preservada bajo RLS sin escritura directa; re-enlace explícito de las policies workflow al OID del gate de actor WF-07; fixture PostgreSQL alineado con `tenants_v2_self_read` real de producción; retry de email acotado por `activated_at` para impedir backfill histórico.
 - Migraciones WF-07 actuales: `20260921160000`, `161500`, `163000`, `164500`, `165000`, `170000`, `171500`, `173000`, `174500`, `180000`, `181500`, `181600` y `183000`.
 
 

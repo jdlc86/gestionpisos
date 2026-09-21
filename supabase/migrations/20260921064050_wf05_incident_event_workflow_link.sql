@@ -218,10 +218,14 @@ begin
     or (v_execution.spec_snapshot->>'flowType'='inspection'
       and v_execution.spec_snapshot->>'eventType'='incident.resolved')
   ) then
-    return private.incident_internal_access_v1(
+    -- WF-05 añade revalidación del expediente/destino, pero NO sustituye
+    -- la regla de asignación congelada. Tras validar el dominio se continúa
+    -- por property_responsible / fixed_person / role para evitar que un
+    -- antiguo asignado conserve capacidad solo por tener write access.
+    if not private.incident_internal_access_v1(
         v_execution.organization_id,v_execution.property_id,v_actor,true
       )
-      and exists(
+      or not exists(
         select 1
         from public.incidents_v2 i
         join public.workflow_event_outbox_v2 ev
@@ -242,7 +246,9 @@ begin
             v_execution.spec_snapshot->>'flowType'<>'inspection'
             or i.status='resolved'
           )
-      );
+      ) then
+      return false;
+    end if;
   end if;
 
   if v_execution.assignment_type='property_responsible' then
@@ -369,6 +375,99 @@ begin
   return false;
 end;
 $$;
+
+-- Un incidente solo puede tener un gestor maintenance canónico por destino
+-- efectivo. Una aplicación property solapa cualquier room del mismo piso;
+-- dos aplicaciones room solo solapan cuando apuntan a la misma habitación.
+-- Las inspecciones incident.resolved conservan fan-out.
+create function private.workflow_wf05_guard_management_overlap_v1()
+returns trigger
+language plpgsql
+security definer
+set search_path=''
+as $wf05_management_overlap$
+declare
+  v_spec jsonb;
+begin
+  if new.status<>'configured' then
+    return new;
+  end if;
+
+  select wv.spec
+  into v_spec
+  from public.workflow_definition_versions_v2 wv
+  where wv.id=new.definition_version_id
+    and wv.definition_id=new.definition_id
+    and wv.organization_id=new.organization_id;
+
+  if v_spec is null
+    or v_spec->>'triggerType'<>'event'
+    or v_spec->>'eventType'<>'incident.created'
+    or v_spec->>'flowType'<>'maintenance'
+    or v_spec->>'closeType'<>'domain_adapter' then
+    return new;
+  end if;
+
+  if new.scope_type not in ('property','room') or new.property_id is null then
+    raise exception 'workflow_wf05_management_scope_invalid' using errcode='22023';
+  end if;
+
+  perform pg_advisory_xact_lock(
+    hashtextextended(
+      'wf05-management:'||new.organization_id::text||':'||new.property_id::text,
+      0
+    )
+  );
+
+  if exists(
+    select 1
+    from public.workflow_applications_v2 a
+    join public.workflow_definition_versions_v2 wv
+      on wv.id=a.definition_version_id
+     and wv.definition_id=a.definition_id
+     and wv.organization_id=a.organization_id
+    join public.workflow_definitions_v2 d
+      on d.id=a.definition_id
+     and d.organization_id=a.organization_id
+    where a.id is distinct from new.id
+      and a.organization_id=new.organization_id
+      and a.status='configured'
+      and d.status='published'
+      and a.property_id=new.property_id
+      and wv.spec->>'triggerType'='event'
+      and wv.spec->>'eventType'='incident.created'
+      and wv.spec->>'flowType'='maintenance'
+      and wv.spec->>'closeType'='domain_adapter'
+      and (
+        new.scope_type='property'
+        or a.scope_type='property'
+        or (
+          new.scope_type='room'
+          and a.scope_type='room'
+          and a.room_id is not distinct from new.room_id
+        )
+      )
+  ) then
+    raise exception 'workflow_wf05_management_application_conflict'
+      using errcode='55000';
+  end if;
+
+  return new;
+end;
+$wf05_management_overlap$;
+
+revoke all on function private.workflow_wf05_guard_management_overlap_v1()
+  from public,anon,authenticated,service_role;
+
+drop trigger if exists workflow_wf05_guard_management_overlap_v1
+  on public.workflow_applications_v2;
+create trigger workflow_wf05_guard_management_overlap_v1
+before insert or update of
+  status,definition_version_id,definition_id,organization_id,
+  scope_type,property_id,room_id
+on public.workflow_applications_v2
+for each row
+execute function private.workflow_wf05_guard_management_overlap_v1();
 
 -- Wrapper del ejecutor: los eventos occupancy conservan exactamente WF-04;
 -- solo incident.* usa la rama nueva y el mismo núcleo materializador WF-02.

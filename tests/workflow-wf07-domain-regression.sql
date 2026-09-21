@@ -495,6 +495,42 @@ select * from public.apply_wf07_deposit_action_v1(
   current_setting('wf07.partial_review_task')::uuid,
   'open_damage_claim','wf07-partial-damage-open','Daño parcial',80000
 );
+
+-- Una fianza no puede abrir una segunda reclamación aunque cambie request_key.
+do $single_damage_claim_per_deposit$
+begin
+  begin
+    perform * from public.apply_wf07_deposit_action_v1(
+      current_setting('wf07.partial_review_task')::uuid,
+      'open_damage_claim','wf07-partial-damage-open-second','Daño duplicado',1000
+    );
+    raise exception 'WF07 allowed a second damage claim for one deposit';
+  exception when sqlstate '22023' then
+    if sqlerrm<>'workflow_action_not_allowed' then raise; end if;
+  end;
+
+  if (
+    select count(*)
+    from public.claims_v2 c
+    join public.security_deposits_v2 d on d.id=c.security_deposit_id
+    where d.occupancy_id=current_setting('wf07.partial_occupancy')::uuid
+      and c.claim_type='damage'
+  )<>1 then
+    raise exception 'WF07 duplicated the damage claim for one deposit';
+  end if;
+
+  if exists(
+    select 1
+    from public.tenant_task_actions_v2
+    where task_id=current_setting('wf07.partial_review_task')::uuid
+      and action_key='open_damage_claim'
+      and active=true
+  ) then
+    raise exception 'WF07 kept damage claim opening active after claim creation';
+  end if;
+end;
+$single_damage_claim_per_deposit$;
+
 -- Total: abre daño 120€, se resuelve en 100€, justifica toda la fianza.
 select * from public.apply_wf07_deposit_action_v1(
   current_setting('wf07.hold_review_task')::uuid,

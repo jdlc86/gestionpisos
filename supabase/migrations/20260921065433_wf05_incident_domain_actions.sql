@@ -417,7 +417,6 @@ begin
     );
   elsif p_action_key='request_info' then
     if v_incident.status<>'in_progress'
-      or v_incident.opened_occupancy_id is null
       or v_action.to_status<>'waiting_info' then
       raise exception 'workflow_wf05_transition_mismatch' using errcode='55000';
     end if;
@@ -427,7 +426,9 @@ begin
     insert into public.incident_updates_v2(
       incident_id,author_user_id,visibility,body,update_kind,request_key,created_at
     ) values (
-      v_incident.id,v_actor,'tenant',v_note,'request_info',v_key,clock_timestamp()
+      v_incident.id,v_actor,
+      case when v_incident.opened_occupancy_id is null then 'internal' else 'tenant' end,
+      v_note,'request_info',v_key,clock_timestamp()
     );
   elsif p_action_key='continue' then
     if v_incident.status<>'waiting_info'

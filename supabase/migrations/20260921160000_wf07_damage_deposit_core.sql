@@ -37,6 +37,106 @@ alter table public.security_deposits_v2 enable row level security;
 revoke all on public.security_deposits_v2 from anon,authenticated;
 grant select on public.security_deposits_v2 to service_role;
 
+-- Hardening de claims legacy: no aceptar mutación directa cliente y no
+-- permitir que una sesión Auth histórica conserve lectura tras la Baja.
+revoke insert,update,delete,truncate,references,trigger
+  on public.claims_v2 from authenticated;
+
+drop policy if exists claims_self_read on public.claims_v2;
+create policy claims_self_read
+on public.claims_v2
+for select
+to authenticated
+using (
+  tenant_user_id=(select auth.uid())
+  and public.has_current_platform_access_v1()
+);
+
+drop policy if exists claims_admin_read on public.claims_v2;
+create policy claims_admin_read
+on public.claims_v2
+for select
+to authenticated
+using (
+  exists(
+    select 1
+    from public.profiles pr
+    where pr.user_id=(select auth.uid())
+      and pr.status='active'
+      and pr.archived_at is null
+  )
+  and exists(
+    select 1
+    from public.user_roles ur
+    where ur.user_id=(select auth.uid())
+      and ur.revoked_at is null
+      and (
+        ur.role='root'
+        or (
+          ur.role='admin'
+          and ur.organization_id=claims_v2.organization_id
+        )
+      )
+  )
+);
+
+drop policy if exists claims_admin_insert on public.claims_v2;
+create policy claims_admin_insert
+on public.claims_v2
+for insert
+to authenticated
+with check (
+  exists(
+    select 1
+    from public.user_roles ur
+    where ur.user_id=(select auth.uid())
+      and ur.revoked_at is null
+      and (
+        ur.role='root'
+        or (
+          ur.role='admin'
+          and ur.organization_id=claims_v2.organization_id
+        )
+      )
+  )
+);
+
+drop policy if exists claims_admin_update on public.claims_v2;
+create policy claims_admin_update
+on public.claims_v2
+for update
+to authenticated
+using (
+  exists(
+    select 1
+    from public.user_roles ur
+    where ur.user_id=(select auth.uid())
+      and ur.revoked_at is null
+      and (
+        ur.role='root'
+        or (
+          ur.role='admin'
+          and ur.organization_id=claims_v2.organization_id
+        )
+      )
+  )
+)
+with check (
+  exists(
+    select 1
+    from public.user_roles ur
+    where ur.user_id=(select auth.uid())
+      and ur.revoked_at is null
+      and (
+        ur.role='root'
+        or (
+          ur.role='admin'
+          and ur.organization_id=claims_v2.organization_id
+        )
+      )
+  )
+);
+
 alter table public.claims_v2
   add column if not exists security_deposit_id uuid
     references public.security_deposits_v2(id) on delete restrict,

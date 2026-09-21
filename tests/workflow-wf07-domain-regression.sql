@@ -643,6 +643,29 @@ select set_config('wf07.hold_damage_task',(
     and source_id=current_setting('wf07.hold_damage_exec')::uuid
 ),true);
 
+-- Con una reclamación real ya existente, el antiguo inquilino sigue fuera por RLS.
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf07.partial_user'),'role','authenticated','aal','aal1'
+)::text,true);
+do $offboarded_damage_claim_hidden$
+begin
+  if exists(
+    select 1 from public.claims_v2
+    where id=current_setting('wf07.partial_damage_claim')::uuid
+  ) then
+    raise exception 'WF07 offboarded tenant can read real damage claim';
+  end if;
+  if exists(
+    select 1 from public.tenant_tasks_v2
+    where id=current_setting('wf07.partial_damage_task')::uuid
+  ) then
+    raise exception 'WF07 offboarded tenant can read real damage task';
+  end if;
+end;
+$offboarded_damage_claim_hidden$;
+reset role;
+
 set local role authenticated;
 select set_config('request.jwt.claims',jsonb_build_object(
   'sub',current_setting('wf07.staff'),'role','authenticated','aal','aal1'

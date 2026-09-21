@@ -141,6 +141,21 @@ as $$
   );
 $$;
 
+do $business_date_contract$
+begin
+  if private.wf06_business_date_v1(
+    'Europe/Madrid','2026-09-21 22:30:00+00'::timestamptz
+  ) is distinct from date '2026-09-22' then
+    raise exception 'WF06 Europe/Madrid business date ignored timezone boundary';
+  end if;
+  if private.wf06_business_date_v1(
+    'Pacific/Pago_Pago','2026-09-21 22:30:00+00'::timestamptz
+  ) is distinct from date '2026-09-21' then
+    raise exception 'WF06 business date helper returned wrong local date';
+  end if;
+end;
+$business_date_contract$;
+
 do $authoring_contract$
 begin
   if not public.workflow_authoring_complete_v1(pg_temp.wf06_payment_spec()) then

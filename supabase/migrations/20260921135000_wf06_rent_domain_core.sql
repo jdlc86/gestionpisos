@@ -156,6 +156,107 @@ alter table public.workflow_event_outbox_v2
   add constraint workflow_event_outbox_v2_source_kind_check
   check (source_kind in ('occupancy','incident','rent_claim'));
 
+-- Extiende el productor de eventos común con una fuente financiera exacta.
+alter function private.workflow_enqueue_event_v1(
+  uuid,text,text,uuid,text,uuid,uuid,uuid,jsonb,uuid,timestamptz
+) rename to workflow_enqueue_event_pre_wf06_v1;
+revoke all on function private.workflow_enqueue_event_pre_wf06_v1(
+  uuid,text,text,uuid,text,uuid,uuid,uuid,jsonb,uuid,timestamptz
+) from public,anon,authenticated,service_role;
+
+create function private.workflow_enqueue_event_v1(
+  p_organization_id uuid,
+  p_event_type text,
+  p_source_kind text,
+  p_source_id uuid,
+  p_event_key text,
+  p_property_id uuid,
+  p_room_id uuid,
+  p_occupancy_id uuid,
+  p_payload jsonb default '{}'::jsonb,
+  p_actor_user_id uuid default null,
+  p_occurred_at timestamptz default now()
+)
+returns uuid
+language plpgsql
+security definer
+set search_path=''
+as $wf06_enqueue$
+declare
+  v_claim public.claims_v2;
+  v_obligation public.payment_obligations_v2;
+  v_event_id uuid;
+begin
+  if p_event_type<>'rent_claim.created' then
+    return private.workflow_enqueue_event_pre_wf06_v1(
+      p_organization_id,p_event_type,p_source_kind,p_source_id,p_event_key,
+      p_property_id,p_room_id,p_occupancy_id,p_payload,p_actor_user_id,p_occurred_at
+    );
+  end if;
+
+  if p_source_kind<>'rent_claim'
+    or p_source_id is null
+    or p_event_key<>'created'
+    or p_payload is null
+    or jsonb_typeof(p_payload)<>'object' then
+    raise exception 'workflow_wf06_claim_event_source_invalid' using errcode='22023';
+  end if;
+
+  select * into v_claim
+  from public.claims_v2
+  where id=p_source_id;
+  if v_claim.id is null
+    or v_claim.claim_type<>'payment'
+    or v_claim.status<>'draft'
+    or v_claim.organization_id is distinct from p_organization_id
+    or v_claim.property_id is distinct from p_property_id
+    or v_claim.occupancy_id is distinct from p_occupancy_id then
+    raise exception 'workflow_wf06_claim_event_routing_invalid' using errcode='22023';
+  end if;
+
+  select * into v_obligation
+  from public.payment_obligations_v2
+  where id=v_claim.obligation_id;
+  if v_obligation.id is null
+    or v_obligation.organization_id is distinct from v_claim.organization_id
+    or v_obligation.property_id is distinct from v_claim.property_id
+    or v_obligation.room_id is distinct from p_room_id
+    or v_obligation.occupancy_id is distinct from v_claim.occupancy_id
+    or v_obligation.tenant_user_id is distinct from v_claim.tenant_user_id
+    or v_obligation.status<>'overdue' then
+    raise exception 'workflow_wf06_claim_event_obligation_invalid' using errcode='22023';
+  end if;
+
+  insert into public.workflow_event_outbox_v2(
+    organization_id,event_type,source_kind,source_id,event_key,
+    property_id,room_id,occupancy_id,payload,actor_user_id,occurred_at
+  ) values (
+    p_organization_id,p_event_type,p_source_kind,p_source_id,p_event_key,
+    p_property_id,p_room_id,p_occupancy_id,p_payload,p_actor_user_id,
+    coalesce(p_occurred_at,now())
+  )
+  on conflict(organization_id,event_type,source_kind,source_id,event_key)
+  do nothing
+  returning id into v_event_id;
+
+  if v_event_id is null then
+    select id into v_event_id
+    from public.workflow_event_outbox_v2
+    where organization_id=p_organization_id
+      and event_type=p_event_type
+      and source_kind=p_source_kind
+      and source_id=p_source_id
+      and event_key=p_event_key;
+  end if;
+
+  return v_event_id;
+end;
+$wf06_enqueue$;
+
+revoke all on function private.workflow_enqueue_event_v1(
+  uuid,text,text,uuid,text,uuid,uuid,uuid,jsonb,uuid,timestamptz
+) from public,anon,authenticated,service_role;
+
 create or replace function private.wf06_internal_access_v1(
   p_organization_id uuid,
   p_property_id uuid,

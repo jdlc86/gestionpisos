@@ -76,6 +76,7 @@ begin
         and c.property_id=v_execution.property_id
         and c.tenant_user_id=v_actor
         and c.claim_type='payment'
+        and c.status in ('sent','waiting_info','resolved')
     ) then
     return true;
   end if;
@@ -622,6 +623,14 @@ begin
     if v_claim_app is null then
       raise exception 'workflow_wf06_claim_flow_unavailable' using errcode='55000';
     end if;
+    if v_obligation.due_date>current_date then
+      raise exception 'workflow_wf06_claim_not_due' using errcode='55000';
+    end if;
+
+    -- La reclamación no cierra el pago si hoy ni siquiera existe un ejecutor
+    -- válido para el flujo de gestión. Cambios posteriores quedan reintentables
+    -- por el outbox común.
+    perform private.workflow_resolve_execution_assignee_v1(v_claim_app,null);
 
     update public.payment_obligations_v2
     set status='overdue',updated_at=clock_timestamp()

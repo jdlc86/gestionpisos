@@ -7,7 +7,7 @@ if command -v cygpath >/dev/null 2>&1; then
   export MSYS_NO_PATHCONV=1
 fi
 
-docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -e WF04_FOCUSED="${WF04_FOCUSED:-0}"   -e WF05_FOCUSED="${WF05_FOCUSED:-0}"   -e WF06_FOCUSED="${WF06_FOCUSED:-0}"   -v "$repo_path:/work:ro"   postgres:17-alpine   sh -ceu '
+docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -e WF04_FOCUSED="${WF04_FOCUSED:-0}"   -e WF05_FOCUSED="${WF05_FOCUSED:-0}"   -e WF06_FOCUSED="${WF06_FOCUSED:-0}"   -e WF07_FOCUSED="${WF07_FOCUSED:-0}"   -v "$repo_path:/work:ro"   postgres:17-alpine   sh -ceu '
     docker-entrypoint.sh postgres -c listen_addresses="" &
     postgres_pid=$!
 
@@ -144,6 +144,15 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -e WF04_FOCUSED="
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260921135000_wf06_rent_domain_core.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260921140500_wf06_rent_execution_binding.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260921142000_wf06_rent_domain_actions.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260921160000_wf07_damage_deposit_core.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260921161500_wf07_execution_binding.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260921163000_wf07_domain_actions.sql
+    if [ "$WF07_FOCUSED" = "1" ]; then
+      psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-wf07-domain-regression.sql
+      trap - EXIT
+      cleanup
+      exit 0
+    fi
     if [ "$WF06_FOCUSED" = "1" ]; then
       psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-wf06-domain-regression.sql
       trap - EXIT
@@ -153,6 +162,7 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -e WF04_FOCUSED="
     if [ "$WF05_FOCUSED" = "1" ]; then
       psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-wf05-domain-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-wf06-domain-regression.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-wf07-domain-regression.sql
       trap - EXIT
       cleanup
       exit 0

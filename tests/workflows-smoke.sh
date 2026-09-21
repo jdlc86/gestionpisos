@@ -231,7 +231,7 @@ grep -Fq 'apply_workflow_task_action_v1' docs/workflow-tasks.js
 grep -Fq 'ACTION_KEY_PREFIX' docs/workflow-tasks.js
 grep -Fq 'Aceptar y completar' docs/WORKFLOW_ACTIONS_CONTRACT.md
 grep -Fq 'Tarea y ejecución actualizadas juntas' docs/workflow-tasks.js
-grep -Fq 'Indica el motivo del rechazo:' docs/workflow-tasks.js
+grep -Fq 'title:"Motivo del rechazo"' docs/workflow-tasks.js
 grep -Fq 'task-action--reject' docs/workflow-tasks.js
 grep -Fq 'task-action--reject' docs/workflow-tasks.css
 grep -Fq 'Rechazar' docs/WORKFLOW_ACTIONS_CONTRACT.md

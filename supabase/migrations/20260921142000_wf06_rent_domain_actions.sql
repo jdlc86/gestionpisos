@@ -81,6 +81,16 @@ begin
     return true;
   end if;
 
+  -- Para el personal asignado de WF-06, lectura y botones deben usar la
+  -- misma elegibilidad estricta (incluida escritura vigente) que las RPC.
+  if v_execution.assigned_user_id=v_actor
+    and v_execution.spec_snapshot->>'flowType' in ('rent_payment','rent_claim')
+    and v_execution.spec_snapshot->>'closeType'='domain_adapter' then
+    return private.wf06_execution_internal_actor_current_v1(
+      v_execution.id,v_actor
+    );
+  end if;
+
   if v_execution.assigned_user_id is distinct from v_actor then
     return false;
   end if;

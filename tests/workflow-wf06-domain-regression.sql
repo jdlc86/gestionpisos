@@ -516,6 +516,17 @@ begin
   ) then
     raise exception 'WF06 claim did not materialize one canonical shared card';
   end if;
+  if (
+    select count(*)
+    from public.workflow_executions_v2 e
+    join public.claims_v2 c
+      on c.obligation_id=e.payment_obligation_id
+    where c.id=current_setting('wf06.claim')::uuid
+      and e.payment_obligation_id is not null
+      and e.spec_snapshot->>'flowType' in ('rent_payment','rent_claim')
+  )<>2 then
+    raise exception 'WF06 payment and claim executions did not share one canonical obligation';
+  end if;
   if exists(
     select 1 from public.tenant_task_actions_v2
     where task_id=current_setting('wf06.claim_task')::uuid

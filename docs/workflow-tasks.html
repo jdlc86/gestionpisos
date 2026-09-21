@@ -92,6 +92,23 @@
     </form>
   </dialog>
 
+  <dialog id="taskNoteDialog" class="task-dialog" aria-labelledby="taskNoteDialogTitle">
+    <form id="taskNoteForm" class="task-dialog-card">
+      <div>
+        <p id="taskNoteEyebrow" class="eyebrow">GESTIÓN</p>
+        <h2 id="taskNoteDialogTitle">Añadir nota</h2>
+        <p id="taskNoteDialogCopy" class="task-dialog-copy"></p>
+      </div>
+      <label><span id="taskNoteLabel">Detalle</span>
+        <textarea id="taskNoteText" rows="4" maxlength="1000" required></textarea>
+      </label>
+      <div class="task-dialog-actions">
+        <button id="taskNoteCancel" type="button" class="secondary">Cancelar</button>
+        <button id="taskNoteSubmit" type="submit" class="primary">Confirmar</button>
+      </div>
+    </form>
+  </dialog>
+
   <dialog id="taskMoneyDialog" class="task-dialog" aria-labelledby="taskMoneyDialogTitle">
     <form id="taskMoneyForm" class="task-dialog-card">
       <div>

@@ -186,7 +186,50 @@ select set_config('wf05.inspection_app',(
     false,'wf05-inspection-ready',null,null
   ) limit 1
 ),true);
+
+do $single_management_application$
+begin
+  begin
+    perform *
+    from public.publish_workflow_ready_v1(
+      pg_temp.wf05_spec('maintenance') || jsonb_build_object(
+        'flowName','WF05 gestión duplicada'
+      ),
+      current_setting('wf05.property')::uuid,
+      null,null,'{}'::uuid[],false,
+      'wf05-maintenance-duplicate',null,null
+    );
+    raise exception 'WF05 allowed a second overlapping maintenance manager';
+  exception when sqlstate '55000' then
+    if sqlerrm<>'workflow_wf05_management_application_conflict' then
+      raise;
+    end if;
+  end;
+end;
+$single_management_application$;
 reset role;
+
+do $single_management_application_count$
+begin
+  if (
+    select count(*)
+    from public.workflow_applications_v2 a
+    join public.workflow_definition_versions_v2 wv
+      on wv.id=a.definition_version_id
+     and wv.definition_id=a.definition_id
+     and wv.organization_id=a.organization_id
+    where a.organization_id=current_setting('wf05.org')::uuid
+      and a.status='configured'
+      and a.property_id=current_setting('wf05.property')::uuid
+      and wv.spec->>'triggerType'='event'
+      and wv.spec->>'eventType'='incident.created'
+      and wv.spec->>'flowType'='maintenance'
+      and wv.spec->>'closeType'='domain_adapter'
+  )<>1 then
+    raise exception 'WF05 management application uniqueness is inconsistent';
+  end if;
+end;
+$single_management_application_count$;
 
 do $authoring_contract$
 begin
@@ -339,6 +382,58 @@ begin
   end if;
 end;
 $actor_current$;
+reset role;
+
+-- Cambiar el rol del asignado no debe conservar su capacidad de actuar solo
+-- porque todavía tenga write access al piso.
+update public.user_roles
+set role='admin'
+where user_id=current_setting('wf05.staff')::uuid
+  and organization_id=current_setting('wf05.org')::uuid
+  and revoked_at is null;
+
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf05.staff'),'role','authenticated','aal','aal2'
+)::text,true);
+do $assignment_rule_revalidated$
+begin
+  if public.workflow_execution_actor_current_v1(
+    current_setting('wf05.execution')::uuid
+  ) then
+    raise exception 'WF05 former role assignee remained current through write access';
+  end if;
+  begin
+    perform public.apply_workflow_task_action_v1(
+      current_setting('wf05.task')::uuid,'accept','wf05-role-changed',null
+    );
+    raise exception 'WF05 former role assignee was allowed to act';
+  exception when sqlstate '42501' then
+    null;
+  end;
+end;
+$assignment_rule_revalidated$;
+reset role;
+
+update public.user_roles
+set role='employee'
+where user_id=current_setting('wf05.staff')::uuid
+  and organization_id=current_setting('wf05.org')::uuid
+  and revoked_at is null;
+
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf05.staff'),'role','authenticated','aal','aal1'
+)::text,true);
+do $assignment_rule_recovers$
+begin
+  if not public.workflow_execution_actor_current_v1(
+    current_setting('wf05.execution')::uuid
+  ) then
+    raise exception 'WF05 original role assignment did not recover';
+  end if;
+end;
+$assignment_rule_recovers$;
 reset role;
 
 set local role authenticated;

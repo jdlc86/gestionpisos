@@ -108,6 +108,8 @@ El creador autorizado de la incidencia puede aportar información mientras el ex
 
 La respuesta:
 
+- puede provenir del creador autorizado tanto si el expediente fue abierto por un inquilino como por personal interno;
+- la solicitud usa visibilidad `tenant` para expedientes ligados a ocupación y `internal` para expedientes abiertos por personal interno;
 - usa una RPC idempotente;
 - conserva autor, visibilidad y texto en `incident_updates_v2`;
 - no cambia por sí sola la autoridad operativa ni crea una tarea;

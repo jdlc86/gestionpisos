@@ -653,3 +653,16 @@ grep -Fq 'if(eventType==="occupancy.offboarded")return "Baja de ocupación confi
 # WF-05: autoría, acciones e histórico sobre el motor transversal.
 bash tests/incidents-smoke.sh
 
+
+
+# WF-07 · smoke
+grep -Fq 'value="deposit_receipt"' docs/workflow-builder.html
+grep -Fq 'value="deposit_review"' docs/workflow-builder.html
+grep -Fq 'value="damage_claim"' docs/workflow-builder.html
+grep -Fq 'value="damage_claim.created"' docs/workflow-builder.html
+grep -Fq 'wf07DepositConfig' docs/workflow-builder.html
+grep -Fq 'taskMoneyDialog' docs/workflow-tasks.html
+grep -Fq 'apply_wf07_deposit_action_v1' docs/workflow-tasks.js
+grep -Fq 'apply_wf07_damage_action_v1' docs/workflow-tasks.js
+grep -Fq 'record_acceptance' docs/workflow-tasks.js
+grep -Fq 'record_dispute' docs/workflow-tasks.js

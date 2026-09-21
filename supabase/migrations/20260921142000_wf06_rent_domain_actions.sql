@@ -815,7 +815,7 @@ begin
 
   elsif p_action_key='resolve' then
     if v_claim.status<>'sent'
-      or v_claim.tenant_decision not in ('accepted','disputed')
+      or coalesce(v_claim.tenant_decision,'') not in ('accepted','disputed')
       or v_action.to_status<>'completed' then
       raise exception 'workflow_wf06_transition_mismatch' using errcode='55000';
     end if;

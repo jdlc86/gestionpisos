@@ -739,4 +739,54 @@ end;
 $partial_hold_idempotent$;
 reset role;
 
+-- El dispatcher email es idempotente e independiente del rol tenant activo.
+do $email_delivery_contract$
+declare
+  v_notification uuid;
+  v_first boolean;
+  v_second boolean;
+begin
+  select n.id into v_notification
+  from public.notifications_v2 n
+  where n.source_kind='damage_claim'
+    and n.source_id=current_setting('wf07.partial_damage_claim')::uuid
+    and n.event_key='notified'
+    and n.channel_email=true
+  limit 1;
+
+  if v_notification is null then
+    raise exception 'WF07 email notification fixture missing';
+  end if;
+
+  if not exists(
+    select 1
+    from pg_trigger
+    where tgname='notification_email_dispatch_v1'
+      and not tgisinternal
+  ) then
+    raise exception 'WF07 notification email trigger missing';
+  end if;
+
+  v_first:=public.notification_email_claim_delivery_v1(v_notification);
+  v_second:=public.notification_email_claim_delivery_v1(v_notification);
+  if v_first is distinct from true or v_second is distinct from false then
+    raise exception 'WF07 email delivery claim is not idempotent';
+  end if;
+
+  perform public.notification_email_finish_delivery_v1(
+    v_notification,true,null,'wf07-regression-provider-id'
+  );
+
+  if not exists(
+    select 1
+    from public.notification_email_deliveries_v1
+    where notification_id=v_notification
+      and status='sent'
+      and provider_message_id='wf07-regression-provider-id'
+  ) then
+    raise exception 'WF07 email delivery receipt did not finish as sent';
+  end if;
+end;
+$email_delivery_contract$;
+
 rollback;

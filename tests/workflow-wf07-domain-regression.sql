@@ -577,7 +577,8 @@ select * from public.apply_wf07_deposit_action_v1(
 );
 
 -- Una fianza no puede abrir una segunda reclamación aunque cambie request_key.
-do $single_damage_claim_per_deposit$
+-- Esta primera parte se valida con el mismo actor operativo real.
+do $single_damage_claim_action_gate$
 begin
   begin
     perform * from public.apply_wf07_deposit_action_v1(
@@ -589,16 +590,6 @@ begin
     if sqlerrm<>'workflow_action_not_allowed' then raise; end if;
   end;
 
-  if (
-    select count(*)
-    from public.claims_v2 c
-    join public.security_deposits_v2 d on d.id=c.security_deposit_id
-    where d.occupancy_id=current_setting('wf07.partial_occupancy')::uuid
-      and c.claim_type='damage'
-  )<>1 then
-    raise exception 'WF07 duplicated the damage claim for one deposit';
-  end if;
-
   if exists(
     select 1
     from public.tenant_task_actions_v2
@@ -609,7 +600,7 @@ begin
     raise exception 'WF07 kept damage claim opening active after claim creation';
   end if;
 end;
-$single_damage_claim_per_deposit$;
+$single_damage_claim_action_gate$;
 
 -- Total: abre daño 120€, se resuelve en 100€, justifica toda la fianza.
 select * from public.apply_wf07_deposit_action_v1(
@@ -617,6 +608,22 @@ select * from public.apply_wf07_deposit_action_v1(
   'open_damage_claim','wf07-hold-damage-open','Daño grave',120000
 );
 reset role;
+
+-- La unicidad física se inspecciona como harness privilegiado: security_deposits_v2
+-- no es una tabla de lectura directa para empleados/clientes.
+do $single_damage_claim_storage_invariant$
+begin
+  if (
+    select count(*)
+    from public.claims_v2 c
+    join public.security_deposits_v2 d on d.id=c.security_deposit_id
+    where d.occupancy_id=current_setting('wf07.partial_occupancy')::uuid
+      and c.claim_type='damage'
+  )<>1 then
+    raise exception 'WF07 duplicated the damage claim for one deposit';
+  end if;
+end;
+$single_damage_claim_storage_invariant$;
 
 select private.process_pending_workflow_events_v1(50);
 select private.process_pending_workflow_events_v1(50);

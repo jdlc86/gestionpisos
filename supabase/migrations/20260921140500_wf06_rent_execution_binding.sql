@@ -100,7 +100,7 @@ begin
     (v_task.id,'accept','Aceptar reclamación','active','active',false,20,true,'tenant'),
     (v_task.id,'dispute','Disputar reclamación','active','active',true,30,true,'tenant'),
     (v_task.id,'request_info','Solicitar información','active','waiting_info',true,40,true,'assignee'),
-    (v_task.id,'resolve','Resolver','active','completed',true,60,true,'assignee'),
+    (v_task.id,'resolve','Resolver','active','completed',true,60,false,'assignee'),
     (v_task.id,'provide_info','Aportar información','waiting_info','waiting_info',true,20,true,'tenant'),
     (v_task.id,'continue','Continuar reclamación','waiting_info','active',false,40,true,'assignee')
   on conflict(task_id,action_key,from_status)

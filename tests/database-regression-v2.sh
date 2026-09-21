@@ -163,6 +163,14 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -e WF04_FOCUSED="
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260921181500_notification_email_retry.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260921183000_wf07_wf06_information_response_order_fix.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260921184500_wf07_wf06_business_date_fix.sql
+
+    # Reafirmar el estado efectivo de privilegios de producción antes de las
+    # regresiones. El fixture no carga todas las migraciones históricas que
+    # contribuyeron a ese estado, y las policies de claims evalúan profiles /
+    # user_roles incluso cuando el actor final queda bloqueado por RLS.
+    psql -v ON_ERROR_STOP=1 -U postgres -c "grant select on public.occupancies_v2, public.profiles, public.user_roles to authenticated"
+    psql -v ON_ERROR_STOP=1 -U postgres -c "do \\$fixture_grants\\$ begin if not has_table_privilege('authenticated','public.profiles','select') or not has_table_privilege('authenticated','public.user_roles','select') or not has_table_privilege('authenticated','public.occupancies_v2','select') then raise exception 'workflow fixture effective grants differ from production'; end if; end \\$fixture_grants\\$;"
+
     if [ "$WF07_FOCUSED" = "1" ]; then
       psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-wf07-domain-regression.sql
       trap - EXIT

@@ -461,6 +461,30 @@ $claim_created_once$;
 select private.process_pending_workflow_events_v1(50);
 select private.process_pending_workflow_events_v1(50);
 
+do $claim_dispatch_diagnostic$
+declare
+  v_status text;
+  v_error_code text;
+  v_error_key text;
+begin
+  select d.status,d.error_code,d.error_key
+  into v_status,v_error_code,v_error_key
+  from public.workflow_event_dispatches_v2 d
+  join public.workflow_event_outbox_v2 e on e.id=d.event_id
+  where e.event_type='rent_claim.created'
+    and e.source_kind='rent_claim'
+    and e.source_id=current_setting('wf06.claim')::uuid
+    and d.application_id=current_setting('wf06.claim_app')::uuid;
+
+  if v_status is distinct from 'executed' then
+    raise exception 'WF06 rent claim dispatch failed: status=%, code=%, key=%',
+      coalesce(v_status,'missing'),
+      coalesce(v_error_code,'null'),
+      coalesce(v_error_key,'null');
+  end if;
+end;
+$claim_dispatch_diagnostic$;
+
 select set_config('wf06.claim_execution',(
   select id::text
   from public.workflow_executions_v2

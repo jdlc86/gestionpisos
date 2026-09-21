@@ -33,6 +33,14 @@ insert into public.profiles(user_id,organization_id,display_name,status) values
   (current_setting('wf05.readonly_staff')::uuid,current_setting('wf05.org')::uuid,'WF05 readonly','active'),
   (current_setting('wf05.outsider')::uuid,current_setting('wf05.org')::uuid,'WF05 outsider','active');
 
+insert into public.profiles(user_id,organization_id,display_name,status)
+values (
+  current_setting('wf05.root')::uuid,current_setting('wf05.org')::uuid,
+  'WF05 ROOT','active'
+)
+on conflict(user_id) do update
+set organization_id=excluded.organization_id,status='active',archived_at=null;
+
 insert into public.user_roles(user_id,organization_id,role) values
   (current_setting('wf05.owner_user')::uuid,current_setting('wf05.org')::uuid,'owner'),
   (current_setting('wf05.staff')::uuid,current_setting('wf05.org')::uuid,'employee'),
@@ -104,6 +112,26 @@ insert into public.occupancies_v2(
     current_date-1,null,'active',current_setting('wf05.other_tenant_user')::uuid
   );
 
+select set_config('wf05.photo_pattern',gen_random_uuid()::text,true);
+insert into public.photo_patterns_v2(
+  id,organization_id,property_id,name,target_type,target_key,
+  reference_storage_path,contour_data,version,active,created_by
+) values (
+  current_setting('wf05.photo_pattern')::uuid,
+  current_setting('wf05.org')::uuid,
+  current_setting('wf05.property')::uuid,
+  'WF05 inspección','zone','Reparación',
+  current_setting('wf05.org')||'/patterns/wf05/reference.jpg',
+  jsonb_build_object(
+    'image',jsonb_build_object('width',1200,'height',900),
+    'strokes',jsonb_build_array(jsonb_build_object(
+      'kind','rect','raw_points',jsonb_build_array(
+        jsonb_build_array(0.10,0.10),jsonb_build_array(0.80,0.80)
+      )
+    ))
+  ),1,true,current_setting('wf05.root')::uuid
+);
+
 create function pg_temp.wf05_spec(p_flow text)
 returns jsonb language sql stable as $$
   select jsonb_build_object(
@@ -125,7 +153,7 @@ returns jsonb language sql stable as $$
         'accept',true,'photo',false,'checklist',false,'document',false
       )
       else jsonb_build_object(
-        'accept',true,'photo',false,'checklist',true,'document',false
+        'accept',true,'photo',true,'checklist',true,'document',true
       ) end,
     'checklistItems',case p_flow
       when 'inspection' then jsonb_build_array(
@@ -154,7 +182,8 @@ select set_config('wf05.inspection_app',(
   from public.publish_workflow_ready_v1(
     pg_temp.wf05_spec('inspection'),
     current_setting('wf05.property')::uuid,
-    null,null,'{}'::uuid[],false,'wf05-inspection-ready',null,null
+    null,null,array[current_setting('wf05.photo_pattern')::uuid],
+    false,'wf05-inspection-ready',null,null
   ) limit 1
 ),true);
 reset role;
@@ -232,6 +261,12 @@ select set_config('wf05.execution',(
   from public.workflow_executions_v2
   where application_id=current_setting('wf05.maintenance_app')::uuid
     and incident_id=current_setting('wf05.incident')::uuid
+),true);
+select set_config('wf05.task',(
+  select id::text
+  from public.tenant_tasks_v2
+  where source_kind='workflow_execution'
+    and source_id=current_setting('wf05.execution')::uuid
 ),true);
 
 do $dispatched_once$
@@ -420,11 +455,150 @@ end;
 $outsider_rls$;
 reset role;
 
--- Simula la solicitud de información; las acciones WF-05 se añaden en el
--- siguiente bloque. La RPC de respuesta ya debe ser segura e idempotente.
+-- La autorización se revalida en cada acción, no solo al asignar.
+update public.property_staff_access_v3
+set revoked_at=clock_timestamp()
+where property_id=current_setting('wf05.property')::uuid
+  and employee_user_id=current_setting('wf05.staff')::uuid;
+
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf05.staff'),'role','authenticated','aal','aal1'
+)::text,true);
+do $revoked_assignee$
+begin
+  begin
+    perform public.apply_workflow_task_action_v1(
+      current_setting('wf05.task')::uuid,'accept','wf05-revoked',null
+    );
+    raise exception 'revoked WF05 assignee accepted management';
+  exception when sqlstate '42501' then
+    if sqlerrm<>'workflow_assignee_access_revoked' then raise; end if;
+  end;
+end;
+$revoked_assignee$;
+reset role;
+
+update public.property_staff_access_v3
+set revoked_at=null
+where property_id=current_setting('wf05.property')::uuid
+  and employee_user_id=current_setting('wf05.staff')::uuid;
+
+-- El expediente deja de ser accionable si su destino ya no coincide con el
+-- evento y la ejecución que lo originaron.
 update public.incidents_v2
-set status='waiting_info',updated_at=now()
+set property_id=current_setting('wf05.other_property')::uuid
 where id=current_setting('wf05.incident')::uuid;
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf05.staff'),'role','authenticated','aal','aal1'
+)::text,true);
+do $destination_revalidated$
+begin
+  begin
+    perform public.apply_workflow_task_action_v1(
+      current_setting('wf05.task')::uuid,'accept','wf05-wrong-destination',null
+    );
+    raise exception 'WF05 accepted an incident outside the bound destination';
+  exception when sqlstate '42501' then
+    if sqlerrm<>'workflow_assignee_access_revoked' then raise; end if;
+  end;
+end;
+$destination_revalidated$;
+reset role;
+update public.incidents_v2
+set property_id=current_setting('wf05.property')::uuid
+where id=current_setting('wf05.incident')::uuid;
+
+-- ROOT/ADMIN conservan el requisito de MFA incluso si fueran el asignado.
+update public.workflow_executions_v2
+set assigned_user_id=current_setting('wf05.root')::uuid
+where id=current_setting('wf05.execution')::uuid;
+update public.tenant_tasks_v2
+set assigned_user_id=current_setting('wf05.root')::uuid
+where id=current_setting('wf05.task')::uuid;
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf05.root'),'role','authenticated','aal','aal1'
+)::text,true);
+do $privileged_mfa$
+begin
+  begin
+    perform public.apply_workflow_task_action_v1(
+      current_setting('wf05.task')::uuid,'accept','wf05-root-aal1',null
+    );
+    raise exception 'WF05 privileged action without MFA was accepted';
+  exception when sqlstate '42501' then
+    if sqlerrm<>'workflow_wf05_mfa_required' then raise; end if;
+  end;
+end;
+$privileged_mfa$;
+reset role;
+update public.workflow_executions_v2
+set assigned_user_id=current_setting('wf05.staff')::uuid
+where id=current_setting('wf05.execution')::uuid;
+update public.tenant_tasks_v2
+set assigned_user_id=current_setting('wf05.staff')::uuid
+where id=current_setting('wf05.task')::uuid;
+
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf05.staff'),'role','authenticated','aal','aal1'
+)::text,true);
+do $accept_management$
+declare v_first record; v_retry record;
+begin
+  select * into v_first from public.apply_workflow_task_action_v1(
+    current_setting('wf05.task')::uuid,'accept','wf05-accept',null
+  );
+  select * into v_retry from public.apply_workflow_task_action_v1(
+    current_setting('wf05.task')::uuid,'accept','wf05-accept',null
+  );
+  if not v_first.applied_new or v_retry.applied_new
+    or v_first.execution_id<>current_setting('wf05.execution')::uuid then
+    raise exception 'WF05 accept retry is not idempotent';
+  end if;
+  if not exists(
+    select 1 from public.incidents_v2 i
+    where i.id=current_setting('wf05.incident')::uuid
+      and i.status='in_progress'
+      and i.assigned_to=current_setting('wf05.staff')::uuid
+  ) or not exists(
+    select 1 from public.tenant_tasks_v2 t
+    join public.workflow_executions_v2 e on e.id=t.source_id
+    where t.id=current_setting('wf05.task')::uuid
+      and t.status='active' and e.status='active'
+  ) then
+    raise exception 'WF05 accept did not synchronize dossier/task/execution';
+  end if;
+end;
+$accept_management$;
+
+do $request_information$
+declare v_result record;
+begin
+  select * into v_result from public.apply_workflow_task_action_v1(
+    current_setting('wf05.task')::uuid,'request_info','wf05-request-info',
+    'Confirma si la llave de paso está cerrada.'
+  );
+  if not v_result.applied_new
+    or v_result.task_status<>'waiting_info'
+    or v_result.execution_status<>'waiting_info'
+    or (select status from public.incidents_v2
+        where id=current_setting('wf05.incident')::uuid)<>'waiting_info' then
+    raise exception 'WF05 information request is not a synchronized non-terminal state';
+  end if;
+  begin
+    perform public.apply_workflow_task_action_v1(
+      current_setting('wf05.task')::uuid,'continue','wf05-continue-too-soon',null
+    );
+    raise exception 'WF05 continued without an information response';
+  exception when sqlstate '55000' then
+    if sqlerrm<>'workflow_wf05_information_response_required' then raise; end if;
+  end;
+end;
+$request_information$;
+reset role;
 
 set local role authenticated;
 select set_config('request.jwt.claims',jsonb_build_object(
@@ -433,12 +607,10 @@ select set_config('request.jwt.claims',jsonb_build_object(
 do $information$
 declare v_first record; v_retry record;
 begin
-  select * into v_first
-  from public.submit_incident_information_v1(
+  select * into v_first from public.submit_incident_information_v1(
     current_setting('wf05.incident')::uuid,'wf05-info-1','El agua está cerrada.'
   );
-  select * into v_retry
-  from public.submit_incident_information_v1(
+  select * into v_retry from public.submit_incident_information_v1(
     current_setting('wf05.incident')::uuid,'wf05-info-1','El agua está cerrada.'
   );
   if not v_first.applied_new or v_retry.applied_new
@@ -449,22 +621,123 @@ end;
 $information$;
 reset role;
 
-do $core_counts$
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf05.staff'),'role','authenticated','aal','aal1'
+)::text,true);
+do $continue_same_execution$
+declare v_result record;
+begin
+  select * into v_result from public.apply_workflow_task_action_v1(
+    current_setting('wf05.task')::uuid,'continue','wf05-continue',null
+  );
+  if not v_result.applied_new
+    or v_result.execution_id<>current_setting('wf05.execution')::uuid
+    or v_result.task_status<>'active'
+    or (select status from public.incidents_v2
+        where id=current_setting('wf05.incident')::uuid)<>'in_progress'
+    or (select count(*) from public.workflow_executions_v2
+        where incident_id=current_setting('wf05.incident')::uuid
+          and spec_snapshot->>'flowType'='maintenance')<>1 then
+    raise exception 'WF05 continue did not recover the same execution';
+  end if;
+end;
+$continue_same_execution$;
+
+do $resolve_management$
+declare v_result record;
+begin
+  select * into v_result from public.apply_workflow_task_action_v1(
+    current_setting('wf05.task')::uuid,'resolve','wf05-resolve',
+    'Fuga reparada y zona seca.'
+  );
+  if not v_result.applied_new
+    or v_result.task_status<>'completed'
+    or v_result.execution_status<>'completed'
+    or not exists(
+      select 1 from public.incidents_v2
+      where id=current_setting('wf05.incident')::uuid
+        and status='resolved' and resolved_at is not null
+    ) then
+    raise exception 'WF05 resolve did not close all authorities coherently';
+  end if;
+end;
+$resolve_management$;
+reset role;
+
+do $resolved_event_once$
 begin
   if (
-    select count(*) from public.incidents_v2
-    where created_by=current_setting('wf05.tenant_user')::uuid
-      and open_request_key='wf05-open-1'
+    select count(*) from public.workflow_event_outbox_v2
+    where source_id=current_setting('wf05.incident')::uuid
+      and event_type='incident.resolved' and event_key='resolved'
   )<>1 then
-    raise exception 'WF05 opening retry duplicated the dossier';
+    raise exception 'WF05 resolve did not enqueue exactly one downstream event';
   end if;
-  if (
-    select count(*) from public.incident_updates_v2
-    where incident_id=current_setting('wf05.incident')::uuid
-      and update_kind='information_response'
-      and request_key='wf05-info-1'
-  )<>1 then
-    raise exception 'WF05 information retry duplicated the update';
+end;
+$resolved_event_once$;
+
+select private.process_pending_workflow_events_v1(50);
+select private.process_pending_workflow_events_v1(50);
+
+select set_config('wf05.inspection_execution',(
+  select id::text from public.workflow_executions_v2
+  where application_id=current_setting('wf05.inspection_app')::uuid
+    and incident_id=current_setting('wf05.incident')::uuid
+),true);
+
+do $downstream_inspection$
+declare v_execution public.workflow_executions_v2;
+begin
+  select * into v_execution from public.workflow_executions_v2
+  where id=current_setting('wf05.inspection_execution')::uuid;
+  if v_execution.id is null
+    or v_execution.source_event_id is null
+    or v_execution.spec_snapshot#>>'{steps,photo}'<>'true'
+    or v_execution.spec_snapshot#>>'{steps,checklist}'<>'true'
+    or v_execution.spec_snapshot#>>'{steps,document}'<>'true'
+    or jsonb_array_length(v_execution.checklist_state)<>1
+    or (select count(*) from public.workflow_execution_photo_resources_v2 r
+        where r.execution_id=v_execution.id)<>1
+    or (select count(*) from public.tenant_tasks_v2 t
+        where t.source_kind='workflow_execution'
+          and t.source_id=v_execution.id)<>1
+    or (select count(*) from public.workflow_executions_v2 e
+        where e.application_id=current_setting('wf05.inspection_app')::uuid
+          and e.incident_id=current_setting('wf05.incident')::uuid)<>1 then
+    raise exception 'WF05 downstream inspection did not reuse generic evidence/contracts exactly once';
+  end if;
+  if not exists(
+    select 1 from public.workflow_event_dispatches_v2 d
+    join public.workflow_event_outbox_v2 ev on ev.id=d.event_id
+    where ev.source_id=current_setting('wf05.incident')::uuid
+      and ev.event_type='incident.resolved'
+      and d.application_id=current_setting('wf05.inspection_app')::uuid
+      and d.execution_id=v_execution.id
+      and d.status='executed'
+  ) then
+    raise exception 'WF05 downstream inspection has no common dispatcher receipt';
+  end if;
+end;
+$downstream_inspection$;
+
+do $final_counts$
+begin
+  if (select count(*) from public.incidents_v2
+      where created_by=current_setting('wf05.tenant_user')::uuid
+        and open_request_key='wf05-open-1')<>1
+    or (select count(*) from public.incident_updates_v2
+        where incident_id=current_setting('wf05.incident')::uuid
+          and update_kind='request_info'
+          and request_key='wf05-request-info')<>1
+    or (select count(*) from public.incident_updates_v2
+        where incident_id=current_setting('wf05.incident')::uuid
+          and update_kind='information_response'
+          and request_key='wf05-info-1')<>1
+    or (select count(*) from public.workflow_execution_events_v2
+        where execution_id=current_setting('wf05.execution')::uuid
+          and event_type='wf05_domain_action')<>4 then
+    raise exception 'WF05 idempotency counts are inconsistent';
   end if;
   if not exists(
     select 1 from public.audit_log_v2
@@ -476,10 +749,28 @@ begin
     where entity_type='incident'
       and entity_id=current_setting('wf05.incident')
       and action='incident_information_submitted'
+  ) or (select count(*) from public.audit_log_v2
+        where entity_type='workflow_execution'
+          and entity_id=current_setting('wf05.execution')
+          and action='workflow_wf05_action_applied')<>4 then
+    raise exception 'WF05 audit trail is incomplete';
+  end if;
+  if not exists(
+    select 1 from public.notifications_v2
+    where source_kind='incident'
+      and source_id=current_setting('wf05.incident')::uuid
+      and event_key='information_requested:wf05-request-info'
+      and recipient_user_id=current_setting('wf05.tenant_user')::uuid
+  ) or not exists(
+    select 1 from public.notifications_v2
+    where source_kind='incident'
+      and source_id=current_setting('wf05.incident')::uuid
+      and event_key='resolved'
+      and recipient_user_id=current_setting('wf05.tenant_user')::uuid
   ) then
-    raise exception 'WF05 core audit trail is incomplete';
+    raise exception 'WF05 notifications are incomplete';
   end if;
 end;
-$core_counts$;
+$final_counts$;
 
 rollback;

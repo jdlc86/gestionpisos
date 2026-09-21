@@ -92,6 +92,8 @@
             <option value="cleaning">Limpieza</option>
             <option value="inspection">Inspección</option>
             <option value="maintenance">Mantenimiento</option>
+            <option value="rent_payment">Pago de alquiler</option>
+            <option value="rent_claim">Reclamación de alquiler</option>
             <option value="checkin">Check-in</option>
             <option value="checkout">Check-out</option>
             <option value="custom">Personalizado</option>
@@ -129,6 +131,7 @@
             <option value="occupancy.offboarded">Baja de ocupación confirmada · organización / piso / habitación</option>
             <option value="incident.created">Incidencia abierta · piso / habitación</option>
             <option value="incident.resolved">Incidencia resuelta · inspección posterior</option>
+            <option value="rent_claim.created">Reclamación de alquiler creada · piso / habitación</option>
           </select></label>
           <label id="recurrenceRow" hidden>Frecuencia<select id="recurrence" name="recurrence" disabled>
             <option value="">Pendiente · selecciona una frecuencia</option>
@@ -201,6 +204,26 @@
           <div id="cleaningStepNote" class="builder-note" hidden>En Limpieza, Aceptar/Rechazar es obligatorio. La fotoverificación se prepara automáticamente con los patrones activos del piso y los pasos genéricos adicionales quedan desactivados.</div>
           <div id="wf04StepNote" class="builder-note" hidden>Entrada y Salida siguen la ocupación exacta. Aceptar/Rechazar y la gestión de llaves se registran en la misma tarjeta, sin cambiar el acceso del inquilino.</div>
           <div id="wf05StepNote" class="builder-note" hidden>Mantenimiento gestiona incidencias abiertas sobre una única tarjeta. Una Inspección activada al resolver debe reutilizar al menos Foto, Checklist o Documento.</div>
+          <div id="wf06StepNote" class="builder-note" hidden>Pago de alquiler genera una obligación por ejecución para una ocupación exacta. Reclamación reutiliza esa obligación y la misma infraestructura de tareas.</div>
+          <section id="wf06PaymentConfig" class="builder-checklist-editor" hidden aria-labelledby="wf06PaymentConfigTitle">
+            <div class="builder-checklist-heading">
+              <div>
+                <strong id="wf06PaymentConfigTitle">Condiciones del pago</strong>
+                <p>Se copiarán en cada obligación creada por este flujo.</p>
+              </div>
+            </div>
+            <div class="builder-dependent-grid">
+              <label>Concepto
+                <input id="paymentConcept" name="paymentConcept" maxlength="120" placeholder="Ej. Alquiler mensual" disabled>
+              </label>
+              <label>Importe (€)
+                <input id="paymentAmount" name="paymentAmount" type="number" inputmode="decimal" min="0.01" max="10000000" step="0.01" placeholder="Ej. 850,00" disabled>
+              </label>
+              <label>Vence
+                <span class="builder-inline-field"><input id="paymentDueDays" name="paymentDueDays" type="number" inputmode="numeric" min="0" max="365" step="1" value="0" disabled> días después de crear la obligación</span>
+              </label>
+            </div>
+          </section>
           <section id="checklistEditor" class="builder-checklist-editor" hidden aria-labelledby="checklistEditorTitle">
             <div class="builder-checklist-heading">
               <div>

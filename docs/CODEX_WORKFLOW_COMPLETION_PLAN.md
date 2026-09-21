@@ -563,8 +563,8 @@ Objetivo cumplido:
 ---
 
 ### BLOQUE WF-06 — Pago de alquiler + reclamación de alquiler
-**Estado:** IN_PROGRESS
-**Bloque ACTIVO:** sí — implementación directa por ChatGPT; Codex queda reservado por límite de crédito. El E2E humano de WF-04/WF-05 queda diferido a la batería final y NO bloquea este bloque.
+**Estado:** IN_REVIEW
+**Bloque ACTIVO:** sí — implementación directa por ChatGPT en PR #283; Codex queda reservado por límite de crédito. El E2E humano de WF-04/WF-05 queda diferido a la batería final y NO bloquea este bloque.
 
 **Instrucción de arranque para Codex:**
 1. Leer `AGENTS.md`, este documento completo y los contratos workflow actuales.
@@ -584,6 +584,12 @@ Objetivo cumplido:
 - El motor transversal ya materializa `tenant_tasks_v2` con `tenant_id` automáticamente cuando el ámbito es `occupancy`. Esto se reutiliza para Pago.
 - Diseño fijado: `rent_payment` será `domain_adapter` sobre una ocupación exacta y soportará manual/fecha/recurrente; cada ejecución genera exactamente una obligación. La acción Reclamar crea un expediente `claims_v2` y publica `rent_claim.created` por el outbox WF-02. `rent_claim` consume ese evento sobre piso/habitación y conserva acciones mixtas gestoría/inquilino en la misma tarjeta.
 - No se tocará producción durante implementación; solo migraciones versionadas en Git.
+- PR de implementación: **#283** (`feat/wf-06-rent-payment-claims`).
+- Migraciones: `20260921135000_wf06_rent_domain_core.sql`, `20260921140500_wf06_rent_execution_binding.sql`, `20260921142000_wf06_rent_domain_actions.sql`.
+- Regresión: `tests/workflow-wf06-domain-regression.sql`, integrada en `database-regression-v2.sh`.
+- Contrato: `docs/WORKFLOW_RENT_PAYMENT_CLAIM_CONTRACT.md`.
+- PWA: Creador con Pago/Reclamación y Tareas con acciones mixtas + aplazamiento tipado.
+- Evidencia durante revisión: Governance y PWA han pasado en HEADs de #283; Schema Guard completo pasó en HEADs anteriores del mismo PR después de integrar WF-06. Se exige una ronda final común antes del merge.
 
 **Objetivo:**
 - Integrar Pago de alquiler y Reclamación de alquiler sobre el motor transversal.

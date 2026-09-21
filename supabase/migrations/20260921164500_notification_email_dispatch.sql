@@ -6,6 +6,19 @@
 create schema if not exists private;
 create schema if not exists extensions;
 
+-- Marca el instante a partir del cual existe este dispatcher. El retry posterior
+-- usa este límite para no convertir notificaciones email históricas en un
+-- backfill inesperado al desplegar WF-07.
+create table if not exists private.notification_email_dispatch_state_v1(
+  singleton boolean primary key default true check(singleton),
+  activated_at timestamptz not null default clock_timestamp()
+);
+insert into private.notification_email_dispatch_state_v1(singleton)
+values(true)
+on conflict(singleton) do nothing;
+revoke all on private.notification_email_dispatch_state_v1
+  from public,anon,authenticated,service_role;
+
 do $notification_email_pg_net$
 begin
   if exists(select 1 from pg_available_extensions where name='pg_net') then

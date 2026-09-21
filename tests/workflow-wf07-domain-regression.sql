@@ -40,6 +40,14 @@ begin
   if v_missing is not null then
     raise exception 'WF07 RLS policies are not bound to current actor gate: %',v_missing;
   end if;
+
+  if has_function_privilege(
+    'authenticated',
+    'public.workflow_execution_actor_current_pre_wf07_v1(uuid)',
+    'EXECUTE'
+  ) then
+    raise exception 'WF07 superseded actor gate is still API-executable';
+  end if;
 end;
 $wf07_rls_gate_rebound$;
 

@@ -152,6 +152,46 @@ begin
   ) then
     raise exception 'occupancy.created accepted an already-existing occupancy scope';
   end if;
+
+  if public.workflow_authoring_complete_v1(
+    pg_temp.wf02_spec(
+      'WF04 offboarding event',
+      current_setting('wf02.employee')::uuid,
+      'occupancy.offboarded'
+    )
+  ) is distinct from true then
+    raise exception 'occupancy.offboarded was rejected as an event trigger';
+  end if;
+
+  if public.workflow_authoring_complete_v1(
+    pg_temp.wf02_spec('WF04 check-in',current_setting('wf02.employee')::uuid)
+      || jsonb_build_object('flowType','checkin','closeType','domain_adapter')
+  ) is distinct from true then
+    raise exception 'valid WF04 check-in authoring was rejected';
+  end if;
+
+  if public.workflow_authoring_complete_v1(
+    pg_temp.wf02_spec(
+      'WF04 check-out',current_setting('wf02.employee')::uuid,
+      'occupancy.offboarded'
+    ) || jsonb_build_object('flowType','checkout','closeType','domain_adapter')
+  ) is distinct from true then
+    raise exception 'valid WF04 check-out authoring was rejected';
+  end if;
+
+  if public.workflow_authoring_complete_v1(
+    pg_temp.wf02_spec('WF04 wrong event',current_setting('wf02.employee')::uuid)
+      || jsonb_build_object('flowType','checkout','closeType','domain_adapter')
+  ) then
+    raise exception 'check-out accepted occupancy.created';
+  end if;
+
+  if public.workflow_authoring_complete_v1(
+    pg_temp.wf02_spec('WF04 generic close',current_setting('wf02.employee')::uuid)
+      || jsonb_build_object('flowType','checkin','closeType','auto')
+  ) then
+    raise exception 'new check-in accepted generic closure';
+  end if;
 end;
 $authoring_validation$;
 
@@ -311,6 +351,14 @@ begin
 
   if v_good_execution is null then
     raise exception 'event did not create the expected workflow execution';
+  end if;
+
+  if not exists(
+    select 1 from public.workflow_executions_v2 e
+    where e.id=v_good_execution
+      and e.source_event_id=v_event_id
+  ) then
+    raise exception 'event execution lost its exact source event';
   end if;
 
   if not exists(

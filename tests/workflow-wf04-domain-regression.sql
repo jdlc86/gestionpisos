@@ -1,0 +1,934 @@
+-- WF-04 · Entrada/Salida y llaves. Base local desechable; rollback total.
+begin;
+
+select set_config('wf04.org','11111111-1111-4111-8111-111111111111',true);
+select set_config('wf04.root','22222222-2222-4222-8222-222222222222',true);
+select set_config('wf04.owner',gen_random_uuid()::text,true);
+select set_config('wf04.property',gen_random_uuid()::text,true);
+select set_config('wf04.room',gen_random_uuid()::text,true);
+select set_config('wf04.future_room',gen_random_uuid()::text,true);
+select set_config('wf04.reject_room',gen_random_uuid()::text,true);
+select set_config('wf04.unlinked_room',gen_random_uuid()::text,true);
+select set_config('wf04.staff',gen_random_uuid()::text,true);
+select set_config('wf04.outsider',gen_random_uuid()::text,true);
+select set_config('wf04.role_readonly','00000000-0000-4000-8000-000000000031',true);
+select set_config('wf04.role_writer','00000000-0000-4000-8000-000000000032',true);
+select set_config('wf04.admin','00000000-0000-4000-8000-000000000033',true);
+select set_config('wf04.tenant_user',gen_random_uuid()::text,true);
+select set_config('wf04.future_user',gen_random_uuid()::text,true);
+select set_config('wf04.stale_user',gen_random_uuid()::text,true);
+select set_config('wf04.reject_user',gen_random_uuid()::text,true);
+select set_config('wf04.tenant',gen_random_uuid()::text,true);
+select set_config('wf04.future_tenant',gen_random_uuid()::text,true);
+select set_config('wf04.stale_tenant',gen_random_uuid()::text,true);
+select set_config('wf04.reject_tenant',gen_random_uuid()::text,true);
+select set_config('wf04.unlinked_tenant',gen_random_uuid()::text,true);
+select set_config('wf04.occupancy',gen_random_uuid()::text,true);
+select set_config('wf04.future_occupancy',gen_random_uuid()::text,true);
+select set_config('wf04.stale_occupancy',gen_random_uuid()::text,true);
+select set_config('wf04.reject_occupancy',gen_random_uuid()::text,true);
+select set_config('wf04.unlinked_occupancy',gen_random_uuid()::text,true);
+
+insert into auth.users(id) values
+  (current_setting('wf04.staff')::uuid),
+  (current_setting('wf04.outsider')::uuid),
+  (current_setting('wf04.tenant_user')::uuid),
+  (current_setting('wf04.future_user')::uuid),
+  (current_setting('wf04.stale_user')::uuid),
+  (current_setting('wf04.reject_user')::uuid),
+  (current_setting('wf04.role_readonly')::uuid),
+  (current_setting('wf04.role_writer')::uuid),
+  (current_setting('wf04.admin')::uuid);
+
+insert into public.profiles(user_id,organization_id,display_name,status) values
+  (current_setting('wf04.staff')::uuid,current_setting('wf04.org')::uuid,'WF04 staff','active'),
+  (current_setting('wf04.outsider')::uuid,current_setting('wf04.org')::uuid,'WF04 outsider','active'),
+  (current_setting('wf04.role_readonly')::uuid,current_setting('wf04.org')::uuid,'WF04 readonly role employee','active'),
+  (current_setting('wf04.role_writer')::uuid,current_setting('wf04.org')::uuid,'WF04 writable role employee','active'),
+  (current_setting('wf04.admin')::uuid,current_setting('wf04.org')::uuid,'WF04 admin','active');
+
+insert into public.user_roles(user_id,organization_id,role) values
+  (current_setting('wf04.staff')::uuid,current_setting('wf04.org')::uuid,'employee'),
+  (current_setting('wf04.outsider')::uuid,current_setting('wf04.org')::uuid,'employee'),
+  (current_setting('wf04.tenant_user')::uuid,current_setting('wf04.org')::uuid,'tenant'),
+  (current_setting('wf04.future_user')::uuid,current_setting('wf04.org')::uuid,'tenant'),
+  (current_setting('wf04.stale_user')::uuid,current_setting('wf04.org')::uuid,'tenant'),
+  (current_setting('wf04.reject_user')::uuid,current_setting('wf04.org')::uuid,'tenant'),
+  (current_setting('wf04.role_readonly')::uuid,current_setting('wf04.org')::uuid,'employee'),
+  (current_setting('wf04.role_writer')::uuid,current_setting('wf04.org')::uuid,'employee'),
+  (current_setting('wf04.admin')::uuid,current_setting('wf04.org')::uuid,'admin');
+
+insert into public.owners(id,organization_id,full_name,status)
+values(current_setting('wf04.owner')::uuid,current_setting('wf04.org')::uuid,
+       'WF04 owner','active');
+insert into public.properties_v2(
+  id,organization_id,owner_id,name,address_line,status
+) values (
+  current_setting('wf04.property')::uuid,current_setting('wf04.org')::uuid,
+  current_setting('wf04.owner')::uuid,'WF04 property','Regression only','active'
+);
+insert into public.rooms_v2(id,property_id,label,status) values
+  (current_setting('wf04.room')::uuid,current_setting('wf04.property')::uuid,'WF04 room','active'),
+  (current_setting('wf04.future_room')::uuid,current_setting('wf04.property')::uuid,'WF04 future room','active'),
+  (current_setting('wf04.reject_room')::uuid,current_setting('wf04.property')::uuid,'WF04 reject room','active'),
+  (current_setting('wf04.unlinked_room')::uuid,current_setting('wf04.property')::uuid,'WF04 unlinked room','active');
+insert into public.property_staff_access_v3(
+  organization_id,property_id,employee_user_id,assignment_type,can_write,granted_by
+) values
+  (
+    current_setting('wf04.org')::uuid,current_setting('wf04.property')::uuid,
+    current_setting('wf04.staff')::uuid,'responsible',true,current_setting('wf04.root')::uuid
+  ),
+  (
+    current_setting('wf04.org')::uuid,current_setting('wf04.property')::uuid,
+    current_setting('wf04.role_readonly')::uuid,'access',false,current_setting('wf04.root')::uuid
+  ),
+  (
+    current_setting('wf04.org')::uuid,current_setting('wf04.property')::uuid,
+    current_setting('wf04.role_writer')::uuid,'access',true,current_setting('wf04.root')::uuid
+  ),
+  (
+    current_setting('wf04.org')::uuid,current_setting('wf04.property')::uuid,
+    current_setting('wf04.admin')::uuid,'access',true,current_setting('wf04.root')::uuid
+  );
+
+insert into public.tenants_v2(
+  id,organization_id,user_id,full_name,document_type,document_number,email,status
+) values
+  (current_setting('wf04.tenant')::uuid,current_setting('wf04.org')::uuid,
+   current_setting('wf04.tenant_user')::uuid,'WF04 tenant','other','WF04-TENANT',
+   'wf04-tenant@example.invalid','active'),
+  (current_setting('wf04.future_tenant')::uuid,current_setting('wf04.org')::uuid,
+   current_setting('wf04.future_user')::uuid,'WF04 future tenant','other','WF04-FUTURE',
+   'wf04-future@example.invalid','active'),
+  (current_setting('wf04.stale_tenant')::uuid,current_setting('wf04.org')::uuid,
+   current_setting('wf04.stale_user')::uuid,'WF04 stale tenant','other','WF04-STALE',
+   'wf04-stale@example.invalid','active'),
+  (current_setting('wf04.reject_tenant')::uuid,current_setting('wf04.org')::uuid,
+   current_setting('wf04.reject_user')::uuid,'WF04 reject tenant','other','WF04-REJECT',
+   'wf04-reject@example.invalid','active'),
+  (current_setting('wf04.unlinked_tenant')::uuid,current_setting('wf04.org')::uuid,
+   null,'WF04 unlinked tenant','other','WF04-UNLINKED',
+   'wf04-unlinked@example.invalid','active');
+
+create function pg_temp.wf04_spec(p_flow text)
+returns jsonb language sql stable as $$
+  select jsonb_build_object(
+    'authoringVersion',2,
+    'flowName',case p_flow when 'checkin' then 'WF04 entrada' else 'WF04 salida' end,
+    'flowType',p_flow,'flowDescription','WF04 regression only',
+    'scopeType','property','triggerType','event',
+    'eventType',case p_flow when 'checkin' then 'occupancy.created'
+      else 'occupancy.offboarded' end,
+    'recurrence','','scheduledAt','','scheduledTimezone','','scheduledAtUtc','',
+    'customEvery','','customUnit','','assignmentType','property_responsible',
+    'assignmentUserId','','assignmentRole','',
+    'steps',jsonb_build_object('accept',true,'photo',false,'checklist',false,'document',false),
+    'checklistItems','[]'::jsonb,'closeType','domain_adapter',
+    'notifications',jsonb_build_object('onCreate',false,'onClose',true)
+  );
+$$;
+
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf04.root'),'role','authenticated','aal','aal2'
+)::text,true);
+select set_config('wf04.checkin_app',(
+  select application_id::text from public.publish_workflow_ready_v1(
+    pg_temp.wf04_spec('checkin'),current_setting('wf04.property')::uuid,
+    null,null,'{}'::uuid[],false,'wf04-checkin-ready',null,null
+  ) limit 1
+),true);
+select set_config('wf04.checkout_app',(
+  select application_id::text from public.publish_workflow_ready_v1(
+    pg_temp.wf04_spec('checkout'),current_setting('wf04.property')::uuid,
+    null,null,'{}'::uuid[],false,'wf04-checkout-ready',null,null
+  ) limit 1
+),true);
+select set_config('wf04.role_app',(
+  select application_id::text from public.publish_workflow_ready_v1(
+    pg_temp.wf04_spec('checkin') || jsonb_build_object(
+      'flowName','WF04 entrada rol empleado',
+      'assignmentType','role',
+      'assignmentRole','employee',
+      'notifications',jsonb_build_object('onCreate',false,'onClose',false)
+    ),
+    current_setting('wf04.property')::uuid,
+    null,null,'{}'::uuid[],false,'wf04-role-ready',null,null
+  ) limit 1
+),true);
+select set_config('wf04.admin_app',(
+  select application_id::text from public.publish_workflow_ready_v1(
+    pg_temp.wf04_spec('checkin') || jsonb_build_object(
+      'flowName','WF04 entrada admin',
+      'assignmentType','role',
+      'assignmentRole','admin',
+      'notifications',jsonb_build_object('onCreate',false,'onClose',false)
+    ),
+    current_setting('wf04.property')::uuid,
+    null,null,'{}'::uuid[],false,'wf04-admin-ready',null,null
+  ) limit 1
+),true);
+reset role;
+
+-- Una ocupación legacy sin tenant todavía es recuperable: su evento debe
+-- quedar pending hasta que se complete la vinculación.
+insert into public.occupancies_v2(
+  id,organization_id,tenant_id,property_id,room_id,occupant_email,
+  starts_on,ends_on,status,user_id
+) values (
+  current_setting('wf04.unlinked_occupancy')::uuid,current_setting('wf04.org')::uuid,
+  null,current_setting('wf04.property')::uuid,
+  current_setting('wf04.unlinked_room')::uuid,'wf04-unlinked@example.invalid',
+  current_date-1,null,'active',null
+);
+
+-- Un occupancy.created que envejece antes del despacho es terminal, no
+-- reintentable. La Baja genera además su evento checkout normal.
+insert into public.occupancies_v2(
+  id,organization_id,tenant_id,property_id,room_id,occupant_email,
+  starts_on,ends_on,status,user_id
+) values (
+  current_setting('wf04.stale_occupancy')::uuid,current_setting('wf04.org')::uuid,
+  current_setting('wf04.stale_tenant')::uuid,current_setting('wf04.property')::uuid,
+  current_setting('wf04.future_room')::uuid,'wf04-stale@example.invalid',
+  current_date-3,null,'active',current_setting('wf04.stale_user')::uuid
+);
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf04.root'),'role','authenticated','aal','aal2'
+)::text,true);
+select public.offboard_tenant_occupancy_v2(
+  current_setting('wf04.stale_occupancy')::uuid,current_date
+);
+reset role;
+
+insert into public.occupancies_v2(
+  id,organization_id,tenant_id,property_id,room_id,occupant_email,
+  starts_on,ends_on,status,user_id
+) values (
+  current_setting('wf04.occupancy')::uuid,current_setting('wf04.org')::uuid,
+  current_setting('wf04.tenant')::uuid,current_setting('wf04.property')::uuid,
+  current_setting('wf04.room')::uuid,'wf04-tenant@example.invalid',
+  current_date-1,null,'active',current_setting('wf04.tenant_user')::uuid
+);
+
+do $event_before_dispatch$
+begin
+  if (
+    select count(*) from public.workflow_event_outbox_v2
+    where source_id=current_setting('wf04.occupancy')::uuid
+      and event_type='occupancy.created' and status='pending'
+  )<>1 then
+    raise exception 'WF04 occupancy creation was not captured once';
+  end if;
+  if exists(
+    select 1 from public.workflow_executions_v2
+    where application_id=current_setting('wf04.checkin_app')::uuid
+  ) then
+    raise exception 'WF04 business insert synchronously created a task';
+  end if;
+end;
+$event_before_dispatch$;
+
+select private.process_pending_workflow_events_v1(50);
+
+do $stale_event_retired$
+begin
+  if not exists(
+    select 1
+    from public.workflow_event_outbox_v2 e
+    join public.workflow_event_dispatches_v2 d
+      on d.event_id=e.id
+     and d.application_id=current_setting('wf04.checkin_app')::uuid
+    where e.source_id=current_setting('wf04.stale_occupancy')::uuid
+      and e.event_type='occupancy.created'
+      and e.status='processed_with_errors'
+      and e.processed_at is not null
+      and d.status='failed'
+      and d.error_code='55000'
+      and d.error_key='workflow_domain_lifecycle_mismatch'
+  ) then
+    raise exception 'stale check-in event was not retired as terminal';
+  end if;
+  if exists(
+    select 1 from public.workflow_event_outbox_v2
+    where source_id=current_setting('wf04.stale_occupancy')::uuid
+      and event_type='occupancy.created'
+      and status='pending'
+  ) then
+    raise exception 'stale check-in event remained pending';
+  end if;
+  if not exists(
+    select 1 from public.workflow_event_outbox_v2
+    where source_id=current_setting('wf04.occupancy')::uuid
+      and event_type='occupancy.created'
+      and status='processed'
+  ) then
+    raise exception 'later valid check-in event was blocked by stale event';
+  end if;
+end;
+$stale_event_retired$;
+
+do $unlinked_event_retryable$
+begin
+  if not exists(
+    select 1
+    from public.workflow_event_outbox_v2 e
+    join public.workflow_event_dispatches_v2 d
+      on d.event_id=e.id
+     and d.application_id=current_setting('wf04.checkin_app')::uuid
+    where e.source_id=current_setting('wf04.unlinked_occupancy')::uuid
+      and e.event_type='occupancy.created'
+      and e.status='pending'
+      and e.processed_at is null
+      and d.status='failed'
+      and d.error_code='55000'
+      and d.error_key='workflow_event_subject_unlinked'
+  ) then
+    raise exception 'unlinked check-in event was incorrectly made terminal';
+  end if;
+end;
+$unlinked_event_retryable$;
+
+update public.occupancies_v2
+set tenant_id=current_setting('wf04.unlinked_tenant')::uuid
+where id=current_setting('wf04.unlinked_occupancy')::uuid;
+
+select private.process_pending_workflow_events_v1(50);
+
+do $unlinked_event_recovers$
+begin
+  if not exists(
+    select 1
+    from public.workflow_event_outbox_v2 e
+    join public.workflow_event_dispatches_v2 d
+      on d.event_id=e.id
+     and d.application_id=current_setting('wf04.checkin_app')::uuid
+    where e.source_id=current_setting('wf04.unlinked_occupancy')::uuid
+      and e.event_type='occupancy.created'
+      and e.status='processed'
+      and e.processed_at is not null
+      and d.status='executed'
+      and d.execution_id is not null
+  ) then
+    raise exception 'unlinked check-in event did not recover after tenant binding';
+  end if;
+end;
+$unlinked_event_recovers$;
+
+select set_config('wf04.checkin_task',(
+  select t.id::text from public.tenant_tasks_v2 t
+  join public.workflow_executions_v2 e on e.id=t.source_id
+  join public.workflow_event_outbox_v2 o on o.id=e.source_event_id
+  where e.application_id=current_setting('wf04.checkin_app')::uuid
+    and o.source_id=current_setting('wf04.occupancy')::uuid
+    and o.event_type='occupancy.created'
+),true);
+
+-- La selección role debe filtrar escritura antes del desempate determinista.
+do $role_assignment_filters_readonly$
+declare v_assigned uuid;
+begin
+  select e.assigned_user_id
+  into v_assigned
+  from public.workflow_executions_v2 e
+  join public.workflow_event_outbox_v2 o on o.id=e.source_event_id
+  where e.application_id=current_setting('wf04.role_app')::uuid
+    and o.source_id=current_setting('wf04.occupancy')::uuid
+    and o.event_type='occupancy.created';
+
+  if v_assigned is distinct from current_setting('wf04.role_writer')::uuid then
+    raise exception 'WF04 role resolver selected non-writable employee: %',v_assigned;
+  end if;
+end;
+$role_assignment_filters_readonly$;
+
+select set_config('wf04.admin_task',(
+  select t.id::text
+  from public.tenant_tasks_v2 t
+  join public.workflow_executions_v2 e on e.id=t.source_id
+  join public.workflow_event_outbox_v2 o on o.id=e.source_event_id
+  where e.application_id=current_setting('wf04.admin_app')::uuid
+    and o.source_id=current_setting('wf04.occupancy')::uuid
+    and o.event_type='occupancy.created'
+),true);
+
+-- ADMIN necesita MFA AAL2 para cualquier acción física/lifecycle WF-04.
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf04.admin'),'role','authenticated','aal','aal1'
+)::text,true);
+do $admin_aal1_denied$
+begin
+  begin
+    perform * from public.apply_workflow_task_action_v1(
+      current_setting('wf04.admin_task')::uuid,'accept','wf04-admin-aal1',null
+    );
+    raise exception 'WF04 ADMIN action succeeded with aal1';
+  exception when insufficient_privilege then
+    if sqlerrm<>'workflow_wf04_mfa_required' then raise; end if;
+  end;
+end;
+$admin_aal1_denied$;
+reset role;
+
+do $admin_aal1_no_mutation$
+begin
+  if not exists(
+    select 1
+    from public.tenant_tasks_v2 t
+    join public.workflow_executions_v2 e on e.id=t.source_id
+    where t.id=current_setting('wf04.admin_task')::uuid
+      and t.status='pending'
+      and e.status='pending'
+  ) then
+    raise exception 'WF04 ADMIN aal1 attempt mutated task/execution';
+  end if;
+end;
+$admin_aal1_no_mutation$;
+
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf04.admin'),'role','authenticated','aal','aal2'
+)::text,true);
+select * from public.apply_workflow_task_action_v1(
+  current_setting('wf04.admin_task')::uuid,'accept','wf04-admin-aal2',null
+);
+reset role;
+
+do $admin_aal2_allowed$
+begin
+  if not exists(
+    select 1
+    from public.tenant_tasks_v2 t
+    join public.workflow_executions_v2 e on e.id=t.source_id
+    where t.id=current_setting('wf04.admin_task')::uuid
+      and t.status='active'
+      and e.status='active'
+  ) then
+    raise exception 'WF04 ADMIN aal2 action was not applied';
+  end if;
+end;
+$admin_aal2_allowed$;
+
+do $checkin_materialized$
+declare v_task public.tenant_tasks_v2;
+begin
+  select * into v_task from public.tenant_tasks_v2
+  where id=current_setting('wf04.checkin_task')::uuid;
+  if v_task.id is null
+    or v_task.tenant_id is distinct from current_setting('wf04.tenant')::uuid
+    or v_task.assigned_user_id is distinct from current_setting('wf04.staff')::uuid
+    or v_task.status<>'pending' then
+    raise exception 'WF04 check-in did not bind one task to exact tenant/assignee';
+  end if;
+  if (
+    select count(*) from public.workflow_executions_v2 e
+    where e.application_id=current_setting('wf04.checkin_app')::uuid
+      and e.source_event_id=(
+        select id from public.workflow_event_outbox_v2
+        where source_id=current_setting('wf04.occupancy')::uuid
+          and event_type='occupancy.created'
+      )
+  )<>1 then
+    raise exception 'WF04 check-in execution count is not one';
+  end if;
+  if (
+    select count(*) from public.tenant_task_actions_v2 a
+    where a.task_id=v_task.id and a.active
+      and a.action_key in ('accept','reject')
+  )<>2 then
+    raise exception 'WF04 accept/reject actions were not seeded';
+  end if;
+end;
+$checkin_materialized$;
+
+-- La elegibilidad se reevalúa al actuar, no solo al despachar.
+update public.property_staff_access_v3
+set revoked_at=now()
+where property_id=current_setting('wf04.property')::uuid
+  and employee_user_id=current_setting('wf04.staff')::uuid;
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf04.staff'),'role','authenticated'
+)::text,true);
+do $revoked_assignee_denied$
+begin
+  begin
+    perform * from public.apply_workflow_task_action_v1(
+      current_setting('wf04.checkin_task')::uuid,'accept','wf04-revoked',null
+    );
+    raise exception 'revoked assignee accepted WF04 task';
+  exception when insufficient_privilege then
+    if sqlerrm<>'workflow_assignee_access_revoked' then raise; end if;
+  end;
+end;
+$revoked_assignee_denied$;
+reset role;
+update public.property_staff_access_v3
+set revoked_at=null
+where property_id=current_setting('wf04.property')::uuid
+  and employee_user_id=current_setting('wf04.staff')::uuid;
+
+-- La concesión aún no vigente tampoco autoriza la acción.
+update public.property_staff_access_v3
+set valid_from=now()+interval '1 day'
+where property_id=current_setting('wf04.property')::uuid
+  and employee_user_id=current_setting('wf04.staff')::uuid;
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf04.staff'),'role','authenticated'
+)::text,true);
+do $future_assignment_denied$
+begin
+  begin
+    perform * from public.apply_workflow_task_action_v1(
+      current_setting('wf04.checkin_task')::uuid,'accept','wf04-future-assignment',null
+    );
+    raise exception 'future assignment accepted WF04 task';
+  exception when insufficient_privilege then
+    if sqlerrm<>'workflow_wf04_assignee_not_eligible' then raise; end if;
+  end;
+end;
+$future_assignment_denied$;
+reset role;
+update public.property_staff_access_v3
+set valid_from=now()-interval '1 day'
+where property_id=current_setting('wf04.property')::uuid
+  and employee_user_id=current_setting('wf04.staff')::uuid;
+
+-- La habitación origen del evento no puede sustituirse por otra vigente.
+update public.occupancies_v2
+set room_id=current_setting('wf04.future_room')::uuid
+where id=current_setting('wf04.occupancy')::uuid;
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf04.staff'),'role','authenticated'
+)::text,true);
+do $wrong_subject_denied$
+begin
+  begin
+    perform * from public.apply_workflow_task_action_v1(
+      current_setting('wf04.checkin_task')::uuid,'accept','wf04-wrong-room',null
+    );
+    raise exception 'moved occupancy accepted WF04 event';
+  exception when object_not_in_prerequisite_state then
+    if sqlerrm<>'workflow_wf04_subject_not_current' then raise; end if;
+  end;
+end;
+$wrong_subject_denied$;
+reset role;
+update public.occupancies_v2
+set room_id=current_setting('wf04.room')::uuid
+where id=current_setting('wf04.occupancy')::uuid;
+
+-- Otro empleado y el propio inquilino carecen de autoridad sobre esta tarea.
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf04.outsider'),'role','authenticated'
+)::text,true);
+do $outsider_denied$
+begin
+  if (
+    select count(*) from public.tenant_tasks_v2
+    where id=current_setting('wf04.checkin_task')::uuid
+  )<>0 then
+    raise exception 'out-of-scope employee could read WF04 task';
+  end if;
+  begin
+    perform * from public.apply_workflow_task_action_v1(
+      current_setting('wf04.checkin_task')::uuid,'accept','wf04-outsider',null
+    );
+    raise exception 'out-of-scope employee accepted WF04 task';
+  exception when insufficient_privilege then
+    if sqlerrm not in ('workflow_assignee_access_revoked','workflow_wf04_assignee_not_eligible') then raise; end if;
+  end;
+end;
+$outsider_denied$;
+reset role;
+
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf04.tenant_user'),'role','authenticated'
+)::text,true);
+do $tenant_denied$
+begin
+  if (
+    select count(*) from public.tenant_tasks_v2
+    where id=current_setting('wf04.checkin_task')::uuid
+  )<>0 then
+    raise exception 'tenant could read a staff-only WF04 task';
+  end if;
+  begin
+    perform * from public.apply_workflow_task_action_v1(
+      current_setting('wf04.checkin_task')::uuid,'accept','wf04-tenant',null
+    );
+    raise exception 'tenant accepted staff WF04 task';
+  exception when insufficient_privilege then
+    if sqlerrm<>'workflow_assignee_access_revoked' then raise; end if;
+  end;
+end;
+$tenant_denied$;
+reset role;
+
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf04.staff'),'role','authenticated'
+)::text,true);
+select * from public.apply_workflow_task_action_v1(
+  current_setting('wf04.checkin_task')::uuid,'accept','wf04-accept',null
+);
+select * from public.apply_workflow_task_action_v1(
+  current_setting('wf04.checkin_task')::uuid,'key_pickup','wf04-key-pickup',null
+);
+do $key_retry$
+declare v_result record;
+begin
+  select * into v_result from public.apply_workflow_task_action_v1(
+    current_setting('wf04.checkin_task')::uuid,'key_pickup','wf04-key-pickup',null
+  );
+  if v_result.applied_new is distinct from false then
+    raise exception 'key retry applied a second handover';
+  end if;
+end;
+$key_retry$;
+reset role;
+
+do $key_no_access_effect$
+begin
+  if not exists(
+    select 1 from public.occupancies_v2
+    where id=current_setting('wf04.occupancy')::uuid
+      and status='active' and starts_on=current_date-1
+  ) or not exists(
+    select 1 from public.user_roles
+    where user_id=current_setting('wf04.tenant_user')::uuid
+      and role='tenant' and revoked_at is null
+  ) or (
+    select count(*) from public.workflow_execution_events_v2 ev
+    join public.workflow_executions_v2 e on e.id=ev.execution_id
+    where e.application_id=current_setting('wf04.checkin_app')::uuid
+      and ev.event_type='wf04_domain_action'
+      and ev.details->>'action_key'='key_pickup'
+  )<>1 then
+    raise exception 'key pickup changed lifecycle/access or duplicated history';
+  end if;
+end;
+$key_no_access_effect$;
+
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf04.staff'),'role','authenticated'
+)::text,true);
+select * from public.apply_workflow_task_action_v1(
+  current_setting('wf04.checkin_task')::uuid,'check_in','wf04-check-in',null
+);
+reset role;
+
+do $checkin_finished$
+begin
+  if not exists(
+    select 1 from public.tenant_tasks_v2 t
+    join public.workflow_executions_v2 e on e.id=t.source_id
+    where t.id=current_setting('wf04.checkin_task')::uuid
+      and t.status='completed' and e.status='completed'
+  ) then
+    raise exception 'check-in did not close task and execution together';
+  end if;
+  if private.process_pending_workflow_events_v1(50)<>0 then
+    raise exception 'processed check-in event was replayed';
+  end if;
+end;
+$checkin_finished$;
+
+-- Rechazar conserva el estado transversal rejected en tarea y ejecución y
+-- dispara la notificación de cierre normal.
+insert into public.occupancies_v2(
+  id,organization_id,tenant_id,property_id,room_id,occupant_email,
+  starts_on,ends_on,status,user_id
+) values (
+  current_setting('wf04.reject_occupancy')::uuid,current_setting('wf04.org')::uuid,
+  current_setting('wf04.reject_tenant')::uuid,current_setting('wf04.property')::uuid,
+  current_setting('wf04.reject_room')::uuid,'wf04-reject@example.invalid',
+  current_date-1,null,'active',current_setting('wf04.reject_user')::uuid
+);
+select private.process_pending_workflow_events_v1(50);
+select set_config('wf04.reject_task',(
+  select t.id::text
+  from public.tenant_tasks_v2 t
+  join public.workflow_executions_v2 e on e.id=t.source_id
+  join public.workflow_event_outbox_v2 o on o.id=e.source_event_id
+  where e.application_id=current_setting('wf04.checkin_app')::uuid
+    and o.source_id=current_setting('wf04.reject_occupancy')::uuid
+    and o.event_type='occupancy.created'
+),true);
+
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf04.staff'),'role','authenticated'
+)::text,true);
+select * from public.apply_workflow_task_action_v1(
+  current_setting('wf04.reject_task')::uuid,
+  'reject',
+  'wf04-reject-terminal',
+  'No se puede realizar la entrada'
+);
+reset role;
+
+do $reject_state_and_notification$
+declare v_execution uuid;
+begin
+  select source_id into v_execution
+  from public.tenant_tasks_v2
+  where id=current_setting('wf04.reject_task')::uuid;
+
+  if not exists(
+    select 1
+    from public.tenant_tasks_v2 t
+    join public.workflow_executions_v2 e on e.id=t.source_id
+    where t.id=current_setting('wf04.reject_task')::uuid
+      and t.status='rejected'
+      and e.status='rejected'
+  ) then
+    raise exception 'WF04 reject did not preserve transversal rejected state';
+  end if;
+
+  if not exists(
+    select 1 from public.notifications_v2 n
+    where n.source_kind='workflow_execution'
+      and n.source_id=v_execution
+      and n.event_key='rejected'
+      and n.event_type='workflow_rejected'
+      and n.recipient_user_id=current_setting('wf04.staff')::uuid
+  ) then
+    raise exception 'WF04 reject did not emit workflow_rejected notification';
+  end if;
+
+  if not exists(
+    select 1 from public.tenant_task_history_v2 h
+    where h.task_id=current_setting('wf04.reject_task')::uuid
+      and h.action_key='reject'
+      and h.to_status='rejected'
+  ) then
+    raise exception 'WF04 reject was not recorded in task history';
+  end if;
+end;
+$reject_state_and_notification$;
+
+-- Baja (no Suspensión) corta acceso antes de cualquier acción de llaves.
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf04.root'),'role','authenticated','aal','aal2'
+)::text,true);
+select public.offboard_tenant_occupancy_v2(
+  current_setting('wf04.occupancy')::uuid,current_date
+);
+reset role;
+
+do $checkout_before_dispatch$
+begin
+  if not exists(
+    select 1 from public.workflow_event_outbox_v2
+    where source_id=current_setting('wf04.occupancy')::uuid
+      and event_type='occupancy.offboarded' and status='pending'
+  ) or exists(
+    select 1
+    from public.workflow_executions_v2 e
+    join public.workflow_event_outbox_v2 o
+      on o.id=e.source_event_id
+    where e.application_id=current_setting('wf04.checkout_app')::uuid
+      and o.source_id=current_setting('wf04.occupancy')::uuid
+      and o.event_type='occupancy.offboarded'
+  ) then
+    raise exception 'Baja failed outbox decoupling';
+  end if;
+end;
+$checkout_before_dispatch$;
+
+select private.process_pending_workflow_events_v1(50);
+select set_config('wf04.checkout_task',(
+  select t.id::text from public.tenant_tasks_v2 t
+  join public.workflow_executions_v2 e on e.id=t.source_id
+  join public.workflow_event_outbox_v2 o on o.id=e.source_event_id
+  where e.application_id=current_setting('wf04.checkout_app')::uuid
+    and o.source_id=current_setting('wf04.occupancy')::uuid
+    and o.event_type='occupancy.offboarded'
+),true);
+
+do $checkout_materialized$
+begin
+  if (
+    select count(*) from public.tenant_tasks_v2
+    where id=current_setting('wf04.checkout_task')::uuid
+      and tenant_id=current_setting('wf04.tenant')::uuid
+      and status='pending'
+  )<>1 then
+    raise exception 'Baja did not create one linked checkout card';
+  end if;
+  if not exists(
+    select 1 from public.occupancies_v2
+    where id=current_setting('wf04.occupancy')::uuid and status='archived'
+  ) or not exists(
+    select 1 from public.user_roles
+    where user_id=current_setting('wf04.tenant_user')::uuid
+      and role='tenant' and revoked_at is not null
+  ) then
+    raise exception 'Baja failed to preserve history and revoke access';
+  end if;
+end;
+$checkout_materialized$;
+
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf04.tenant_user'),'role','authenticated'
+)::text,true);
+do $offboarded_access_denied$
+begin
+  if public.has_current_platform_access_v1() then
+    raise exception 'offboarded tenant retained platform access';
+  end if;
+end;
+$offboarded_access_denied$;
+reset role;
+
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf04.staff'),'role','authenticated'
+)::text,true);
+select * from public.apply_workflow_task_action_v1(
+  current_setting('wf04.checkout_task')::uuid,'accept','wf04-checkout-accept',null
+);
+select * from public.apply_workflow_task_action_v1(
+  current_setting('wf04.checkout_task')::uuid,'key_delivery','wf04-key-delivery',null
+);
+select * from public.apply_workflow_task_action_v1(
+  current_setting('wf04.checkout_task')::uuid,'check_out','wf04-check-out',null
+);
+reset role;
+
+do $checkout_finished$
+begin
+  if not exists(
+    select 1 from public.tenant_tasks_v2 t
+    join public.workflow_executions_v2 e on e.id=t.source_id
+    where t.id=current_setting('wf04.checkout_task')::uuid
+      and t.status='completed' and e.status='completed'
+  ) or not exists(
+    select 1 from public.occupancies_v2
+    where id=current_setting('wf04.occupancy')::uuid and status='archived'
+  ) or (
+    select count(*) from public.workflow_execution_events_v2 ev
+    join public.workflow_executions_v2 e on e.id=ev.execution_id
+    where e.application_id=current_setting('wf04.checkout_app')::uuid
+      and ev.event_type='wf04_domain_action'
+      and ev.details->>'action_key'='key_delivery'
+  )<>1 then
+    raise exception 'checkout/key delivery was not idempotent or changed lifecycle';
+  end if;
+end;
+$checkout_finished$;
+
+-- Una ocupación futura permite organizar llaves pero no confirmar Entrada ni
+-- habilita acceso del inquilino antes de starts_on.
+insert into public.occupancies_v2(
+  id,organization_id,tenant_id,property_id,room_id,occupant_email,
+  starts_on,ends_on,status,user_id
+) values (
+  current_setting('wf04.future_occupancy')::uuid,current_setting('wf04.org')::uuid,
+  current_setting('wf04.future_tenant')::uuid,current_setting('wf04.property')::uuid,
+  current_setting('wf04.future_room')::uuid,'wf04-future@example.invalid',
+  current_date+5,null,'active',current_setting('wf04.future_user')::uuid
+);
+select private.process_pending_workflow_events_v1(50);
+select set_config('wf04.future_task',(
+  select t.id::text from public.tenant_tasks_v2 t
+  join public.workflow_executions_v2 e on e.id=t.source_id
+  join public.workflow_event_outbox_v2 o on o.id=e.source_event_id
+  where e.application_id=current_setting('wf04.checkin_app')::uuid
+    and o.source_id=current_setting('wf04.future_occupancy')::uuid
+),true);
+
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf04.staff'),'role','authenticated'
+)::text,true);
+do $reject_requires_note$
+begin
+  begin
+    perform * from public.apply_workflow_task_action_v1(
+      current_setting('wf04.future_task')::uuid,'reject','wf04-future-reject',null
+    );
+    raise exception 'WF04 rejection without note was accepted';
+  exception when invalid_parameter_value then
+    if sqlerrm<>'workflow_action_note_required' then raise; end if;
+  end;
+end;
+$reject_requires_note$;
+select * from public.apply_workflow_task_action_v1(
+  current_setting('wf04.future_task')::uuid,'accept','wf04-future-accept',null
+);
+select * from public.apply_workflow_task_action_v1(
+  current_setting('wf04.future_task')::uuid,'key_pickup','wf04-future-key',null
+);
+do $future_checkin_denied$
+begin
+  begin
+    perform * from public.apply_workflow_task_action_v1(
+      current_setting('wf04.future_task')::uuid,'check_in','wf04-future-checkin',null
+    );
+    raise exception 'future check-in was confirmed early';
+  exception when object_not_in_prerequisite_state then
+    if sqlerrm<>'workflow_wf04_checkin_not_current' then raise; end if;
+  end;
+end;
+$future_checkin_denied$;
+reset role;
+
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf04.future_user'),'role','authenticated'
+)::text,true);
+do $future_access_denied$
+begin
+  if public.has_current_platform_access_v1() then
+    raise exception 'future key pickup enabled tenant access';
+  end if;
+end;
+$future_access_denied$;
+reset role;
+
+-- Las tarjetas legacy permanecen en su ruta y no son convertidas.
+select set_config('wf04.legacy_task',gen_random_uuid()::text,true);
+insert into public.tenant_tasks_v2(
+  id,organization_id,tenant_id,property_id,room_id,task_type,
+  origin,title,status,created_by
+) values (
+  current_setting('wf04.legacy_task')::uuid,current_setting('wf04.org')::uuid,
+  current_setting('wf04.future_tenant')::uuid,
+  current_setting('wf04.property')::uuid,
+  current_setting('wf04.future_room')::uuid,'check_in',
+  'manual','WF04 legacy check-in','scheduled',current_setting('wf04.root')::uuid
+);
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object(
+  'sub',current_setting('wf04.root'),'role','authenticated','aal','aal2'
+)::text,true);
+select public.apply_tenant_task_action_v2(
+  current_setting('wf04.legacy_task')::uuid,'confirm',null
+);
+reset role;
+
+do $legacy_unchanged$
+begin
+  if not exists(
+    select 1 from public.tenant_tasks_v2
+    where id=current_setting('wf04.legacy_task')::uuid
+      and task_type='check_in' and source_kind is null and status='completed'
+  ) then
+    raise exception 'legacy check-in compatibility changed';
+  end if;
+end;
+$legacy_unchanged$;
+
+rollback;

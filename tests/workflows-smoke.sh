@@ -190,7 +190,7 @@ grep -Fq 'start_workflow_definition_revision_v1' docs/workflow-definitions.js
 ! grep -Fq 'Crear nueva versión' docs/workflow-definitions.js
 ! grep -Fq 'Continuar nueva versión' docs/workflow-definitions.js
 grep -Fq 'workflow-applications.html?definition=' docs/workflow-definitions.js
-grep -Fq './workflow-definitions.js?v=2026092001' docs/workflow-definitions.html
+grep -Fq './workflow-definitions.js?v=2026092002' docs/workflow-definitions.html
 grep -Fq './workflow-definitions.css?v=2026091912' docs/workflow-definitions.html
 grep -Fq 'Tus flujos terminados. Ejecuta, edita y elimina o archiva según exista historial.' docs/workflow-definitions.html
 ! grep -Fq 'Completar borrador' docs/workflow-definitions.js
@@ -203,7 +203,7 @@ grep -Fq 'rooms_v2' docs/workflow-applications.js
 grep -Fq 'occupancies_v2' docs/workflow-applications.js
 grep -Fq '.application-card [hidden]{display:none!important}' docs/workflow-applications.css
 grep -Fq './workflow-applications.css?v=2026091915' docs/workflow-applications.html
-grep -Fq './workflow-applications.js?v=2026092004' docs/workflow-applications.html
+grep -Fq './workflow-applications.js?v=2026092005' docs/workflow-applications.html
 grep -Fq '¿Dónde quieres utilizarlo?' docs/workflow-applications.html
 grep -Fq 'Definición → Versión publicada → Aplicación concreta' docs/WORKFLOW_APPLICATIONS_CONTRACT.md
 grep -Fq 'workflow_applications_v2' docs/WORKFLOW_APPLICATIONS_CONTRACT.md
@@ -248,7 +248,7 @@ grep -Fq 'managerOrganizationIds' docs/workflow-tasks.js
 grep -Fq 'review_reject' docs/workflow-tasks.js
 grep -Fq 'task-actions' docs/workflow-tasks.css
 grep -Fq './workflow-tasks.css?v=2026092001' docs/workflow-tasks.html
-grep -Fq './workflow-tasks.js?v=2026092024' docs/workflow-tasks.html
+grep -Fq './workflow-tasks.js?v=2026092025' docs/workflow-tasks.html
 grep -Fq 'cambian tarea y ejecución juntas' docs/workflow-tasks.html
 grep -Fq 'id="taskSelectionToggle"' docs/workflow-tasks.html
 grep -Fq 'id="tasksSelectionHeader"' docs/workflow-tasks.html
@@ -531,7 +531,7 @@ grep -Fq 'renderDocuments(task,article)' docs/workflow-tasks.js
 grep -Fq '.task-documents{' docs/workflow-tasks.css
 grep -Fq '.task-document-row{' docs/workflow-tasks.css
 grep -Fq './workflow-tasks.css?v=2026092001' docs/workflow-tasks.html
-grep -Fq './workflow-tasks.js?v=2026092024' docs/workflow-tasks.html
+grep -Fq './workflow-tasks.js?v=2026092025' docs/workflow-tasks.html
 
 
 # Contrato Documento: evidencia privada, tarea común y cierre coordinado.
@@ -550,7 +550,7 @@ grep -Fq 'if(activeFilter==="rejected"&&execution.status!=="rejected")return fal
 grep -Fq 'const historyNote=taskHistoryNote(' docs/workflow-history.js
 grep -Fq 'rejected?"review_reject":"review_approve"' docs/workflow-history.js
 grep -Fq 'if(historyNote)return historyNote;' docs/workflow-history.js
-grep -Fq './workflow-history.js?v=2026091911' docs/workflow-history.html
+grep -Fq './workflow-history.js?v=2026092012' docs/workflow-history.html
 
 
 # Fecha concreta: instante exacto + Programar + sin ejecución manual.
@@ -629,4 +629,23 @@ test -s supabase/migrations/20260920103100_wf02_event_trigger_cron.sql
 test -s tests/workflow-event-trigger-regression.sql
 grep -Fq '20260920103000_wf02_event_trigger_core.sql' tests/database-regression-v2.sh
 grep -Fq 'workflow-event-trigger-regression.sql' tests/database-regression-v2.sh
+
+# WF-04: Check-in y Check-out se configuran con el evento lifecycle exacto.
+grep -Fq 'value="occupancy.offboarded">Baja de ocupación confirmada' docs/workflow-builder.html
+grep -Fq 'id="wf04StepNote"' docs/workflow-builder.html
+grep -Fq 'const lifecycle=["checkin","checkout"].includes(value("flowType"));' docs/workflow-builder.js
+grep -Fq 'eventType.value=value("flowType")==="checkin"?"occupancy.created":"occupancy.offboarded"' docs/workflow-builder.js
+test -s supabase/migrations/20260920194226_wf04_lifecycle_authoring_contract.sql
+test -s supabase/migrations/20260920194659_wf04_lifecycle_domain_actions.sql
+test -s tests/workflow-wf04-domain-regression.sql
+grep -Fq '20260920194659_wf04_lifecycle_domain_actions.sql' tests/database-regression-v2.sh
+grep -Fq 'workflow-wf04-domain-regression.sql' tests/database-regression-v2.sh
+grep -Fq 'function lifecycleExecutionForTask(task)' docs/workflow-tasks.js
+grep -Fq 'meta("Inquilino",tenants.get(task.tenant_id)' docs/workflow-tasks.js
+grep -Fq '["key_pickup","key_delivery"].includes(action.action_key)' docs/workflow-tasks.js
+grep -Fq '["check_in","check_out"].includes(action.action_key)' docs/workflow-tasks.js
+grep -Fq 'case "wf04_domain_action"' docs/workflow-history.js
+grep -Fq 'case "event_subject_bound"' docs/workflow-history.js
+grep -Fq 'if(eventType==="occupancy.offboarded")return "Baja de ocupación confirmada"' docs/workflow-applications.js
+grep -Fq 'if(eventType==="occupancy.offboarded")return "Baja de ocupación confirmada"' docs/workflow-definitions.js
 

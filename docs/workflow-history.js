@@ -179,7 +179,13 @@ function eventTitle(event){
   switch(event.event_type){
     case "created": return "Ejecución creada";
     case "task_materialized": return "Tarea creada";
+    case "event_subject_bound": return "Ocupación vinculada";
     case "task_action_applied": return d.action_label||"Acción aplicada";
+    case "wf04_domain_action": return ({
+      accept:"Tarea aceptada",reject:"Tarea rechazada",
+      key_pickup:"Recogida de llaves confirmada",key_delivery:"Entrega de llaves confirmada",
+      check_in:"Entrada confirmada",check_out:"Salida confirmada"
+    })[d.action_key]||"Acción de entrada o salida";
     case "photo_step_started": return "Evidencia fotográfica iniciada";
     case "photo_capture_started": return "Captura fotográfica iniciada";
     case "photo_evidence_submitted": return d.all_photos_complete?"Fotografías completadas":"Fotografía enviada";
@@ -202,6 +208,13 @@ function eventDetail(event){
   if(event.event_type==="task_action_applied"){
     const note=taskHistoryNote(d.task_id,d.action_key,event.created_at);
     return note||"Decisión registrada sobre la tarea.";
+  }
+  if(event.event_type==="event_subject_bound"){
+    return "La ejecución quedó vinculada a la ocupación y al evento de origen.";
+  }
+  if(event.event_type==="wf04_domain_action"){
+    return taskHistoryNote(d.task_id,d.action_key,event.created_at)
+      ||"Hito registrado sobre la ocupación vinculada.";
   }
   if(event.event_type==="checklist_item_changed"){
     return d.item_text||"Elemento de checklist";

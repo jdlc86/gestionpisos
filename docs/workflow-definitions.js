@@ -103,7 +103,10 @@ function canExecuteNow(row){
   return !isScheduledAutomatic(row)&&!isEventDriven(row);
 }
 function eventDisplay(spec){
-  return String(spec?.eventType||"")==="occupancy.created"?"Nueva ocupación creada":"Evento pendiente";
+  const eventType=String(spec?.eventType||"");
+  if(eventType==="occupancy.created")return "Nueva ocupación creada";
+  if(eventType==="occupancy.offboarded")return "Baja de ocupación confirmada";
+  return "Evento pendiente";
 }
 function latestVersion(row){return versionsByDefinition.get(row.id)?.[0]||null}
 function publishedSpec(row){return latestVersion(row)?.spec||{}}

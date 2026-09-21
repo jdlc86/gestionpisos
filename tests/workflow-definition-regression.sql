@@ -966,7 +966,8 @@ select set_config(
   true
 );
 
--- Una ocupación real se vincula por UUID y debe estar vigente.
+-- Un flujo genérico sobre ocupación real se vincula por UUID y exige vigencia.
+-- WF-04 reserva las nuevas definiciones Check-in/Check-out para eventos lifecycle.
 select set_config(
   'gestionpisos.workflow_occupancy_definition_id',
   (
@@ -974,8 +975,8 @@ select set_config(
     from public.save_workflow_definition_draft_v1(
       jsonb_build_object(
         'authoringVersion',2,
-        'flowName','Check-out ocupación',
-        'flowType','checkout',
+        'flowName','Flujo genérico ocupación',
+        'flowType','custom',
         'flowDescription','',
         'scopeType','occupancy',
         'triggerType','manual',

@@ -93,7 +93,7 @@ Reglas de autoría de activación:
 - `recurring` exige frecuencia; si es personalizada, además exige intervalo entero y unidad (`día`, `semana` o `mes`);
 - los campos que no corresponden al tipo seleccionado se eliminan server-side para impedir estado residual;
 - `event` no usa frecuencia temporal y exige un `eventType` soportado antes de publicación;
-- en WF-02 el primer evento soportado es `occupancy.created`;
+- en WF-02 el primer evento soportado es `occupancy.created`; WF-04 añade `occupancy.offboarded` para la Baja real;
 - un flujo por evento no admite asignación `manual`: el ejecutor debe poder resolverse sin interacción humana cuando llegue el evento;
 - un evento de negocio no ejecuta workflows dentro de la misma transacción: se registra en `workflow_event_outbox_v2` y un dispatcher lo consume después.
 
@@ -104,7 +104,7 @@ Ejemplos:
 - recurrencia semanal: `workflow_application + periodo`;
 - evento: `event:<workflow_event_outbox_v2.id>`, única dentro de cada aplicación.
 
-Para eventos, `workflow_event_dispatches_v2` conserva un recibo único por `event_id + application_id`. Un fallo de una aplicación no revierte el evento de negocio ni impide despachar las demás aplicaciones compatibles. Las aplicaciones ya ejecutadas quedan recibidas como `executed`; las fallidas permanecen reintentables y pueden converger después sin duplicar las correctas.
+Para eventos, `workflow_event_dispatches_v2` conserva un recibo único por `event_id + application_id`. Un fallo de una aplicación no revierte el evento de negocio ni impide despachar las demás aplicaciones compatibles. Las aplicaciones ya ejecutadas quedan recibidas como `executed`. Los fallos recuperables permanecen reintentables y pueden converger después sin duplicar las correctas. WF-04 clasifica `workflow_domain_lifecycle_mismatch` como terminal cuando el sujeto histórico ya no puede volver al estado exigido por ese evento: el recibo conserva el fallo y el outbox pasa a `processed_with_errors`, evitando que un evento obsoleto bloquee la cola. Un sujeto legacy todavía sin `tenant_id` no es terminal y continúa reintentable.
 
 La idempotencia se valida en servidor/BD, nunca solo en cliente.
 

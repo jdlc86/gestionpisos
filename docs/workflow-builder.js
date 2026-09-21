@@ -39,6 +39,7 @@ const assignmentRoleRow=document.getElementById("assignmentRoleRow");
 const photoBankLink=document.getElementById("photoBankLink");
 const cleaningStepNote=document.getElementById("cleaningStepNote");
 const cleaningCloseNote=document.getElementById("cleaningCloseNote");
+const wf04StepNote=document.getElementById("wf04StepNote");
 const checklistEditor=document.getElementById("checklistEditor");
 const checklistItemsBox=document.getElementById("checklistItems");
 const addChecklistItemButton=document.getElementById("addChecklistItem");
@@ -66,7 +67,7 @@ const labels={
   flowType:{cleaning:"Limpieza",inspection:"Inspección",maintenance:"Mantenimiento",checkin:"Check-in",checkout:"Check-out",custom:"Personalizado"},
   scopeType:{property:"Un piso",organization:"Toda la organización",room:"Una habitación",occupancy:"Una ocupación / inquilino"},
   triggerType:{manual:"Manual",recurring:"Recurrente",scheduled_once:"Fecha concreta",event:"Por evento"},
-  eventType:{"occupancy.created":"Nueva ocupación creada"},
+  eventType:{"occupancy.created":"Nueva ocupación creada","occupancy.offboarded":"Baja de ocupación confirmada"},
   recurrence:{weekly:"Cada semana",biweekly:"Cada 2 semanas",monthly:"Cada mes",custom:"Personalizada"},
   customUnit:{day:"día(s)",week:"semana(s)",month:"mes(es)"},
   assignmentType:{property_responsible:"Responsable operativo del piso",active_occupants_rotation:"Ocupantes activos en rotación",fixed_person:"Persona fija",role:"Rol o capacidad",manual:"Se decide al iniciar"},
@@ -196,6 +197,12 @@ function updateAssignmentFields({clearHidden=false}={}){
 
 function assignmentConfigurationComplete(data){
   if(!data.assignmentType)return false;
+  if(["checkin","checkout"].includes(data.flowType)){
+    if(!["property_responsible","fixed_person","role"].includes(data.assignmentType))return false;
+    if(data.assignmentType==="role"&&!["admin","employee"].includes(data.assignmentRole))return false;
+    if(data.assignmentType==="fixed_person"&&!assignmentPersonCandidates(data.scopeType)
+      .some(person=>person.user_id===data.assignmentUserId&&["admin","employee"].includes(person.role)))return false;
+  }
   if(data.triggerType==="event"&&data.assignmentType==="manual")return false;
   if(data.assignmentType==="property_responsible")return data.scopeType!=="organization";
   if(data.assignmentType==="active_occupants_rotation")return data.scopeType!=="organization";
@@ -487,8 +494,8 @@ function triggerComplete(data){
   if(!data.triggerType)return false;
   if(data.triggerType==="manual")return true;
   if(data.triggerType==="event"){
-    return ["occupancy.created"].includes(data.eventType)
-      && !(data.eventType==="occupancy.created"&&data.scopeType==="occupancy");
+    return ["occupancy.created","occupancy.offboarded"].includes(data.eventType)
+      && data.scopeType!=="occupancy";
   }
   if(data.triggerType==="scheduled_once"){
     if(!data.scheduledAt||!data.scheduledTimezone||!data.scheduledAtUtc)return false;
@@ -623,35 +630,65 @@ function updateTriggerFields({clearHidden=false}={}){
 
 function updateCleaningContract(){
   const cleaning=value("flowType")==="cleaning";
+  const lifecycle=["checkin","checkout"].includes(value("flowType"));
+  const specialized=cleaning||lifecycle;
   const accept=field("stepAccept");
   const genericSteps=[field("stepPhoto"),field("stepChecklist"),field("stepDocument")];
   const close=field("closeType");
   const scope=field("scopeType");
+  const trigger=field("triggerType");
+  const eventType=field("eventType");
+  const assignment=field("assignmentType");
+  const assignmentRole=field("assignmentRole");
 
   if(accept){
-    if(cleaning)accept.checked=true;
-    accept.disabled=cleaning;
+    if(specialized)accept.checked=true;
+    accept.disabled=specialized;
   }
 
   genericSteps.forEach(control=>{
     if(!control)return;
-    if(cleaning)control.checked=false;
-    control.disabled=cleaning;
+    if(specialized)control.checked=false;
+    control.disabled=specialized;
   });
 
   if(close){
-    if(cleaning)close.value="domain_adapter";
-    close.disabled=cleaning;
+    if(specialized)close.value="domain_adapter";
+    close.disabled=specialized;
   }
 
   if(scope){
     const organizationOption=[...scope.options].find(option=>option.value==="organization");
-    if(organizationOption)organizationOption.disabled=cleaning;
-    if(cleaning&&scope.value==="organization")scope.value="";
+    if(organizationOption)organizationOption.disabled=specialized;
+    if(specialized&&scope.value==="organization")scope.value="";
+    if(lifecycle&&scope.value==="occupancy")scope.value="";
   }
+
+  if(trigger){
+    if(lifecycle)trigger.value="event";
+    trigger.disabled=lifecycle;
+  }
+  if(lifecycle)updateTriggerFields({clearHidden:false});
+  if(eventType){
+    if(lifecycle)eventType.value=value("flowType")==="checkin"?"occupancy.created":"occupancy.offboarded";
+    eventType.disabled=lifecycle;
+  }
+  if(lifecycle){
+    if(assignment&&["manual","active_occupants_rotation"].includes(assignment.value))assignment.value="";
+    if(assignmentRole?.value==="tenant")assignmentRole.value="";
+  }
+  if(assignment){
+    for(const key of ["manual","active_occupants_rotation"]){
+      const option=assignment.querySelector(`option[value="${key}"]`);
+      if(option)option.disabled=lifecycle||(key==="manual"&&value("triggerType")==="event");
+    }
+  }
+  const tenantRoleOption=assignmentRole?.querySelector('option[value="tenant"]');
+  if(tenantRoleOption)tenantRoleOption.disabled=lifecycle||value("scopeType")==="organization";
 
   if(cleaningStepNote)cleaningStepNote.hidden=!cleaning;
   if(cleaningCloseNote)cleaningCloseNote.hidden=!cleaning;
+  if(wf04StepNote)wf04StepNote.hidden=!lifecycle;
 }
 
 function updatePhotoResource(){

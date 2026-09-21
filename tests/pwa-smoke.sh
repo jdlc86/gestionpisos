@@ -69,7 +69,7 @@ grep -q 'serviceWorker' docs/app.js
 grep -q 'GestionPisos' docs/manifest.webmanifest
 grep -Fq "'./legal.html'" docs/sw.js
 grep -Fq "'./privacy.html'" docs/sw.js
-grep -q 'gestionpisos-shell-v47' docs/sw.js
+grep -q 'gestionpisos-shell-v49' docs/sw.js
 grep -Fq "'./workflow-history.html'" docs/sw.js
 grep -Fq "'./workflow-history.css'" docs/sw.js
 grep -Fq "'./workflow-history.js'" docs/sw.js
@@ -368,9 +368,9 @@ grep -Fq 'id="cleaningStepNote"' docs/workflow-builder.html
 grep -Fq 'id="cleaningCloseNote"' docs/workflow-builder.html
 grep -Fq 'function updateCleaningContract()' docs/workflow-builder.js
 grep -Fq 'const genericSteps=[field("stepPhoto"),field("stepChecklist"),field("stepDocument")]' docs/workflow-builder.js
-grep -Fq 'if(cleaning)accept.checked=true' docs/workflow-builder.js
-grep -Fq 'if(cleaning)close.value="domain_adapter"' docs/workflow-builder.js
-grep -Fq 'organizationOption.disabled=cleaning' docs/workflow-builder.js
+grep -Fq 'if(specialized)accept.checked=true' docs/workflow-builder.js
+grep -Fq 'if(specialized)close.value="domain_adapter"' docs/workflow-builder.js
+grep -Fq 'organizationOption.disabled=specialized' docs/workflow-builder.js
 test -s supabase/migrations/20260920143000_wf03_cleaning_authoring_contract.sql
 grep -Fq "workflow_authoring_complete_core_v1" supabase/migrations/20260920143000_wf03_cleaning_authoring_contract.sql
 grep -Fq "coalesce(p_spec->>'flowType','')='cleaning'" supabase/migrations/20260920143000_wf03_cleaning_authoring_contract.sql
@@ -403,7 +403,7 @@ test -s docs/cleaning.html
 test -s docs/cleaning.js
 node --check docs/cleaning.js
 node --check docs/workflow-tasks.js
-grep -Fq './workflow-tasks.js?v=2026092024' docs/workflow-tasks.html
+grep -Fq './workflow-tasks.js?v=2026092025' docs/workflow-tasks.html
 grep -Fq 'function cleaningExecutionForTask(task)' docs/workflow-tasks.js
 grep -Fq 'url.searchParams.set("workflow_task_id",task.id)' docs/workflow-tasks.js
 grep -Fq 'renderCleaningAdapter(task,article)' docs/workflow-tasks.js

@@ -221,6 +221,20 @@ select public.offboard_tenant_occupancy_v2(
 
 reset role;
 
+do $wf04_offboarding_event$
+begin
+  if (
+    select count(*) from public.workflow_event_outbox_v2
+    where event_type='occupancy.offboarded'
+      and source_id=current_setting('gestionpisos.offboard.occ1')::uuid
+      and status='pending'
+      and payload->>'previousStatus'='active'
+  )<>1 then
+    raise exception 'Baja did not enqueue exactly one pending offboarding event';
+  end if;
+end;
+$wf04_offboarding_event$;
+
 do $authoritative_state$
 begin
   if not exists(

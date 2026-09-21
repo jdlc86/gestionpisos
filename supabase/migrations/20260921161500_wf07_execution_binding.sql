@@ -370,27 +370,27 @@ begin
     for update;
 
     if v_execution.security_deposit_id is null then
-      select * into v_occupancy
-      from public.occupancies_v2
-      where id=v_execution.occupancy_id
-        and organization_id=v_execution.organization_id
-        and property_id=v_execution.property_id
-        and status='active'
-        and starts_on<=current_date
-        and (ends_on is null or ends_on>=current_date)
+      select o.* into v_occupancy
+      from public.occupancies_v2 o
+      where o.id=v_execution.occupancy_id
+        and o.organization_id=v_execution.organization_id
+        and o.property_id=v_execution.property_id
+        and o.status='active'
+        and o.starts_on<=current_date
+        and (o.ends_on is null or o.ends_on>=current_date)
       for share;
 
       if v_occupancy.id is null or v_occupancy.user_id is null then
         raise exception 'workflow_wf07_occupancy_not_current' using errcode='55000';
       end if;
 
-      select * into v_tenant
-      from public.tenants_v2
-      where id=v_occupancy.tenant_id
-        and organization_id=v_execution.organization_id
-        and user_id=v_occupancy.user_id
-        and status='active'
-        and archived_at is null;
+      select t.* into v_tenant
+      from public.tenants_v2 t
+      where t.id=v_occupancy.tenant_id
+        and t.organization_id=v_execution.organization_id
+        and t.user_id=v_occupancy.user_id
+        and t.status='active'
+        and t.archived_at is null;
 
       if v_tenant.id is null then
         raise exception 'workflow_wf07_tenant_not_current' using errcode='55000';

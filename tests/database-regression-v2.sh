@@ -150,6 +150,7 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -e WF04_FOCUSED="
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260921164500_notification_email_dispatch.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260921165000_wf07_expand_workflow_flow_types.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260921170000_wf07_single_damage_claim.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260921171500_wf07_claims_read_contract.sql
     if [ "$WF07_FOCUSED" = "1" ]; then
       psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-wf07-domain-regression.sql
       trap - EXIT

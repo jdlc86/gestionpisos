@@ -95,3 +95,21 @@ body.tasks-selection-active .task-toolbar{display:none}
 
 .task-badge--personal-hidden{border-color:color-mix(in srgb,var(--ui-info) 42%,var(--ui-border));background:var(--ui-info-soft);color:var(--ui-info)}
 .tasks-bulk-action--personal{color:var(--ui-action)}
+
+
+/* WF-06 · diálogo financiero compacto para aplazar sin prompts del navegador. */
+.task-dialog{width:min(520px,calc(100vw - 28px));padding:0;border:0;border-radius:18px;background:transparent;color:var(--ui-text)}
+.task-dialog::backdrop{background:rgba(0,0,0,.42);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+.task-dialog-card{display:grid;gap:16px;padding:20px;border:1px solid var(--ui-border);border-radius:18px;background:var(--ui-surface);box-shadow:0 26px 70px rgba(0,0,0,.24)}
+.task-dialog-card h2{margin:2px 0 0;font-size:21px;letter-spacing:-.02em}
+.task-dialog-copy{margin:7px 0 0;color:var(--ui-muted);font-size:12px;line-height:1.5}
+.task-dialog-card label{display:grid;gap:7px;color:var(--ui-muted);font-size:12px;font-weight:750}
+.task-dialog-card input,.task-dialog-card textarea{width:100%;box-sizing:border-box}
+.task-dialog-card textarea{resize:vertical;min-height:96px}
+.task-dialog-actions{display:flex;justify-content:flex-end;gap:8px;padding-top:2px}
+@media(max-width:620px){
+  .task-dialog{width:calc(100vw - 20px)}
+  .task-dialog-card{padding:17px}
+  .task-dialog-actions{display:grid;grid-template-columns:1fr 1fr}
+  .task-dialog-actions button{width:100%}
+}

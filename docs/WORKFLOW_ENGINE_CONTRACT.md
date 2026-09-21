@@ -305,6 +305,12 @@ WF-05 conserva `incidents_v2` como expediente y enlaza el sujeto exacto a `workf
 
 Las reglas completas están en `WORKFLOW_INCIDENT_MAINTENANCE_INSPECTION_CONTRACT.md`.
 
+### Adaptador de Pago / Reclamación de alquiler
+
+WF-06 conserva `payment_obligations_v2` como obligación y `claims_v2` como expediente. `rent_payment` usa una ocupación exacta y cada ejecución enlaza una sola obligación. Escalar con `claim` reutiliza esa obligación, publica `rent_claim.created` por el outbox común y materializa `rent_claim` en la misma infraestructura `workflow_executions_v2 → tenant_tasks_v2`.
+
+La reclamación usa actor mixto sin duplicar tarjetas: el asignado interno gestiona notificación/información/resolución y el inquilino exacto acepta, disputa o aporta información. RLS y RPC revalidan ambos actores por separado. El contrato completo está en `WORKFLOW_RENT_PAYMENT_CLAIM_CONTRACT.md`.
+
 ## 17. Creador de Flujos
 
 El Creador es una interfaz integrada de autoría y preparación:

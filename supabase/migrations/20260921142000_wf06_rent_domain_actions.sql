@@ -13,6 +13,242 @@ create unique index if not exists workflow_execution_events_v2_wf06_claim_reques
   )
   where event_type='wf06_claim_action' and details ? 'request_key';
 
+create or replace function public.workflow_execution_actor_current_v1(
+  p_execution_id uuid
+)
+returns boolean
+language plpgsql
+stable
+security definer
+set search_path=''
+as $
+declare
+  v_actor uuid:=auth.uid();
+  v_execution public.workflow_executions_v2;
+begin
+  if v_actor is null or p_execution_id is null then
+    return false;
+  end if;
+
+  select * into v_execution
+  from public.workflow_executions_v2
+  where id=p_execution_id;
+  if v_execution.id is null then
+    return false;
+  end if;
+
+  -- WF-06 Reclamación comparte una sola tarjeta: el gestor sigue siendo el
+  -- asignado operativo, pero el inquilino exacto puede leerla y ejecutar
+  -- únicamente acciones actor='tenant'. El resto de workflows no cambia.
+  if v_execution.spec_snapshot->>'flowType'='rent_claim'
+    and v_execution.spec_snapshot->>'eventType'='rent_claim.created'
+    and v_execution.spec_snapshot->>'closeType'='domain_adapter'
+    and public.has_current_platform_access_v1()
+    and exists(
+      select 1
+      from public.claims_v2 c
+      join public.payment_obligations_v2 o
+        on o.id=c.obligation_id
+       and o.organization_id=c.organization_id
+       and o.property_id=c.property_id
+       and o.occupancy_id=c.occupancy_id
+       and o.tenant_user_id=c.tenant_user_id
+      join public.occupancies_v2 oc
+        on oc.id=c.occupancy_id
+       and oc.organization_id=c.organization_id
+       and oc.property_id=c.property_id
+       and oc.user_id=c.tenant_user_id
+      join public.user_roles ur
+        on ur.user_id=c.tenant_user_id
+       and ur.organization_id=c.organization_id
+       and ur.role='tenant'
+       and ur.revoked_at is null
+      join public.workflow_event_outbox_v2 ev
+        on ev.id=v_execution.source_event_id
+       and ev.event_type='rent_claim.created'
+       and ev.source_kind='rent_claim'
+       and ev.source_id=c.id
+       and ev.organization_id=c.organization_id
+       and ev.property_id=c.property_id
+       and ev.occupancy_id=c.occupancy_id
+      where c.id=v_execution.rent_claim_id
+        and c.organization_id=v_execution.organization_id
+        and c.property_id=v_execution.property_id
+        and c.tenant_user_id=v_actor
+        and c.claim_type='payment'
+    ) then
+    return true;
+  end if;
+
+  if v_execution.assigned_user_id is distinct from v_actor then
+    return false;
+  end if;
+
+  if v_execution.spec_snapshot->>'triggerType'='event' and (
+    (v_execution.spec_snapshot->>'flowType'='maintenance'
+      and v_execution.spec_snapshot->>'eventType'='incident.created'
+      and v_execution.spec_snapshot->>'closeType'='domain_adapter')
+    or (v_execution.spec_snapshot->>'flowType'='inspection'
+      and v_execution.spec_snapshot->>'eventType'='incident.resolved')
+  ) then
+    -- WF-05 añade revalidación del expediente/destino, pero NO sustituye
+    -- la regla de asignación congelada. Tras validar el dominio se continúa
+    -- por property_responsible / fixed_person / role para evitar que un
+    -- antiguo asignado conserve capacidad solo por tener write access.
+    if not private.incident_internal_access_v1(
+        v_execution.organization_id,v_execution.property_id,v_actor,true
+      )
+      or not exists(
+        select 1
+        from public.incidents_v2 i
+        join public.workflow_event_outbox_v2 ev
+          on ev.id=v_execution.source_event_id
+         and ev.source_kind='incident'
+         and ev.source_id=i.id
+         and ev.organization_id=i.organization_id
+         and ev.property_id=i.property_id
+         and ev.room_id is not distinct from i.room_id
+        where i.id=v_execution.incident_id
+          and i.organization_id=v_execution.organization_id
+          and i.property_id=v_execution.property_id
+          and (
+            v_execution.scope_type<>'room'
+            or i.room_id is not distinct from v_execution.room_id
+          )
+          and (
+            v_execution.spec_snapshot->>'flowType'<>'inspection'
+            or i.status='resolved'
+          )
+      ) then
+      return false;
+    end if;
+  end if;
+
+  if v_execution.assignment_type='property_responsible' then
+    return exists(
+      select 1
+      from public.property_staff_access_v3 a
+      join public.user_roles ur
+        on ur.user_id=a.employee_user_id
+       and ur.organization_id=v_execution.organization_id
+       and ur.role in ('admin','employee')
+       and ur.revoked_at is null
+      where a.property_id=v_execution.property_id
+        and a.employee_user_id=v_actor
+        and a.assignment_type='responsible'
+        and a.can_write=true
+        and a.revoked_at is null
+        and (a.valid_until is null or a.valid_until>now())
+    );
+  end if;
+
+  if v_execution.assignment_type='fixed_person' then
+    return v_execution.spec_snapshot->>'assignmentUserId'=v_actor::text
+      and private.workflow_assignee_eligible_v1(
+        v_execution.organization_id,v_execution.scope_type,
+        v_execution.property_id,v_execution.room_id,v_execution.occupancy_id,
+        v_actor,null
+      );
+  end if;
+
+  if v_execution.assignment_type='role' then
+    if coalesce(v_execution.spec_snapshot->>'assignmentRole','')
+      not in ('admin','employee','tenant') then
+      return false;
+    end if;
+    return private.workflow_assignee_eligible_v1(
+      v_execution.organization_id,v_execution.scope_type,
+      v_execution.property_id,v_execution.room_id,v_execution.occupancy_id,
+      v_actor,v_execution.spec_snapshot->>'assignmentRole'
+    );
+  end if;
+
+  if v_execution.assignment_type='active_occupants_rotation' then
+    return private.workflow_assignee_eligible_v1(
+      v_execution.organization_id,v_execution.scope_type,
+      v_execution.property_id,v_execution.room_id,v_execution.occupancy_id,
+      v_actor,'tenant'
+    );
+  end if;
+
+  if v_execution.assignment_type<>'manual' then
+    return false;
+  end if;
+
+  if v_execution.scope_type='organization' then
+    return exists(
+      select 1 from public.user_roles ur
+      where ur.user_id=v_actor
+        and ur.organization_id=v_execution.organization_id
+        and ur.role in ('admin','employee')
+        and ur.revoked_at is null
+    );
+  end if;
+
+  if v_execution.scope_type in ('property','room')
+    and exists(
+      select 1
+      from public.property_staff_access_v3 a
+      join public.user_roles ur
+        on ur.user_id=a.employee_user_id
+       and ur.organization_id=v_execution.organization_id
+       and ur.role in ('admin','employee')
+       and ur.revoked_at is null
+      where a.property_id=v_execution.property_id
+        and a.employee_user_id=v_actor
+        and a.assignment_type in ('responsible','access')
+        and a.revoked_at is null
+        and (a.valid_until is null or a.valid_until>now())
+    ) then
+    return true;
+  end if;
+
+  if v_execution.scope_type in ('property','room') then
+    return exists(
+      select 1
+      from public.occupancies_v2 o
+      join public.tenants_v2 t
+        on t.id=o.tenant_id
+       and t.organization_id=o.organization_id
+      where o.organization_id=v_execution.organization_id
+        and o.property_id=v_execution.property_id
+        and (v_execution.scope_type<>'room' or o.room_id=v_execution.room_id)
+        and o.status='active'
+        and o.starts_on is not null
+        and o.starts_on<=current_date
+        and (o.ends_on is null or o.ends_on>=current_date)
+        and o.user_id=v_actor
+        and t.user_id=v_actor
+        and t.status='active'
+        and t.archived_at is null
+    );
+  end if;
+
+  if v_execution.scope_type='occupancy'
+    and v_execution.occupancy_id is not null then
+    return exists(
+      select 1
+      from public.occupancies_v2 o
+      join public.tenants_v2 t
+        on t.id=o.tenant_id
+       and t.organization_id=o.organization_id
+      where o.id=v_execution.occupancy_id
+        and o.organization_id=v_execution.organization_id
+        and o.property_id=v_execution.property_id
+        and o.status='active'
+        and o.starts_on is not null
+        and o.starts_on<=current_date
+        and (o.ends_on is null or o.ends_on>=current_date)
+        and o.user_id=v_actor
+        and t.user_id=v_actor
+        and t.status='active'
+        and t.archived_at is null
+    );
+  end if;
+  return false;
+end;
+$;
+
 create or replace function private.wf06_execution_internal_actor_current_v1(
   p_execution_id uuid,
   p_actor uuid
@@ -730,6 +966,18 @@ begin
         updated_at=clock_timestamp()
     where id=v_claim.id
     returning * into v_claim;
+
+    update public.tenant_task_actions_v2
+    set active=false
+    where task_id=v_task.id
+      and from_status='active'
+      and action_key in ('accept','dispute');
+
+    update public.tenant_task_actions_v2
+    set active=true
+    where task_id=v_task.id
+      and from_status='active'
+      and action_key='resolve';
 
     v_recipient:=v_execution.assigned_user_id;
     v_event_type:=case p_action_key

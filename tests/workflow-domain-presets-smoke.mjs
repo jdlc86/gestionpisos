@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   WORKFLOW_DOMAIN_PRESETS,
   domainPresetPatch
@@ -42,6 +43,28 @@ assert.equal(domainPresetPatch("checkout",{}).eventType,"occupancy.offboarded");
 
 for(const flowType of ["custom","rent_payment","rent_claim","deposit_receipt","deposit_review","damage_claim"]){
   assert.deepEqual(domainPresetPatch(flowType,{}),{});
+}
+
+const builderSource=readFileSync(
+  new URL("../docs/workflow-builder.js",import.meta.url),
+  "utf8"
+);
+const applyDraftStart=builderSource.indexOf("function applyDraft(");
+const applyDraftEnd=builderSource.indexOf("\nfunction restoreLocalDraft",applyDraftStart);
+assert.ok(applyDraftStart>=0&&applyDraftEnd>applyDraftStart);
+assert.equal(
+  builderSource.slice(applyDraftStart,applyDraftEnd).includes("applySelectedDomainPreset"),
+  false
+);
+assert.match(
+  builderSource,
+  /if\(event\.target===field\("flowType"\)\)\{\s*applySelectedDomainPreset\(\)/
+);
+
+for(const preset of Object.values(WORKFLOW_DOMAIN_PRESETS)){
+  assert.equal("scheduledAt" in preset,false);
+  assert.equal("scheduledTimezone" in preset,false);
+  assert.equal("scheduledAtUtc" in preset,false);
 }
 
 console.log("workflow-domain-presets smoke: ok");

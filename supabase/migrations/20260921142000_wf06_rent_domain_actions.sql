@@ -21,7 +21,7 @@ language plpgsql
 stable
 security definer
 set search_path=''
-as $
+as $$
 declare
   v_actor uuid:=auth.uid();
   v_execution public.workflow_executions_v2;
@@ -247,7 +247,7 @@ begin
   end if;
   return false;
 end;
-$;
+$$;
 
 create or replace function private.wf06_execution_internal_actor_current_v1(
   p_execution_id uuid,

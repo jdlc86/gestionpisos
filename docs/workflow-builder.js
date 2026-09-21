@@ -1,5 +1,5 @@
 import { supabase } from "./supabase-client.js";
-import { domainPresetPatch } from "./workflow-domain-presets.js";
+import { domainPresetPatch } from "./workflow-domain-presets.js?v=2026092201";
 
 const AUTHORING_VERSION=2;
 const DRAFT_KEY="gestionpisos.workflow-builder.draft.v3";

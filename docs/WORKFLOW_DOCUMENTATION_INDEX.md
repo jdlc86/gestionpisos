@@ -16,7 +16,10 @@ Usar estos documentos en este orden:
 12. **`WORKFLOW_HISTORY_CONTRACT.md`** — contrato de la vista Historial: fuentes de verdad, RLS, eventos, evidencias e inmutabilidad.
 13. **`WORKFLOW_SCHEDULE_CONTRACT.md`** — contrato de programación automática: Fecha concreta y Recurrente, tiempo exacto, asignación, scheduler, idempotencia, catch-up y bloqueos.
 14. **`WORKFLOW_INCIDENT_MAINTENANCE_INSPECTION_CONTRACT.md`** — contrato WF-05: expediente enlazado, acciones de gestión, información, evidencias comunes y evento posterior de Inspección.
-15. **`CODEX_WORKFLOW_COMPLETION_PLAN.md`** — tablero operativo persistente para coordinar ChatGPT ↔ Codex, trabajar por bloques y evitar pérdida de contexto.
+15. **`WORKFLOW_RENT_PAYMENT_CLAIM_CONTRACT.md`** — contrato WF-06: obligación de pago, reclamación, vencimientos, información y acciones financieras sobre el motor transversal.
+16. **`WORKFLOW_DAMAGE_DEPOSIT_CONTRACT.md`** — contrato WF-07: expediente de fianza, reclamación por daños, evidencia, correo post-Baja y devolución/retención.
+17. **`WORKFLOW_DOMAIN_PRESETS_CONTRACT.md`** — contrato WF-08: sugerencias iniciales de autoría en frontend, sin segundo motor ni reglas backend nuevas.
+18. **`CODEX_WORKFLOW_COMPLETION_PLAN.md`** — tablero operativo persistente para coordinar ChatGPT ↔ Codex, trabajar por bloques y evitar pérdida de contexto.
 
 ## Regla de mantenimiento
 
@@ -32,6 +35,9 @@ Usar estos documentos en este orden:
 - Cambios en **presentación histórica transversal** → actualizar `WORKFLOW_HISTORY_CONTRACT.md`.
 - Cambios en **disparadores automáticos / Fecha concreta / recurrencia** → actualizar `WORKFLOW_SCHEDULE_CONTRACT.md`.
 - Cambios en **Incidencia / Mantenimiento / Inspección** → actualizar `WORKFLOW_INCIDENT_MAINTENANCE_INSPECTION_CONTRACT.md` y los contratos transversales afectados.
+- Cambios en **Pago / Reclamación de alquiler** → actualizar `WORKFLOW_RENT_PAYMENT_CLAIM_CONTRACT.md`.
+- Cambios en **Fianza / Reclamación por daños** → actualizar `WORKFLOW_DAMAGE_DEPOSIT_CONTRACT.md`.
+- Cambios en **presets de autoría del Creador** → actualizar `WORKFLOW_DOMAIN_PRESETS_CONTRACT.md`; un preset nunca sustituye una validación backend.
 - Cambios de **estado real de implementación** → actualizar `WORKFLOW_STATUS.md` con fecha, sin reescribir decisiones históricas.
 - Trabajo ejecutado por Codex sobre workflows → actualizar `CODEX_WORKFLOW_COMPLETION_PLAN.md` con estado, rama, PR, HEAD, pruebas, bloqueadores y handoff.
 

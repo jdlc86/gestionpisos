@@ -525,7 +525,7 @@ function wf07ConfigurationComplete(data){
     return Number.isInteger(amount)&&amount>=1&&amount<=1000000000
       && data.depositCurrency==="EUR";
   }
-  if(data.flowType==="damage_claim"){
+  if(["deposit_review","damage_claim"].includes(data.flowType)){
     return Boolean(data.steps?.photo||data.steps?.checklist||data.steps?.document)
       && data.steps?.accept!==true;
   }
@@ -535,7 +535,7 @@ function wf07ConfigurationComplete(data){
 function completion(data=draft()){
   const hasAnyStep=Object.values(data.steps||{}).some(Boolean);
   const inspectionEvidence=data.steps?.photo||data.steps?.checklist||data.steps?.document;
-  const wf07Domain=["deposit_receipt","deposit_review"].includes(data.flowType);
+  const wf07Domain=data.flowType==="deposit_receipt";
   const stepsComplete=(wf07Domain||hasAnyStep)
     && checklistConfigurationComplete(data)
     && wf06ConfigurationComplete(data)

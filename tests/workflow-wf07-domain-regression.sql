@@ -48,6 +48,26 @@ begin
   ) then
     raise exception 'WF07 superseded actor gate is still API-executable';
   end if;
+
+  if has_function_privilege(
+    'authenticated',
+    'public.apply_workflow_task_action_pre_wf07_v1(uuid,text,text,text)',
+    'EXECUTE'
+  ) or has_function_privilege(
+    'service_role',
+    'public.apply_workflow_task_action_pre_wf07_v1(uuid,text,text,text)',
+    'EXECUTE'
+  ) then
+    raise exception 'WF07 superseded action router is still externally executable';
+  end if;
+
+  if not has_function_privilege(
+    'authenticated',
+    'public.apply_workflow_task_action_v1(uuid,text,text,text)',
+    'EXECUTE'
+  ) then
+    raise exception 'WF07 current action router lost authenticated EXECUTE';
+  end if;
 end;
 $wf07_rls_gate_rebound$;
 

@@ -1,4 +1,5 @@
 import { supabase } from "./supabase-client.js";
+import { domainPresetPatch } from "./workflow-domain-presets.js";
 
 const AUTHORING_VERSION=2;
 const DRAFT_KEY="gestionpisos.workflow-builder.draft.v3";
@@ -67,6 +68,7 @@ let allowNavigation=false;
 let draftItems=[];
 let draftVisibleLimit=12;
 let assignmentPeople=[];
+const touchedAuthoringFields=new Set();
 
 const labels={
   flowType:{cleaning:"Limpieza",inspection:"Inspección",maintenance:"Mantenimiento",rent_payment:"Pago de alquiler",rent_claim:"Reclamación de alquiler",deposit_receipt:"Fianza · recepción",deposit_review:"Fianza · revisión",damage_claim:"Reclamación por daños",checkin:"Check-in",checkout:"Check-out",custom:"Personalizado"},
@@ -92,6 +94,60 @@ function checked(name){return Boolean(field(name)?.checked)}
 function value(name){return String(field(name)?.value||"").trim()}
 function label(group,key){return labels[group]?.[key]||key||"Pendiente"}
 function setChecked(name,next){const node=field(name);if(node)node.checked=Boolean(next)}
+
+function markAuthoringTouched(control){
+  const name=String(control?.name||"").trim();
+  if(name)touchedAuthoringFields.add(name);
+}
+
+function currentDomainPresetState(){
+  return {
+    scopeType:value("scopeType"),
+    triggerType:value("triggerType"),
+    eventType:value("eventType"),
+    recurrence:value("recurrence"),
+    assignmentType:value("assignmentType"),
+    closeType:value("closeType"),
+    stepAccept:checked("stepAccept"),
+    stepPhoto:checked("stepPhoto"),
+    stepChecklist:checked("stepChecklist"),
+    stepDocument:checked("stepDocument")
+  };
+}
+
+function applySelectedDomainPreset(){
+  const patch=domainPresetPatch(
+    value("flowType"),
+    currentDomainPresetState(),
+    touchedAuthoringFields
+  );
+  for(const [name,next] of Object.entries(patch)){
+    if(name.startsWith("step")){
+      setChecked(name,next);
+      continue;
+    }
+    const node=field(name);
+    if(node)node.value=String(next);
+  }
+  return Object.keys(patch).length>0;
+}
+
+function rememberDraftPresetDecisions(saved){
+  for(const name of ["scopeType","triggerType","eventType","recurrence","assignmentType","closeType"]){
+    if(typeof saved?.[name]==="string"&&saved[name].trim())touchedAuthoringFields.add(name);
+  }
+  const stepNames={
+    accept:"stepAccept",
+    photo:"stepPhoto",
+    checklist:"stepChecklist",
+    document:"stepDocument"
+  };
+  for(const [savedName,fieldName] of Object.entries(stepNames)){
+    if(Object.prototype.hasOwnProperty.call(saved?.steps||{},savedName)){
+      touchedAuthoringFields.add(fieldName);
+    }
+  }
+}
 
 function assignmentPersonCandidates(scope=value("scopeType")){
   const internalDomain=["rent_payment","rent_claim","deposit_receipt","deposit_review","damage_claim"].includes(value("flowType"));
@@ -587,6 +643,7 @@ function saveLocalDraft(){
 
 function applyDraft(saved,{restoreStep=true}={}){
   if(!saved||typeof saved!=="object")return;
+  touchedAuthoringFields.clear();
   for(const name of ["flowName","flowType","flowDescription","scopeType","triggerType","eventType","recurrence","scheduledAt","scheduledTimezone","scheduledAtUtc","customEvery","customUnit","assignmentType","assignmentUserId","assignmentRole","paymentConcept","closeType"]){
     const node=field(name);
     if(node&&typeof saved[name]==="string")node.value=saved[name];
@@ -611,6 +668,7 @@ function applyDraft(saved,{restoreStep=true}={}){
   updateChecklistEditor();
   setChecked("notifyOnCreate",saved.notifications?.onCreate);
   setChecked("notifyOnClose",saved.notifications?.onClose);
+  rememberDraftPresetDecisions(saved);
   if(["scheduled_once","recurring"].includes(saved.triggerType))syncScheduledInstant({force:false});
   updateAssignmentFields();
   if(restoreStep&&Number.isInteger(saved.currentStep))currentStep=Math.max(0,Math.min(panels.length-1,saved.currentStep));
@@ -621,6 +679,7 @@ function restoreLocalDraft(){
 }
 
 function resetDecisionsKeepingIdentity(saved){
+  touchedAuthoringFields.clear();
   form.reset();
   const name=field("flowName");
   const description=field("flowDescription");
@@ -1450,13 +1509,20 @@ addChecklistItemButton?.addEventListener("click",()=>{
 });
 
 form.addEventListener("input",event=>{
+  markAuthoringTouched(event.target);
   if(event.target===field("scheduledAt"))syncScheduledInstant({force:true});
   saveLocalDraft();
   updateCompletionUI();
   if(currentStep===panels.length-1)renderSummary();
 });
 form.addEventListener("change",event=>{
-  if(event.target===field("flowType"))updateCleaningContract();
+  markAuthoringTouched(event.target);
+  if(event.target===field("flowType")){
+    applySelectedDomainPreset();
+    updateCleaningContract();
+    updateTriggerFields({clearHidden:false});
+    updateAssignmentFields({clearHidden:false});
+  }
   if(event.target===triggerType||event.target===field("recurrence"))updateTriggerFields({clearHidden:true});
   if(event.target===field("eventType"))updateTriggerFields({clearHidden:false});
   if(event.target===field("assignmentType")||event.target===field("scopeType"))updateAssignmentFields({clearHidden:true});
@@ -1526,6 +1592,7 @@ clearButton.addEventListener("click",async()=>{
     return;
   }
 
+  touchedAuthoringFields.clear();
   form.reset();
   renderChecklistItems([]);
   updateCleaningContract();
@@ -1559,6 +1626,7 @@ window.addEventListener("beforeunload",event=>{
     return;
   }
 
+  touchedAuthoringFields.clear();
   form.reset();
   renderChecklistItems([]);
   updateCleaningContract();

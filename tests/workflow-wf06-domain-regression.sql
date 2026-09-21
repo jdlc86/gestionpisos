@@ -561,6 +561,22 @@ select set_config('request.jwt.claims',jsonb_build_object(
 )::text,true);
 do $tenant_shared_card$
 begin
+  if not public.has_current_platform_access_v1() then
+    raise exception 'WF06 exact tenant failed current platform access gate';
+  end if;
+  if (
+    select count(*) from public.tenants_v2
+    where id=current_setting('wf06.tenant')::uuid
+      and user_id=current_setting('wf06.tenant_user')::uuid
+  )<>1 then
+    raise exception 'WF06 exact tenant cannot read own tenant identity';
+  end if;
+  if to_regprocedure('public.workflow_execution_actor_current_pre_wf07_v1(uuid)') is not null
+    and not public.workflow_execution_actor_current_pre_wf07_v1(
+      current_setting('wf06.claim_execution')::uuid
+    ) then
+    raise exception 'WF06 policy-bound pre-WF07 actor gate rejected exact tenant';
+  end if;
   if not public.workflow_execution_actor_current_v1(
     current_setting('wf06.claim_execution')::uuid
   ) then

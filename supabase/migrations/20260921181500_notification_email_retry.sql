@@ -156,12 +156,17 @@ begin
   for v_notification in
     select n.id
     from public.notifications_v2 n
+    cross join private.notification_email_dispatch_state_v1 s
     left join public.notification_email_deliveries_v1 d
       on d.notification_id=n.id
-    where n.channel_email=true
+    where s.singleton=true
+      and n.channel_email=true
       and n.recipient_user_id is not null
       and (
-        d.notification_id is null
+        (
+          d.notification_id is null
+          and n.created_at>=s.activated_at
+        )
         or (
           d.status='failed'
           and d.attempt_count<5

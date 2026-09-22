@@ -713,8 +713,8 @@ Objetivo:
 ---
 
 ### BLOQUE WF-09 — Cierre de migración legacy
-**Estado:** IN_PROGRESS
-**Bloque ACTIVO:** sí — rama `feat/wf-09-legacy-closure`. Primero inventario y compatibilidad; no retirar accesos ni estructuras hasta demostrar equivalencia funcional, seguridad y E2E.
+**Estado:** READY_FOR_CHATGPT_REVIEW
+**Bloque ACTIVO:** sí — rama `feat/wf-09-legacy-closure`, PR #287. Inventario y compatibilidad completados; no se retiran accesos ni estructuras hasta demostrar equivalencia funcional, seguridad y E2E final.
 
 Objetivo:
 - decidir qué accesos legacy pueden retirarse;

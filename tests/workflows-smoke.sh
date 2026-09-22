@@ -7,6 +7,8 @@ test -s docs/WORKFLOW_IMPLEMENTATION_MAP.md
 test -s docs/WORKFLOW_ENGINE_CONTRACT.md
 test -s docs/WORKFLOW_STATUS.md
 test -s docs/WORKFLOW_LEGACY_CLOSURE_CONTRACT.md
+test -s docs/WORKFLOW_FINAL_E2E_BATTERY.md
+test -s tests/workflow-final-e2e-preflight.sql
 test -s docs/workflows.html
 test -s docs/workflow-builder.html
 test -s docs/workflow-builder.css

@@ -164,6 +164,7 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -e WF04_FOCUSED="
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260921183000_wf07_wf06_information_response_order_fix.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260921184500_wf07_wf06_business_date_fix.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260922003000_wf07_hide_superseded_action_router.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/supabase/migrations/20260922091547_auto_activate_property_on_first_room.sql
     if [ "$WF07_FOCUSED" = "1" ]; then
       psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-wf07-domain-regression.sql
       trap - EXIT
@@ -192,6 +193,7 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -e WF04_FOCUSED="
       exit 0
     fi
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/database-regression.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/property-auto-activation-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/photo-verification-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-definition-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-authoring-separation-regression.sql

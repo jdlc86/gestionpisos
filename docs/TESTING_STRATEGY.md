@@ -37,7 +37,7 @@ GestionPisos tiene reservado `jdlc86/Allaiso-QA-Orchestrator` como repositorio c
 
 El objetivo de esa plataforma es permitir alto volumen de E2E reales, paralelización, variantes combinatorias y evidencias reproducibles sin trasladar al repositorio del producto la infraestructura de ejecución.
 
-La plataforma todavía no se considera operativa para GestionPisos. El estado y el vínculo oficial se mantienen en `QA_ORCHESTRATION_LINK.md`. Hasta su activación explícita, no sustituye los smoke, regresiones, Gates ni validaciones humanas vigentes.
+La ruta pública de solo lectura ya está operativa y verificada mediante el runner `allaiso-qa-JDIA` y OpenClaw. El estado y el vínculo oficial se mantienen en `QA_ORCHESTRATION_LINK.md`. La autenticación y las escrituras E2E siguen sin activarse; por tanto, el smoke público no sustituye los Gates autenticados ni permite marcar como PASS los casos de la batería final.
 
 ## Regla de regresión
 

@@ -31,6 +31,14 @@ Debe permanecer automatizado cuando exista frontend funcional.
 - operador de emergencia no puede usar la consola si `identity_email` y Auth difieren;
 - una deriva de email de operador debe permitir contención/desactivación, pero no reactivación o elevación de capacidades.
 
+## Infraestructura de QA masivo
+
+GestionPisos tiene reservado `jdlc86/Allaiso-QA-Orchestrator` como repositorio canónico de la futura plataforma de orquestación de pruebas a gran escala.
+
+El objetivo de esa plataforma es permitir alto volumen de E2E reales, paralelización, variantes combinatorias y evidencias reproducibles sin trasladar al repositorio del producto la infraestructura de ejecución.
+
+La plataforma todavía no se considera operativa para GestionPisos. El estado y el vínculo oficial se mantienen en `QA_ORCHESTRATION_LINK.md`. Hasta su activación explícita, no sustituye los smoke, regresiones, Gates ni validaciones humanas vigentes.
+
 ## Regla de regresión
 
 Todo defecto relevante corregido debe incorporar prueba reproducible cuando sea viable.

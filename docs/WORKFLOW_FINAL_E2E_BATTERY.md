@@ -10,6 +10,14 @@ No introduce un motor nuevo ni cambia reglas de negocio. Separa:
 2. **E2E humano en PWA**: navegación, creación, ejecución y observación real de cada dominio;
 3. **decisión de retirada legacy**: solo después de que los reemplazos hayan pasado E2E.
 
+## Estado de ejecución · 22/09/2026
+
+- Gate 0 revalidado en producción sobre `main@8113f739282a67a84bda6643f566f3e785ab9f85`: **PASS**.
+- Snapshot: 12 definiciones, 13 aplicaciones, 16 ejecuciones, 16 tarjetas workflow y 0 tareas legacy operativas.
+- No existen todavía expedientes reales WF-05/06/07 en producción.
+- La preparación humana mínima ya dispone de una ocupación activa con habitación activa y un empleado responsable vigente con `can_write=true`.
+- Siguiente caso: **Gate 1.1 · Checklist**. Los Gates humanos siguen pendientes; no marcar WF-04..WF-09 como `VERIFIED` todavía.
+
 ## Reglas de ejecución
 
 - Producción sigue siendo entorno de prueba, pero no se hacen DDL ni DML ad hoc.

@@ -699,8 +699,8 @@ Objetivo cumplido:
 ---
 
 ### BLOQUE WF-08 — Presets/plantillas de dominio en Creador
-**Estado:** IN_PROGRESS
-**Bloque ACTIVO:** sí — rama `feat/wf-08-domain-presets`; contrato `docs/WORKFLOW_DOMAIN_PRESETS_CONTRACT.md`. Solo frontend/autoría: sin tablas, migraciones ni segundo motor.
+**Estado:** IMPLEMENTED_DEPLOYED_E2E_DEFERRED
+**Bloque ACTIVO:** no — PR #286 fusionado en `main` `9df6885bb9e8b06bcf4254ce11dd5955c2d1450f`; Governance/PWA/Schema/Pages verdes post-merge. Presets frontend puros, smoke funcional y caché PWA desplegados.
 
 Solo después de que los dominios anteriores funcionen.
 
@@ -713,7 +713,8 @@ Objetivo:
 ---
 
 ### BLOQUE WF-09 — Cierre de migración legacy
-**Estado:** PLANNED
+**Estado:** IN_PROGRESS
+**Bloque ACTIVO:** sí — rama `feat/wf-09-legacy-closure`. Primero inventario y compatibilidad; no retirar accesos ni estructuras hasta demostrar equivalencia funcional, seguridad y E2E.
 
 Objetivo:
 - decidir qué accesos legacy pueden retirarse;

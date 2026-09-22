@@ -20,7 +20,8 @@ Usar estos documentos en este orden:
 16. **`WORKFLOW_DAMAGE_DEPOSIT_CONTRACT.md`** — contrato WF-07: expediente de fianza, reclamación por daños, evidencia, correo post-Baja y devolución/retención.
 17. **`WORKFLOW_DOMAIN_PRESETS_CONTRACT.md`** — contrato WF-08: sugerencias iniciales de autoría en frontend, sin segundo motor ni reglas backend nuevas.
 18. **`WORKFLOW_LEGACY_CLOSURE_CONTRACT.md`** — contrato WF-09: clasificación de núcleo compartido, expedientes de dominio, compatibilidad temporal y candidatos de retirada tras E2E.
-19. **`CODEX_WORKFLOW_COMPLETION_PLAN.md`** — tablero operativo persistente para coordinar ChatGPT ↔ Codex, trabajar por bloques y evitar pérdida de contexto.
+19. **`WORKFLOW_FINAL_E2E_BATTERY.md`** — gate humano final WF-04→WF-09 y criterios de PASS antes de retirar compatibilidad legacy.
+20. **`CODEX_WORKFLOW_COMPLETION_PLAN.md`** — tablero operativo persistente para coordinar ChatGPT ↔ Codex, trabajar por bloques y evitar pérdida de contexto.
 
 ## Regla de mantenimiento
 
@@ -40,6 +41,7 @@ Usar estos documentos en este orden:
 - Cambios en **Fianza / Reclamación por daños** → actualizar `WORKFLOW_DAMAGE_DEPOSIT_CONTRACT.md`.
 - Cambios en **presets de autoría del Creador** → actualizar `WORKFLOW_DOMAIN_PRESETS_CONTRACT.md`; un preset nunca sustituye una validación backend.
 - Cambios en **compatibilidad/retirada legacy** → actualizar `WORKFLOW_LEGACY_CLOSURE_CONTRACT.md` y mantener explícito qué superficie sigue autorizada hasta E2E.
+- Cambios en **gate humano final / criterios de verificación WF-04→WF-09** → actualizar `WORKFLOW_FINAL_E2E_BATTERY.md`.
 - Cambios de **estado real de implementación** → actualizar `WORKFLOW_STATUS.md` con fecha, sin reescribir decisiones históricas.
 - Trabajo ejecutado por Codex sobre workflows → actualizar `CODEX_WORKFLOW_COMPLETION_PLAN.md` con estado, rama, PR, HEAD, pruebas, bloqueadores y handoff.
 

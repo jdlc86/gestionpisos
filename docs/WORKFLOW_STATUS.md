@@ -563,5 +563,14 @@ WF-09 cierra la fase de implementación sin borrar histórico ni retirar compati
 
 Contrato completo: `WORKFLOW_LEGACY_CLOSURE_CONTRACT.md`.
 
-WF-09 queda en `IMPLEMENTED_E2E_GATE` dentro del PR #287: inventario, fronteras de seguridad y referencias frontend están congeladas por regresión/smoke, pero la retirada efectiva de compatibilidad permanece bloqueada por la batería E2E final conjunta. No debe marcarse `VERIFIED` ni eliminarse legacy antes de esa batería.
+WF-09 queda en `IMPLEMENTED_E2E_GATE` tras fusionarse el PR #287 en `main` `b089a45813d208aa50a01355e48a7545c4e3fb8c`: inventario, fronteras de seguridad y referencias frontend están congeladas por regresión/smoke, pero la retirada efectiva de compatibilidad permanece bloqueada por la batería E2E final conjunta. No debe marcarse `VERIFIED` ni eliminarse legacy antes de esa batería.
 
+
+
+### Gate final — Batería E2E WF-04 → WF-09
+
+La batería final queda formalizada en `WORKFLOW_FINAL_E2E_BATTERY.md` y el preflight no destructivo en `tests/workflow-final-e2e-preflight.sql`.
+
+El preflight se ejecutó contra producción el 22/09/2026 y pasó las fronteras estructurales: router vigente accesible, router pre-WF07 cerrado, RPC legacy todavía disponibles hasta el E2E, sin plantillas legacy `task_type=workflow`, sin tarjetas workflow duplicadas y sin escrituras directas indebidas sobre tareas/fianzas/reclamaciones.
+
+Snapshot observado: 12 definiciones, 13 aplicaciones, 16 ejecuciones, 16 tarjetas workflow, 0 tareas legacy operativas y todavía 0 expedientes de incidencia/pago/reclamación/fianza. Para el tramo humano falta preparar por la vía oficial un responsable operativo vigente con escritura sobre el piso de prueba; no se realizará DML ad hoc para fabricar ese estado.

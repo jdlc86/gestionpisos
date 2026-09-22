@@ -713,8 +713,8 @@ Objetivo:
 ---
 
 ### BLOQUE WF-09 — Cierre de migración legacy
-**Estado:** READY_FOR_CHATGPT_REVIEW
-**Bloque ACTIVO:** sí — rama `feat/wf-09-legacy-closure`, PR #287. Inventario y compatibilidad completados; no se retiran accesos ni estructuras hasta demostrar equivalencia funcional, seguridad y E2E final.
+**Estado:** IMPLEMENTED_E2E_GATE
+**Bloque ACTIVO:** no — PR #287 fusionado en `main` `b089a45813d208aa50a01355e48a7545c4e3fb8c`; inventario, fronteras legacy y smoke están integrados. La retirada efectiva sigue bloqueada hasta la batería E2E final.
 
 Objetivo:
 - decidir qué accesos legacy pueden retirarse;
@@ -725,6 +725,32 @@ Objetivo:
 
 Criterio:
 ningún acceso legacy se retira hasta que exista equivalencia funcional + seguridad + E2E verificada por ChatGPT.
+
+---
+
+### BLOQUE FINAL — Batería E2E WF-04 → WF-09
+**Estado:** IN_PROGRESS
+**Bloque ACTIVO:** sí — rama `test/workflow-final-e2e-battery`.
+
+Objetivo:
+- consolidar en un único documento los recorridos humanos pendientes;
+- ejecutar un preflight automático no destructivo contra esquema/producción;
+- validar Checklist, Documento, Fecha concreta y Recurrente;
+- validar WF-04, WF-05, WF-06 y WF-07 de extremo a extremo;
+- validar presets WF-08;
+- validar equivalencia y fronteras WF-09;
+- solo después decidir retiradas legacy en PRs separados.
+
+Artefactos:
+- `docs/WORKFLOW_FINAL_E2E_BATTERY.md`;
+- `tests/workflow-final-e2e-preflight.sql`.
+
+Preflight de producción ejecutado el 22/09/2026:
+- PASS estructural;
+- 12 definiciones, 13 aplicaciones, 16 ejecuciones y 16 tarjetas workflow;
+- 0 tareas legacy operativas;
+- aún no hay expedientes reales WF-05/06/07 en producción;
+- la cartera v2 dispone de habitación/ocupación/inquilino de prueba, pero no hay responsable operativo vigente; ese dato deberá prepararse por UI/RPC oficial antes del recorrido humano.
 
 ---
 

@@ -35,13 +35,18 @@ Usar **`WORKFLOW_DOCUMENTATION_INDEX.md`** como índice específico. Allí se or
 - evidencia fotográfica;
 - estado real.
 
-## 4. Evidencia y auditorías fechadas
+## 4. Orquestación y QA masivo
+
+- **`QA_ORCHESTRATION_LINK.md`** — vínculo oficial con `jdlc86/Allaiso-QA-Orchestrator`, estado de integración y reparto de autoridad. Debe leerse antes de diseñar o usar automatización E2E masiva.
+
+## 5. Evidencia y auditorías fechadas
+
 
 - **`DOCUMENTATION_AUDIT_2026-09-18.md`** — auditoría código ↔ Supabase ↔ documentación del 18/09/2026.
 
 Los informes fechados pueden quedar históricos. No deben reescribirse para ocultar decisiones anteriores.
 
-## 5. Regla de actualización
+## 6. Regla de actualización
 
 Cuando cambie una capacidad:
 

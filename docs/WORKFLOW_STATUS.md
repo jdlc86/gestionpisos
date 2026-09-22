@@ -539,3 +539,11 @@ WF-07 integra la fianza y las reclamaciones por daños sin crear contabilidad ni
 Contrato completo: `WORKFLOW_DAMAGE_DEPOSIT_CONTRACT.md`.
 
 WF-07 está `IMPLEMENTED_DEPLOYED_E2E_DEFERRED`: PR #284 fusionó el dominio y PR #285 cerró el hardening del router supersedido; `main` quedó en `663609b621ba53971620c68f5a866c118011602d`. Governance, PWA, Schema, Pages y Supabase Migrations están verdes post-merge; `notification-email` está activa con `verify_jwt=false`; `20260922003000_wf07_hide_superseded_action_router` está aplicada y el helper `apply_workflow_task_action_pre_wf07_v1` ya no tiene `EXECUTE` para `anon`, `authenticated` ni `service_role`. El E2E humano se mantiene para la batería final conjunta.
+
+### Incremento — WF-08 · Presets de dominio en Creador
+
+WF-08 añade sugerencias iniciales exclusivamente de autoría frontend para Limpieza, Inspección, Mantenimiento, Check-in y Check-out. Los presets solo completan campos vacíos/no tocados, nunca seleccionan entidades reales ni fechas, no se reaplican desde `applyDraft()` y no sustituyen las validaciones ni adaptadores backend.
+
+Contrato completo: `WORKFLOW_DOMAIN_PRESETS_CONTRACT.md`.
+
+WF-08 está `IMPLEMENTED_DEPLOYED_E2E_DEFERRED`: PR #286 fusionado en `main` `9df6885bb9e8b06bcf4254ce11dd5955c2d1450f`. Governance, PWA, Schema y GitHub Pages quedaron verdes post-merge; el smoke funcional `workflow-domain-presets-smoke.mjs` cubre los cinco presets, preservación de decisiones, ausencia de fecha inventada y exclusión de custom/WF-06/WF-07. El E2E humano se mantiene para la batería final conjunta.

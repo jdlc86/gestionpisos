@@ -166,7 +166,7 @@ Se conservan:
 - solicitudes fotográficas;
 - `cleaning.html`.
 
-El motor ya puede publicar y ejecutar definiciones manuales reales con Foto, Checklist y Documento. Limpieza sigue siendo el primer adaptador de dominio previsto, pero su migración debe esperar a que el historial transversal y los E2E de los pasos genéricos estén suficientemente cerrados para no degradar el flujo legacy.
+WF-03 ya convirtió Limpieza en adaptador del motor transversal: cada ejecución `flowType=cleaning` materializa una sola tarjeta operativa en `tenant_tasks_v2` y enlaza idempotentemente su expediente `cleaning_tasks_v2` mediante `workflow_execution_id`. `cleaning.html` abre la ruta workflow con `workflow_task_id`; la entrada `task_id` se conserva únicamente como compatibilidad legacy hasta la batería E2E final.
 
 ## 9. Seguridad y pruebas de la persistencia
 
@@ -199,7 +199,7 @@ El 19/09/2026 se detectó además una diferencia entre el PostgreSQL local y los
 | Tareas | Materialización + decisión + revisión humana implementadas | `tenant_tasks_v2` reutilizada; `accept/reject` y revisión agency sincronizan tarea + ejecución |
 | Historial | Operativo inicial | vista única de ejecuciones con tarea, Foto/Checklist/Documento, decisiones, revisión y cierre; filtros avanzados/paginación profunda quedan posteriores |
 | Ejecución genérica | Implementada; cierre auto validado E2E y `human_review` cubierto por regresión de integración | `manual_now`, snapshots, tarea materializada, cierre automático y revisión humana para pasos implementados |
-| Adaptador Limpieza | Pendiente | Legacy preservado |
+| Adaptador Limpieza | Implementado y verificado en WF-03 | `tenant_tasks_v2` es la tarjeta única; `cleaning_tasks_v2` conserva expediente de dominio y la entrada legacy `task_id` queda temporalmente compatible |
 | Incidencias / Mantenimiento | Implementado y desplegado; E2E humano diferido | PR #281 fusionado; expediente enlazado al outbox, ejecución y tarea transversal; acciones server-side idempotentes |
 | Inspección posterior | Implementada y desplegada; E2E humano diferido | `incident.resolved` activa aplicaciones `inspection` y reutiliza Foto/Checklist/Documento |
 

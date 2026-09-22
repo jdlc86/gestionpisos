@@ -10,6 +10,9 @@ test -s docs/workflows.html
 test -s docs/workflow-builder.html
 test -s docs/workflow-builder.css
 test -s docs/workflow-builder.js
+test -s docs/workflow-domain-presets.js
+test -s docs/WORKFLOW_DOMAIN_PRESETS_CONTRACT.md
+test -s tests/workflow-domain-presets-smoke.mjs
 test -s docs/workflow-definitions.html
 test -s docs/workflow-definitions.css
 test -s docs/workflow-definitions.js
@@ -26,6 +29,8 @@ test -s docs/workflow-tasks.html
 test -s docs/workflow-tasks.css
 test -s docs/workflow-tasks.js
 node --check docs/workflow-builder.js
+node --check docs/workflow-domain-presets.js
+node tests/workflow-domain-presets-smoke.mjs
 node --check docs/workflow-definitions.js
 node --check docs/workflow-applications.js
 node --check docs/workflow-tasks.js
@@ -175,7 +180,7 @@ grep -Fq 'id="photoBankLink"' docs/workflow-builder.html
 grep -Fq 'href="./photo-patterns.html?from=workflow-builder" hidden' docs/workflow-builder.html
 grep -Fq 'function updatePhotoResource()' docs/workflow-builder.js
 grep -Fq 'photoBankLink.hidden=value("flowType")==="cleaning"||!checked("stepPhoto")' docs/workflow-builder.js
-grep -Fq './workflow-builder.js?v=2026092102' docs/workflow-builder.html
+grep -Fq './workflow-builder.js?v=2026092201' docs/workflow-builder.html
 grep -Fq 'id="assignmentUserId"' docs/workflow-builder.html
 grep -Fq 'id="assignmentRole"' docs/workflow-builder.html
 grep -Fq 'function assignmentConfigurationComplete(data)' docs/workflow-builder.js

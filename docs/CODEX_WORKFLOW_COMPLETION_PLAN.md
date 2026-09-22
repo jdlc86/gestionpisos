@@ -745,12 +745,13 @@ Artefactos:
 - `docs/WORKFLOW_FINAL_E2E_BATTERY.md`;
 - `tests/workflow-final-e2e-preflight.sql`.
 
-Preflight de producción ejecutado el 22/09/2026:
-- PASS estructural;
+Preflight de producción revalidado el 22/09/2026 sobre `main@8113f739282a67a84bda6643f566f3e785ab9f85`:
+- PASS estructural mediante `tests/workflow-final-e2e-preflight.sql` en transacción READ ONLY;
 - 12 definiciones, 13 aplicaciones, 16 ejecuciones y 16 tarjetas workflow;
 - 0 tareas legacy operativas;
 - aún no hay expedientes reales WF-05/06/07 en producción;
-- la cartera v2 dispone de habitación/ocupación/inquilino de prueba, pero no hay responsable operativo vigente; ese dato deberá prepararse por UI/RPC oficial antes del recorrido humano.
+- existe 1 asignación operativa vigente `assignment_type=responsible`, `can_write=true`, asociada a un perfil `employee` activo y no revocado;
+- la ocupación activa, su habitación activa y el responsable vigente coinciden en el mismo piso de prueba. Gate 0 queda preparado para iniciar los recorridos humanos del Gate 1.
 
 ---
 

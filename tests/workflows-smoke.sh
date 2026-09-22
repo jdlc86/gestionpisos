@@ -6,6 +6,7 @@ test -s docs/WORKFLOW_ARCHITECTURE.md
 test -s docs/WORKFLOW_IMPLEMENTATION_MAP.md
 test -s docs/WORKFLOW_ENGINE_CONTRACT.md
 test -s docs/WORKFLOW_STATUS.md
+test -s docs/WORKFLOW_LEGACY_CLOSURE_CONTRACT.md
 test -s docs/workflows.html
 test -s docs/workflow-builder.html
 test -s docs/workflow-builder.css
@@ -685,3 +686,7 @@ grep -Fq 'notification_email_dispatch_state_v1' supabase/migrations/202609211645
 grep -Fq 'n.created_at>=s.activated_at' supabase/migrations/20260921181500_notification_email_retry.sql
 grep -Fq 'record_acceptance' docs/workflow-tasks.js
 grep -Fq 'record_dispute' docs/workflow-tasks.js
+
+
+# WF-09 · compatibilidad legacy congelada hasta E2E final.
+bash tests/workflow-legacy-compatibility-smoke.sh

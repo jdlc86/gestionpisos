@@ -292,13 +292,12 @@ Destino: componente de historial y revisión de **evidencias fotográficas**. No
 
 ### `cleaning.html`
 
-Estado: interfaz funcional de transición que todavía exige conocer un `task_id`.
+Estado: vista de dominio compartida por la ruta workflow y la compatibilidad histórica.
 
-Destino:
-
-- conservar hasta que exista la vista genérica de Tareas;
-- después, las tareas de Limpieza deben aparecer automáticamente dentro de `Flujos de Trabajo → Tareas`;
-- eliminar la dependencia del UUID manual solo cuando el nuevo flujo esté probado extremo a extremo.
+- La ruta canónica actual llega desde `Flujos de Trabajo → Tareas` con `workflow_task_id`.
+- El Edge `my-cleaning-checklist` revalida tarjeta, ejecución y expediente `cleaning_tasks_v2` enlazado.
+- `task_id` se mantiene solo para tareas antiguas sin `workflow_execution_id`.
+- WF-09 no elimina esa entrada hasta la batería E2E final; después podrá retirarse si producción sigue sin dependencias legacy.
 
 ### `index.html`
 
@@ -335,7 +334,7 @@ Fotografía, Checklist y Documento ya son pasos operativos del motor mínimo.
 | Tarea de usuario | `tenant_tasks_v2` | Generalización aditiva implementada para `source_kind=workflow_execution` |
 | Acciones de tarea | `tenant_task_actions_v2` | Reutilizar |
 | Histórico de tarea | `tenant_task_history_v2` | Reutilizar |
-| Plantillas de transición | `tenant_task_workflow_templates_v2` | Reutilizar como subcomponente, no como flujo completo |
+| Plantillas de transición | `tenant_task_workflow_templates_v2` | Compatibilidad legacy temporal; no contiene `task_type=workflow` ni alimenta acciones del motor nuevo; candidata a retirada tras E2E |
 | Limpieza | tablas `cleaning_*` | Adaptador de dominio; preservar |
 | Revisión fotográfica | `review-photo-verification` + `apply_workflow_photo_review_v1` | Reutilizada; decide el run y sincroniza el cierre `human_review` del workflow |
 | Notificaciones | `notifications_v2` | Reutilizar |

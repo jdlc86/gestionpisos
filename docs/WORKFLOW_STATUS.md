@@ -547,3 +547,21 @@ WF-08 añade sugerencias iniciales exclusivamente de autoría frontend para Limp
 Contrato completo: `WORKFLOW_DOMAIN_PRESETS_CONTRACT.md`.
 
 WF-08 está `IMPLEMENTED_DEPLOYED_E2E_DEFERRED`: PR #286 fusionado en `main` `9df6885bb9e8b06bcf4254ce11dd5955c2d1450f`. Governance, PWA, Schema y GitHub Pages quedaron verdes post-merge; el smoke funcional `workflow-domain-presets-smoke.mjs` cubre los cinco presets, preservación de decisiones, ausencia de fecha inventada y exclusión de custom/WF-06/WF-07. El E2E humano se mantiene para la batería final conjunta.
+
+### Incremento — WF-09 · Cierre controlado de compatibilidad legacy
+
+WF-09 cierra la fase de implementación sin borrar histórico ni retirar compatibilidad antes de la batería E2E final:
+
+- producción contiene 16 tarjetas y las 16 son `task_type='workflow'` + `source_kind='workflow_execution'`; no hay tarjetas legacy operativas actuales;
+- `cleaning_plans_v2`, `cleaning_tasks_v2`, `cleaning_swap_requests_v2` y `cleaning_debts_v2` están actualmente a cero, pero se conservan porque WF-03 reutiliza el expediente de dominio y porque el conteo no es una precondición destructiva;
+- `tenant_task_workflow_templates_v2` conserva 53 transiciones para 11 tipos legacy;
+- Cartera sigue siendo la única UI cliente autorizada a usar `create_tenant_task_v2` y `apply_tenant_task_action_v2`; por eso esos RPC permanecen hasta el E2E final;
+- `authenticated` no tiene INSERT/UPDATE/DELETE directo sobre `tenant_tasks_v2` ni escritura directa en acciones/historial: la compatibilidad legacy queda acotada a los RPC documentados;
+- el RPC legacy de acciones rechaza tarjetas workflow, el creador legacy no acepta `task_type=workflow`, el CHECK reserva `workflow_execution` al motor nuevo y las plantillas legacy no siembran acciones workflow;
+- Limpieza conserva temporalmente `task_id` y el retorno legacy de cámara; la ruta nueva usa `workflow_task_id`;
+- no se retira ninguna superficie funcional hasta completar equivalencia + seguridad + E2E final.
+
+Contrato completo: `WORKFLOW_LEGACY_CLOSURE_CONTRACT.md`.
+
+WF-09 queda en `IMPLEMENTED_E2E_GATE` dentro del PR #287: inventario, fronteras de seguridad y referencias frontend están congeladas por regresión/smoke, pero la retirada efectiva de compatibilidad permanece bloqueada por la batería E2E final conjunta. No debe marcarse `VERIFIED` ni eliminarse legacy antes de esa batería.
+

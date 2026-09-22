@@ -253,7 +253,7 @@ function renderCard(item) {
   typeIcon.setAttribute("aria-hidden", "true");
   heading.append(typeIcon, createElement("h4", "", itemName(current, item)));
   const meta = createElement("div", "record-meta");
-  meta.append(createElement("span", `status-pill is-${item.status}`, labels[item.status] || item.status));
+  meta.append(createElement("span", `status-pill is-${item.status}`, current === "properties" && item.status === "active" ? "Activo" : (labels[item.status] || item.status)));
   if (current === "occupancies" && item.status === "blocked") {
     meta.append(createElement("span", "relation-chip", `Suspensión: ${item.suspendedAt ? formatDate(item.suspendedAt) : "---"}`));
   }

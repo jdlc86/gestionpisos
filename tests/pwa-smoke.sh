@@ -15,7 +15,7 @@ test -s docs/mfa-code-input.js
 node --check docs/mfa-code-input.js
 node --check docs/portfolio.js
 node --check docs/portfolio-onboarding.js
-grep -Fq './portfolio.js?v=2026092002' docs/portfolio.html
+grep -Fq './portfolio.js?v=2026092201' docs/portfolio.html
 grep -Fq './portfolio-onboarding.js?v=2026092002' docs/portfolio.html
 grep -Fq 'supabase.rpc("reactivate_tenant_occupancy_v1"' docs/portfolio.js
 ! grep -Fq 'closePrevious = await supabase.from("occupancies_v2").update({ starts_on:null,ends_on:null,status:"archived" })' docs/portfolio.js

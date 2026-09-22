@@ -19,10 +19,11 @@ grep -q 'from("rooms_v2")' docs/portfolio.js
 grep -q 'from("audit_log_v2")' docs/portfolio.js
 grep -Fq '.from("tenant_tasks_v2")' docs/portfolio.js
 grep -Fq '.is("removed_at",null)' docs/portfolio.js
-grep -Fq './portfolio.js?v=2026092002' docs/portfolio.html
+grep -Fq './portfolio.js?v=2026092201' docs/portfolio.html
 grep -q 'owner_has_active_properties' docs/portfolio.js
 grep -q 'property_has_active_rooms' docs/portfolio.js
 grep -q 'showHistory' docs/portfolio.js
+grep -Fq 'current === "properties" && item.status === "active" ? "Activo"' docs/portfolio.js
 grep -Fq 'supabase.rpc("offboard_tenant_occupancy_v2"' docs/portfolio.js
 grep -Fq 'supabase.functions.invoke("disable-tenant-auth"' docs/portfolio.js
 grep -Fq 'supabase.rpc("reactivate_tenant_occupancy_v1"' docs/portfolio.js

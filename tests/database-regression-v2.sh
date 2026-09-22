@@ -215,6 +215,7 @@ docker run --rm   -e POSTGRES_PASSWORD=local-regression-only   -e WF04_FOCUSED="
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-wf06-domain-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-wf07-domain-regression.sql
     psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-legacy-closure-regression.sql
+    psql -v ON_ERROR_STOP=1 -U postgres -f /work/tests/workflow-final-e2e-preflight.sql
 
     trap - EXIT
     cleanup

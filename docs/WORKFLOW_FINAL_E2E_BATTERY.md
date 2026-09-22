@@ -12,7 +12,7 @@ No introduce un motor nuevo ni cambia reglas de negocio. Separa:
 
 ## Estado de ejecución · 22/09/2026
 
-- Gate 0 revalidado en producción sobre `main@8113f739282a67a84bda6643f566f3e785ab9f85`: **PASS**.
+- Gate 0 revalidado en producción el 22/09/2026 sobre `main@6b1afac036f9171fba5b6613949c3141974f4b47`: **PASS**.
 - Snapshot: 12 definiciones, 13 aplicaciones, 16 ejecuciones, 16 tarjetas workflow y 0 tareas legacy operativas.
 - No existen todavía expedientes reales WF-05/06/07 en producción.
 - La preparación humana mínima ya dispone de una ocupación activa con habitación activa y un empleado responsable vigente con `can_write=true`.
@@ -26,6 +26,13 @@ No introduce un motor nuevo ni cambia reglas de negocio. Separa:
 - Usar un único piso/habitación/ocupación de prueba y un responsable vigente con escritura.
 - Conservar trazabilidad: definición, aplicación, ejecución, tarea, eventos, historial y notificaciones.
 - Si un caso falla, detener únicamente ese caso, documentar el primer fallo reproducible y corregir por rama → PR → guards → merge.
+
+### Relación con la futura plataforma QA
+
+La infraestructura prevista para automatizar esta batería a gran escala vive en `jdlc86/Allaiso-QA-Orchestrator`. Su vínculo y estado se describen en `docs/QA_ORCHESTRATION_LINK.md`.
+
+Actualmente está **registrada pero no operativa** para GestionPisos. Por tanto, esta batería sigue siendo la fuente de verdad de los Gates y ningún Gate puede marcarse PASS por el mero hecho de existir una especificación o job en el repositorio externo. Cuando la integración se active explícitamente, los escenarios de esta batería podrán convertirse en pruebas automatizadas sin cambiar sus criterios de aceptación.
+
 
 ## Gate 0 · Preflight automático
 

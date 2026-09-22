@@ -67,3 +67,16 @@ Para cualquier tarea que modifique **Flujos de Trabajo**, su motor, asignaciones
 
 El repositorio, no la memoria de una sesión, es la fuente de continuidad entre ChatGPT y Codex.
 
+
+## Orquestación futura de QA masivo
+
+Para cualquier trabajo relacionado con automatización E2E masiva, runners visuales, agentes de navegador o ejecución paralela de pruebas:
+
+1. Leer primero `docs/QA_ORCHESTRATION_LINK.md`.
+2. Inspeccionar el estado real de `https://github.com/jdlc86/Allaiso-QA-Orchestrator`.
+3. No asumir que el orquestador está instalado, conectado o autorizado solo porque su repositorio exista.
+4. No duplicar dentro de GestionPisos una segunda plataforma de orquestación QA.
+5. Hasta que ambos repositorios documenten explícitamente la activación, la batería y contratos de GestionPisos siguen siendo la autoridad de PASS/FAIL.
+6. Un ejecutor QA nunca puede corregir silenciosamente el AUT para convertir un fallo en PASS.
+
+

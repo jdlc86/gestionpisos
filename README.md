@@ -12,6 +12,7 @@ Plataforma para la gestión integral de viviendas alquiladas por habitaciones, c
 - Autenticación: Supabase Auth con entrega profesional de correos críticos.
 - Persistencia y autorización: PostgreSQL + RLS + RPC/Edge Functions para operaciones sensibles.
 - Storage: privado para evidencias/documentos según contrato de cada módulo.
+- Orquestación QA masiva (base documental, todavía no operativa): `jdlc86/Allaiso-QA-Orchestrator`. Ver `docs/QA_ORCHESTRATION_LINK.md`.
 
 ## Gobierno del proyecto
 

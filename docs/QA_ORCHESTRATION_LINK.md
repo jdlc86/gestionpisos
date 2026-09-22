@@ -11,15 +11,16 @@ Este repositorio externo existe para concentrar arquitectura, contratos, esquema
 
 ## Estado actual
 
-**Estado: REGISTRADO / NO OPERATIVO EN GESTIONPISOS.**
+**Estado: PUBLIC_SMOKE_VERIFIED / E2E AUTENTICADO NO ACTIVO.**
 
 A 22/09/2026:
 
-- el repositorio existe;
-- contiene una base arquitectónica y documental;
-- GestionPisos todavía no debe asumir que exista un runner conectado, un navegador autónomo disponible ni una integración validada;
-- ninguna prueba de la batería final puede marcarse como PASS únicamente porque exista el repositorio del orquestador;
-- los Gates actuales siguen ejecutándose y validándose conforme a `docs/WORKFLOW_FINAL_E2E_BATTERY.md` hasta que una decisión explícita documente la activación de la plataforma.
+- el repositorio existe y mantiene la infraestructura QA como fuente de verdad;
+- el runner Windows `allaiso-qa-JDIA` está conectado y el navegador gestionado por OpenClaw ha sido validado;
+- el handshake del nodo pasó en el run `35787573517` y el smoke público de GestionPisos pasó en el run `35787573540` del repositorio de orquestación;
+- el smoke público verifica navegación real, lectura semántica y captura de evidencia sin autenticación ni mutaciones;
+- las sesiones autenticadas, credenciales y escrituras sobre el AUT continúan desactivadas;
+- ninguna prueba de la batería final puede marcarse como PASS únicamente por el smoke público; los Gates siguen rigiéndose por `docs/WORKFLOW_FINAL_E2E_BATTERY.md` hasta activar explícitamente la ejecución autenticada correspondiente.
 
 ## Reparto de autoridad
 
@@ -32,7 +33,7 @@ A 22/09/2026:
 
 La plataforma se orientará a permitir una cantidad muy elevada de pruebas repetibles sobre Allaiso y otras aplicaciones, incluyendo ejecución E2E real sobre interfaz, paralelización, variantes combinatorias, conservación de evidencias y separación entre ejecución, verificación y corrección.
 
-Este documento **no define todavía cómo se instala, conecta o ejecuta** la plataforma. Es únicamente el vínculo documental oficial entre ambos repositorios y el punto que deben descubrir futuras sesiones.
+Este documento mantiene el vínculo documental oficial entre ambos repositorios. La ruta pública de solo lectura ya está validada; la activación de autenticación, escrituras, paralelismo y suites masivas se versionará por etapas en el repositorio de orquestación antes de considerarse disponible para GestionPisos.
 
 ## Regla de continuidad
 
@@ -40,6 +41,6 @@ Toda sesión futura que vaya a diseñar, implantar o usar automatización E2E ma
 
 1. leer este documento;
 2. inspeccionar el estado real del repositorio `jdlc86/Allaiso-QA-Orchestrator`;
-3. no asumir que la plataforma está operativa salvo que exista una actualización explícita de estado en ambos repositorios;
+3. distinguir siempre la capacidad ya verificada (`PUBLIC_SMOKE_VERIFIED`) de las capacidades aún no activadas, especialmente autenticación y escrituras sobre el AUT;
 4. mantener la batería E2E y los contratos de GestionPisos como criterio de aceptación del producto.
 

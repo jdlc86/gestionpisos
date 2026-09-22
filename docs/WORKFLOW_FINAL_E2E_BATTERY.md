@@ -31,7 +31,7 @@ No introduce un motor nuevo ni cambia reglas de negocio. Separa:
 
 La infraestructura prevista para automatizar esta batería a gran escala vive en `jdlc86/Allaiso-QA-Orchestrator`. Su vínculo y estado se describen en `docs/QA_ORCHESTRATION_LINK.md`.
 
-Actualmente está **registrada pero no operativa** para GestionPisos. Por tanto, esta batería sigue siendo la fuente de verdad de los Gates y ningún Gate puede marcarse PASS por el mero hecho de existir una especificación o job en el repositorio externo. Cuando la integración se active explícitamente, los escenarios de esta batería podrán convertirse en pruebas automatizadas sin cambiar sus criterios de aceptación.
+El orquestador ya tiene **smoke público verificado** para GestionPisos: runner real, OpenClaw, navegación, lectura semántica y evidencia visual. La autenticación y las escrituras E2E todavía no están activadas. Por tanto, esta batería sigue siendo la fuente de verdad de los Gates y ningún Gate autenticado puede marcarse PASS por el smoke público. Cuando se active explícitamente la siguiente etapa, estos mismos escenarios podrán automatizarse sin cambiar sus criterios de aceptación.
 
 
 ## Gate 0 · Preflight automático

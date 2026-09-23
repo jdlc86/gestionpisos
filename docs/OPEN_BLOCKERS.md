@@ -653,3 +653,44 @@ PARCIALMENTE IMPLEMENTADO — 2026-09-15
 - Pruebas multiusuario positivas y negativas.
 
 No cerrar B-16 hasta completar esos puntos.
+
+---
+
+## B-17 — Onboarding externo: reanudación de activación incompleta
+
+### Estado
+
+PENDIENTE — detectado 2026-09-22
+
+### Caso observado
+
+Durante un alta real de prueba de inquilino, la ficha y la ocupación quedaron en estado activo y la invitación externa se envió correctamente. La identidad Auth abrió el enlace y llegó a iniciar sesión, pero el flujo no alcanzó la transición final de onboarding.
+
+El estado resultante fue coherente pero incompleto:
+
+- `external_account_onboarding.status = pending`;
+- `tenants_v2.user_id IS NULL`;
+- `occupancies_v2.user_id IS NULL`;
+- sin rol `tenant` activo en `user_roles`;
+- sin `app_metadata.role` / `organization_id`;
+- la tarjeta de Cartera mostró `Acceso pendiente de vincular`.
+
+No se observó vinculación parcial ni concesión prematura de acceso. La Edge Function `complete-external-onboarding` estaba desplegada y activa. El problema pendiente es de robustez/recuperación del flujo cuando la activación se interrumpe después de consumir el enlace.
+
+### Diseño esperado
+
+- Diferenciar visualmente `Invitación pendiente` de `Activación iniciada pero incompleta`.
+- Permitir reanudar de forma segura una activación incompleta sin DML manual ni recrear identidades.
+- Mantener el orden autoritativo: vínculo DB → rol → Auth claims → cierre de sesión → login normal.
+- Un enlace consumido o una sesión interrumpida no deben dejar al gestor sin una acción de recuperación clara.
+- Reintentar la finalización debe ser idempotente y no duplicar roles, identidades ni vínculos.
+
+### Criterio de cierre
+
+1. reproducir de forma controlada la interrupción tras abrir la invitación;
+2. demostrar reanudación desde la UI oficial;
+3. verificar `tenants_v2.user_id`, `occupancies_v2.user_id`, rol `tenant`, metadata y onboarding `active`;
+4. comprobar caso negativo sin concesión prematura de acceso;
+5. añadir regresión automatizada cuando sea viable;
+6. PR, checks obligatorios verdes y verificación post-merge.
+
